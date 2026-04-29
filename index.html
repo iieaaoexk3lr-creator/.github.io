@@ -1,1 +1,256 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>一画千点！曲名クイズ（入力式）</title>
 
+<style>
+body {
+  text-align:center;
+  font-family:"Hiragino Kaku Gothic ProN", sans-serif;
+  background:#eeeeee;
+  color:#222;
+}
+
+h1 {
+  font-size:28px;
+  margin-top:20px;
+}
+
+#container {
+  display:flex;
+  justify-content:center;
+  flex-wrap:nowrap;
+  overflow:hidden;
+  margin-top:25px;
+}
+
+svg {
+  width:75px;
+  height:75px;
+  margin:2px;
+}
+
+button {
+  font-size:14px;
+  margin:5px;
+  padding:6px 12px;
+  border:none;
+  border-radius:6px;
+  background:#ddd;
+}
+
+button:hover {
+  background:#bbb;
+}
+
+input {
+  font-size:16px;
+  padding:6px;
+  margin-top:10px;
+  width:250px;
+}
+
+#result {
+  margin-top:10px;
+  font-size:18px;
+  font-weight:bold;
+}
+
+#scoreBox {
+  margin-top:15px;
+  font-size:22px;
+  font-weight:bold;
+}
+
+</style>
+</head>
+
+<body>
+
+<h1>一画千点！曲名クイズ（入力式）</h1>
+
+<button onclick="nextQuestion()">次の問題</button>
+<button onclick="prevQuestion()">前の問題</button>
+
+<div id="container"></div>
+
+<br>
+<button onclick="nextStep()">次の一画</button>
+<button onclick="prevStep()">1画戻る</button>
+<button onclick="revealAll()">答え（全表示）</button>
+
+<br>
+
+<input id="answerInput" placeholder="曲名を入力">
+<br>
+<button onclick="checkAnswer()">回答</button>
+
+<div id="result"></div>
+
+<button onclick="resetScore()">リセット</button>
+<div id="scoreBox">得点：0</div>
+
+<script>
+
+const questions = [
+  "残酷な天使のテーゼ",
+  "世界に一つだけの花",
+  "愛をこめて花束を",
+  "君の知らない物語",
+  "空も飛べるはず",
+  "栄光の架橋",
+  "天体観測",
+  "小さな恋のうた",
+  "夜に駆ける",
+  "燦然",
+  "雪の華",
+  "前前前世",
+  "紅蓮華",
+  "残響散歌",
+  "恋音と雨空",
+  "全力少年",
+  "革命道中",
+  "道化師のソネット",
+  "常緑",
+  "健康祈願",
+  ];
+
+let currentIndex = 0;
+let currentAnswer = "";
+let strokeGroups = [];
+let step = 0;
+let score = 0;
+
+// ■正規化（空白・大文字小文字対策）
+function normalize(str) {
+  return str.replace(/\s/g,"").toLowerCase();
+}
+
+// ■得点
+function calculateScore() {
+  if (step <= 1) return 5;
+  if (step === 2) return 4;
+  if (step === 3) return 3;
+  if (step === 4) return 2;
+  return 1;
+}
+
+// ■回答チェック
+function checkAnswer() {
+  const input = document.getElementById("answerInput").value;
+
+  if (normalize(input) === normalize(currentAnswer)) {
+    let point = calculateScore();
+    score += point;
+    updateScore();
+    document.getElementById("result").innerText = "正解！ +" + point + "点";
+  } else {
+    document.getElementById("result").innerText = "不正解…";
+  }
+}
+
+// ■表示更新
+function updateScore() {
+  document.getElementById("scoreBox").innerText = "得点：" + score;
+}
+
+// ■リセット
+function resetScore() {
+  score = 0;
+  updateScore();
+}
+
+// ■問題
+async function nextQuestion() {
+  if (currentIndex >= questions.length) return;
+  loadQuestion(currentIndex);
+  currentIndex++;
+}
+
+function prevQuestion() {
+  if (currentIndex <= 1) return;
+  currentIndex -= 2;
+  loadQuestion(currentIndex);
+  currentIndex++;
+}
+
+async function loadQuestion(index) {
+  const container = document.getElementById("container");
+  container.innerHTML = "";
+  strokeGroups = [];
+  step = 0;
+
+  currentAnswer = questions[index];
+  document.getElementById("answerInput").value = "";
+  document.getElementById("result").innerText = "";
+
+  for (let char of currentAnswer) {
+    const code = char.charCodeAt(0).toString(16);
+    const url = "https://raw.githubusercontent.com/KanjiVG/kanjivg/master/kanji/" + code.padStart(5, "0") + ".svg";
+
+    try {
+      const res = await fetch(url);
+      const text = await res.text();
+
+      const wrapper = document.createElement("div");
+      wrapper.innerHTML = text;
+      const svg = wrapper.querySelector("svg");
+
+      if (!svg) continue;
+
+      const paths = svg.querySelectorAll("path");
+      let group = [];
+
+      paths.forEach(p=>{
+        p.style.display="none";
+        p.style.stroke="#222";
+        p.style.fill="none";
+        p.style.strokeWidth=3;
+        group.push(p);
+      });
+
+      strokeGroups.push(group);
+      container.appendChild(svg);
+    } catch {}
+  }
+}
+
+// ■描写
+function nextStep() {
+  strokeGroups.forEach(g=>{
+    if(step<g.length) g[step].style.display="block";
+  });
+  step++;
+}
+
+function prevStep() {
+  if(step<=0)return;
+  step--;
+  strokeGroups.forEach(g=>{
+    if(step<g.length) g[step].style.display="none";
+  });
+}
+
+// ■答え表示
+function revealAll() {
+  strokeGroups.forEach(g=>{
+    g.forEach(p=>p.style.display="block");
+  });
+}
+
+// ■Enterキーで回答
+document.addEventListener("keydown", e=>{
+  if(e.key === "Enter"){
+    checkAnswer();
+  }
+  if(e.code==="Space"){
+    e.preventDefault();
+    nextStep();
+  }
+});
+
+</script>
+
+</body>
+</html>
