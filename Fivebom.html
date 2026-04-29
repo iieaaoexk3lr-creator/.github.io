@@ -22,14 +22,12 @@
     margin-bottom: 20px;
   }
 
-  /* タイマー（縦バーの上に表示） */
   #timer {
     font-size: 3rem;
     color: #ff4444;
     margin-bottom: 10px;
   }
 
-  /* 縦に並ぶ正解バー */
   #answers {
     display: flex;
     flex-direction: column;
@@ -55,14 +53,12 @@
     transform: scale(1.05);
   }
 
-  /* ボタン */
   button {
     font-size: 1.2rem;
     padding: 10px 20px;
     margin: 5px;
   }
 
-  /* 爆発エフェクト */
   #explosion {
     display: none;
     font-size: 4rem;
@@ -76,7 +72,6 @@
     100% { transform: scale(3); opacity: 0; }
   }
 
-  /* スマホ対応 */
   @media (max-width: 600px) {
     h1 { font-size: 1.6rem; }
     #timer { font-size: 2.5rem; }
@@ -85,7 +80,6 @@
   }
 </style>
 </head>
- <a href="index.html">メニュー</a> 
 <body>
 
 <h1>ファイブボンバー</h1>
@@ -95,9 +89,18 @@
 
 <div id="answers"></div>
 
+<!-- STARTボタン -->
+<button id="startBtn" onclick="startGame()">START</button>
+
+<!-- 判定ボタン -->
 <button onclick="markCorrect()">正解</button>
 <button onclick="markWrong()">不正解</button>
+
+<!-- リセットボタン -->
 <button onclick="resetGame()">リセット</button>
+
+<!-- メニューへ戻る -->
+<button onclick="location.href='menu.html'">メニューへ戻る</button>
 
 <div id="explosion">💥</div>
 
@@ -107,7 +110,6 @@
 <audio id="sound-explosion" src="https://soundeffect-lab.info/sound/anime/mp3/bomb1.mp3"></audio>
 
 <script>
-  /* 10問分の問題 */
   const questions = [
     "日本の果物を5つ答えよ！",
     "アニメの主人公を5人答えよ！",
@@ -125,18 +127,20 @@
   let found = 0;
   let timeLeft = 10;
   let timerId;
+  let started = false;
 
   const answersDiv = document.getElementById("answers");
   const explosion = document.getElementById("explosion");
 
-  /* 初期化 */
   function init() {
     document.getElementById("question").textContent = questions[currentQuestion];
     answersDiv.innerHTML = "";
     found = 0;
     timeLeft = 10;
+    started = false;
     document.getElementById("timer").textContent = timeLeft;
     explosion.style.display = "none";
+    document.getElementById("startBtn").style.display = "inline-block";
 
     for (let i = 0; i < 5; i++) {
       const box = document.createElement("div");
@@ -145,11 +149,15 @@
       box.textContent = "？？？";
       answersDiv.appendChild(box);
     }
+  }
 
+  function startGame() {
+    if (started) return;
+    started = true;
+    document.getElementById("startBtn").style.display = "none";
     startTimer();
   }
 
-  /* タイマー */
   function startTimer() {
     clearInterval(timerId);
     timerId = setInterval(() => {
@@ -163,9 +171,10 @@
     }, 1000);
   }
 
-  /* 正解 */
   function markCorrect() {
-    if (found < 5 && timeLeft > 0) {
+    if (!started || timeLeft <= 0) return;
+
+    if (found < 5) {
       document.getElementById("sound-correct").play();
       const box = document.getElementById("box" + found);
       box.textContent = "正解！";
@@ -179,18 +188,16 @@
     }
   }
 
-  /* 不正解 */
   function markWrong() {
+    if (!started) return;
     document.getElementById("sound-wrong").play();
   }
 
-  /* 爆発 */
   function triggerExplosion() {
     explosion.style.display = "block";
     document.getElementById("sound-explosion").play();
   }
 
-  /* 次の問題へ */
   function nextQuestion() {
     currentQuestion++;
     if (currentQuestion >= questions.length) {
@@ -200,7 +207,6 @@
     init();
   }
 
-  /* リセット（完全初期化） */
   function resetGame() {
     currentQuestion = 0;
     init();
