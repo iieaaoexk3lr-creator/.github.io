@@ -70,6 +70,7 @@
     margin: 5px;
   }
 
+  /* 爆発エフェクト */
   #explosion {
     display: none;
     font-size: 4rem;
@@ -81,6 +82,20 @@
     0% { transform: scale(0.5); opacity: 0; }
     50% { transform: scale(1.5); opacity: 1; }
     100% { transform: scale(3); opacity: 0; }
+  }
+
+  /* 成功エフェクト（キラキラ） */
+  #successEffect {
+    display: none;
+    font-size: 3rem;
+    color: #00ffcc;
+    animation: sparkle 1s ease-out forwards;
+  }
+
+  @keyframes sparkle {
+    0% { opacity: 0; transform: scale(0.5); }
+    50% { opacity: 1; transform: scale(1.3); }
+    100% { opacity: 0; transform: scale(1); }
   }
 
   @media (max-width: 600px) {
@@ -107,12 +122,19 @@
 <button onclick="resetGame()">リセット</button>
 <button onclick="location.href='menu.html'">メニューへ戻る</button>
 
+<!-- 成功エフェクト -->
+<div id="successEffect">✨成功！✨</div>
+
+<!-- 爆発エフェクト -->
 <div id="explosion">💥</div>
 
 <!-- 効果音 -->
 <audio id="sound-correct" src="https://soundeffect-lab.info/sound/anime/mp3/decision1.mp3"></audio>
 <audio id="sound-wrong" src="https://soundeffect-lab.info/sound/anime/mp3/buzzer1.mp3"></audio>
 <audio id="sound-explosion" src="https://soundeffect-lab.info/sound/anime/mp3/bomb1.mp3"></audio>
+
+<!-- 次の問題へボタン -->
+<button id="nextBtn" style="display:none;" onclick="nextQuestion()">次の問題へ</button>
 
 <script>
   const questions = [
@@ -130,16 +152,17 @@
 
   let currentQuestion = 0;
   let found = 0;
-  let timeLeft = 50;  // ← 初期時間を50秒に変更
+  let timeLeft = 50;
   let timerId;
   let started = false;
 
-  // 各バーのタイマーが止まったかどうか
   let timerStopped = [false, false, false, false, false];
 
   const answersDiv = document.getElementById("answers");
   const timerRow = document.getElementById("timerRow");
   const explosion = document.getElementById("explosion");
+  const successEffect = document.getElementById("successEffect");
+  const nextBtn = document.getElementById("nextBtn");
 
   function init() {
     document.getElementById("question").textContent = questions[currentQuestion];
@@ -150,6 +173,8 @@
     started = false;
     timerStopped = [false, false, false, false, false];
     explosion.style.display = "none";
+    successEffect.style.display = "none";
+    nextBtn.style.display = "none";
     document.getElementById("startBtn").style.display = "inline-block";
 
     for (let i = 0; i < 5; i++) {
@@ -179,7 +204,6 @@
     timerId = setInterval(() => {
       timeLeft--;
 
-      // 正解していないバーだけカウントダウン
       for (let i = 0; i < 5; i++) {
         if (!timerStopped[i]) {
           document.getElementById("timer" + i).textContent = timeLeft;
@@ -203,14 +227,13 @@
       box.textContent = "正解";
       box.classList.add("correct");
 
-      // このバーのタイマーを停止
       timerStopped[found] = true;
 
       found++;
 
       if (found === 5) {
         clearInterval(timerId);
-        nextQuestion();
+        showSuccess();
       }
     }
   }
@@ -225,10 +248,16 @@
     document.getElementById("sound-explosion").play();
   }
 
+  function showSuccess() {
+    successEffect.style.display = "block";
+    nextBtn.style.display = "inline-block";
+  }
+
   function nextQuestion() {
     currentQuestion++;
     if (currentQuestion >= questions.length) {
       document.getElementById("question").textContent = "全問クリア！お疲れさま！";
+      nextBtn.style.display = "none";
       return;
     }
     init();
