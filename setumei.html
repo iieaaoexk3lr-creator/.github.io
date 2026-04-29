@@ -79,29 +79,24 @@
 <div id="question"></div>
 
 <!-- エフェクト -->
-<div id="correctEffect" class="correctEffect">✨正解！✨</div>
-<div id="wrongEffect" class="wrongEffect">❌不正解！❌</div>
+<div id="correctEffect" class="correctEffect">✨正解✨</div>
+<div id="wrongEffect" class="wrongEffect">❌</div>
 
 <!-- ボタン -->
 <button onclick="markCorrect()">正解</button>
 <button onclick="markWrong()">不正解</button>
-<button onclick="passQuestion()">パス</button>
 <button onclick="nextQuestion()">次の問題</button>
 <button onclick="resetScore()">ポイントリセット</button>
 <button onclick="location.href='menu.html'">メニューへ戻る</button>
 
 <script>
   const questions = [
-    "赤くて丸い果物は？",
-    "空を飛ぶ乗り物は？",
-    "日本の首都は？",
-    "泳ぐ動物といえば？",
-    "黄色いフルーツといえば？",
-    "寒い地域にいる白い動物は？",
-    "音楽を聴くための機械は？",
-    "学校で使う筆記用具は？",
-    "四角くて黒い電子機器は？",
-    "夜に光る天体は？"
+    "りんごのうた",
+    "飛行機",
+    "東京",
+    "イルカ",
+    "北風小僧のかんたろう",
+    "雪の華",
   ];
 
   let current = 0;
