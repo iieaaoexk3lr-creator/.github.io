@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<title>ファイブボンバー強化版</title>
+<title>ファイブボンバー本物風</title>
 <style>
   body {
     font-family: sans-serif;
@@ -22,29 +22,40 @@
     margin-bottom: 20px;
   }
 
-  #timer {
-    font-size: 3rem;
-    color: #ff4444;
+  /* カウントダウン数字（横一列） */
+  #timerRow {
+    display: flex;
+    justify-content: center;
+    gap: 40px;
     margin-bottom: 10px;
   }
 
+  .timer-box {
+    font-size: 2.5rem;
+    color: #ff4444;
+    width: 60px;
+    text-align: center;
+  }
+
+  /* 縦長バー（横一列） */
   #answers {
     display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 12px;
+    justify-content: center;
+    gap: 40px;
     margin-bottom: 20px;
   }
 
   .answer-box {
-    width: 200px;
-    height: 50px;
+    width: 60px;
+    height: 200px;
     background: #333;
     border-radius: 10px;
     font-size: 1.4rem;
     display: flex;
     justify-content: center;
     align-items: center;
+    writing-mode: vertical-rl;
+    text-orientation: upright;
     transition: 0.3s;
   }
 
@@ -73,10 +84,8 @@
   }
 
   @media (max-width: 600px) {
-    h1 { font-size: 1.6rem; }
-    #timer { font-size: 2.5rem; }
-    .answer-box { width: 160px; height: 45px; font-size: 1.2rem; }
-    button { font-size: 1rem; padding: 8px 15px; }
+    .answer-box { width: 45px; height: 150px; }
+    .timer-box { font-size: 2rem; width: 45px; }
   }
 </style>
 </head>
@@ -85,21 +94,17 @@
 <h1>ファイブボンバー</h1>
 
 <div id="question"></div>
-<div id="timer"></div>
 
+<!-- カウントダウン数字（横一列） -->
+<div id="timerRow"></div>
+
+<!-- 縦長バー（横一列） -->
 <div id="answers"></div>
 
-<!-- STARTボタン -->
 <button id="startBtn" onclick="startGame()">START</button>
-
-<!-- 判定ボタン -->
 <button onclick="markCorrect()">正解</button>
 <button onclick="markWrong()">不正解</button>
-
-<!-- リセットボタン -->
 <button onclick="resetGame()">リセット</button>
-
-<!-- メニューへ戻る -->
 <button onclick="location.href='menu.html'">メニューへ戻る</button>
 
 <div id="explosion">💥</div>
@@ -125,28 +130,39 @@
 
   let currentQuestion = 0;
   let found = 0;
-  let timeLeft = 10;
+  let timeLeft = 50;  // ← 初期時間を50秒に変更
   let timerId;
   let started = false;
 
+  // 各バーのタイマーが止まったかどうか
+  let timerStopped = [false, false, false, false, false];
+
   const answersDiv = document.getElementById("answers");
+  const timerRow = document.getElementById("timerRow");
   const explosion = document.getElementById("explosion");
 
   function init() {
     document.getElementById("question").textContent = questions[currentQuestion];
     answersDiv.innerHTML = "";
+    timerRow.innerHTML = "";
     found = 0;
-    timeLeft = 10;
+    timeLeft = 50;
     started = false;
-    document.getElementById("timer").textContent = timeLeft;
+    timerStopped = [false, false, false, false, false];
     explosion.style.display = "none";
     document.getElementById("startBtn").style.display = "inline-block";
 
     for (let i = 0; i < 5; i++) {
+      const t = document.createElement("div");
+      t.className = "timer-box";
+      t.id = "timer" + i;
+      t.textContent = timeLeft;
+      timerRow.appendChild(t);
+
       const box = document.createElement("div");
       box.className = "answer-box";
       box.id = "box" + i;
-      box.textContent = "？？？";
+      box.textContent = "？";
       answersDiv.appendChild(box);
     }
   }
@@ -162,7 +178,13 @@
     clearInterval(timerId);
     timerId = setInterval(() => {
       timeLeft--;
-      document.getElementById("timer").textContent = timeLeft;
+
+      // 正解していないバーだけカウントダウン
+      for (let i = 0; i < 5; i++) {
+        if (!timerStopped[i]) {
+          document.getElementById("timer" + i).textContent = timeLeft;
+        }
+      }
 
       if (timeLeft <= 0) {
         clearInterval(timerId);
@@ -176,9 +198,14 @@
 
     if (found < 5) {
       document.getElementById("sound-correct").play();
+
       const box = document.getElementById("box" + found);
-      box.textContent = "正解！";
+      box.textContent = "正解";
       box.classList.add("correct");
+
+      // このバーのタイマーを停止
+      timerStopped[found] = true;
+
       found++;
 
       if (found === 5) {
