@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>ファイブボンバー風ゲーム</title>
+<style>
+  body {
+    font-family: sans-serif;
+    text-align: center;
+    background: #111;
+    color: #fff;
+    margin: 0;
+    padding: 20px;
+  }
+
+  h1 {
+    font-size: 2rem;
+    margin-bottom: 10px;
+  }
+
+  #timer {
+    font-size: 3rem;
+    margin: 20px 0;
+    color: #ff4444;
+  }
+
+  #question {
+    font-size: 1.5rem;
+    margin-bottom: 20px;
+  }
+
+  #answers {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    max-width: 350px;
+    margin: 0 auto 20px;
+  }
+
+  .answer-box {
+    background: #333;
+    padding: 15px;
+    border-radius: 10px;
+    font-size: 1.5rem;
+    transition: 0.3s;
+  }
+
+  .correct {
+    background: #28a745;
+    transform: scale(1.05);
+  }
+
+  #buttons {
+    margin-top: 20px;
+  }
+
+  button {
+    font-size: 1.2rem;
+    padding: 10px 20px;
+    margin: 5px;
+  }
+
+  /* 爆発エフェクト */
+  #explosion {
+    display: none;
+    font-size: 4rem;
+    color: yellow;
+    animation: explode 0.8s ease-out forwards;
+  }
+
+  @keyframes explode {
+    0% { transform: scale(0.5); opacity: 0; }
+    50% { transform: scale(1.5); opacity: 1; }
+    100% { transform: scale(3); opacity: 0; }
+  }
+
+  /* スマホ対応 */
+  @media (max-width: 600px) {
+    h1 { font-size: 1.6rem; }
+    #timer { font-size: 2.5rem; }
+    .answer-box { font-size: 1.2rem; }
+    button { font-size: 1rem; padding: 8px 15px; }
+  }
+</style>
+</head>
+<body>
+
+<h1>ファイブボンバー風ゲーム</h1>
+
+<div id="question">「日本の果物」を5つ答えよ！</div>
+
+<div id="timer">10</div>
+
+<div id="answers"></div>
+
+<div id="buttons">
+  <button onclick="markCorrect()">正解</button>
+  <button onclick="markWrong()">不正解</button>
+  <button onclick="resetGame()">リセット</button>
+</div>
+
+<div id="explosion">💥</div>
+
+<!-- 効果音 -->
+<audio id="sound-correct" src="https://soundeffect-lab.info/sound/anime/mp3/decision1.mp3"></audio>
+<audio id="sound-wrong" src="https://soundeffect-lab.info/sound/anime/mp3/buzzer1.mp3"></audio>
+<audio id="sound-explosion" src="https://soundeffect-lab.info/sound/anime/mp3/bomb1.mp3"></audio>
+
+<script>
+  let found = 0;
+  let timeLeft = 10;
+  let timerId;
+
+  const answersDiv = document.getElementById("answers");
+  const explosion = document.getElementById("explosion");
+
+  // 最初に5つの枠を作る
+  function init() {
+    answersDiv.innerHTML = "";
+    for (let i = 0; i < 5; i++) {
+      const box = document.createElement("div");
+      box.className = "answer-box";
+      box.id = "box" + i;
+      box.textContent = "？？？";
+      answersDiv.appendChild(box);
+    }
+    found = 0;
+    timeLeft = 10;
+    document.getElementById("timer").textContent = timeLeft;
+    explosion.style.display = "none";
+    startTimer();
+  }
+
+  // タイマー開始
+  function startTimer() {
+    clearInterval(timerId);
+    timerId = setInterval(() => {
+      timeLeft--;
+      document.getElementById("timer").textContent = timeLeft;
+
+      if (timeLeft <= 0) {
+        clearInterval(timerId);
+        triggerExplosion();
+      }
+    }, 1000);
+  }
+
+  // 正解ボタン
+  function markCorrect() {
+    if (found < 5 && timeLeft > 0) {
+      document.getElementById("sound-correct").play();
+      const box = document.getElementById("box" + found);
+      box.textContent = "正解！";
+      box.classList.add("correct");
+      found++;
+
+      if (found === 5) {
+        clearInterval(timerId);
+        document.getElementById("question").textContent = "クリア！おめでとう！";
+      }
+    }
+  }
+
+  // 不正解ボタン
+  function markWrong() {
+    document.getElementById("sound-wrong").play();
+  }
+
+  // 爆発
+  function triggerExplosion() {
+    explosion.style.display = "block";
+    document.getElementById("sound-explosion").play();
+    document.getElementById("question").textContent = "時間切れ！";
+  }
+
+  // リセット
+  function resetGame() {
+    document.getElementById("question").textContent = "「日本の果物」を5つ答えよ！";
+    init();
+  }
+
+  init();
+</script>
+
+</body>
+</html>
