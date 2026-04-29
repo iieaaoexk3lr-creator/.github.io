@@ -2,14 +2,13 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<title>ファイブボンバー風ゲーム</title>
+<title>ファイブボンバー強化版</title>
 <style>
   body {
     font-family: sans-serif;
-    text-align: center;
     background: #111;
     color: #fff;
-    margin: 0;
+    text-align: center;
     padding: 20px;
   }
 
@@ -18,30 +17,36 @@
     margin-bottom: 10px;
   }
 
-  #timer {
-    font-size: 3rem;
-    margin: 20px 0;
-    color: #ff4444;
-  }
-
   #question {
     font-size: 1.5rem;
     margin-bottom: 20px;
   }
 
+  /* タイマー（縦バーの上に表示） */
+  #timer {
+    font-size: 3rem;
+    color: #ff4444;
+    margin-bottom: 10px;
+  }
+
+  /* 縦に並ぶ正解バー */
   #answers {
     display: flex;
     flex-direction: column;
-    gap: 10px;
-    max-width: 350px;
-    margin: 0 auto 20px;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 20px;
   }
 
   .answer-box {
+    width: 200px;
+    height: 50px;
     background: #333;
-    padding: 15px;
     border-radius: 10px;
-    font-size: 1.5rem;
+    font-size: 1.4rem;
+    display: flex;
+    justify-content: center;
+    align-items: center;
     transition: 0.3s;
   }
 
@@ -50,10 +55,7 @@
     transform: scale(1.05);
   }
 
-  #buttons {
-    margin-top: 20px;
-  }
-
+  /* ボタン */
   button {
     font-size: 1.2rem;
     padding: 10px 20px;
@@ -78,26 +80,24 @@
   @media (max-width: 600px) {
     h1 { font-size: 1.6rem; }
     #timer { font-size: 2.5rem; }
-    .answer-box { font-size: 1.2rem; }
+    .answer-box { width: 160px; height: 45px; font-size: 1.2rem; }
     button { font-size: 1rem; padding: 8px 15px; }
   }
 </style>
 </head>
+ <a href="index.html">メニュー</a> 
 <body>
 
-<h1>ファイブボンバー風ゲーム</h1>
+<h1>ファイブボンバー</h1>
 
-<div id="question">「日本の果物」を5つ答えよ！</div>
-
-<div id="timer">10</div>
+<div id="question"></div>
+<div id="timer"></div>
 
 <div id="answers"></div>
 
-<div id="buttons">
-  <button onclick="markCorrect()">正解</button>
-  <button onclick="markWrong()">不正解</button>
-  <button onclick="resetGame()">リセット</button>
-</div>
+<button onclick="markCorrect()">正解</button>
+<button onclick="markWrong()">不正解</button>
+<button onclick="resetGame()">リセット</button>
 
 <div id="explosion">💥</div>
 
@@ -107,6 +107,21 @@
 <audio id="sound-explosion" src="https://soundeffect-lab.info/sound/anime/mp3/bomb1.mp3"></audio>
 
 <script>
+  /* 10問分の問題 */
+  const questions = [
+    "日本の果物を5つ答えよ！",
+    "アニメの主人公を5人答えよ！",
+    "コンビニを5つ答えよ！",
+    "スポーツを5つ答えよ！",
+    "動物を5つ答えよ！",
+    "色の名前を5つ答えよ！",
+    "国の名前を5つ答えよ！",
+    "野菜を5つ答えよ！",
+    "有名人を5人答えよ！",
+    "飲み物を5つ答えよ！"
+  ];
+
+  let currentQuestion = 0;
   let found = 0;
   let timeLeft = 10;
   let timerId;
@@ -114,9 +129,15 @@
   const answersDiv = document.getElementById("answers");
   const explosion = document.getElementById("explosion");
 
-  // 最初に5つの枠を作る
+  /* 初期化 */
   function init() {
+    document.getElementById("question").textContent = questions[currentQuestion];
     answersDiv.innerHTML = "";
+    found = 0;
+    timeLeft = 10;
+    document.getElementById("timer").textContent = timeLeft;
+    explosion.style.display = "none";
+
     for (let i = 0; i < 5; i++) {
       const box = document.createElement("div");
       box.className = "answer-box";
@@ -124,14 +145,11 @@
       box.textContent = "？？？";
       answersDiv.appendChild(box);
     }
-    found = 0;
-    timeLeft = 10;
-    document.getElementById("timer").textContent = timeLeft;
-    explosion.style.display = "none";
+
     startTimer();
   }
 
-  // タイマー開始
+  /* タイマー */
   function startTimer() {
     clearInterval(timerId);
     timerId = setInterval(() => {
@@ -145,7 +163,7 @@
     }, 1000);
   }
 
-  // 正解ボタン
+  /* 正解 */
   function markCorrect() {
     if (found < 5 && timeLeft > 0) {
       document.getElementById("sound-correct").play();
@@ -156,26 +174,35 @@
 
       if (found === 5) {
         clearInterval(timerId);
-        document.getElementById("question").textContent = "クリア！おめでとう！";
+        nextQuestion();
       }
     }
   }
 
-  // 不正解ボタン
+  /* 不正解 */
   function markWrong() {
     document.getElementById("sound-wrong").play();
   }
 
-  // 爆発
+  /* 爆発 */
   function triggerExplosion() {
     explosion.style.display = "block";
     document.getElementById("sound-explosion").play();
-    document.getElementById("question").textContent = "時間切れ！";
   }
 
-  // リセット
+  /* 次の問題へ */
+  function nextQuestion() {
+    currentQuestion++;
+    if (currentQuestion >= questions.length) {
+      document.getElementById("question").textContent = "全問クリア！お疲れさま！";
+      return;
+    }
+    init();
+  }
+
+  /* リセット（完全初期化） */
   function resetGame() {
-    document.getElementById("question").textContent = "「日本の果物」を5つ答えよ！";
+    currentQuestion = 0;
     init();
   }
 
