@@ -2,62 +2,9 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<title>一画千点！曲名クイズ（入力式）</title>
+<title>一画千点！曲名クイズ</title>
 
 <style>
-  <hr style="margin-top:30px;">
-
-<div style="font-size:14px; color:#555; line-height:1.6; padding:10px; text-align:left; max-width:600px; margin:0 auto;">
-
-<b>■遊び方</b><br>
-画面に表示される“一画ずつの漢字”から曲名を当てるゲームです。<br>
-分かったら曲名を入力して回答してください。
-
-<br><br>
-
-<b>■ボタン説明</b><br><br>
-
-<b>▶ 次の問題</b><br>
-次の曲に進みます（新しい問題が表示されます）
-
-<br><br>
-
-<b>▶ 前の問題</b><br>
-1つ前の問題に戻ります
-
-<br><br>
-
-<b>▶ 次の一画</b><br>
-漢字の“次の筆”が表示されます（ヒントが増えます）
-
-<br><br>
-
-<b>▶ 1画戻る</b><br>
-表示されている一画を1つ消します
-
-<br><br>
-
-<b>▶ 答え（全表示）</b><br>
-すべての筆を一気に表示して答えを確認できます
-
-<br><br>
-
-<b>▶ 回答</b><br>
-入力した曲名を判定します（Enterキーでも可）
-
-<br><br>
-
-<b>▶ リセット</b><br>
-得点を0に戻します
-
-<br><br>
-
-<b>■補足</b><br>
-・Enterキー：回答<br>
-・スペースキー：次の一画
-
-</div>
-  
 body {
   text-align:center;
   font-family:"Hiragino Kaku Gothic ProN", sans-serif;
@@ -70,6 +17,7 @@ h1 {
   margin-top:20px;
 }
 
+/* 問題表示 */
 #container {
   display:flex;
   justify-content:center;
@@ -84,6 +32,7 @@ svg {
   margin:2px;
 }
 
+/* ボタン */
 button {
   font-size:14px;
   margin:5px;
@@ -97,6 +46,7 @@ button:hover {
   background:#bbb;
 }
 
+/* 入力 */
 input {
   font-size:16px;
   padding:6px;
@@ -104,16 +54,33 @@ input {
   width:250px;
 }
 
+/* 結果 */
 #result {
   margin-top:10px;
   font-size:18px;
   font-weight:bold;
 }
 
+/* 得点 */
 #scoreBox {
   margin-top:15px;
   font-size:22px;
   font-weight:bold;
+}
+
+/* 説明 */
+#help {
+  font-size:14px;
+  color:#555;
+  line-height:1.6;
+  padding:15px;
+  max-width:650px;
+  margin:30px auto;
+  text-align:left;
+}
+
+hr {
+  margin-top:30px;
 }
 
 </style>
@@ -121,14 +88,16 @@ input {
 
 <body>
 
-<h1>一画千点！曲名クイズ（入力式）</h1>
+<h1>一画千点！曲名クイズ</h1>
 
+<!-- 操作 -->
 <button onclick="nextQuestion()">次の問題</button>
 <button onclick="prevQuestion()">前の問題</button>
 
 <div id="container"></div>
 
 <br>
+
 <button onclick="nextStep()">次の一画</button>
 <button onclick="prevStep()">1画戻る</button>
 <button onclick="revealAll()">答え（全表示）</button>
@@ -142,7 +111,46 @@ input {
 <div id="result"></div>
 
 <button onclick="resetScore()">リセット</button>
+
 <div id="scoreBox">得点：0</div>
+
+<!-- 説明 -->
+<hr>
+
+<div id="help">
+
+<b>■遊び方</b><br>
+画面に表示される“一画ずつの漢字”から曲名を当てるゲームです。<br>
+わかったら曲名を入力して回答してください。<br><br>
+
+<b>■ボタン説明</b><br><br>
+
+<b>▶ 次の問題</b><br>
+次の曲に進みます<br><br>
+
+<b>▶ 前の問題</b><br>
+1つ前の問題に戻ります<br><br>
+
+<b>▶ 次の一画</b><br>
+漢字の筆が1つずつ表示されます（ヒント追加）<br><br>
+
+<b>▶ 1画戻る</b><br>
+表示された筆を1つ消します<br><br>
+
+<b>▶ 答え（全表示）</b><br>
+すべての筆を一気に表示します<br><br>
+
+<b>▶ 回答</b><br>
+入力した曲名を判定します（Enterキーでも可）<br><br>
+
+<b>▶ リセット</b><br>
+得点を0に戻します<br><br>
+
+<b>■操作</b><br>
+・Enterキー：回答<br>
+・スペースキー：次の一画<br>
+
+</div>
 
 <script>
 
@@ -169,12 +177,12 @@ let strokeGroups = [];
 let step = 0;
 let score = 0;
 
-// ■正規化（空白・大文字小文字対策）
+// ■正規化
 function normalize(str) {
   return str.replace(/\s/g,"").toLowerCase();
 }
 
-// ■得点
+// ■得点計算
 function calculateScore() {
   if (step <= 1) return 5;
   if (step === 2) return 4;
@@ -183,7 +191,7 @@ function calculateScore() {
   return 1;
 }
 
-// ■回答チェック
+// ■回答
 function checkAnswer() {
   const input = document.getElementById("answerInput").value;
 
@@ -197,7 +205,7 @@ function checkAnswer() {
   }
 }
 
-// ■表示更新
+// ■スコア更新
 function updateScore() {
   document.getElementById("scoreBox").innerText = "得点：" + score;
 }
@@ -263,7 +271,7 @@ async function loadQuestion(index) {
   }
 }
 
-// ■描写
+// ■描画
 function nextStep() {
   strokeGroups.forEach(g=>{
     if(step<g.length) g[step].style.display="block";
@@ -279,16 +287,16 @@ function prevStep() {
   });
 }
 
-// ■答え表示
+// ■全表示
 function revealAll() {
   strokeGroups.forEach(g=>{
     g.forEach(p=>p.style.display="block");
   });
 }
 
-// ■Enterキーで回答
+// ■キー操作
 document.addEventListener("keydown", e=>{
-  if(e.key === "Enter"){
+  if(e.key==="Enter"){
     checkAnswer();
   }
   if(e.code==="Space"){
