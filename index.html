@@ -2,312 +2,65 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<title>一画千点！曲名クイズ</title>
-
+<title>カラオケ企画メニュー</title>
 <style>
-body {
-  text-align:center;
-  font-family:"Hiragino Kaku Gothic ProN", sans-serif;
-  background:#eeeeee;
-  color:#222;
-}
+  body {
+    font-family: sans-serif;
+    background: #111;
+    color: #fff;
+    text-align: center;
+    padding: 20px;
+  }
 
-h1 {
-  font-size:28px;
-  margin-top:20px;
-}
+  h1 {
+    font-size: 2rem;
+    margin-bottom: 20px;
+  }
 
-/* 問題表示 */
-#container {
-  display:flex;
-  justify-content:center;
-  flex-wrap:nowrap;
-  overflow:hidden;
-  margin-top:25px;
-}
+  .menu {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    max-width: 400px;
+    margin: 0 auto;
+  }
 
-svg {
-  width:75px;
-  height:75px;
-  margin:2px;
-}
+  .menu a {
+    display: block;
+    background: #333;
+    padding: 15px;
+    border-radius: 10px;
+    font-size: 1.3rem;
+    color: #fff;
+    text-decoration: none;
+    transition: 0.2s;
+  }
 
-/* ボタン */
-button {
-  font-size:14px;
-  margin:5px;
-  padding:6px 12px;
-  border:none;
-  border-radius:6px;
-  background:#ddd;
-}
+  .menu a:hover {
+    background: #555;
+    transform: scale(1.03);
+  }
 
-button:hover {
-  background:#bbb;
-}
-
-/* 入力 */
-input {
-  font-size:16px;
-  padding:6px;
-  margin-top:10px;
-  width:250px;
-}
-
-/* 結果 */
-#result {
-  margin-top:10px;
-  font-size:18px;
-  font-weight:bold;
-}
-
-/* 得点 */
-#scoreBox {
-  margin-top:15px;
-  font-size:22px;
-  font-weight:bold;
-}
-
-/* 説明 */
-#help {
-  font-size:14px;
-  color:#555;
-  line-height:1.6;
-  padding:15px;
-  max-width:650px;
-  margin:30px auto;
-  text-align:left;
-}
-
-hr {
-  margin-top:30px;
-}
-
+  /* スマホ対応 */
+  @media (max-width: 600px) {
+    h1 { font-size: 1.6rem; }
+    .menu a { font-size: 1.1rem; padding: 12px; }
+  }
 </style>
 </head>
-
 <body>
 
-<h1>一画千点！曲名クイズ</h1>
+<h1>カラオケ企画メニュー</h1>
 
-<!-- 操作 -->
-<button onclick="nextQuestion()">次の問題</button>
-<button onclick="prevQuestion()">前の問題</button>
-
-<div id="container"></div>
-
-<br>
-
-<button onclick="nextStep()">次の一画</button>
-<button onclick="prevStep()">1画戻る</button>
-<button onclick="revealAll()">答え（全表示）</button>
-
-<br>
-
-<input id="answerInput" placeholder="曲名を入力">
-<br>
-<button onclick="checkAnswer()">回答</button>
-
-<div id="result"></div>
-  
-<div id="scoreBox">得点：0</div>
-  
-<!-- 説明 -->
-<hr>
-
-<div id="help">
-
-<b>■遊び方</b><br>
-画面に“一画ずつ書かれる曲名”を当てるゲームです。<br>
-わかったら曲名を入力して回答してください。<br><br>
-
-<b>■ボタン説明</b><br><br>
-
-<b>▶ 次の問題</b><br>
-次の曲に進みます<br><br>
-
-<b>▶ 前の問題</b><br>
-1つ前の問題に戻ります<br><br>
-
-<b>▶ 次の一画</b><br>
-漢字の画が1つずつ表示されます（得点低下）<br><br>
-
-<b>▶ 1画戻る</b><br>
-表示された画を1つ消します<br><br>
-
-<b>▶ 答え（全表示）</b><br>
-すべてを一気に表示します<br><br>
-
-<b>▶ 回答</b><br>
-入力した曲名を判定します<br><br>
-
-<b>▶ リセット</b><br>
-得点を0に戻します<br><br>
-
-<b>■操作</b><br>
-・Enterキー：回答<br>
-・スペースキー：次の一画<br>
-
-<button onclick="resetScore()">リセット</button>
-  
-<a href="Fivebom.html">ゲームへ</a>
-  
+<div class="menu">
+  <a href="Fivebom.html">🎮 ファイブボンバー</a>
+  <a href="ikkaku.html">🏆 一画千点！曲名クイズ</a>
+  <a href="RandomSong.html">🎲 ランダム選曲チャレンジ</a>
+  <a href="Duet.html">🎤 デュエットチャレンジ</a>
+  <a href="HighScore.html">📈 高得点チャレンジ</a>
+  <a href="ThemeSong.html">📺 テーマ縛りチャレンジ</a>
+  <a href="Rules.html">📘 ルール説明</a>
 </div>
-
-<script>
-
-const questions = [
-  "夜祭音頭",
-  "結証",
-  "恋音と雨空",
-  "太陽",
-  "夢ノカケラ",
-  "会心の一撃",
-  "怪物",
-  "群青",
-  "夜に駆ける",
-  "劇上",
-  "祝福",
-  "勇者",
-  "紅蓮華",
-  "残響散歌",
-  ];
-
-let currentIndex = 0;
-let currentAnswer = "";
-let strokeGroups = [];
-let step = 0;
-let score = 0;
-
-// ■正規化
-function normalize(str) {
-  return str.replace(/\s/g,"").toLowerCase();
-}
-
-// ■得点計算
-function calculateScore() {
-  if (step <= 1) return 5;
-  if (step === 2) return 4;
-  if (step === 3) return 3;
-  if (step === 4) return 2;
-  return 1;
-}
-
-// ■回答
-function checkAnswer() {
-  const input = document.getElementById("answerInput").value;
-
-  if (normalize(input) === normalize(currentAnswer)) {
-    let point = calculateScore();
-    score += point;
-    updateScore();
-    document.getElementById("result").innerText = "正解！ +" + point + "点";
-  } else {
-    document.getElementById("result").innerText = "不正解…";
-  }
-}
-
-// ■スコア更新
-function updateScore() {
-  document.getElementById("scoreBox").innerText = "得点：" + score;
-}
-
-// ■リセット
-function resetScore() {
-  score = 0;
-  updateScore();
-}
-
-// ■問題
-async function nextQuestion() {
-  if (currentIndex >= questions.length) return;
-  loadQuestion(currentIndex);
-  currentIndex++;
-}
-
-function prevQuestion() {
-  if (currentIndex <= 1) return;
-  currentIndex -= 2;
-  loadQuestion(currentIndex);
-  currentIndex++;
-}
-
-async function loadQuestion(index) {
-  const container = document.getElementById("container");
-  container.innerHTML = "";
-  strokeGroups = [];
-  step = 0;
-
-  currentAnswer = questions[index];
-  document.getElementById("answerInput").value = "";
-  document.getElementById("result").innerText = "";
-
-  for (let char of currentAnswer) {
-    const code = char.charCodeAt(0).toString(16);
-    const url = "https://raw.githubusercontent.com/KanjiVG/kanjivg/master/kanji/" + code.padStart(5, "0") + ".svg";
-
-    try {
-      const res = await fetch(url);
-      const text = await res.text();
-
-      const wrapper = document.createElement("div");
-      wrapper.innerHTML = text;
-      const svg = wrapper.querySelector("svg");
-
-      if (!svg) continue;
-
-      const paths = svg.querySelectorAll("path");
-      let group = [];
-
-      paths.forEach(p=>{
-        p.style.display="none";
-        p.style.stroke="#222";
-        p.style.fill="none";
-        p.style.strokeWidth=3;
-        group.push(p);
-      });
-
-      strokeGroups.push(group);
-      container.appendChild(svg);
-    } catch {}
-  }
-}
-
-// ■描画
-function nextStep() {
-  strokeGroups.forEach(g=>{
-    if(step<g.length) g[step].style.display="block";
-  });
-  step++;
-}
-
-function prevStep() {
-  if(step<=0)return;
-  step--;
-  strokeGroups.forEach(g=>{
-    if(step<g.length) g[step].style.display="none";
-  });
-}
-
-// ■全表示
-function revealAll() {
-  strokeGroups.forEach(g=>{
-    g.forEach(p=>p.style.display="block");
-  });
-}
-
-// ■キー操作
-document.addEventListener("keydown", e=>{
-  if(e.key==="Enter"){
-    checkAnswer();
-  }
-  if(e.code==="Space"){
-    e.preventDefault();
-    nextStep();
-  }
-});
-
-</script>
 
 </body>
 </html>
