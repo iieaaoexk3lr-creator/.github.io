@@ -68,6 +68,31 @@ input {
 
 <hr style="margin-top:30px;">
 
+<h1>一画千点！曲名クイズ（入力式）</h1>
+
+<button onclick="nextQuestion()">次の問題</button>
+<button onclick="prevQuestion()">前の問題</button>
+
+<div id="container"></div>
+
+<br>
+<button onclick="nextStep()">次の一画</button>
+<button onclick="prevStep()">1画戻る</button>
+<button onclick="revealAll()">答え（全表示）</button>
+
+<br>
+
+<input id="answerInput" placeholder="曲名を入力">
+<br>
+<button onclick="checkAnswer()">回答</button>
+
+<div id="result"></div>
+
+
+<div id="scoreBox">得点：0</div>
+
+
+<script>
 <div style="font-size:14px; color:#555; line-height:1.6; padding:10px; text-align:left; max-width:600px; margin:0 auto;">
 
 <b>■遊び方</b><br>
@@ -120,34 +145,9 @@ input {
 </div>
 <button onclick="resetScore()">リセット</button>
 <a href="index.html">📘 メニュー</a>
+  
 <body>
-
-<h1>一画千点！曲名クイズ（入力式）</h1>
-
-<button onclick="nextQuestion()">次の問題</button>
-<button onclick="prevQuestion()">前の問題</button>
-
-<div id="container"></div>
-
-<br>
-<button onclick="nextStep()">次の一画</button>
-<button onclick="prevStep()">1画戻る</button>
-<button onclick="revealAll()">答え（全表示）</button>
-
-<br>
-
-<input id="answerInput" placeholder="曲名を入力">
-<br>
-<button onclick="checkAnswer()">回答</button>
-
-<div id="result"></div>
-
-
-<div id="scoreBox">得点：0</div>
-
-
-<script>
-
+  
 const questions = [
   "残酷な天使のテーゼ",
   "世界に一つだけの花",
