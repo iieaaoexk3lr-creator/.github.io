@@ -17,12 +17,16 @@
     margin-bottom: 20px;
   }
 
+  #playerSelect {
+    margin-bottom: 20px;
+  }
+
   #board {
     display: flex;
-    justify-content: center;
     flex-wrap: wrap;
-    gap: 10px;
-    max-width: 500px;
+    justify-content: center;
+    gap: 8px;
+    max-width: 600px;
     margin: 0 auto 20px;
   }
 
@@ -34,19 +38,19 @@
     display: flex;
     justify-content: center;
     align-items: center;
-    font-size: 1.2rem;
+    font-size: 1rem;
+    position: relative;
   }
 
-  .player {
-    background: #00ccff;
-    color: #000;
-    font-weight: bold;
-  }
+  .start { background: #00ccff; }
+  .goal { background: #ffcc00; }
 
-  #question {
-    font-size: 2rem;
-    margin: 20px 0;
-    min-height: 60px;
+  .playerToken {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    position: absolute;
+    bottom: 5px;
   }
 
   #dice {
@@ -54,30 +58,26 @@
     margin: 10px 0;
   }
 
+  #question {
+    font-size: 1.8rem;
+    margin: 20px 0;
+    min-height: 60px;
+  }
+
   button {
-    font-size: 1.3rem;
-    padding: 12px 25px;
+    font-size: 1.2rem;
+    padding: 10px 20px;
     margin: 8px;
     border-radius: 10px;
     border: none;
     cursor: pointer;
   }
 
-  /* エフェクト */
-  #successEffect, #failEffect {
+  #goalEffect {
     display: none;
     font-size: 3rem;
-    margin-top: 10px;
-  }
-
-  #successEffect {
     color: #00ffcc;
-    animation: sparkle 0.8s ease-out forwards;
-  }
-
-  #failEffect {
-    color: #ff4444;
-    animation: fail 0.8s ease-out forwards;
+    animation: sparkle 1s ease-out forwards;
   }
 
   @keyframes sparkle {
@@ -86,16 +86,14 @@
     100% { opacity: 0; transform: scale(1); }
   }
 
-  @keyframes fail {
-    0% { opacity: 0; transform: scale(0.5); }
-    50% { opacity: 1; transform: scale(1.2); }
-    100% { opacity: 0; transform: scale(1); }
+  #goalList {
+    margin-top: 20px;
+    font-size: 1.4rem;
   }
 
   @media (max-width: 600px) {
-    .cell { width: 55px; height: 55px; font-size: 1rem; }
-    #question { font-size: 1.6rem; }
-    button { font-size: 1.1rem; padding: 10px 18px; }
+    .cell { width: 55px; height: 55px; font-size: 0.8rem; }
+    #question { font-size: 1.4rem; }
   }
 </style>
 </head>
@@ -103,86 +101,141 @@
 
 <h1>カラオケすごろく</h1>
 
+<div id="playerSelect">
+  プレイヤー人数：
+  <select id="playerCount" onchange="setupPlayers()">
+    <option value="1">1人</option>
+    <option value="2">2人</option>
+    <option value="3">3人</option>
+    <option value="4">4人</option>
+    <option value="5">5人</option>
+    <option value="6">6人</option>
+  </select>
+</div>
+
 <div id="board"></div>
 
 <div id="dice">🎲 -</div>
 
 <div id="question"></div>
 
-<div id="successEffect">✨成功！✨</div>
-<div id="failEffect">❌失敗！❌</div>
+<div id="goalEffect">✨GOAL!!✨</div>
 
 <button onclick="rollDice()">サイコロを振る</button>
-<button onclick="markSuccess()">成功</button>
-<button onclick="markFail()">失敗</button>
-<button onclick="location.href='index.html'">メニュー</button>
+<button onclick="location.href='menu.html'">メニューへ戻る</button>
+
+<div id="goalList"></div>
 
 <script>
-  const questions = [
-    "好きな曲を1曲歌う",
-    "アニメソングを歌う",
-    "90年代の曲を歌う",
-    "バラードを歌う",
-    "アップテンポ曲を歌う",
-    "異性アーティストの曲を歌う",
-    "英語の曲を歌う",
-    "デュエット曲を歌う",
-    "盛り上がる曲を歌う",
-    "自由に選んで歌う"
-  ];
+  const COLORS = ["#ff4444", "#44ff44", "#4444ff", "#ffff44", "#ff44ff", "#44ffff"];
+
+  const questions = {
+    3: "アニメソングを歌う",
+    5: "90年代の曲を歌う",
+    7: "バラードを歌う",
+    10: "アップテンポ曲を歌う",
+    12: "異性アーティストの曲を歌う",
+    15: "英語の曲を歌う",
+    18: "デュエット曲を歌う",
+    20: "盛り上がる曲を歌う",
+    25: "自由に選んで歌う"
+  };
+
+  let positions = [];
+  let goalOrder = [];
+  let currentPlayer = 0;
+  let playerCount = 1;
 
   const board = document.getElementById("board");
   const questionDiv = document.getElementById("question");
   const diceDiv = document.getElementById("dice");
-  const successEffect = document.getElementById("successEffect");
-  const failEffect = document.getElementById("failEffect");
+  const goalEffect = document.getElementById("goalEffect");
+  const goalList = document.getElementById("goalList");
 
-  let position = 0;
+  function setupPlayers() {
+    playerCount = Number(document.getElementById("playerCount").value);
+    positions = Array(playerCount).fill(0);
+    goalOrder = [];
+    currentPlayer = 0;
+    drawBoard();
+    updateTokens();
+    updateGoalList();
+  }
 
-  // すごろく盤を作成
-  function createBoard() {
-    for (let i = 0; i < questions.length; i++) {
+  function drawBoard() {
+    board.innerHTML = "";
+    for (let i = 0; i < 30; i++) {
       const cell = document.createElement("div");
       cell.className = "cell";
       cell.id = "cell" + i;
-      cell.textContent = i + 1;
+
+      if (i === 0) cell.classList.add("start");
+      if (i === 29) cell.classList.add("goal");
+
+      cell.textContent = i === 0 ? "START" : i === 29 ? "GOAL" : i + 1;
+
       board.appendChild(cell);
     }
-    updatePlayer();
   }
 
-  function updatePlayer() {
-    document.querySelectorAll(".cell").forEach(c => c.classList.remove("player"));
-    document.getElementById("cell" + position).classList.add("player");
+  function updateTokens() {
+    document.querySelectorAll(".playerToken").forEach(e => e.remove());
+
+    positions.forEach((pos, i) => {
+      const token = document.createElement("div");
+      token.className = "playerToken";
+      token.style.background = COLORS[i];
+      document.getElementById("cell" + pos).appendChild(token);
+    });
   }
 
   function rollDice() {
+    if (goalOrder.includes(currentPlayer)) {
+      nextTurn();
+      return;
+    }
+
     const roll = Math.floor(Math.random() * 6) + 1;
     diceDiv.textContent = "🎲 " + roll;
 
-    position += roll;
-    if (position >= questions.length) position = questions.length - 1;
+    positions[currentPlayer] += roll;
+    if (positions[currentPlayer] >= 29) {
+      positions[currentPlayer] = 29;
+      handleGoal(currentPlayer);
+    }
 
-    updatePlayer();
-    showQuestion();
+    updateTokens();
+    showQuestion(positions[currentPlayer]);
+    nextTurn();
   }
 
-  function showQuestion() {
-    questionDiv.textContent = questions[position];
+  function showQuestion(pos) {
+    if (questions[pos]) {
+      questionDiv.textContent = questions[pos];
+    } else {
+      questionDiv.textContent = "（何もなし）";
+    }
   }
 
-  function markSuccess() {
-    successEffect.style.display = "block";
-    setTimeout(() => successEffect.style.display = "none", 800);
+  function handleGoal(player) {
+    if (!goalOrder.includes(player)) {
+      goalOrder.push(player);
+      goalEffect.style.display = "block";
+      setTimeout(() => goalEffect.style.display = "none", 1000);
+      updateGoalList();
+    }
   }
 
-  function markFail() {
-    failEffect.style.display = "block";
-    setTimeout(() => failEffect.style.display = "none", 800);
+  function updateGoalList() {
+    goalList.innerHTML = "GOAL順：<br>" +
+      goalOrder.map((p, i) => (i + 1) + "位：プレイヤー" + (p + 1)).join("<br>");
   }
 
-  createBoard();
-  showQuestion();
+  function nextTurn() {
+    currentPlayer = (currentPlayer + 1) % playerCount;
+  }
+
+  setupPlayers();
 </script>
 
 </body>
