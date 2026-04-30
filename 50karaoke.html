@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>50カラオケ</title>
+<style>
+  body {
+    font-family: sans-serif;
+    background: #111;
+    color: #fff;
+    text-align: center;
+    padding: 20px;
+  }
+
+  h1 {
+    font-size: 2rem;
+    margin-bottom: 20px;
+  }
+
+  #grid {
+    display: grid;
+    grid-template-columns: repeat(10, 1fr);
+    gap: 6px;
+    max-width: 700px;
+    margin: 0 auto 20px;
+  }
+
+  .cell {
+    background: #333;
+    padding: 10px 0;
+    border-radius: 6px;
+    font-size: 1.1rem;
+  }
+
+  .filled {
+    background: #ff66cc;
+    color: #000;
+    font-weight: bold;
+  }
+
+  #inputs {
+    margin-top: 20px;
+  }
+
+  input {
+    width: 80%;
+    max-width: 350px;
+    padding: 10px;
+    margin: 6px;
+    font-size: 1.2rem;
+    border-radius: 8px;
+    border: none;
+  }
+
+  #count {
+    font-size: 1.4rem;
+    margin-top: 15px;
+    color: #00ffcc;
+  }
+
+  #rules {
+    margin-top: 25px;
+    font-size: 1.1rem;
+    line-height: 1.7;
+    color: #ccc;
+    background: #222;
+    padding: 15px;
+    border-radius: 10px;
+    max-width: 600px;
+    margin-left: auto;
+    margin-right: auto;
+    text-align: left;
+  }
+
+  button {
+    font-size: 1.2rem;
+    padding: 10px 20px;
+    margin-top: 20px;
+    border-radius: 10px;
+    border: none;
+    cursor: pointer;
+  }
+</style>
+</head>
+<body>
+
+<h1>50カラオケ（五十音を曲名で埋めよう）</h1>
+
+<div id="grid"></div>
+
+<div id="count">埋まっている数：0 / 80</div>
+
+<div id="inputs"></div>
+
+<button onclick="location.href='index.html'">メニューへ戻る</button>
+
+<div id="rules">
+  <b>【ルール】</b><br><br>
+  ・曲名をひらがなで入力してください。<br>
+  ・入力された曲名に含まれるすべての「ひらがな」が五十音表に反映されます。<br>
+  ・清音（あ〜ん）だけでなく、が行・ざ行・だ行・ば行・ぱ行も対応しています。<br>
+  ・伸ばし棒「ー」、濁点「゛」、半濁点「゜」、記号（！、？、・）も判定します。<br>
+  ・入力を消すと枠の色も元に戻ります。<br>
+  </div>
+
+<script>
+// 清音＋濁音＋半濁音＋記号（80枠）
+const chars = [
+  // 清音50
+  "あ","い","う","え","お",
+  "か","き","く","け","こ",
+  "さ","し","す","せ","そ",
+  "た","ち","つ","て","と",
+  "な","に","ぬ","ね","の",
+  "は","ひ","ふ","へ","ほ",
+  "ま","み","む","め","も",
+  "や","ゆ","よ",
+  "ら","り","る","れ","ろ",
+  "わ","を","ん",
+
+  // 濁音20
+  "が","ぎ","ぐ","げ","ご",
+  "ざ","じ","ず","ぜ","ぞ",
+  "だ","ぢ","づ","で","ど",
+  "ば","び","ぶ","べ","ぼ",
+
+  // 半濁音5
+  "ぱ","ぴ","ぷ","ぺ","ぽ",
+
+  // 記号5
+  "ー","゛","゜","！","？","・"
+];
+
+let filled = {};
+
+// 五十音表を作成
+const grid = document.getElementById("grid");
+chars.forEach(c => {
+  const cell = document.createElement("div");
+  cell.className = "cell";
+  cell.id = "cell_" + c;
+  cell.textContent = c;
+  grid.appendChild(cell);
+});
+
+// 入力枠10個
+const inputs = document.getElementById("inputs");
+for (let i = 0; i < 10; i++) {
+  const inp = document.createElement("input");
+  inp.placeholder = "曲名をひらがなで入力";
+  inp.oninput = updateGrid;
+  inputs.appendChild(inp);
+}
+
+// 入力に応じて五十音表を更新
+function updateGrid() {
+  filled = {};
+
+  document.querySelectorAll("#inputs input").forEach(inp => {
+    const text = inp.value.trim();
+
+    // 1文字ずつチェック
+    for (let char of text) {
+      if (chars.includes(char)) {
+        filled[char] = true;
+      }
+    }
+  });
+
+  // 色更新
+  chars.forEach(c => {
+    const cell = document.getElementById("cell_" + c);
+    if (filled[c]) {
+      cell.classList.add("filled");
+    } else {
+      cell.classList.remove("filled");
+    }
+  });
+
+  // カウント更新
+  document.getElementById("count").textContent =
+    "埋まっている数：" + Object.keys(filled).length + " / " + chars.length;
+}
+</script>
+
+</body>
+</html>
