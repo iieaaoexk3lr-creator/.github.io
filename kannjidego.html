@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>漢字カラオケバトル</title>
+
+<style>
+body{
+  margin:0;
+  background:black;
+  color:white;
+  font-family:sans-serif;
+  text-align:center;
+}
+
+/* 背景 */
+#bg{
+  position:fixed;
+  width:100%;
+  height:100%;
+  background:linear-gradient(#000, #222);
+  z-index:-1;
+}
+
+/* 敵 */
+#enemy{
+  font-size:70px;
+  margin-top:20px;
+  animation: float 1s infinite alternate;
+}
+
+@keyframes float{
+  from{transform:translateY(0)}
+  to{transform:translateY(10px)}
+}
+
+/* HPバー */
+.bar{
+  width:200px;
+  height:20px;
+  background:#333;
+  margin:10px auto;
+}
+.fill{
+  height:100%;
+  background:red;
+}
+
+/* 問題 */
+#kanji{
+  font-size:48px;
+  margin:20px;
+}
+
+input{
+  font-size:20px;
+}
+
+button{
+  font-size:18px;
+  margin-top:10px;
+}
+</style>
+</head>
+
+<body>
+
+<div id="bg"></div>
+
+<h2 id="stage">ステージ1（簡単）</h2>
+
+<div id="enemy">👾</div>
+
+<div>プレイヤー</div>
+<div class="bar"><div id="pbar" class="fill"></div></div>
+
+<div>敵</div>
+<div class="bar"><div id="ebar" class="fill"></div></div>
+
+<div id="timer"></div>
+<div id="kanji"></div>
+
+<input id="answer" placeholder="曲名のよみ">
+<br>
+<button onclick="check()">決定</button>
+
+<div id="result"></div>
+
+<!-- 音 -->
+<audio id="bgm" src="https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3" loop></audio>
+<audio id="ok" src="https://www.soundjay.com/button/sounds/button-3.mp3"></audio>
+<audio id="ng" src="https://www.soundjay.com/button/sounds/button-10.mp3"></audio>
+
+<script>
+
+/* ===== 初期設定 ===== */
+let maxHP = Number(prompt("参加人数")) || 3;
+let playerHP = maxHP;
+let enemyHP = 3;
+let stage = 1;
+let time = 10;
+let history = [];
+
+/* ===== 曲名DB ===== */
+const quizDB = {
+  easy: [
+    {q:"紅蓮華", a:"ぐれんげ"},
+    {q:"世界に一つだけの花", a:"せかいにひとつだけのはな"},
+    {q:"花火", a:"はなび"},
+    {q:"未来予想図", a:"みらいよそうず"},
+    {q:"栄光の架橋", a:"えいこうのかけはし"},
+    {q:"天体観測", a:"てんたいかんそく"}
+  ],
+  normal: [
+    {q:"残酷な天使のテーゼ", a:"ざんこくなてんしのてーぜ"},
+    {q:"千本桜", a:"せんぼんざくら"},
+    {q:"夜に駆ける", a:"よるにかける"},
+    {q:"瞬き", a:"まばたき"},
+    {q:"水平線", a:"すいへいせん"},
+    {q:"白日", a:"はくじつ"}
+  ],
+  hard: [
+    {q:"不可逆リプレイス", a:"ふかぎゃくりぷれいす"},
+    {q:"群青日和", a:"ぐんじょうびより"},
+    {q:"拝啓ドッペルゲンガー", a:"はいけいどっぺるげんがー"},
+    {q:"幽霊東京", a:"ゆうれいとうきょう"},
+    {q:"秒針を噛む", a:"びょうしんをかむ"},
+    {q:"命に嫌われている", a:"いのちにきらわれている"}
+  ]
+};
+
+let current;
+
+/* ===== BGM ===== */
+document.getElementById("bgm").play();
+
+/* ===== 出題 ===== */
+function getPool(){
+  if(stage===1) return quizDB.easy;
+  if(stage===2) return quizDB.normal;
+  return quizDB.hard;
+}
+
+function getRandom(pool){
+  const available = pool.filter(q=>!history.includes(q.q));
+  if(available.length===0){
+    history=[];
+    return pool[Math.floor(Math.random()*pool.length)];
+  }
+  const pick = available[Math.floor(Math.random()*available.length)];
+  history.push(pick.q);
+  return pick;
+}
+
+function next(){
+  current = getRandom(getPool());
+  document.getElementById("kanji").textContent = current.q;
+  document.getElementById("answer").value="";
+  document.getElementById("result").textContent="";
+  time = 10;
+}
+
+/* ===== 判定 ===== */
+function check(){
+  const val = document.getElementById("answer").value.trim();
+
+  if(val===current.a){
+    document.getElementById("ok").play();
+    enemyHP--;
+    document.getElementById("result").textContent="ヒット！";
+
+    if(enemyHP<=0){
+      stage++;
+      if(stage>3){
+        alert("ライブ成功！！");
+        location.reload();
+        return;
+      }
+      enemyHP=3;
+      document.getElementById("stage").textContent =
+        "ステージ"+stage+(stage===2?"（普通）":"（難しい）");
+    }
+
+  }else{
+    document.getElementById("ng").play();
+    playerHP--;
+    document.getElementById("result").textContent="ミス！";
+  }
+
+  updateBar();
+
+  if(playerHP<=0){
+    alert("ライブ失敗…");
+    location.reload();
+  }
+
+  next();
+}
+
+/* ===== タイマー ===== */
+setInterval(()=>{
+  time--;
+  document.getElementById("timer").textContent="残り:"+time;
+
+  if(time<=0){
+    playerHP--;
+    updateBar();
+    document.getElementById("result").textContent="時間切れ！";
+
+    if(playerHP<=0){
+      alert("ライブ失敗…");
+      location.reload();
+    }
+
+    next();
+  }
+},1000);
+
+/* ===== HPバー ===== */
+function updateBar(){
+  document.getElementById("pbar").style.width =
+    (playerHP/maxHP*100)+"%";
+  document.getElementById("ebar").style.width =
+    (enemyHP/3*100)+"%";
+}
+
+updateBar();
+next();
+
+</script>
+
+</body>
+</html>
