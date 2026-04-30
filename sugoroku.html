@@ -13,61 +13,65 @@
   }
 
   h1 {
-    font-size: 2.2rem;
-    margin-bottom: 20px;
+    font-size: 2rem;
+    margin-bottom: 15px;
   }
 
-  #playerSelect {
-    margin-bottom: 20px;
+  #currentPlayer {
+    font-size: 1.4rem;
+    margin-bottom: 10px;
+    color: #00ffcc;
   }
 
   #board {
     display: flex;
     flex-wrap: wrap;
     justify-content: center;
-    gap: 8px;
+    gap: 6px;
     max-width: 600px;
     margin: 0 auto 20px;
   }
 
   .cell {
-    width: 70px;
-    height: 70px;
-    background: #333;
-    border-radius: 10px;
+    width: 60px;
+    height: 60px;
+    background: #fff;
+    color: #000;
+    border-radius: 8px;
     display: flex;
     justify-content: center;
     align-items: center;
-    font-size: 1rem;
+    font-size: 0.8rem;
     position: relative;
   }
 
   .start { background: #00ccff; }
   .goal { background: #ffcc00; }
+  .questionCell { background: #ff66cc; color: #000; }
 
   .playerToken {
-    width: 20px;
-    height: 20px;
+    width: 18px;
+    height: 18px;
     border-radius: 50%;
     position: absolute;
-    bottom: 5px;
+    bottom: 4px;
   }
 
   #dice {
-    font-size: 2.5rem;
+    font-size: 2.2rem;
     margin: 10px 0;
   }
 
   #question {
-    font-size: 1.8rem;
-    margin: 20px 0;
-    min-height: 60px;
+    font-size: 1.6rem;
+    margin: 15px 0;
+    min-height: 50px;
   }
 
   button {
-    font-size: 1.2rem;
-    padding: 10px 20px;
-    margin: 8px;
+    font-size: 1.1rem;
+    padding: 10px 18px;
+    margin: 6px;
     border-radius: 10px;
     border: none;
     cursor: pointer;
@@ -75,7 +79,7 @@
 
   #goalEffect {
     display: none;
-    font-size: 3rem;
+    font-size: 2.5rem;
     color: #00ffcc;
     animation: sparkle 1s ease-out forwards;
   }
@@ -87,13 +91,13 @@
   }
 
   #goalList {
-    margin-top: 20px;
-    font-size: 1.4rem;
+    margin-top: 15px;
+    font-size: 1.2rem;
   }
 
   @media (max-width: 600px) {
-    .cell { width: 55px; height: 55px; font-size: 0.8rem; }
-    #question { font-size: 1.4rem; }
+    .cell { width: 45px; height: 45px; font-size: 0.6rem; }
+    #question { font-size: 1.3rem; }
   }
 </style>
 </head>
@@ -101,7 +105,7 @@
 
 <h1>カラオケすごろく</h1>
 
-<div id="playerSelect">
+<div>
   プレイヤー人数：
   <select id="playerCount" onchange="setupPlayers()">
     <option value="1">1人</option>
@@ -113,6 +117,8 @@
   </select>
 </div>
 
+<div id="currentPlayer"></div>
+
 <div id="board"></div>
 
 <div id="dice">🎲 -</div>
@@ -122,23 +128,33 @@
 <div id="goalEffect">✨GOAL!!✨</div>
 
 <button onclick="rollDice()">サイコロを振る</button>
-<button onclick="location.href='index.html'">メニュー</button>
+
+<!-- お題成功で追加マス進む -->
+<button onclick="advance(1)">+1マス</button>
+<button onclick="advance(2)">+2マス</button>
+<button onclick="advance(3)">+3マス</button>
+
+<button onclick="undo()">元に戻す</button>
+<button onclick="location.href='index.html'">indexへ戻る</button>
 
 <div id="goalList"></div>
 
 <script>
   const COLORS = ["#ff4444", "#44ff44", "#4444ff", "#ffff44", "#ff44ff", "#44ffff"];
 
-  const questions = {
-    3: "アニメソングを歌う",
+  // お題マス
+  const questionCells = {
+    2: "アニメソングを歌う",
     5: "90年代の曲を歌う",
-    7: "バラードを歌う",
-    10: "アップテンポ曲を歌う",
-    12: "異性アーティストの曲を歌う",
-    15: "英語の曲を歌う",
-    18: "デュエット曲を歌う",
-    20: "盛り上がる曲を歌う",
-    25: "自由に選んで歌う"
+    8: "バラードを歌う",
+    11: "アップテンポ曲を歌う",
+    14: "異性アーティストの曲を歌う",
+    17: "英語の曲を歌う",
+    20: "デュエット曲を歌う",
+    23: "盛り上がる曲を歌う",
+    26: "自由に選んで歌う",
+    29: "高得点を狙う曲を歌う",
+    32: "懐メロを歌う"
   };
 
   let positions = [];
@@ -146,34 +162,39 @@
   let currentPlayer = 0;
   let playerCount = 1;
 
+  let history = [];
+
   const board = document.getElementById("board");
   const questionDiv = document.getElementById("question");
   const diceDiv = document.getElementById("dice");
   const goalEffect = document.getElementById("goalEffect");
   const goalList = document.getElementById("goalList");
+  const currentPlayerDiv = document.getElementById("currentPlayer");
 
   function setupPlayers() {
     playerCount = Number(document.getElementById("playerCount").value);
     positions = Array(playerCount).fill(0);
     goalOrder = [];
     currentPlayer = 0;
+    history = [];
     drawBoard();
     updateTokens();
     updateGoalList();
+    updateCurrentPlayer();
   }
 
   function drawBoard() {
     board.innerHTML = "";
-    for (let i = 0; i < 30; i++) {
+    for (let i = 0; i < 36; i++) {
       const cell = document.createElement("div");
       cell.className = "cell";
       cell.id = "cell" + i;
 
       if (i === 0) cell.classList.add("start");
-      if (i === 29) cell.classList.add("goal");
+      if (i === 35) cell.classList.add("goal");
+      if (questionCells[i]) cell.classList.add("questionCell");
 
-      cell.textContent = i === 0 ? "START" : i === 29 ? "GOAL" : i + 1;
-
+      cell.textContent = i === 0 ? "START" : i === 35 ? "GOAL" : i;
       board.appendChild(cell);
     }
   }
@@ -189,18 +210,37 @@
     });
   }
 
+  function updateCurrentPlayer() {
+    currentPlayerDiv.textContent = "現在のプレイヤー：プレイヤー" + (currentPlayer + 1);
+  }
+
   function rollDice() {
     if (goalOrder.includes(currentPlayer)) {
       nextTurn();
       return;
     }
 
+    saveHistory();
+
+    // サイコロ演出
+    let count = 0;
+    const interval = setInterval(() => {
+      diceDiv.textContent = "🎲 " + (Math.floor(Math.random() * 6) + 1);
+      count++;
+      if (count > 10) {
+        clearInterval(interval);
+        finalizeRoll();
+      }
+    }, 80);
+  }
+
+  function finalizeRoll() {
     const roll = Math.floor(Math.random() * 6) + 1;
     diceDiv.textContent = "🎲 " + roll;
 
     positions[currentPlayer] += roll;
-    if (positions[currentPlayer] >= 29) {
-      positions[currentPlayer] = 29;
+    if (positions[currentPlayer] >= 35) {
+      positions[currentPlayer] = 35;
       handleGoal(currentPlayer);
     }
 
@@ -210,8 +250,8 @@
   }
 
   function showQuestion(pos) {
-    if (questions[pos]) {
-      questionDiv.textContent = questions[pos];
+    if (questionCells[pos]) {
+      questionDiv.textContent = questionCells[pos];
     } else {
       questionDiv.textContent = "（何もなし）";
     }
@@ -232,7 +272,45 @@
   }
 
   function nextTurn() {
-    currentPlayer = (currentPlayer + 1) % playerCount;
+    do {
+      currentPlayer = (currentPlayer + 1) % playerCount;
+    } while (goalOrder.includes(currentPlayer));
+
+    updateCurrentPlayer();
+  }
+
+  function advance(n) {
+    saveHistory();
+
+    positions[currentPlayer] += n;
+    if (positions[currentPlayer] >= 35) {
+      positions[currentPlayer] = 35;
+      handleGoal(currentPlayer);
+    }
+
+    updateTokens();
+    showQuestion(positions[currentPlayer]);
+  }
+
+  function saveHistory() {
+    history.push({
+      positions: [...positions],
+      currentPlayer: currentPlayer,
+      goalOrder: [...goalOrder]
+    });
+  }
+
+  function undo() {
+    if (history.length === 0) return;
+
+    const last = history.pop();
+    positions = [...last.positions];
+    currentPlayer = last.currentPlayer;
+    goalOrder = [...last.goalOrder];
+
+    updateTokens();
+    updateGoalList();
+    updateCurrentPlayer();
   }
 
   setupPlayers();
