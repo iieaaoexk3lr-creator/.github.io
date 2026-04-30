@@ -75,6 +75,11 @@ const reverseAudio = document.getElementById("reverseAudio");
 // 録音開始
 recordBtn.onclick = async () => {
   try {
+    // iPhone Safari 対策：AudioContext をユーザー操作内で再開
+    if (audioContext.state === "suspended") {
+      await audioContext.resume();
+    }
+
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
 
     mediaRecorder = new MediaRecorder(stream);
@@ -88,11 +93,11 @@ recordBtn.onclick = async () => {
     recordBtn.disabled = true;
     stopBtn.disabled = false;
     statusDiv.textContent = "録音中…";
+
   } catch (e) {
-    statusDiv.textContent = "録音が許可されていません";
+    statusDiv.textContent = "録音が許可されていません（HTTPSで開いているか確認）";
   }
 };
-
 // 録音停止
 stopBtn.onclick = () => {
   mediaRecorder.stop();
