@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>カラオケすごろく</title>
+<style>
+  body {
+    font-family: sans-serif;
+    background: #111;
+    color: #fff;
+    text-align: center;
+    padding: 20px;
+  }
+
+  h1 {
+    font-size: 2.2rem;
+    margin-bottom: 20px;
+  }
+
+  #board {
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 10px;
+    max-width: 500px;
+    margin: 0 auto 20px;
+  }
+
+  .cell {
+    width: 70px;
+    height: 70px;
+    background: #333;
+    border-radius: 10px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 1.2rem;
+  }
+
+  .player {
+    background: #00ccff;
+    color: #000;
+    font-weight: bold;
+  }
+
+  #question {
+    font-size: 2rem;
+    margin: 20px 0;
+    min-height: 60px;
+  }
+
+  #dice {
+    font-size: 2.5rem;
+    margin: 10px 0;
+  }
+
+  button {
+    font-size: 1.3rem;
+    padding: 12px 25px;
+    margin: 8px;
+    border-radius: 10px;
+    border: none;
+    cursor: pointer;
+  }
+
+  /* エフェクト */
+  #successEffect, #failEffect {
+    display: none;
+    font-size: 3rem;
+    margin-top: 10px;
+  }
+
+  #successEffect {
+    color: #00ffcc;
+    animation: sparkle 0.8s ease-out forwards;
+  }
+
+  #failEffect {
+    color: #ff4444;
+    animation: fail 0.8s ease-out forwards;
+  }
+
+  @keyframes sparkle {
+    0% { opacity: 0; transform: scale(0.5); }
+    50% { opacity: 1; transform: scale(1.3); }
+    100% { opacity: 0; transform: scale(1); }
+  }
+
+  @keyframes fail {
+    0% { opacity: 0; transform: scale(0.5); }
+    50% { opacity: 1; transform: scale(1.2); }
+    100% { opacity: 0; transform: scale(1); }
+  }
+
+  @media (max-width: 600px) {
+    .cell { width: 55px; height: 55px; font-size: 1rem; }
+    #question { font-size: 1.6rem; }
+    button { font-size: 1.1rem; padding: 10px 18px; }
+  }
+</style>
+</head>
+<body>
+
+<h1>カラオケすごろく</h1>
+
+<div id="board"></div>
+
+<div id="dice">🎲 -</div>
+
+<div id="question"></div>
+
+<div id="successEffect">✨成功！✨</div>
+<div id="failEffect">❌失敗！❌</div>
+
+<button onclick="rollDice()">サイコロを振る</button>
+<button onclick="markSuccess()">成功</button>
+<button onclick="markFail()">失敗</button>
+<button onclick="location.href='index.html'">メニュー</button>
+
+<script>
+  const questions = [
+    "好きな曲を1曲歌う",
+    "アニメソングを歌う",
+    "90年代の曲を歌う",
+    "バラードを歌う",
+    "アップテンポ曲を歌う",
+    "異性アーティストの曲を歌う",
+    "英語の曲を歌う",
+    "デュエット曲を歌う",
+    "盛り上がる曲を歌う",
+    "自由に選んで歌う"
+  ];
+
+  const board = document.getElementById("board");
+  const questionDiv = document.getElementById("question");
+  const diceDiv = document.getElementById("dice");
+  const successEffect = document.getElementById("successEffect");
+  const failEffect = document.getElementById("failEffect");
+
+  let position = 0;
+
+  // すごろく盤を作成
+  function createBoard() {
+    for (let i = 0; i < questions.length; i++) {
+      const cell = document.createElement("div");
+      cell.className = "cell";
+      cell.id = "cell" + i;
+      cell.textContent = i + 1;
+      board.appendChild(cell);
+    }
+    updatePlayer();
+  }
+
+  function updatePlayer() {
+    document.querySelectorAll(".cell").forEach(c => c.classList.remove("player"));
+    document.getElementById("cell" + position).classList.add("player");
+  }
+
+  function rollDice() {
+    const roll = Math.floor(Math.random() * 6) + 1;
+    diceDiv.textContent = "🎲 " + roll;
+
+    position += roll;
+    if (position >= questions.length) position = questions.length - 1;
+
+    updatePlayer();
+    showQuestion();
+  }
+
+  function showQuestion() {
+    questionDiv.textContent = questions[position];
+  }
+
+  function markSuccess() {
+    successEffect.style.display = "block";
+    setTimeout(() => successEffect.style.display = "none", 800);
+  }
+
+  function markFail() {
+    failEffect.style.display = "block";
+    setTimeout(() => failEffect.style.display = "none", 800);
+  }
+
+  createBoard();
+  showQuestion();
+</script>
+
+</body>
+</html>
