@@ -13,17 +13,19 @@
   }
 
   h1 {
-    font-size: 2.2rem;
+    font-size: 2rem;
     margin-bottom: 20px;
   }
 
   button {
-    font-size: 1.4rem;
-    padding: 12px 25px;
-    margin: 10px;
-    border-radius: 10px;
+    font-size: 1.6rem;
+    padding: 15px 30px;
+    margin: 12px;
+    border-radius: 12px;
     border: none;
     cursor: pointer;
+    width: 80%;
+    max-width: 300px;
   }
 
   #status {
@@ -34,7 +36,17 @@
 
   audio {
     margin-top: 20px;
-    width: 90%;
+    width: 95%;
+  }
+
+  @media (max-width: 600px) {
+    button {
+      font-size: 1.4rem;
+      padding: 14px 20px;
+      width: 90%;
+    }
+    h1 { font-size: 1.8rem; }
+    #status { font-size: 1.4rem; }
   }
 </style>
 </head>
@@ -44,7 +56,7 @@
 
 <button id="recordBtn">🎤 録音開始</button>
 <button id="stopBtn" disabled>■ 停止</button>
-<button onclick="location.href='dengon.html'">伝言ページ</button>
+<button onclick="location.href='dengon.html'">伝言ページへ戻る</button>
 
 <div id="status">録音してみよう</div>
 
@@ -62,22 +74,23 @@ const reverseAudio = document.getElementById("reverseAudio");
 
 // 録音開始
 recordBtn.onclick = async () => {
-  const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
 
-  mediaRecorder = new MediaRecorder(stream);
-  audioChunks = [];
+    mediaRecorder = new MediaRecorder(stream);
+    audioChunks = [];
 
-  mediaRecorder.ondataavailable = e => {
-    audioChunks.push(e.data);
-  };
+    mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
+    mediaRecorder.onstop = processReverse;
 
-  mediaRecorder.onstop = processReverse;
+    mediaRecorder.start();
 
-  mediaRecorder.start();
-
-  recordBtn.disabled = true;
-  stopBtn.disabled = false;
-  statusDiv.textContent = "録音中…";
+    recordBtn.disabled = true;
+    stopBtn.disabled = false;
+    statusDiv.textContent = "録音中…";
+  } catch (e) {
+    statusDiv.textContent = "録音が許可されていません";
+  }
 };
 
 // 録音停止
@@ -93,48 +106,39 @@ async function processReverse() {
   const blob = new Blob(audioChunks, { type: "audio/webm" });
   const arrayBuffer = await blob.arrayBuffer();
 
-  // AudioBuffer に変換
   const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
 
-  // 逆再生用バッファを作成
   const reversedBuffer = audioContext.createBuffer(
     audioBuffer.numberOfChannels,
     audioBuffer.length,
     audioBuffer.sampleRate
   );
 
-  // 各チャンネルを逆順にコピー
   for (let i = 0; i < audioBuffer.numberOfChannels; i++) {
-    const channelData = audioBuffer.getChannelData(i);
-    const reversedData = reversedBuffer.getChannelData(i);
+    const input = audioBuffer.getChannelData(i);
+    const output = reversedBuffer.getChannelData(i);
 
-    for (let j = 0; j < channelData.length; j++) {
-      reversedData[j] = channelData[channelData.length - j - 1];
+    for (let j = 0; j < input.length; j++) {
+      output[j] = input[input.length - j - 1];
     }
   }
 
-  // 逆再生バッファを Blob に変換
   const wavBlob = await bufferToWave(reversedBuffer);
 
-  // audio タグにセット
   reverseAudio.src = URL.createObjectURL(wavBlob);
   statusDiv.textContent = "逆再生音声ができたよ！";
 }
 
-// AudioBuffer → WAV Blob 変換
+// AudioBuffer → WAV Blob
 function bufferToWave(abuffer) {
   return new Promise(resolve => {
-    const numOfChan = abuffer.numberOfChannels,
-      length = abuffer.length * numOfChan * 2 + 44,
-      buffer = new ArrayBuffer(length),
-      view = new DataView(buffer),
-      channels = [],
-      sampleRate = abuffer.sampleRate;
+    const numOfChan = abuffer.numberOfChannels;
+    const length = abuffer.length * numOfChan * 2 + 44;
+    const buffer = new ArrayBuffer(length);
+    const view = new DataView(buffer);
 
-    let offset = 0;
     let pos = 0;
 
-    // WAVヘッダ
     writeUTFBytes(view, pos, "RIFF"); pos += 4;
     view.setUint32(pos, length - 8, true); pos += 4;
     writeUTFBytes(view, pos, "WAVE"); pos += 4;
@@ -142,25 +146,20 @@ function bufferToWave(abuffer) {
     view.setUint32(pos, 16, true); pos += 4;
     view.setUint16(pos, 1, true); pos += 2;
     view.setUint16(pos, numOfChan, true); pos += 2;
-    view.setUint32(pos, sampleRate, true); pos += 4;
-    view.setUint32(pos, sampleRate * 2 * numOfChan, true); pos += 4;
+    view.setUint32(pos, abuffer.sampleRate, true); pos += 4;
+    view.setUint32(pos, abuffer.sampleRate * numOfChan * 2, true); pos += 4;
     view.setUint16(pos, numOfChan * 2, true); pos += 2;
     view.setUint16(pos, 16, true); pos += 2;
     writeUTFBytes(view, pos, "data"); pos += 4;
     view.setUint32(pos, length - pos - 4, true); pos += 4;
 
-    // PCMデータ
-    for (let i = 0; i < numOfChan; i++) {
-      channels.push(abuffer.getChannelData(i));
-    }
-
-    while (pos < length) {
-      for (let i = 0; i < numOfChan; i++) {
-        const sample = Math.max(-1, Math.min(1, channels[i][offset]));
-        view.setInt16(pos, sample < 0 ? sample * 0x8000 : sample * 0x7FFF, true);
+    for (let i = 0; i < abuffer.length; i++) {
+      for (let ch = 0; ch < numOfChan; ch++) {
+        const sample = abuffer.getChannelData(ch)[i];
+        const s = Math.max(-1, Math.min(1, sample));
+        view.setInt16(pos, s < 0 ? s * 0x8000 : s * 0x7FFF, true);
         pos += 2;
       }
-      offset++;
     }
 
     resolve(new Blob([buffer], { type: "audio/wav" }));
