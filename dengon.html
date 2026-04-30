@@ -13,7 +13,7 @@
   }
 
   h1 {
-    font-size: 2rem;
+    font-size: 2.2rem;
     margin-bottom: 20px;
   }
 
@@ -21,27 +21,35 @@
     display: flex;
     justify-content: center;
     align-items: center;
-    gap: 10px;
-    margin: 12px 0;
+    gap: 12px;
+    margin: 14px 0;
   }
 
   button {
-    font-size: 1.2rem;
-    padding: 10px 18px;
+    font-size: 1.3rem;
+    padding: 10px 20px;
     border-radius: 10px;
     border: none;
     cursor: pointer;
   }
 
-  .question-box, .answer-box {
-    font-size: 1.6rem;
-    margin-top: 20px;
-    min-height: 40px;
+  .question-box {
+    font-size: 2.6rem;
+    margin-top: 25px;
+    min-height: 60px;
+  }
+
+  .answer-box {
+    font-size: 2.2rem;
+    margin-top: 15px;
+    min-height: 50px;
+    color: #00ffcc;
   }
 
   @media (max-width: 600px) {
-    button { font-size: 1rem; padding: 8px 14px; }
-    .question-box, .answer-box { font-size: 1.3rem; }
+    button { font-size: 1.1rem; padding: 8px 14px; }
+    .question-box { font-size: 2rem; }
+    .answer-box { font-size: 1.7rem; }
   }
 </style>
 </head>
@@ -54,10 +62,12 @@
 
 <!-- 10問分のボタン -->
 <div id="buttons"></div>
-  
-<!-- indexへ戻るボタン -->
-<button onclick="location.href='index.html'">indexへ戻る</button>
-  
+
+<!-- 共通ボタン -->
+<button onclick="showAnswer()">答え</button>
+<button onclick="clearText()">消す</button>
+<button onclick="location.href='index.html'">メニュー</button>
+
 <script>
   // 逆再生すると意味が分かる言葉（10問）
   const quiz = [
@@ -73,6 +83,8 @@
     { q: "いすもつばか", a: "カブトムシ" }
   ];
 
+  let currentIndex = -1;
+
   // ボタン生成
   const btnArea = document.getElementById("buttons");
   quiz.forEach((item, index) => {
@@ -82,20 +94,27 @@
     const qBtn = document.createElement("button");
     qBtn.textContent = "問題 " + (index + 1);
     qBtn.onclick = () => {
+      currentIndex = index;
       document.getElementById("question").textContent = item.q;
       document.getElementById("answer").textContent = "";
     };
 
-    const aBtn = document.createElement("button");
-    aBtn.textContent = "答え";
-    aBtn.onclick = () => {
-      document.getElementById("answer").textContent = item.a;
-    };
-
     row.appendChild(qBtn);
-    row.appendChild(aBtn);
     btnArea.appendChild(row);
   });
+
+  // 答えボタン
+  function showAnswer() {
+    if (currentIndex === -1) return;
+    document.getElementById("answer").textContent = quiz[currentIndex].a;
+  }
+
+  // 表示を消す
+  function clearText() {
+    document.getElementById("question").textContent = "";
+    document.getElementById("answer").textContent = "";
+    currentIndex = -1;
+  }
 </script>
 
 </body>
