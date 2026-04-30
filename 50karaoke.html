@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<title>50カラオケ</title>
+<title>50カラオケ（フル五十音＋小文字対応）</title>
 <style>
   body {
     font-family: sans-serif;
@@ -17,6 +17,7 @@
     margin-bottom: 20px;
   }
 
+  /* 五十音表を見やすく整列 */
   #grid {
     display: grid;
     grid-template-columns: repeat(10, 1fr);
@@ -29,7 +30,7 @@
     background: #333;
     padding: 10px 0;
     border-radius: 6px;
-    font-size: 1.1rem;
+    font-size: 1.2rem;
   }
 
   .filled {
@@ -88,23 +89,24 @@
 
 <div id="grid"></div>
 
-<div id="count">埋まっている数：0 / 80</div>
+<div id="count">埋まっている数：0 / 90</div>
 
 <div id="inputs"></div>
 
-<button onclick="location.href='index.html'">メニューへ戻る</button>
+<button onclick="location.href='index.html'">indexへ戻る</button>
 
 <div id="rules">
   <b>【ルール】</b><br><br>
   ・曲名をひらがなで入力してください。<br>
   ・入力された曲名に含まれるすべての「ひらがな」が五十音表に反映されます。<br>
-  ・清音（あ〜ん）だけでなく、が行・ざ行・だ行・ば行・ぱ行も対応しています。<br>
+  ・清音・濁音・半濁音・小さい文字（っ、ゃ、ゅ、ょ など）も対応しています。<br>
   ・伸ばし棒「ー」、濁点「゛」、半濁点「゜」、記号（！、？、・）も判定します。<br>
   ・入力を消すと枠の色も元に戻ります。<br>
-  </div>
+  ・10曲入力できます。自由に遊んでください。
+</div>
 
 <script>
-// 清音＋濁音＋半濁音＋記号（80枠）
+// 五十音表（清音 → 濁音 → 半濁音 → 小文字 → 記号）
 const chars = [
   // 清音50
   "あ","い","う","え","お",
@@ -127,8 +129,14 @@ const chars = [
   // 半濁音5
   "ぱ","ぴ","ぷ","ぺ","ぽ",
 
-  // 記号5
-  "ー","゛","゜","！","？","・"
+  // 小さい文字（拗音・促音）
+  "ぁ","ぃ","ぅ","ぇ","ぉ",
+  "ゃ","ゅ","ょ",
+  "っ",
+  "ゎ",
+
+  // 記号
+  "ー","～","：","！","？","・"
 ];
 
 let filled = {};
