@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>逆再生レコーダー</title>
+<style>
+  body {
+    font-family: sans-serif;
+    background: #111;
+    color: #fff;
+    text-align: center;
+    padding: 20px;
+  }
+
+  h1 {
+    font-size: 2.2rem;
+    margin-bottom: 20px;
+  }
+
+  button {
+    font-size: 1.4rem;
+    padding: 12px 25px;
+    margin: 10px;
+    border-radius: 10px;
+    border: none;
+    cursor: pointer;
+  }
+
+  #status {
+    font-size: 1.6rem;
+    margin-top: 20px;
+    min-height: 40px;
+  }
+
+  audio {
+    margin-top: 20px;
+    width: 90%;
+  }
+</style>
+</head>
+<body>
+
+<h1>録音して逆再生する</h1>
+
+<button id="recordBtn">🎤 録音開始</button>
+<button id="stopBtn" disabled>■ 停止</button>
+<button onclick="location.href='index.html'">indexへ戻る</button>
+
+<div id="status">録音してみよう</div>
+
+<audio id="reverseAudio" controls></audio>
+
+<script>
+let mediaRecorder;
+let audioChunks = [];
+let audioContext = new (window.AudioContext || window.webkitAudioContext)();
+
+const recordBtn = document.getElementById("recordBtn");
+const stopBtn = document.getElementById("stopBtn");
+const statusDiv = document.getElementById("status");
+const reverseAudio = document.getElementById("reverseAudio");
+
+// 録音開始
+recordBtn.onclick = async () => {
+  const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+
+  mediaRecorder = new MediaRecorder(stream);
+  audioChunks = [];
+
+  mediaRecorder.ondataavailable = e => {
+    audioChunks.push(e.data);
+  };
+
+  mediaRecorder.onstop = processReverse;
+
+  mediaRecorder.start();
+
+  recordBtn.disabled = true;
+  stopBtn.disabled = false;
+  statusDiv.textContent = "録音中…";
+};
+
+// 録音停止
+stopBtn.onclick = () => {
+  mediaRecorder.stop();
+  recordBtn.disabled = false;
+  stopBtn.disabled = true;
+  statusDiv.textContent = "逆再生を作成中…";
+};
+
+// 逆再生処理
+async function processReverse() {
+  const blob = new Blob(audioChunks, { type: "audio/webm" });
+  const arrayBuffer = await blob.arrayBuffer();
+
+  // AudioBuffer に変換
+  const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+
+  // 逆再生用バッファを作成
+  const reversedBuffer = audioContext.createBuffer(
+    audioBuffer.numberOfChannels,
+    audioBuffer.length,
+    audioBuffer.sampleRate
+  );
+
+  // 各チャンネルを逆順にコピー
+  for (let i = 0; i < audioBuffer.numberOfChannels; i++) {
+    const channelData = audioBuffer.getChannelData(i);
+    const reversedData = reversedBuffer.getChannelData(i);
+
+    for (let j = 0; j < channelData.length; j++) {
+      reversedData[j] = channelData[channelData.length - j - 1];
+    }
+  }
+
+  // 逆再生バッファを Blob に変換
+  const wavBlob = await bufferToWave(reversedBuffer);
+
+  // audio タグにセット
+  reverseAudio.src = URL.createObjectURL(wavBlob);
+  statusDiv.textContent = "逆再生音声ができたよ！";
+}
+
+// AudioBuffer → WAV Blob 変換
+function bufferToWave(abuffer) {
+  return new Promise(resolve => {
+    const numOfChan = abuffer.numberOfChannels,
+      length = abuffer.length * numOfChan * 2 + 44,
+      buffer = new ArrayBuffer(length),
+      view = new DataView(buffer),
+      channels = [],
+      sampleRate = abuffer.sampleRate;
+
+    let offset = 0;
+    let pos = 0;
+
+    // WAVヘッダ
+    writeUTFBytes(view, pos, "RIFF"); pos += 4;
+    view.setUint32(pos, length - 8, true); pos += 4;
+    writeUTFBytes(view, pos, "WAVE"); pos += 4;
+    writeUTFBytes(view, pos, "fmt "); pos += 4;
+    view.setUint32(pos, 16, true); pos += 4;
+    view.setUint16(pos, 1, true); pos += 2;
+    view.setUint16(pos, numOfChan, true); pos += 2;
+    view.setUint32(pos, sampleRate, true); pos += 4;
+    view.setUint32(pos, sampleRate * 2 * numOfChan, true); pos += 4;
+    view.setUint16(pos, numOfChan * 2, true); pos += 2;
+    view.setUint16(pos, 16, true); pos += 2;
+    writeUTFBytes(view, pos, "data"); pos += 4;
+    view.setUint32(pos, length - pos - 4, true); pos += 4;
+
+    // PCMデータ
+    for (let i = 0; i < numOfChan; i++) {
+      channels.push(abuffer.getChannelData(i));
+    }
+
+    while (pos < length) {
+      for (let i = 0; i < numOfChan; i++) {
+        const sample = Math.max(-1, Math.min(1, channels[i][offset]));
+        view.setInt16(pos, sample < 0 ? sample * 0x8000 : sample * 0x7FFF, true);
+        pos += 2;
+      }
+      offset++;
+    }
+
+    resolve(new Blob([buffer], { type: "audio/wav" }));
+  });
+}
+
+function writeUTFBytes(view, offset, string) {
+  for (let i = 0; i < string.length; i++) {
+    view.setUint8(offset + i, string.charCodeAt(i));
+  }
+}
+</script>
+
+</body>
+</html>
