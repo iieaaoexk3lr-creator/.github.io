@@ -33,6 +33,10 @@
     font-size: 1.2rem;
   }
 
+  .empty {
+    background: transparent;
+  }
+
   .filled {
     background: #ff66cc;
     color: #000;
@@ -99,23 +103,24 @@
 </head>
 <body>
 
-<h1>50カラオケ</h1>
+<h1>50カラオケ（五十音を曲名で埋めよう）</h1>
 
 <!-- ▼ お題欄 ▼ -->
 <div id="themeBox">
   <div id="themeText">お題：なし</div>
-  <button onclick="setRandomTheme()">ランダムお題</button>
-  <button onclick="setSelectTheme()">選択お題</button>
+  <button onclick="chooseRandomTheme()">ランダムお題</button>
+  <button onclick="chooseTheme()">お題を選ぶ</button>
   <button onclick="setCustomTheme()">直接入力</button>
   <button onclick="clearTheme()">お題なし</button>
 </div>
 
 <div id="grid"></div>
 
-<div id="count">埋まっている数：0 / 90</div>
+<div id="count">埋まっている数：0 / 87</div>
 
 <div id="inputs"></div>
 
+<button onclick="clearAllInputs()">入力を全部消す</button>
 <button onclick="location.href='index.html'">メニューへ戻る</button>
 
 <div id="rules">
@@ -125,7 +130,8 @@
   ・清音・濁音・半濁音・小さい文字（っ、ゃ、ゅ、ょ、ぁ、ぃ など）も対応しています。<br>
   ・伸ばし棒「ー」、濁点「゛」、半濁点「゜」、記号（！、？、・）も判定します。<br>
   ・入力を消すと枠の色も元に戻ります。<br>
-  ・20曲入力できます。
+  ・21曲入力できます。<br>
+  ・お題はランダム・選択・直接入力から選べます。
 </div>
 
 <script>
@@ -139,9 +145,15 @@ const chars = [
   "な","に","ぬ","ね","の",
   "は","ひ","ふ","へ","ほ",
   "ま","み","む","め","も",
-  "や","ゆ","よ",
+
+  // や行（空欄入り）
+  "や","", "ゆ","", "よ",
+
+  // ら行
   "ら","り","る","れ","ろ",
-  "わ","を","ん",
+
+  // わ行（空欄入り）
+  "わ","", "", "を","ん",
 
   // 濁音
   "が","ぎ","ぐ","げ","ご",
@@ -159,7 +171,7 @@ const chars = [
   "ゎ",
 
   // 記号
-  "ー","～","：","！","？","・"
+  "ー","゛","゜","！","？","・"
 ];
 
 let filled = {};
@@ -168,17 +180,16 @@ let filled = {};
 const grid = document.getElementById("grid");
 chars.forEach(c => {
   const cell = document.createElement("div");
-  cell.className = "cell";
-  cell.id = "cell_" + c;
+  cell.className = c === "" ? "cell empty" : "cell";
+  cell.id = c === "" ? "" : "cell_" + c;
   cell.textContent = c;
   grid.appendChild(cell);
 });
 
-// 入力欄20個
+// 入力欄21個
 const inputs = document.getElementById("inputs");
-for (let i = 0; i < 20; i++) {
+for (let i = 0; i < 21; i++) {
   const inp = document.createElement("input");
-  inp.placeholder = "曲名をひらがなで入力";
   inp.oninput = updateGrid;
   inputs.appendChild(inp);
 }
@@ -195,13 +206,14 @@ function updateGrid() {
   });
 
   chars.forEach(c => {
+    if (c === "") return;
     const cell = document.getElementById("cell_" + c);
     if (filled[c]) cell.classList.add("filled");
     else cell.classList.remove("filled");
   });
 
   document.getElementById("count").textContent =
-    "埋まっている数：" + Object.keys(filled).length + " / 90";
+    "埋まっている数：" + Object.keys(filled).length + " / 87";
 }
 
 // ▼ お題機能 ▼
@@ -213,16 +225,29 @@ const randomThemes = [
   "春曲",
   "アニメ曲",
   "盛り上げ曲",
-  "ラップがある曲"
+  "色入りの曲",
+  "アイドル曲",
+  "1980年代の曲",
+  "1990年代の曲",
+  "2000年代の曲",
+  "2010年代の曲",
+  "2020年代の曲",
+  "知ってる中で最新の曲",
+  "6文字以上の曲",
+  "7文字以上の曲",
+  "8文字以上の曲"
 ];
 
-function setRandomTheme() {
-  const t = randomThemes[Math.floor(Math.random() * randomThemes.length)];
-  themeText.textContent = "お題：" + t;
+function chooseRandomTheme() {
+  const list = randomThemes.join("\n");
+  const choice = prompt("ランダムお題一覧\n\n" + list + "\n\nどれにする？");
+  if (choice && randomThemes.includes(choice)) {
+    themeText.textContent = "お題：" + choice;
+  }
 }
 
-function setSelectTheme() {
-  const t = prompt("お題を選んでください");
+function chooseTheme() {
+  const t = prompt("お題を選んでください（例：あ行を埋める）");
   if (t) themeText.textContent = "お題：" + t;
 }
 
@@ -233,6 +258,12 @@ function setCustomTheme() {
 
 function clearTheme() {
   themeText.textContent = "お題：なし";
+}
+
+// ▼ 入力一括消去 ▼
+function clearAllInputs() {
+  document.querySelectorAll("#inputs input").forEach(inp => inp.value = "");
+  updateGrid();
 }
 </script>
 
