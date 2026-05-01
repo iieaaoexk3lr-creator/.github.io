@@ -91,6 +91,22 @@
     color: #ffdd55;
   }
 
+  #themeList {
+    margin-top: 10px;
+  }
+
+  .themeItem {
+    background: #444;
+    padding: 8px;
+    margin: 5px;
+    border-radius: 8px;
+    cursor: pointer;
+  }
+
+  .themeItem:hover {
+    background: #666;
+  }
+
   button {
     font-size: 1.2rem;
     padding: 10px 20px;
@@ -108,15 +124,17 @@
 <!-- ▼ お題欄 ▼ -->
 <div id="themeBox">
   <div id="themeText">お題：なし</div>
-  <button onclick="chooseRandomTheme()">ランダムお題</button>
-  <button onclick="chooseTheme()">お題を選ぶ</button>
+  <button onclick="setRandomTheme()">ランダムお題</button>
+  <button onclick="showThemeList()">お題を選ぶ</button>
   <button onclick="setCustomTheme()">直接入力</button>
   <button onclick="clearTheme()">お題なし</button>
+
+  <div id="themeList"></div>
 </div>
 
 <div id="grid"></div>
 
-<div id="count">埋まっている数：0 / 87</div>
+<div id="count">埋まっている数：0 / 85</div>
 
 <div id="inputs"></div>
 
@@ -152,8 +170,8 @@ const chars = [
   // ら行
   "ら","り","る","れ","ろ",
 
-  // わ行（空欄入り）
-  "わ","", "", "を","ん",
+  // わ行（空欄なし）
+  "わ","を","ん",
 
   // 濁音
   "が","ぎ","ぐ","げ","ご",
@@ -171,7 +189,7 @@ const chars = [
   "ゎ",
 
   // 記号
-  "ー","゛","゜","！","？","・"
+  "ー","～","：","！","？"
 ];
 
 let filled = {};
@@ -190,6 +208,7 @@ chars.forEach(c => {
 const inputs = document.getElementById("inputs");
 for (let i = 0; i < 21; i++) {
   const inp = document.createElement("input");
+  inp.placeholder = "入力欄 " + (i + 1);
   inp.oninput = updateGrid;
   inputs.appendChild(inp);
 }
@@ -213,12 +232,12 @@ function updateGrid() {
   });
 
   document.getElementById("count").textContent =
-    "埋まっている数：" + Object.keys(filled).length + " / 87";
+    "埋まっている数：" + Object.keys(filled).length + " / 85";
 }
 
 // ▼ お題機能 ▼
 const themeText = document.getElementById("themeText");
-
+const themeList = document.getElementById("themeList");
 const randomThemes = [
   "夏曲",
   "冬曲",
@@ -238,17 +257,23 @@ const randomThemes = [
   "8文字以上の曲"
 ];
 
-function chooseRandomTheme() {
-  const list = randomThemes.join("\n");
-  const choice = prompt("ランダムお題一覧\n\n" + list + "\n\nどれにする？");
-  if (choice && randomThemes.includes(choice)) {
-    themeText.textContent = "お題：" + choice;
-  }
+function setRandomTheme() {
+  const t = themes[Math.floor(Math.random() * themes.length)];
+  themeText.textContent = "お題：" + t;
 }
 
-function chooseTheme() {
-  const t = prompt("お題を選んでください（例：あ行を埋める）");
-  if (t) themeText.textContent = "お題：" + t;
+function showThemeList() {
+  themeList.innerHTML = "";
+  themes.forEach(t => {
+    const div = document.createElement("div");
+    div.className = "themeItem";
+    div.textContent = t;
+    div.onclick = () => {
+      themeText.textContent = "お題：" + t;
+      themeList.innerHTML = "";
+    };
+    themeList.appendChild(div);
+  });
 }
 
 function setCustomTheme() {
