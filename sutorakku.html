@@ -2,12 +2,12 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<title>カラオケストラックアウト</title>
+<title>カラオケストラックアウト v3</title>
 <style>
   body {
-    font-family: sans-serif;
     background: #111;
     color: #fff;
+    font-family: sans-serif;
     text-align: center;
     padding: 20px;
   }
@@ -17,33 +17,36 @@
     margin-bottom: 20px;
   }
 
-  /* 3×3 ストラックアウト盤 */
+  /* 3×3 盤面 */
   #board {
     display: grid;
-    grid-template-columns: repeat(3, 120px);
-    grid-template-rows: repeat(3, 120px);
-    gap: 10px;
+    grid-template-columns: repeat(3, 110px);
+    gap: 12px;
     justify-content: center;
     margin: 20px auto;
   }
 
   .cell {
+    width: 110px;
+    height: 110px;
     background: #333;
-    border-radius: 10px;
+    border-radius: 12px;
     font-size: 2.5rem;
     display: flex;
     justify-content: center;
     align-items: center;
-    transition: 0.3s;
+    transition: 0.4s;
+    position: relative;
+    overflow: hidden;
   }
 
-  .hit {
-    background: #ff3366;
-    transform: scale(0);
-    transition: 0.4s ease-out;
+  /* 派手エフェクト */
+  .broken {
+    background: radial-gradient(circle, #ff0066, #660022);
+    transform: scale(2) rotate(180deg);
+    opacity: 0;
   }
 
-  /* 入力欄 */
   input, select {
     font-size: 1.2rem;
     padding: 10px;
@@ -68,49 +71,70 @@
     margin-top: 10px;
     color: #00ffcc;
   }
+
+  #history {
+    margin-top: 20px;
+    font-size: 1.1rem;
+    text-align: left;
+    max-width: 400px;
+    margin-left: auto;
+    margin-right: auto;
+    background: #222;
+    padding: 15px;
+    border-radius: 10px;
+  }
 </style>
 </head>
 <body>
 
-<h1>カラオケストラックアウト</h1>
+<h1>カラオケストラックアウト v3</h1>
 
 <!-- ▼ 設定欄 ▼ -->
 <select id="mode">
-  <option value="score">点数（1〜100）</option>
+  <option value="score">点数</option>
   <option value="cal">消費カロリー</option>
   <option value="vib">ビブラート回数</option>
-  <option value="shakuri">しゃくり回数</option>
+  <option value="shake">しゃくり回数</option>
   <option value="kobushi">こぶし回数</option>
 </select>
 
 <select id="triesSelect">
-  <option value="9">挑戦回数：9回</option>
-  <option value="10">挑戦回数：10回</option>
-  <option value="11">挑戦回数：11回</option>
-  <option value="12">挑戦回数：12回</option>
-  <option value="13">挑戦回数：13回</option>
-  <option value="14">挑戦回数：14回</option>
-  <option value="15">挑戦回数：15回</option>
+  <option value="9">挑戦回数：9</option>
+  <option value="10">挑戦回数：10</option>
+  <option value="11">挑戦回数：11</option>
+  <option value="12">挑戦回数：12</option>
+  <option value="13">挑戦回数：13</option>
+  <option value="14">挑戦回数：14</option>
+  <option value="15">挑戦回数：15</option>
 </select>
 
 <br>
+<button onclick="startGame()">START</button>
 
-<input id="valueInput" type="number" placeholder="数値を入力">
+<div id="info">ゲームを開始してください</div>
+
+<!-- ▼ 数字入力 ▼ -->
+<input id="numInput" type="number" placeholder="数字を入力">
 <button onclick="shoot()">決定</button>
 
-<div id="info">残り回数：0</div>
-
-<!-- ▼ ストラックアウト盤 ▼ -->
+<!-- ▼ 盤面 ▼ -->
 <div id="board"></div>
 
 <button onclick="resetGame()">挑戦リセット</button>
 <button onclick="location.href='index.html'">indexへ戻る</button>
 
+<!-- ▼ 履歴 ▼ -->
+<div id="history">
+  <b>挑戦履歴</b><br>
+  <div id="historyList"></div>
+</div>
+
 <script>
 let tries = 0;
-let bonusUsed = false;
+let turn = 0;
+let started = false;
 
-// 1〜9 の盤面を作成
+// 盤面作成
 const board = document.getElementById("board");
 for (let i = 1; i <= 9; i++) {
   const div = document.createElement("div");
@@ -120,51 +144,71 @@ for (let i = 1; i <= 9; i++) {
   board.appendChild(div);
 }
 
-// ゲーム開始時の設定
-function init() {
+// STARTボタン
+function startGame() {
   tries = Number(document.getElementById("triesSelect").value);
-  bonusUsed = false;
-  document.getElementById("info").textContent = "残り回数：" + tries;
+  turn = 0;
+  started = true;
+
+  document.getElementById("info").textContent =
+    "残り挑戦回数：" + tries;
+
+  document.getElementById("historyList").innerHTML = "";
 
   // 盤面リセット
   for (let i = 1; i <= 9; i++) {
     const c = document.getElementById("cell" + i);
-    c.classList.remove("hit");
+    c.classList.remove("broken");
+    c.style.opacity = "1";
     c.style.transform = "scale(1)";
   }
 }
-init();
 
-// 数値入力 → マスを開ける
+// 数字入力処理
 function shoot() {
-  if (tries <= 0) return;
+  if (!started || tries <= 0) return;
 
-  const val = Number(document.getElementById("valueInput").value);
-  if (!val) return;
+  const num = Number(document.getElementById("numInput").value);
+  if (!num) return;
 
-  // 下1桁が0 → 1回だけ挑戦回数+1
-  if (val % 10 === 0 && !bonusUsed) {
+  turn++;
+
+  // 履歴追加
+  const history = document.getElementById("historyList");
+  history.innerHTML += turn + "回目：" + num + "<br>";
+
+  // 下1桁が0 → 挑戦回数 +1
+  if (num % 10 === 0) {
     tries++;
-    bonusUsed = true;
   }
 
-  // 1〜9 のマスに対応
-  const target = val % 10;
-  if (target >= 1 && target <= 9) {
-    const cell = document.getElementById("cell" + target);
-    if (!cell.classList.contains("hit")) {
-      cell.classList.add("hit");
-    }
-  }
+  // 十の位と一の位を抜く
+  const ones = num % 10;
+  const tens = Math.floor(num / 10) % 10;
+
+  hitCell(ones);
+  hitCell(tens);
 
   tries--;
-  document.getElementById("info").textContent = "残り回数：" + tries;
-  document.getElementById("valueInput").value = "";
+  document.getElementById("info").textContent =
+    "残り挑戦回数：" + tries;
+
+  document.getElementById("numInput").value = "";
+}
+
+// マスを抜く処理
+function hitCell(n) {
+  if (n >= 1 && n <= 9) {
+    const cell = document.getElementById("cell" + n);
+    if (!cell.classList.contains("broken")) {
+      cell.classList.add("broken");
+    }
+  }
 }
 
 // リセット
 function resetGame() {
-  init();
+  startGame();
 }
 </script>
 
