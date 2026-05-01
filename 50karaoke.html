@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<title>50カラオケ（最新版）</title>
+<title>50カラオケ</title>
 <style>
   body {
     font-family: sans-serif;
@@ -105,13 +105,10 @@
   <!-- ▼ 説明文（最新版） ▼ -->
 <div id="rules">
   <b>【ルール】</b><br><br>
-  ・曲名をひらがなで入力してください。<br>
-  ・入力された曲名に含まれるすべての「ひらがな」が五十音表に反映されます。<br>
+  ・入力欄に曲名をひらがなで入力してください。<br>
+  ・入力された曲名に含まれるすべての「ひらがな」が表に反映されます。<br>
   ・清音・濁音・半濁音・小さい文字（っ、ゃ、ゅ、ょ、ぁ、ぃ など）も対応しています。<br>
-  ・伸ばし棒「ー」、濁点「゛」、半濁点「゜」、記号（！、？、・）も判定します。<br>
-  ・入力を消すと枠の色も元に戻ります。<br>
-  ・入力欄は21個あります。<br>
-  ・お題はランダム・選択・直接入力から選べます。
+  ・入力を消すと枠の色も元に戻ります。・お題はランダム・選択・直接入力から選べます。
 </div>
 <body>
 
@@ -130,7 +127,7 @@
 
 <div id="grid"></div>
 
-<div id="count">埋まっている数：0 / 85</div>
+<div id="count">埋まっている数：0 / 81</div>
 
 <div id="inputs"></div>
 
@@ -214,7 +211,7 @@ function updateGrid() {
   });
 
   document.getElementById("count").textContent =
-    "埋まっている数：" + Object.keys(filled).length + " / 85";
+    "埋まっている数：" + Object.keys(filled).length + " / 81";
 }
 
 // ▼ お題機能 ▼
