@@ -17,7 +17,7 @@
     margin-bottom: 20px;
   }
 
-  /* 五十音表を見やすく整列 */
+  /* 五十音表を自然な形で整列 */
   #grid {
     display: grid;
     grid-template-columns: repeat(10, 1fr);
@@ -73,10 +73,24 @@
     text-align: left;
   }
 
+  #themeBox {
+    margin: 20px auto;
+    padding: 15px;
+    background: #222;
+    border-radius: 10px;
+    max-width: 600px;
+  }
+
+  #themeText {
+    font-size: 1.3rem;
+    margin-bottom: 10px;
+    color: #ffdd55;
+  }
+
   button {
     font-size: 1.2rem;
     padding: 10px 20px;
-    margin-top: 20px;
+    margin: 6px;
     border-radius: 10px;
     border: none;
     cursor: pointer;
@@ -86,6 +100,15 @@
 <body>
 
 <h1>50カラオケ</h1>
+
+<!-- ▼ お題欄 ▼ -->
+<div id="themeBox">
+  <div id="themeText">お題：なし</div>
+  <button onclick="setRandomTheme()">ランダムお題</button>
+  <button onclick="setSelectTheme()">選択お題</button>
+  <button onclick="setCustomTheme()">直接入力</button>
+  <button onclick="clearTheme()">お題なし</button>
+</div>
 
 <div id="grid"></div>
 
@@ -99,15 +122,16 @@
   <b>【ルール】</b><br><br>
   ・曲名をひらがなで入力してください。<br>
   ・入力された曲名に含まれるすべての「ひらがな」が五十音表に反映されます。<br>
-  ・清音・濁音・半濁音・小さい文字（っ、ゃ、ゅ、ょ など）も対応しています。<br>
+  ・清音・濁音・半濁音・小さい文字（っ、ゃ、ゅ、ょ、ぁ、ぃ など）も対応しています。<br>
   ・伸ばし棒「ー」、濁点「゛」、半濁点「゜」、記号（！、？、・）も判定します。<br>
   ・入力を消すと枠の色も元に戻ります。<br>
+  ・20曲入力できます。
 </div>
 
 <script>
 // 五十音表（清音 → 濁音 → 半濁音 → 小文字 → 記号）
 const chars = [
-  // 清音50
+  // 清音
   "あ","い","う","え","お",
   "か","き","く","け","こ",
   "さ","し","す","せ","そ",
@@ -119,16 +143,16 @@ const chars = [
   "ら","り","る","れ","ろ",
   "わ","を","ん",
 
-  // 濁音20
+  // 濁音
   "が","ぎ","ぐ","げ","ご",
   "ざ","じ","ず","ぜ","ぞ",
   "だ","ぢ","づ","で","ど",
   "ば","び","ぶ","べ","ぼ",
 
-  // 半濁音5
+  // 半濁音
   "ぱ","ぴ","ぷ","ぺ","ぽ",
 
-  // 小さい文字（拗音・促音）
+  // 小さい文字
   "ぁ","ぃ","ぅ","ぇ","ぉ",
   "ゃ","ゅ","ょ",
   "っ",
@@ -150,43 +174,65 @@ chars.forEach(c => {
   grid.appendChild(cell);
 });
 
-// 入力枠10個
+// 入力欄20個
 const inputs = document.getElementById("inputs");
-for (let i = 0; i < 10; i++) {
+for (let i = 0; i < 20; i++) {
   const inp = document.createElement("input");
   inp.placeholder = "曲名をひらがなで入力";
   inp.oninput = updateGrid;
   inputs.appendChild(inp);
 }
 
-// 入力に応じて五十音表を更新
+// 五十音表更新
 function updateGrid() {
   filled = {};
 
   document.querySelectorAll("#inputs input").forEach(inp => {
     const text = inp.value.trim();
-
-    // 1文字ずつチェック
     for (let char of text) {
-      if (chars.includes(char)) {
-        filled[char] = true;
-      }
+      if (chars.includes(char)) filled[char] = true;
     }
   });
 
-  // 色更新
   chars.forEach(c => {
     const cell = document.getElementById("cell_" + c);
-    if (filled[c]) {
-      cell.classList.add("filled");
-    } else {
-      cell.classList.remove("filled");
-    }
+    if (filled[c]) cell.classList.add("filled");
+    else cell.classList.remove("filled");
   });
 
-  // カウント更新
   document.getElementById("count").textContent =
-    "埋まっている数：" + Object.keys(filled).length + " / " + chars.length;
+    "埋まっている数：" + Object.keys(filled).length + " / 90";
+}
+
+// ▼ お題機能 ▼
+const themeText = document.getElementById("themeText");
+
+const randomThemes = [
+  "夏曲",
+  "冬曲",
+  "春曲",
+  "アニメ曲",
+  "盛り上げ曲",
+  "ラップがある曲"
+];
+
+function setRandomTheme() {
+  const t = randomThemes[Math.floor(Math.random() * randomThemes.length)];
+  themeText.textContent = "お題：" + t;
+}
+
+function setSelectTheme() {
+  const t = prompt("お題を選んでください");
+  if (t) themeText.textContent = "お題：" + t;
+}
+
+function setCustomTheme() {
+  const t = prompt("お題を入力してください");
+  if (t) themeText.textContent = "お題：" + t;
+}
+
+function clearTheme() {
+  themeText.textContent = "お題：なし";
 }
 </script>
 
