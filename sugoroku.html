@@ -1,1 +1,321 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>カラオケすごろく</title>
+<style>
+  body {
+    font-family: sans-serif;
+    background: #111;
+    color: #fff;
+    text-align: center;
+    padding: 20px;
+  }
+
+  h1 {
+    font-size: 2rem;
+    margin-bottom: 15px;
+  }
+
+  #currentPlayer {
+    font-size: 1.4rem;
+    margin-bottom: 10px;
+    color: #00ffcc;
+  }
+
+  #board {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 6px;
+    max-width: 600px;
+    margin: 0 auto 20px;
+  }
+
+  .cell {
+    width: 60px;
+    height: 60px;
+    background: #fff;
+    color: #000;
+    border-radius: 8px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 0.8rem;
+    position: relative;
+  }
+
+  .start { background: #00ccff; }
+  .goal { background: #ffcc00; }
+  .questionCell { background: #ff66cc; color: #000; }
+
+  .playerToken {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    position: absolute;
+    bottom: 4px;
+  }
+
+  #dice {
+    font-size: 2.2rem;
+    margin: 10px 0;
+  }
+
+  #question {
+    font-size: 1.6rem;
+    margin: 15px 0;
+    min-height: 50px;
+  }
+
+  button {
+    font-size: 1.1rem;
+    padding: 10px 18px;
+    margin: 6px;
+    border-radius: 10px;
+    border: none;
+    cursor: pointer;
+  }
+
+  #goalEffect {
+    display: none;
+    font-size: 2.5rem;
+    color: #00ffcc;
+    animation: sparkle 1s ease-out forwards;
+  }
+
+  @keyframes sparkle {
+    0% { opacity: 0; transform: scale(0.5); }
+    50% { opacity: 1; transform: scale(1.3); }
+    100% { opacity: 0; transform: scale(1); }
+  }
+
+  #goalList {
+    margin-top: 15px;
+    font-size: 1.2rem;
+  }
+
+  @media (max-width: 600px) {
+    .cell { width: 45px; height: 45px; font-size: 0.6rem; }
+    #question { font-size: 1.3rem; }
+  }
+</style>
+</head>
+<body>
+
+<h1>カラオケすごろく</h1>
+
+<div>
+  プレイヤー人数：
+  <select id="playerCount" onchange="setupPlayers()">
+    <option value="1">1人</option>
+    <option value="2">2人</option>
+    <option value="3">3人</option>
+    <option value="4">4人</option>
+    <option value="5">5人</option>
+    <option value="6">6人</option>
+  </select>
+</div>
+
+<div id="currentPlayer"></div>
+
+<div id="board"></div>
+
+<div id="dice">🎲 -</div>
+
+<div id="question"></div>
+
+<div id="goalEffect">✨GOAL!!✨</div>
+
+<button onclick="rollDice()">サイコロを振る</button>
+
+<!-- お題成功で追加マス進む -->
+<button onclick="advance(1)">+1マス</button>
+<button onclick="advance(2)">+2マス</button>
+<button onclick="advance(3)">+3マス</button>
+
+<button onclick="undo()">元に戻す</button>
+<button onclick="location.href='index.html'">indexへ戻る</button>
+
+<div id="goalList"></div>
+
+<script>
+  const COLORS = ["#ff4444", "#44ff44", "#4444ff", "#ffff44", "#ff44ff", "#44ffff"];
+
+  // お題マス
+  const questionCells = {
+    2: "アニメソングを歌う",
+    5: "90年代の曲を歌う",
+    8: "バラードを歌う",
+    11: "アップテンポ曲を歌う",
+    14: "異性アーティストの曲を歌う",
+    17: "英語の曲を歌う",
+    20: "デュエット曲を歌う",
+    23: "盛り上がる曲を歌う",
+    26: "自由に選んで歌う",
+    29: "高得点を狙う曲を歌う",
+    32: "懐メロを歌う"
+  };
+
+  let positions = [];
+  let goalOrder = [];
+  let currentPlayer = 0;
+  let playerCount = 1;
+
+  let history = [];
+
+  const board = document.getElementById("board");
+  const questionDiv = document.getElementById("question");
+  const diceDiv = document.getElementById("dice");
+  const goalEffect = document.getElementById("goalEffect");
+  const goalList = document.getElementById("goalList");
+  const currentPlayerDiv = document.getElementById("currentPlayer");
+
+  function setupPlayers() {
+    playerCount = Number(document.getElementById("playerCount").value);
+    positions = Array(playerCount).fill(0);
+    goalOrder = [];
+    currentPlayer = 0;
+    history = [];
+    drawBoard();
+    updateTokens();
+    updateGoalList();
+    updateCurrentPlayer();
+  }
+
+  function drawBoard() {
+    board.innerHTML = "";
+    for (let i = 0; i < 36; i++) {
+      const cell = document.createElement("div");
+      cell.className = "cell";
+      cell.id = "cell" + i;
+
+      if (i === 0) cell.classList.add("start");
+      if (i === 35) cell.classList.add("goal");
+      if (questionCells[i]) cell.classList.add("questionCell");
+
+      cell.textContent = i === 0 ? "START" : i === 35 ? "GOAL" : i;
+      board.appendChild(cell);
+    }
+  }
+
+  function updateTokens() {
+    document.querySelectorAll(".playerToken").forEach(e => e.remove());
+
+    positions.forEach((pos, i) => {
+      const token = document.createElement("div");
+      token.className = "playerToken";
+      token.style.background = COLORS[i];
+      document.getElementById("cell" + pos).appendChild(token);
+    });
+  }
+
+  function updateCurrentPlayer() {
+    currentPlayerDiv.textContent = "現在のプレイヤー：プレイヤー" + (currentPlayer + 1);
+  }
+
+  function rollDice() {
+    if (goalOrder.includes(currentPlayer)) {
+      nextTurn();
+      return;
+    }
+
+    saveHistory();
+
+    // サイコロ演出
+    let count = 0;
+    const interval = setInterval(() => {
+      diceDiv.textContent = "🎲 " + (Math.floor(Math.random() * 6) + 1);
+      count++;
+      if (count > 10) {
+        clearInterval(interval);
+        finalizeRoll();
+      }
+    }, 80);
+  }
+
+  function finalizeRoll() {
+    const roll = Math.floor(Math.random() * 6) + 1;
+    diceDiv.textContent = "🎲 " + roll;
+
+    positions[currentPlayer] += roll;
+    if (positions[currentPlayer] >= 35) {
+      positions[currentPlayer] = 35;
+      handleGoal(currentPlayer);
+    }
+
+    updateTokens();
+    showQuestion(positions[currentPlayer]);
+    nextTurn();
+  }
+
+  function showQuestion(pos) {
+    if (questionCells[pos]) {
+      questionDiv.textContent = questionCells[pos];
+    } else {
+      questionDiv.textContent = "（何もなし）";
+    }
+  }
+
+  function handleGoal(player) {
+    if (!goalOrder.includes(player)) {
+      goalOrder.push(player);
+      goalEffect.style.display = "block";
+      setTimeout(() => goalEffect.style.display = "none", 1000);
+      updateGoalList();
+    }
+  }
+
+  function updateGoalList() {
+    goalList.innerHTML = "GOAL順：<br>" +
+      goalOrder.map((p, i) => (i + 1) + "位：プレイヤー" + (p + 1)).join("<br>");
+  }
+
+  function nextTurn() {
+    do {
+      currentPlayer = (currentPlayer + 1) % playerCount;
+    } while (goalOrder.includes(currentPlayer));
+
+    updateCurrentPlayer();
+  }
+
+  function advance(n) {
+    saveHistory();
+
+    positions[currentPlayer] += n;
+    if (positions[currentPlayer] >= 35) {
+      positions[currentPlayer] = 35;
+      handleGoal(currentPlayer);
+    }
+
+    updateTokens();
+    showQuestion(positions[currentPlayer]);
+  }
+
+  function saveHistory() {
+    history.push({
+      positions: [...positions],
+      currentPlayer: currentPlayer,
+      goalOrder: [...goalOrder]
+    });
+  }
+
+  function undo() {
+    if (history.length === 0) return;
+
+    const last = history.pop();
+    positions = [...last.positions];
+    currentPlayer = last.currentPlayer;
+    goalOrder = [...last.goalOrder];
+
+    updateTokens();
+    updateGoalList();
+    updateCurrentPlayer();
+  }
+
+  setupPlayers();
+</script>
+
+</body>
+</html>
 
