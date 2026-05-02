@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>カラオケ採点ボウリング</title>
+<style>
+  body {
+    background:#111;
+    color:#fff;
+    font-family:sans-serif;
+    text-align:center;
+    padding:20px;
+  }
+  h1{ font-size:2rem; margin-bottom:10px; }
+  select,input,button{
+    font-size:1rem;
+    padding:6px 10px;
+    margin:4px;
+    border-radius:6px;
+    border:none;
+  }
+  button{ cursor:pointer; }
+
+  table{
+    margin:20px auto;
+    border-collapse:collapse;
+    width:90%;
+    max-width:700px;
+  }
+  th,td{
+    border:1px solid #555;
+    padding:6px;
+    text-align:center;
+  }
+  th{
+    background:#222;
+  }
+  .strike{ color:#ffeb3b; font-weight:bold; }
+  .spare{ color:#4fc3f7; font-weight:bold; }
+  .gutter{ color:#f44336; font-weight:bold; }
+  #rules{
+    margin:20px auto 0;
+    max-width:700px;
+    text-align:left;
+    background:#222;
+    padding:10px;
+    border-radius:8px;
+    font-size:0.9rem;
+    line-height:1.6;
+  }
+</style>
+</head>
+<body>
+
+<h1>カラオケ採点ボウリング</h1>
+
+<!-- ▼ 設定欄 ▼ -->
+フレーム数：
+<select id="frameCount">
+  <option value="5">5</option>
+  <option value="6">6</option>
+  <option value="7">7</option>
+  <option value="8">8</option>
+  <option value="9">9</option>
+  <option value="10" selected>10</option>
+</select>
+
+<br>
+
+プリセット：
+<select id="preset">
+  <option value="none">自由設定</option>
+  <option value="beginner">初心者（X90 / 80 / G60）</option>
+  <option value="normal">中級者（X95 / 85 / G70）</option>
+  <option value="hard">上級者（X97 / 90 / G75）</option>
+</select>
+
+<br>
+
+ストライク基準：<input id="strikeVal" type="number" value="95" style="width:70px;">
+スペア基準：<input id="spareVal" type="number" value="85" style="width:70px;">
+ガター基準：<input id="gutterVal" type="number" value="60" style="width:70px;">
+
+<br>
+
+<button id="startBtn">START</button>
+<button id="resetBtn">リセット</button>
+<button onclick="location.href='index.html'">indexへ戻る</button>
+
+<!-- ▼ 点数入力欄 ▼ -->
+<div id="inputArea" style="margin-top:20px; display:none;">
+  点数入力：<input id="scoreInput" type="number" style="width:100px;">
+  <button id="enterBtn">決定</button>
+  <button id="undoBtn">戻す</button>
+</div>
+
+<!-- ▼ スコア表 ▼ -->
+<table id="scoreTable"></table>
+
+<!-- ▼ 説明文 ▼ -->
+<div id="rules">
+  【遊び方】<br>
+  ・フレーム数（5〜10）を選びます。<br>
+  ・プリセット or 自由設定でストライク/スペア/ガター基準を決めます。<br>
+  ・START後は設定がロックされます。<br>
+  ・1曲＝1フレームとして点数を入力します。<br>
+  ・ストライク：基準以上 → X（次の2フレーム加点）<br>
+  ・スペア：基準以上 → /（次の1フレーム加点）<br>
+  ・ガター：基準以下 → G（加点なし）<br>
+  ・通常：数字のまま<br>
+  ・ボウリング方式で合計点が自動計算されます。<br>
+  ・「戻す」で1フレーム戻せます。<br>
+</div>
+
+<script>
+let frames = [];
+let current = 0;
+let history = [];
+
+function applyPreset(){
+  const p = document.getElementById("preset").value;
+  if(p === "beginner"){
+    strikeVal.value = 90;
+    spareVal.value = 80;
+    gutterVal.value = 60;
+  }else if(p === "normal"){
+    strikeVal.value = 95;
+    spareVal.value = 85;
+    gutterVal.value = 70;
+  }else if(p === "hard"){
+    strikeVal.value = 97;
+    spareVal.value = 90;
+    gutterVal.value = 75;
+  }
+}
+
+document.getElementById("preset").addEventListener("change", applyPreset);
+
+function startGame(){
+  const count = Number(document.getElementById("frameCount").value);
+  frames = new Array(count).fill(null).map(()=>({score:0,mark:"",bonus:0,total:0}));
+  current = 0;
+  history = [];
+
+  document.getElementById("frameCount").disabled = true;
+  document.getElementById("preset").disabled = true;
+  document.getElementById("strikeVal").disabled = true;
+  document.getElementById("spareVal").disabled = true;
+  document.getElementById("gutterVal").disabled = true;
+
+  document.getElementById("inputArea").style.display = "block";
+
+  renderTable();
+}
+
+function enterScore(){
+  if(current >= frames.length) return;
+
+  const score = Number(document.getElementById("scoreInput").value);
+  const strike = Number(strikeVal.value);
+  const spare = Number(spareVal.value);
+  const gutter = Number(gutterVal.value);
+
+  let mark = "";
+  if(score >= strike) mark = "X";
+  else if(score >= spare) mark = "/";
+  else if(score <= gutter) mark = "G";
+  else mark = score;
+
+  frames[current].score = score;
+  frames[current].mark = mark;
+
+  history.push(current);
+  current++;
+
+  calcScore();
+  renderTable();
+}
+
+function calcScore(){
+  for(let i=0;i<frames.length;i++){
+    let f = frames[i];
+    let bonus = 0;
+
+    if(f.mark === "X"){
+      if(frames[i+1]) bonus += frames[i+1].score;
+      if(frames[i+2]) bonus += frames[i+2].score;
+    }
+    else if(f.mark === "/"){
+      if(frames[i+1]) bonus += frames[i+1].score;
+    }
+
+    f.bonus = bonus;
+  }
+
+  let sum = 0;
+  for(let i=0;i<frames.length;i++){
+    sum += frames[i].score + frames[i].bonus;
+    frames[i].total = sum;
+  }
+}
+
+function undo(){
+  if(history.length === 0) return;
+  const last = history.pop();
+  frames[last] = {score:0,mark:"",bonus:0,total:0};
+  current = last;
+  calcScore();
+  renderTable();
+}
+
+function renderTable(){
+  const table = document.getElementById("scoreTable");
+  table.innerHTML = `
+    <tr>
+      <th>Frame</th>
+      <th>結果</th>
+      <th>点数</th>
+      <th>加点</th>
+      <th>合計</th>
+    </tr>
+  `;
+
+  frames.forEach((f,i)=>{
+    table.innerHTML += `
+      <tr>
+        <td>${i+1}</td>
+        <td class="${f.mark==="X"?"strike":f.mark==="/"?"spare":f.mark==="G"?"gutter":""}">
+          ${f.mark}
+        </td>
+        <td>${f.score}</td>
+        <td>${f.bonus}</td>
+        <td>${f.total}</td>
+      </tr>
+    `;
+  });
+}
+
+function resetAll(){
+  location.reload();
+}
+
+document.getElementById("startBtn").addEventListener("click", startGame);
+document.getElementById("enterBtn").addEventListener("click", enterScore);
+document.getElementById("undoBtn").addEventListener("click", undo);
+document.getElementById("resetBtn").addEventListener("click", resetAll);
+</script>
+
+</body>
+</html>
