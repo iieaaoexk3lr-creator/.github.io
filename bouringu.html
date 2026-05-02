@@ -12,6 +12,7 @@
     padding:20px;
   }
   h1{ font-size:2rem; margin-bottom:10px; }
+
   select,input,button{
     font-size:1rem;
     padding:6px 10px;
@@ -21,23 +22,58 @@
   }
   button{ cursor:pointer; }
 
+  /* 横画面推奨メッセージ */
+  #landscapeMsg{
+    background:#222;
+    padding:10px;
+    border-radius:8px;
+    margin-bottom:10px;
+    font-size:0.9rem;
+  }
+
+  /* 判定基準パネル */
+  #criteriaBox{
+    background:#222;
+    padding:10px;
+    border-radius:8px;
+    margin:15px auto;
+    max-width:600px;
+    display:none;
+  }
+
+  /* 横並びスコア表 */
+  #scoreWrapper{
+    overflow-x:auto;
+    margin-top:20px;
+  }
+
   table{
-    margin:20px auto;
     border-collapse:collapse;
-    width:90%;
-    max-width:700px;
+    margin:auto;
+    min-width:900px;
   }
   th,td{
     border:1px solid #555;
     padding:6px;
     text-align:center;
+    min-width:70px;
   }
   th{
     background:#222;
   }
+
   .strike{ color:#ffeb3b; font-weight:bold; }
   .spare{ color:#4fc3f7; font-weight:bold; }
   .gutter{ color:#f44336; font-weight:bold; }
+
+  /* 横画面時に拡大 */
+  @media screen and (orientation: landscape) {
+    #scoreWrapper{
+      transform: scale(1.15);
+      transform-origin: top center;
+    }
+  }
+
   #rules{
     margin:20px auto 0;
     max-width:700px;
@@ -53,6 +89,11 @@
 <body>
 
 <h1>カラオケ採点ボウリング</h1>
+
+<!-- ▼ 横画面推奨（START前のみ表示） -->
+<div id="landscapeMsg">
+  ※ このゲームは横画面でのプレイを推奨します（スマホを横にしてください）
+</div>
 
 <!-- ▼ 設定欄 ▼ -->
 フレーム数：
@@ -87,6 +128,9 @@
 <button id="resetBtn">リセット</button>
 <button onclick="location.href='index.html'">indexへ戻る</button>
 
+<!-- ▼ 判定基準パネル（START後に表示） -->
+<div id="criteriaBox"></div>
+
 <!-- ▼ 点数入力欄 ▼ -->
 <div id="inputArea" style="margin-top:20px; display:none;">
   点数入力：<input id="scoreInput" type="number" style="width:100px;">
@@ -94,8 +138,10 @@
   <button id="undoBtn">戻す</button>
 </div>
 
-<!-- ▼ スコア表 ▼ -->
-<table id="scoreTable"></table>
+<!-- ▼ 横並びスコア表 ▼ -->
+<div id="scoreWrapper">
+  <table id="scoreTable"></table>
+</div>
 
 <!-- ▼ 説明文 ▼ -->
 <div id="rules">
@@ -142,11 +188,26 @@ function startGame(){
   current = 0;
   history = [];
 
+  // 設定ロック
   document.getElementById("frameCount").disabled = true;
   document.getElementById("preset").disabled = true;
   document.getElementById("strikeVal").disabled = true;
   document.getElementById("spareVal").disabled = true;
   document.getElementById("gutterVal").disabled = true;
+
+  // 横画面推奨メッセージを消す
+  document.getElementById("landscapeMsg").style.display = "none";
+
+  // 判定基準パネル表示
+  const s = strikeVal.value;
+  const p = spareVal.value;
+  const g = gutterVal.value;
+  document.getElementById("criteriaBox").innerHTML =
+    `【判定基準】<br>
+     ストライク：${s}点以上<br>
+     スペア：${p}点以上<br>
+     ガター：${g}点以下`;
+  document.getElementById("criteriaBox").style.display = "block";
 
   document.getElementById("inputArea").style.display = "block";
 
@@ -211,29 +272,28 @@ function undo(){
 
 function renderTable(){
   const table = document.getElementById("scoreTable");
-  table.innerHTML = `
-    <tr>
-      <th>Frame</th>
-      <th>結果</th>
-      <th>点数</th>
-      <th>加点</th>
-      <th>合計</th>
-    </tr>
-  `;
 
-  frames.forEach((f,i)=>{
-    table.innerHTML += `
-      <tr>
-        <td>${i+1}</td>
-        <td class="${f.mark==="X"?"strike":f.mark==="/"?"spare":f.mark==="G"?"gutter":""}">
-          ${f.mark}
-        </td>
-        <td>${f.score}</td>
-        <td>${f.bonus}</td>
-        <td>${f.total}</td>
-      </tr>
-    `;
+  // 横並びスコア表
+  let html = "<tr>";
+  frames.forEach((_,i)=> html += `<th>${i+1}</th>`);
+  html += "</tr>";
+
+  html += "<tr>";
+  frames.forEach(f=>{
+    const cls = f.mark==="X"?"strike":f.mark==="/"?"spare":f.mark==="G"?"gutter":"";
+    html += `<td class="${cls}">${f.mark}</td>`;
   });
+  html += "</tr>";
+
+  html += "<tr>";
+  frames.forEach(f=> html += `<td>${f.bonus}</td>`);
+  html += "</tr>";
+
+  html += "<tr>";
+  frames.forEach(f=> html += `<td>${f.total}</td>`);
+  html += "</tr>";
+
+  table.innerHTML = html;
 }
 
 function resetAll(){
