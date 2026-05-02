@@ -11,10 +11,7 @@
     text-align:center;
     padding:20px;
   }
-  h1{
-    font-size:2rem;
-    margin-bottom:10px;
-  }
+  h1{ font-size:2rem; margin-bottom:10px; }
   select,input,button{
     font-size:1rem;
     padding:6px 10px;
@@ -42,9 +39,7 @@
     word-break:break-word;
     transition:0.25s;
   }
-  .editable:hover{
-    outline:2px solid #888;
-  }
+  .editable:hover{ outline:2px solid #888; }
   .hit{
     background:#00c896;
     color:#000;
@@ -111,10 +106,9 @@
   ・点数ビンゴ or 漢字ビンゴを選びます。<br>
   ・マス数（4×4 / 5×5 / 6×6）を選びます。<br>
   ・ランダム生成でマスを埋めます。<br>
-  ・START前はマスをクリックして内容を選択できます。<br>
+  ・START前はマスをクリックして候補から選択できます。<br>
   ・START後は編集できません。<br>
-  ・ゲーム中は一致したマスをタップして色を付けます。<br>
-  ・もう一度タップすると元に戻ります。<br>
+  ・ゲーム中は一致したマスをタップして色を付けます（もう一度タップで戻る）。<br>
   ・縦・横・斜めのどれかが揃うとBINGOです。<br>
 </div>
 
@@ -165,7 +159,7 @@ function initBoard(){
   bingoBanner.style.display = "none";
 }
 
-// ▼ マスクリック（START前のみ編集）
+// ▼ マスクリック
 function onCellClick(i){
   if(started){
     // START後 → タップでON/OFF
@@ -232,6 +226,13 @@ function randomFill(){
 // ▼ START
 function startGame(){
   if(started) return;
+
+  // 空欄チェック
+  if(boardValues.some(v => v === "")){
+    alert("空欄のマスがあります。すべて埋めてからSTARTしてください。");
+    return;
+  }
+
   started = true;
 
   randomBtn.disabled = true;
