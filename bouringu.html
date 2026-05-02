@@ -278,17 +278,31 @@ function renderTable(){
   frames.forEach((_,i)=> html += `<th>${i+1}</th>`);
   html += "</tr>";
 
+  // ▼ 結果欄（記号＋点数）
   html += "<tr>";
   frames.forEach(f=>{
-    const cls = f.mark==="X"?"strike":f.mark==="/"?"spare":f.mark==="G"?"gutter":"";
-    html += `<td class="${cls}">${f.mark}</td>`;
+    let display = "";
+
+    if(f.mark === "X") display = `X (${f.score})`;
+    else if(f.mark === "/") display = `/ (${f.score})`;
+    else if(f.mark === "G") display = `G (${f.score})`;
+    else display = f.score; // 通常点数
+
+    const cls =
+      f.mark==="X" ? "strike" :
+      f.mark==="/" ? "spare" :
+      f.mark==="G" ? "gutter" : "";
+
+    html += `<td class="${cls}">${display}</td>`;
   });
   html += "</tr>";
 
+  // ▼ 加点欄
   html += "<tr>";
   frames.forEach(f=> html += `<td>${f.bonus}</td>`);
   html += "</tr>";
 
+  // ▼ 合計欄
   html += "<tr>";
   frames.forEach(f=> html += `<td>${f.total}</td>`);
   html += "</tr>";
