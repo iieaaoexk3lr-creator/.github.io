@@ -298,6 +298,43 @@ function clearAllInputs() {
   document.querySelectorAll("#inputs input").forEach(inp => inp.value = "");
   updateGrid();
 }
+  function showThemeList() {
+  const cat = document.getElementById("categorySelect").value;
+  let list = (cat === "all") ? getAllThemes() : themeCategories[cat];
+
+  themeList.innerHTML = "";
+  list.forEach(t => {
+    const div = document.createElement("div");
+    div.className = "themeItem";
+    div.textContent = t;
+    div.onclick = () => {
+      themeText.textContent = "お題：" + t;
+      themeList.innerHTML = "";
+      categorySelect.disabled = false; // ← 再び有効化
+    };
+    themeList.appendChild(div);
+  });
+
+  // ▼ 一覧を開いたらカテゴリ変更禁止
+  categorySelect.disabled = true;
+}
+
+// ▼ お題一覧以外をクリックしたら閉じる
+document.addEventListener("click", function(e) {
+  const list = document.getElementById("themeList");
+  const box = document.getElementById("themeBox");
+
+  // お題一覧が空なら何もしない
+  if (list.innerHTML.trim() === "") return;
+
+  // クリック位置が themeBox 内なら閉じない
+  if (box.contains(e.target)) return;
+
+  // それ以外をクリックしたら閉じる
+  list.innerHTML = "";
+  categorySelect.disabled = false; // ← カテゴリ変更を再び有効化
+});
+  
 </script>
 
 </body>
