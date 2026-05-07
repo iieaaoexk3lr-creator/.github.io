@@ -8,134 +8,176 @@
 <style>
 
 body{
-    font-family:sans-serif;
-    background:#111;
-    color:white;
-    text-align:center;
-    margin:0;
-    padding:20px;
+    font-family:sans-serif;
+    background:#111;
+    color:white;
+    text-align:center;
+    margin:0;
+    padding:20px;
 }
 
+/* タイトル */
 h1{
-    font-size:40px;
-    margin-bottom:10px;
+    font-size:40px;
+    margin-bottom:10px;
 }
 
+/* プレイヤー名 */
 #playerName{
-    font-size:30px;
-    margin-bottom:20px;
+    font-size:28px;
+    margin-bottom:15px;
 }
 
+/* 時刻表示 */
 #time{
-    font-size:96px;
-    margin:30px 0;
-    letter-spacing:3px;
+    font-size:90px;
+    margin:25px 0;
+    letter-spacing:3px;
+    font-weight:bold;
 }
 
+/* スコア */
 #score{
-    font-size:42px;
-    margin-bottom:20px;
+    font-size:38px;
+    margin-bottom:20px;
 }
 
-button{
-    border:none;
-    border-radius:20px;
-    cursor:pointer;
-    font-weight:bold;
-}
-
+/* 早押しボタン */
 #buzzButton{
-    width:320px;
-    height:320px;
-    border-radius:40px;
-    background:#ff4444;
-    color:white;
-    font-size:56px;
-    margin:20px auto;
-    display:flex;
-    justify-content:center;
-    align-items:center;
+    width:300px;
+    height:300px;
+    border-radius:40px;
+    background:#ff4444;
+    color:white;
+    font-size:56px;
+    margin:20px auto;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    border:none;
+    cursor:pointer;
+    box-shadow:0 0 20px rgba(255,0,0,0.4);
+    transition:0.2s;
+}
+#buzzButton:active{
+    transform:scale(0.95);
 }
 
+/* 判定ボタン */
 #judgeButtons{
-    display:flex;
-    justify-content:center;
-    gap:20px;
-    margin-top:20px;
+    display:flex;
+    justify-content:center;
+    gap:20px;
+    margin-top:20px;
+}
+
+.correct, .wrong{
+    width:160px;
+    height:110px;
+    font-size:48px;
+    border-radius:20px;
+    border:none;
+    cursor:pointer;
+    transition:0.2s;
 }
 
 .correct{
-    background:#4CAF50;
-    color:white;
-    width:180px;
-    height:120px;
-    font-size:48px;
+    background:#4CAF50;
+    color:white;
+}
+.correct:active{
+    transform:scale(0.9);
 }
 
 .wrong{
-    background:#777;
-    color:white;
-    width:180px;
-    height:120px;
-    font-size:48px;
+    background:#777;
+    color:white;
+}
+.wrong:active{
+    transform:scale(0.9);
 }
 
-.reset{
-    background:#cc2222;
-    color:white;
-    width:150px;
-    height:60px;
-    font-size:22px;
-    margin-top:20px;
-}
-
+/* 状態表示 */
 #status{
-    margin-top:20px;
-    font-size:32px;
+    margin-top:20px;
+    font-size:32px;
 }
 
+/* ポイント設定エリア */
 #pointArea{
-    margin-top:30px;
-    font-size:32px;
+    margin-top:30px;
+    font-size:28px;
+    background:#1d1d1d;
+    padding:20px;
+    border-radius:15px;
+    max-width:400px;
+    margin-left:auto;
+    margin-right:auto;
+    box-shadow:0 0 15px rgba(0,0,0,0.4);
 }
 
 #pointControls{
-    display:flex;
-    justify-content:center;
-    align-items:center;
-    gap:15px;
-    margin-top:10px;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    gap:15px;
+    margin-top:10px;
 }
 
 .pointBtn{
-    width:80px;
-    height:80px;
-    font-size:42px;
-    background:#444;
-    color:white;
+    width:70px;
+    height:70px;
+    font-size:40px;
+    background:#444;
+    color:white;
+    border-radius:15px;
+    border:none;
+    cursor:pointer;
+    transition:0.2s;
+}
+.pointBtn:active{
+    transform:scale(0.9);
 }
 
 #pointValue{
-    width:120px;
-    height:70px;
-    font-size:40px;
-    text-align:center;
-    border-radius:12px;
-    border:none;
+    width:120px;
+    height:70px;
+    font-size:40px;
+    text-align:center;
+    border-radius:12px;
+    border:none;
 }
 
+/* リセットボタン */
+.reset{
+    background:#cc2222;
+    color:white;
+    width:180px;
+    height:60px;
+    font-size:24px;
+    margin-top:25px;
+    border-radius:15px;
+    border:none;
+    cursor:pointer;
+    transition:0.2s;
+}
+.reset:active{
+    transform:scale(0.9);
+}
+
+/* 説明文 */
 #guide{
-    margin-top:50px;
-    font-size:20px;
-    line-height:1.8;
-    color:#ccc;
-    max-width:700px;
-    margin-left:auto;
-    margin-right:auto;
-    text-align:left;
-    background:#1d1d1d;
-    padding:20px;
-    border-radius:15px;
+    margin-top:40px;
+    font-size:20px;
+    line-height:1.8;
+    color:#ccc;
+    max-width:700px;
+    margin-left:auto;
+    margin-right:auto;
+    text-align:left;
+    background:#1d1d1d;
+    padding:20px;
+    border-radius:15px;
 }
 
 </style>
@@ -154,273 +196,138 @@ button{
 <button id="buzzButton">押す！</button>
 
 <div id="judgeButtons">
-    <button class="correct" id="correctBtn">○</button>
-    <button class="wrong" id="wrongBtn">×</button>
+    <button class="correct" id="correctBtn">○</button>
+    <button class="wrong" id="wrongBtn">×</button>
 </div>
 
 <div id="status">待機中</div>
 
-
-
 <div id="pointArea">
-
-    正解ポイント
-
-    <div id="pointControls">
-
-        <button class="pointBtn" id="minusBtn">▼</button>
-
-        <input type="number" id="pointValue" value="1" min="1">
-
-        <button class="pointBtn" id="plusBtn">▲</button>
-
-    </div>
-
+    正解ポイント
+    <div id="pointControls">
+        <button class="pointBtn" id="minusBtn">▼</button>
+        <input type="number" id="pointValue" value="1" min="1">
+        <button class="pointBtn" id="plusBtn">▲</button>
+    </div>
 </div>
 
-
-
-<div>
-    <button class="reset" id="scoreResetBtn">
-        リセット
-    </button>
-</div>
-
-
+<button class="reset" id="scoreResetBtn">リセット</button>
 
 <div id="guide">
-
 <b>使い方</b><br><br>
-
 ・「押す！」を押すと現在時刻の秒数以下が表示されます。<br>
 ・司会者が時刻を比較して誰が早いか判定してください。<br>
 ・押した後は「解答中」と表示されます。<br>
 ・正解なら「○」、不正解なら「×」を押すと次の問題へ進みます。<br>
 ・「正解ポイント」で加算点を変更できます。<br>
 ・「リセット」でスコアを0に戻します。
-
 </div>
 
 <button onclick="location.href='index.html'">メニューへ戻る</button>
 
 <script>
 
-const player =
-prompt("プレイヤー名を入力") || "プレイヤー";
-
-document.getElementById("playerName").innerText =
-"プレイヤー: " + player;
+const player = prompt("プレイヤー名を入力") || "プレイヤー";
+document.getElementById("playerName").innerText = "プレイヤー: " + player;
 
 let locked = false;
 let score = 0;
 
-const buzzButton =
-document.getElementById("buzzButton");
-
-const timeDisplay =
-document.getElementById("time");
-
-const scoreDisplay =
-document.getElementById("score");
-
-const statusDisplay =
-document.getElementById("status");
-
-const pointInput =
-document.getElementById("pointValue");
-
-
+const buzzButton = document.getElementById("buzzButton");
+const timeDisplay = document.getElementById("time");
+const scoreDisplay = document.getElementById("score");
+const statusDisplay = document.getElementById("status");
+const pointInput = document.getElementById("pointValue");
 
 // ピンポーン音
 function playBuzzSound(){
+    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    const osc1 = audioContext.createOscillator();
+    const gain1 = audioContext.createGain();
+    osc1.type = "sine";
+    osc1.frequency.setValueAtTime(784, audioContext.currentTime);
+    gain1.gain.setValueAtTime(0.25, audioContext.currentTime);
+    osc1.connect(gain1);
+    gain1.connect(audioContext.destination);
+    osc1.start();
+    osc1.stop(audioContext.currentTime + 0.18);
 
-    const audioContext =
-    new (window.AudioContext ||
-    window.webkitAudioContext)();
-
-    const osc1 =
-    audioContext.createOscillator();
-
-    const gain1 =
-    audioContext.createGain();
-
-    osc1.type = "sine";
-
-    osc1.frequency.setValueAtTime(
-        784,
-        audioContext.currentTime
-    );
-
-    gain1.gain.setValueAtTime(
-        0.25,
-        audioContext.currentTime
-    );
-
-    osc1.connect(gain1);
-    gain1.connect(audioContext.destination);
-
-    osc1.start();
-    osc1.stop(audioContext.currentTime + 0.18);
-
-
-
-    const osc2 =
-    audioContext.createOscillator();
-
-    const gain2 =
-    audioContext.createGain();
-
-    osc2.type = "sine";
-
-    osc2.frequency.setValueAtTime(
-        1046,
-        audioContext.currentTime + 0.18
-    );
-
-    gain2.gain.setValueAtTime(
-        0.25,
-        audioContext.currentTime + 0.18
-    );
-
-    osc2.connect(gain2);
-    gain2.connect(audioContext.destination);
-
-    osc2.start(audioContext.currentTime + 0.18);
-
-    osc2.stop(audioContext.currentTime + 0.45);
+    const osc2 = audioContext.createOscillator();
+    const gain2 = audioContext.createGain();
+    osc2.type = "sine";
+    osc2.frequency.setValueAtTime(1046, audioContext.currentTime + 0.18);
+    gain2.gain.setValueAtTime(0.25, audioContext.currentTime + 0.18);
+    osc2.connect(gain2);
+    gain2.connect(audioContext.destination);
+    osc2.start(audioContext.currentTime + 0.18);
+    osc2.stop(audioContext.currentTime + 0.45);
 }
-
-
 
 // 秒数以下のみ取得
 function getCurrentTimeString(){
-
-    const now = new Date();
-
-    const s =
-    String(now.getSeconds()).padStart(2,"0");
-
-    const ms =
-    String(now.getMilliseconds()).padStart(3,"0");
-
-    return `${s}.${ms}`;
+    const now = new Date();
+    const s = String(now.getSeconds()).padStart(2,"0");
+    const ms = String(now.getMilliseconds()).padStart(3,"0");
+    return `${s}.${ms}`;
 }
-
-
 
 // 次問題状態へ
 function resetRound(){
-
-    locked = false;
-
-    timeDisplay.innerText =
-    "--.---";
-
-    statusDisplay.innerText =
-    "待機中";
-
-    buzzButton.disabled = false;
-
-    buzzButton.innerText = "押す！";
+    locked = false;
+    timeDisplay.innerText = "--.---";
+    statusDisplay.innerText = "待機中";
+    buzzButton.disabled = false;
+    buzzButton.innerText = "押す！";
 }
-
-
 
 // 早押し
 buzzButton.onclick = () => {
-
-    if(locked) return;
-
-    locked = true;
-
-    const currentTime =
-    getCurrentTimeString();
-
-    timeDisplay.innerText =
-    currentTime;
-
-    statusDisplay.innerText =
-    "押しました！";
-
-    buzzButton.disabled = true;
-
-    buzzButton.innerText = "解答中";
-
-    playBuzzSound();
+    if(locked) return;
+    locked = true;
+    const currentTime = getCurrentTimeString();
+    timeDisplay.innerText = currentTime;
+    statusDisplay.innerText = "押しました！";
+    buzzButton.disabled = true;
+    buzzButton.innerText = "解答中";
+    playBuzzSound();
 };
-
-
 
 // ○
 document.getElementById("correctBtn").onclick = () => {
-
-    if(!locked) return;
-
-    const addPoint =
-    parseInt(pointInput.value) || 1;
-
-    score += addPoint;
-
-    scoreDisplay.innerText =
-    "正解数: " + score;
-
-    resetRound();
+    if(!locked) return;
+    const addPoint = parseInt(pointInput.value) || 1;
+    score += addPoint;
+    scoreDisplay.innerText = "正解数: " + score;
+    resetRound();
 };
-
-
 
 // ×
 document.getElementById("wrongBtn").onclick = () => {
-
-    if(!locked) return;
-
-    resetRound();
+    if(!locked) return;
+    resetRound();
 };
-
-
 
 // スコアリセット
 document.getElementById("scoreResetBtn").onclick = () => {
-
-    score = 0;
-
-    scoreDisplay.innerText =
-    "正解数: 0";
-
-    resetRound();
+    score = 0;
+    scoreDisplay.innerText = "正解数: 0";
+    resetRound();
 };
-
-
 
 // ▲
 document.getElementById("plusBtn").onclick = () => {
-
-    let value =
-    parseInt(pointInput.value) || 1;
-
-    value++;
-
-    pointInput.value = value;
+    let value = parseInt(pointInput.value) || 1;
+    value++;
+    pointInput.value = value;
 };
-
-
 
 // ▼
 document.getElementById("minusBtn").onclick = () => {
-
-    let value =
-    parseInt(pointInput.value) || 1;
-
-    value--;
-
-    if(value < 1){
-        value = 1;
-    }
-
-    pointInput.value = value;
+    let value = parseInt(pointInput.value) || 1;
+    value--;
+    if(value < 1) value = 1;
+    pointInput.value = value;
 };
-
-
 
 resetRound();
 
