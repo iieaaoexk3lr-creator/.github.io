@@ -72,7 +72,7 @@
     z-index: 2;
   }
 
-  /* 赤い部分 */
+  /* 赤い部分（fill） */
   .fill {
     position: absolute;
     top: 0;
@@ -82,16 +82,6 @@
     background: rgba(255,0,0,0.6);
     transition: height 0.2s linear;
     z-index: 3;
-  }
-
-  /* ★ 追加：最先端のグレー1mm */
-  .tip {
-    position: absolute;
-    left: 0;
-    width: 100%;
-    height: 1px;      /* 1mm相当の細さ */
-    background: #888; /* グレー */
-    z-index: 4;
   }
 
   @keyframes wrongFlash {
@@ -143,7 +133,7 @@
 
 <div id="settings">
   <label>制限時間：</label>
-  <input type="number" id="timeInput" value="50" min="10" max="200"> 秒
+  <input type="number" id="timeInput" value="50" min="1" max="200"> 秒
 
   <label>バーの本数：</label>
   <select id="barCount">
@@ -328,13 +318,7 @@ function init() {
     fill.className = "fill";
     fill.id = "fill" + i;
 
-    /* ★ グレーの先端 */
-    const tip = document.createElement("div");
-    tip.className = "tip";
-    tip.id = "tip" + i;
-
     box.appendChild(fill);
-    box.appendChild(tip);
     box.innerHTML += "<span>？</span>";
     document.getElementById("answers").appendChild(box);
   }
@@ -364,9 +348,6 @@ function startTimer() {
 
         const percent = ((timeLimit - timeLeft) / timeLimit) * 100;
         document.getElementById("fill" + i).style.height = percent + "%";
-
-        /* ★ グレー先端を fill の先端に追従させる */
-        document.getElementById("tip" + i).style.top = percent + "%";
       }
     }
 
