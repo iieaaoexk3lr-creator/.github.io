@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<title>カラフルボンバー改良版</title>
+<title>カラフルボンバー総合版</title>
 <style>
   body {
     font-family: sans-serif;
@@ -12,8 +12,9 @@
     padding: 20px;
   }
 
-  h1 { font-size: 2rem; margin-bottom: 10px; }
+  h1 { font-size: 2.4rem; margin-bottom: 10px; }
 
+  /* 設定エリア */
   #settings {
     margin-bottom: 20px;
     background: #222;
@@ -21,28 +22,40 @@
     border-radius: 10px;
   }
 
-  label { font-size: 1.2rem; margin-right: 10px; }
+  label { font-size: 1.3rem; margin-right: 10px; }
 
   input, select {
-    font-size: 1.2rem;
+    font-size: 1.3rem;
     padding: 5px;
     margin: 5px;
   }
 
-  #question { font-size: 1.5rem; margin-bottom: 20px; }
+  #setBtn {
+    font-size: 1.3rem;
+    padding: 8px 20px;
+    margin-left: 10px;
+  }
+
+  #question { font-size: 1.7rem; margin-bottom: 20px; }
+
+  /* 正解数表示 */
+  #score {
+    font-size: 1.6rem;
+    margin: 10px 0 20px 0;
+  }
 
   /* タイマー数字 */
   #timerRow {
     display: flex;
     justify-content: center;
-    gap: 20px;
+    gap: 25px;
     margin-bottom: 10px;
   }
 
   .timer-box {
-    font-size: 2rem;
+    font-size: 2.2rem;
     color: #ff4444;
-    width: 50px;
+    width: 60px;
     text-align: center;
   }
 
@@ -50,20 +63,20 @@
   #answers {
     display: flex;
     justify-content: center;
-    gap: 20px;
+    gap: 25px;
     margin-bottom: 20px;
   }
 
   .answer-box {
-    width: 50px;
-    height: 200px;
+    width: 70px;
+    height: 260px;
     background: #333;
-    border-radius: 10px;
-    font-size: 1.2rem;
+    border-radius: 12px;
+    font-size: 1.6rem;
     display: flex;
     justify-content: center;
     align-items: flex-end;
-    padding-bottom: 10px;
+    padding-bottom: 15px;
     position: relative;
     overflow: hidden;
     transition: 0.3s;
@@ -124,15 +137,24 @@
     100% { transform: scale(3); opacity: 0; }
   }
 
+  /* スマホUI */
   @media (max-width: 600px) {
-    .answer-box { width: 40px; height: 150px; }
-    .timer-box { width: 40px; font-size: 1.6rem; }
+    .answer-box { width: 55px; height: 200px; }
+    .timer-box { width: 50px; font-size: 1.8rem; }
+  }
+
+  /* 操作説明 */
+  #manual {
+    margin-top: 30px;
+    font-size: 1.2rem;
+    color: #ccc;
+    line-height: 1.6;
   }
 </style>
 </head>
 <body>
 
-<h1>カラフルボンバー改良版</h1>
+<h1>カラフルボンバー総合版</h1>
 
 <!-- 設定エリア -->
 <div id="settings">
@@ -149,9 +171,13 @@
     <option>9</option>
     <option>10</option>
   </select>
+
+  <button id="setBtn" onclick="applySettings()">SET</button>
 </div>
 
 <div id="question">問題がここに表示されます</div>
+
+<div id="score">正解数：0</div>
 
 <div id="timerRow"></div>
 <div id="answers"></div>
@@ -177,12 +203,19 @@
   let timerId;
   let started = false;
   let timerStopped = [];
+  let audioUnlocked = false;
 
   const questions = [
     "色のつく曲を答えよ！",
     "アニメの曲を答えよ！",
     "動物の曲を答えよ！",
-    "三文字の曲を答えよ！"
+    "三文字の曲を答えよ！",
+    "DAM人気TOP50に入っている曲を答えよ！",
+    "演歌を答えよ！",
+    "英語の曲を答えよ！",
+    "ラップの入った曲を答えよ！",
+    "Mrs.GREENAPPLEの曲を答えよ！",
+    "ーの入った曲を答えよ！"
   ];
 
   let currentQuestion = 0;
@@ -190,16 +223,41 @@
   const timerRow = document.getElementById("timerRow");
   const answersDiv = document.getElementById("answers");
 
-  function init() {
+  /* 音声解禁（スマホ対応） */
+  function unlockAudio() {
+    if (audioUnlocked) return;
+
+    const correct = document.getElementById("sound-correct");
+    const wrong = document.getElementById("sound-wrong");
+    const explosion = document.getElementById("sound-explosion");
+
+    correct.volume = 0;
+    wrong.volume = 0;
+    explosion.volume = 0;
+
+    correct.play().then(() => {
+      correct.pause(); correct.currentTime = 0; correct.volume = 1;
+      wrong.pause(); wrong.currentTime = 0; wrong.volume = 1;
+      explosion.pause(); explosion.currentTime = 0; explosion.volume = 1;
+
+      audioUnlocked = true;
+    });
+  }
+
+  function applySettings() {
     barNum = Number(document.getElementById("barCount").value);
     timeLimit = Number(document.getElementById("timeInput").value);
+    resetGame();
+  }
 
+  function init() {
     timeLeft = timeLimit;
     found = 0;
     started = false;
     timerStopped = Array(barNum).fill(false);
 
     document.getElementById("question").textContent = questions[currentQuestion];
+    document.getElementById("score").textContent = "正解数：" + found;
     document.getElementById("startBtn").style.display = "inline-block";
 
     timerRow.innerHTML = "";
@@ -228,6 +286,7 @@
 
   function startGame() {
     if (started) return;
+    unlockAudio();  // ← 音声解禁
     started = true;
     document.getElementById("startBtn").style.display = "none";
     startTimer();
@@ -257,13 +316,18 @@
   function markCorrect() {
     if (!started || timeLeft <= 0) return;
 
-    document.getElementById("sound-correct").play();
+    const s = document.getElementById("sound-correct");
+    s.load();
+    s.play();
 
     const box = document.getElementById("box" + found);
     box.classList.add("correct");
-    timerStopped[found] = true;
+    box.textContent = "👍";
 
+    timerStopped[found] = true;
     found++;
+
+    document.getElementById("score").textContent = "正解数：" + found;
 
     if (found === barNum) {
       clearInterval(timerId);
@@ -274,7 +338,9 @@
   function markWrong() {
     if (!started) return;
 
-    document.getElementById("sound-wrong").play();
+    const s = document.getElementById("sound-wrong");
+    s.load();
+    s.play();
 
     const box = document.getElementById("box" + found);
     box.classList.add("wrongFlash");
@@ -284,7 +350,9 @@
 
   function triggerExplosion() {
     document.getElementById("explosion").style.display = "block";
-    document.getElementById("sound-explosion").play();
+    const s = document.getElementById("sound-explosion");
+    s.load();
+    s.play();
   }
 
   function showSuccess() {
@@ -292,12 +360,22 @@
   }
 
   function resetGame() {
-    currentQuestion = 0;
+    clearInterval(timerId);
     init();
   }
 
   init();
 </script>
+
+<!-- 操作説明 -->
+<div id="manual">
+  【操作方法】<br>
+  ・START：ゲーム開始<br>
+  ・正解：現在のバーを停止し👍に変更<br>
+  ・不正解：バーが赤く点滅<br>
+  ・SET：制限時間・バー本数を反映<br>
+  ・リセット：時間停止＆UI初期化<br>
+</div>
 
 </body>
 </html>
