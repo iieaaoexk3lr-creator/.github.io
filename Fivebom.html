@@ -88,11 +88,13 @@
   }
   .wrongFlash { animation: wrongFlash 0.4s ease-out; }
 
+  /* ★ 追加：成功エフェクトもクリックをブロックしない */
   #successEffect {
     display: none;
     font-size: 3rem;
     color: #00ffcc;
     animation: sparkle 1s ease-out forwards;
+    pointer-events: none;
   }
 
   @keyframes sparkle {
@@ -101,11 +103,13 @@
     100% { opacity: 0; transform: scale(1); }
   }
 
+  /* ★ explosion はすでに pointer-events:none を付けてある */
   #explosion {
     display: none;
     font-size: 4rem;
     color: yellow;
     animation: explode 0.8s ease-out forwards;
+    pointer-events: none;
   }
 
   @keyframes explode {
@@ -172,7 +176,6 @@
 ------------------------- */
 function playCorrect(){
     const ctx = new (window.AudioContext || window.webkitAudioContext)();
-
     const o1 = ctx.createOscillator();
     const g1 = ctx.createGain();
     o1.type = "sine";
@@ -199,17 +202,13 @@ function playCorrect(){
 ------------------------- */
 function playWrong(){
     const ctx = new (window.AudioContext || window.webkitAudioContext)();
-
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
-
     osc.type = "square";
     osc.frequency.setValueAtTime(120, ctx.currentTime);
     gain.gain.setValueAtTime(0.3, ctx.currentTime);
-
     osc.connect(gain);
     gain.connect(ctx.destination);
-
     osc.start();
     osc.frequency.exponentialRampToValueAtTime(60, ctx.currentTime + 0.3);
     osc.stop(ctx.currentTime + 0.3);
@@ -220,25 +219,19 @@ function playWrong(){
 ------------------------- */
 function playExplosion(){
     const ctx = new (window.AudioContext || window.webkitAudioContext)();
-
     const bufferSize = 2 * ctx.sampleRate;
     const noiseBuffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
     const output = noiseBuffer.getChannelData(0);
-
     for (let i = 0; i < bufferSize; i++) {
         output[i] = (Math.random() * 2 - 1) * (1 - i / bufferSize);
     }
-
     const noise = ctx.createBufferSource();
     noise.buffer = noiseBuffer;
-
     const gain = ctx.createGain();
     gain.gain.setValueAtTime(1, ctx.currentTime);
     gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 1);
-
     noise.connect(gain);
     gain.connect(ctx.destination);
-
     noise.start();
     noise.stop(ctx.currentTime + 1);
 }
@@ -293,15 +286,15 @@ function init() {
   document.getElementById("startBtn").style.display = "inline-block";
   document.getElementById("nextBtn").style.display = "none";
 
-  timerRow.innerHTML = "";
-  answers.innerHTML = "";
+  document.getElementById("timerRow").innerHTML = "";
+  document.getElementById("answers").innerHTML = "";
 
   for (let i = 0; i < barNum; i++) {
     const t = document.createElement("div");
     t.className = "timer-box";
     t.id = "timer" + i;
     t.textContent = timeLeft;
-    timerRow.appendChild(t);
+    document.getElementById("timerRow").appendChild(t);
 
     const box = document.createElement("div");
     box.className = "answer-box";
@@ -313,7 +306,7 @@ function init() {
 
     box.appendChild(fill);
     box.append("？");
-    answers.appendChild(box);
+    document.getElementById("answers").appendChild(box);
   }
 }
 
@@ -372,7 +365,7 @@ function markCorrect() {
   if (found === barNum) {
     clearInterval(timerId);
     showSuccess();
-    started = false;  // ← 成功後も操作可能に
+    started = false;
     document.getElementById("nextBtn").style.display = "inline-block";
   }
 }
@@ -398,7 +391,12 @@ function triggerExplosion() {
 
   playExplosion();
 
-  started = false;  // ← ★ここが重要（時間切れ後も操作可能）
+  started = false;
+
+  /* ★ explosion をアニメ後に消す */
+  setTimeout(() => {
+    document.getElementById("explosion").style.display = "none";
+  }, 900);
 
   document.getElementById("nextBtn").style.display = "inline-block";
 }
@@ -408,6 +406,11 @@ function triggerExplosion() {
 ------------------------- */
 function showSuccess() {
   document.getElementById("successEffect").style.display = "block";
+
+  /* ★ 成功エフェクトもアニメ後に消す */
+  setTimeout(() => {
+    document.getElementById("successEffect").style.display = "none";
+  }, 1200);
 }
 
 /* -------------------------
