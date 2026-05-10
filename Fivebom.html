@@ -65,7 +65,7 @@
     position: relative;
     overflow: hidden;
     transition: 0.3s;
-    z-index: 1; /* ★追加 */
+    z-index: 1; /
 }
 
 .fill {
@@ -76,9 +76,14 @@
     height: 0%;
     background: rgba(255,0,0,0.6);
     transition: height 0.2s linear;
-    z-index: 2; /* ★追加 */
+    z-index: 3; /* ★追加 */
 }
-
+  
+　.answer-box span {
+    position: relative;
+    z-index: 2; /* 👍 は赤より下、緑より上 */
+}
+  
   .correct {
     background: #28a745 !important;
     transform: scale(1.05);
@@ -357,7 +362,7 @@ function markCorrect() {
 
   const box = document.getElementById("box" + found);
   box.classList.add("correct");
-  box.textContent = "👍";
+  box.innerHTML = "<span>👍</span>";
 
   timerStopped[found] = true;
   found++;
