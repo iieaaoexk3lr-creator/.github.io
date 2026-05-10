@@ -65,9 +65,10 @@
     position: relative;
     overflow: hidden;
     transition: 0.3s;
-  }
+    z-index: 1; /* ★追加 */
+}
 
-  .fill {
+.fill {
     position: absolute;
     top: 0;
     left: 0;
@@ -75,7 +76,8 @@
     height: 0%;
     background: rgba(255,0,0,0.6);
     transition: height 0.2s linear;
-  }
+    z-index: 2; /* ★追加 */
+}
 
   .correct {
     background: #28a745 !important;
