@@ -352,13 +352,7 @@ function markWrong() {
    爆発（失敗）
 ------------------------- */
 function triggerExplosion() {
-  document.getElementById("explosion").style.display = "block";
-
-  soundBomb.currentTime = 0;
-  soundBomb.play();
-
-  /* 時間切れでも操作可能 */
-  document.getElementById("nextBtn").style.display = "inline-block";
+document.getElementById("explosion").style.display = "block";
 }
 
 /* -------------------------
