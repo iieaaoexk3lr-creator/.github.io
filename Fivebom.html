@@ -14,7 +14,6 @@
 
   h1 { font-size: 2.4rem; margin-bottom: 10px; }
 
-  /* 設定エリア */
   #settings {
     margin-bottom: 20px;
     background: #222;
@@ -23,28 +22,15 @@
   }
 
   label { font-size: 1.3rem; margin-right: 10px; }
-
-  input, select {
-    font-size: 1.3rem;
-    padding: 5px;
-    margin: 5px;
-  }
-
-  #setBtn {
-    font-size: 1.3rem;
-    padding: 8px 20px;
-    margin-left: 10px;
-  }
+  input, select { font-size: 1.3rem; padding: 5px; margin: 5px; }
 
   #question { font-size: 1.7rem; margin-bottom: 20px; }
 
-  /* 正解数表示 */
   #score {
     font-size: 1.6rem;
     margin: 10px 0 20px 0;
   }
 
-  /* タイマー数字 */
   #timerRow {
     display: flex;
     justify-content: center;
@@ -59,7 +45,6 @@
     text-align: center;
   }
 
-  /* 解答バー */
   #answers {
     display: flex;
     justify-content: center;
@@ -82,7 +67,7 @@
     transition: 0.3s;
   }
 
-  /* 時間経過で赤く染まる部分 */
+  /* 赤い部分（時間経過） */
   .fill {
     position: absolute;
     top: 0;
@@ -93,23 +78,18 @@
     transition: height 0.2s linear;
   }
 
-  /* 正解 */
+  /* 正解時の緑 */
   .correct {
     background: #28a745 !important;
-    transform: scale(1.05);
   }
 
-  /* 不正解の赤点滅 */
   @keyframes wrongFlash {
     0% { background: #ff0000; }
     50% { background: #333; }
     100% { background: #ff0000; }
   }
-  .wrongFlash {
-    animation: wrongFlash 0.4s ease-out;
-  }
+  .wrongFlash { animation: wrongFlash 0.4s ease-out; }
 
-  /* 成功エフェクト */
   #successEffect {
     display: none;
     font-size: 3rem;
@@ -123,7 +103,6 @@
     100% { opacity: 0; transform: scale(1); }
   }
 
-  /* 爆発 */
   #explosion {
     display: none;
     font-size: 4rem;
@@ -137,13 +116,6 @@
     100% { transform: scale(3); opacity: 0; }
   }
 
-  /* スマホUI */
-  @media (max-width: 600px) {
-    .answer-box { width: 55px; height: 200px; }
-    .timer-box { width: 50px; font-size: 1.8rem; }
-  }
-
-  /* 操作説明 */
   #manual {
     margin-top: 30px;
     font-size: 1.2rem;
@@ -156,7 +128,6 @@
 
 <h1>カラフルボンバー</h1>
 
-<!-- 設定エリア -->
 <div id="settings">
   <label>制限時間：</label>
   <input type="number" id="timeInput" value="50" min="10" max="200"> 秒
@@ -172,14 +143,14 @@
     <option>10</option>
   </select>
 
-  <button id="setBtn" onclick="applySettings()">SET</button>
+  <button onclick="applySettings()">SET</button>
 </div>
 
-<div id="question">問題がここに表示されます</div>
+<div id="question"></div>
 
 <div id="score">
   正解数：0
-  <button id="scoreReset" onclick="resetScore()" style="font-size:1rem;">点数リセット</button>
+  <button onclick="resetScore()" style="font-size:1rem;">点数リセット</button>
 </div>
 
 <div id="timerRow"></div>
@@ -188,35 +159,60 @@
 <button id="startBtn" onclick="startGame()">START</button>
 <button onclick="markCorrect()">正解</button>
 <button onclick="markWrong()">不正解</button>
+  
 <button onclick="resetGame()">リセット</button>
 
-<!-- ★ 追加：次の問題へ -->
 <button id="nextBtn" onclick="nextQuestion()" style="display:none;">次の問題へ</button>
 
-<!-- ★ 追加：indexへ戻る -->
 <button onclick="location.href='index.html'">メニューへ戻る</button>
 
 <div id="successEffect">✨成功！✨</div>
 <div id="explosion">💥</div>
 
-<!-- 効果音 -->
-<audio id="sound-correct" src="https://soundeffect-lab.info/sound/anime/mp3/decision1.mp3"></audio>
-<audio id="sound-wrong" src="https://soundeffect-lab.info/sound/anime/mp3/buzzer1.mp3"></audio>
-<audio id="sound-explosion" src="https://soundeffect-lab.info/sound/anime/mp3/bomb1.mp3"></audio>
-
 <script>
-  let barNum = 5;
-  let timeLimit = 50;
-  let timeLeft = 50;
-  let found = 0;
-  let timerId;
-  let started = false;
-  let timerStopped = [];
-  let audioUnlocked = false;
-  let totalScore = 0;
+/* -------------------------
+   変数
+------------------------- */
+let barNum = 5;
+let timeLimit = 50;
+let timeLeft = 50;
+let found = 0;
+let timerId;
+let started = false;
+let timerStopped = [];
+let totalScore = 0;
+let audioUnlocked = false;
 
-  const questions = [
-    "色のつく曲を答えよ！",
+/* -------------------------
+   音声（JS生成：iPhoneでも確実に鳴る）
+------------------------- */
+const soundCorrect = new Audio("https://soundeffect-lab.info/sound/anime/mp3/decision1.mp3");
+const soundWrong   = new Audio("https://soundeffect-lab.info/sound/anime/mp3/buzzer1.mp3");
+const soundBomb    = new Audio("https://soundeffect-lab.info/sound/anime/mp3/bomb1.mp3");
+
+/* 音声アンロック（iPhone対策） */
+function unlockAudio() {
+  if (audioUnlocked) return;
+
+  const list = [soundCorrect, soundWrong, soundBomb];
+
+  list.forEach(a => {
+    a.volume = 0;
+    a.play().then(() => {
+      a.pause();
+      a.currentTime = 0;
+      a.volume = 1;
+    });
+  });
+
+  audioUnlocked = true;
+}
+
+/* -------------------------
+   問題
+------------------------- */
+const questions = [
+ 　 "色のつく曲を答えよ！",
     "アニメの曲を答えよ！",
     "動物の曲を答えよ！",
     "三文字の曲を答えよ！",
@@ -226,175 +222,180 @@
     "ラップの入った曲を答えよ！",
     "Mrs.GREENAPPLEの曲を答えよ！",
     "ーの入った曲を答えよ！"
-  ];
+];
 
-  let currentQuestion = 0;
+let currentQuestion = 0;
 
-  const timerRow = document.getElementById("timerRow");
-  const answersDiv = document.getElementById("answers");
+/* -------------------------
+   設定反映
+------------------------- */
+function applySettings() {
+  barNum = Number(document.getElementById("barCount").value);
+  timeLimit = Number(document.getElementById("timeInput").value);
+  resetGame();
+}
 
-  /* 音声解禁（スマホ対応） */
-  function unlockAudio() {
-    if (audioUnlocked) return;
+/* -------------------------
+   初期化
+------------------------- */
+function init() {
+  timeLeft = timeLimit;
+  found = 0;
+  started = false;
+  timerStopped = Array(barNum).fill(false);
 
-    const sounds = [
-      document.getElementById("sound-correct"),
-      document.getElementById("sound-wrong"),
-      document.getElementById("sound-explosion")
-    ];
+  document.getElementById("question").textContent = questions[currentQuestion];
+  document.getElementById("score").childNodes[0].textContent = "正解数：" + totalScore + " ";
+  document.getElementById("startBtn").style.display = "inline-block";
+  document.getElementById("nextBtn").style.display = "none";
 
-    sounds.forEach(s => {
-      s.volume = 0;
-      s.play().then(() => {
-        s.pause();
-        s.currentTime = 0;
-        s.volume = 1;
-      });
-    });
+  timerRow.innerHTML = "";
+  answers.innerHTML = "";
 
-    audioUnlocked = true;
+  for (let i = 0; i < barNum; i++) {
+    const t = document.createElement("div");
+    t.className = "timer-box";
+    t.id = "timer" + i;
+    t.textContent = timeLeft;
+    timerRow.appendChild(t);
+
+    const box = document.createElement("div");
+    box.className = "answer-box";
+    box.id = "box" + i;
+
+    const fill = document.createElement("div");
+    fill.className = "fill";
+    fill.id = "fill" + i;
+
+    box.appendChild(fill);
+    box.append("？");
+    answers.appendChild(box);
   }
+}
 
-  function applySettings() {
-    barNum = Number(document.getElementById("barCount").value);
-    timeLimit = Number(document.getElementById("timeInput").value);
-    resetGame();
-  }
+/* -------------------------
+   START
+------------------------- */
+function startGame() {
+  if (started) return;
+  unlockAudio();
+  started = true;
+  document.getElementById("startBtn").style.display = "none";
+  startTimer();
+}
 
-  function init() {
-    timeLeft = timeLimit;
-    found = 0;
-    started = false;
-    timerStopped = Array(barNum).fill(false);
-
-    document.getElementById("question").textContent = questions[currentQuestion];
-    document.getElementById("score").childNodes[0].textContent = "正解数：" + totalScore + " ";
-    document.getElementById("startBtn").style.display = "inline-block";
-    document.getElementById("nextBtn").style.display = "none";
-
-    timerRow.innerHTML = "";
-    answersDiv.innerHTML = "";
+/* -------------------------
+   タイマー
+------------------------- */
+function startTimer() {
+  clearInterval(timerId);
+  timerId = setInterval(() => {
+    timeLeft--;
 
     for (let i = 0; i < barNum; i++) {
-      const t = document.createElement("div");
-      t.className = "timer-box";
-      t.id = "timer" + i;
-      t.textContent = timeLeft;
-      timerRow.appendChild(t);
+      if (!timerStopped[i]) {
+        document.getElementById("timer" + i).textContent = timeLeft;
 
-      const box = document.createElement("div");
-      box.className = "answer-box";
-      box.id = "box" + i;
-
-      const fill = document.createElement("div");
-      fill.className = "fill";
-      fill.id = "fill" + i;
-
-      box.appendChild(fill);
-      box.append("？");
-      answersDiv.appendChild(box);
+        const percent = ((timeLimit - timeLeft) / timeLimit) * 100;
+        document.getElementById("fill" + i).style.height = percent + "%";
+      }
     }
-  }
 
-  function startGame() {
-    if (started) return;
-    unlockAudio();
-    started = true;
-    document.getElementById("startBtn").style.display = "none";
-    startTimer();
-  }
-
-  function startTimer() {
-    clearInterval(timerId);
-    timerId = setInterval(() => {
-      timeLeft--;
-
-      for (let i = 0; i < barNum; i++) {
-        if (!timerStopped[i]) {
-          document.getElementById("timer" + i).textContent = timeLeft;
-
-          const percent = ((timeLimit - timeLeft) / timeLimit) * 100;
-          document.getElementById("fill" + i).style.height = percent + "%";
-        }
-      }
-
-      if (timeLeft <= 0) {
-        clearInterval(timerId);
-        triggerExplosion();
-      }
-    }, 1000);
-  }
-
-  function markCorrect() {
-    if (!started || timeLeft <= 0) return;
-
-    const s = document.getElementById("sound-correct");
-    s.load();
-    s.play();
-
-    const box = document.getElementById("box" + found);
-    box.classList.add("correct");
-    box.textContent = "👍";
-
-    timerStopped[found] = true;
-    found++;
-
-    totalScore++;
-    document.getElementById("score").childNodes[0].textContent = "正解数：" + totalScore + " ";
-
-    if (found === barNum) {
+    if (timeLeft <= 0) {
       clearInterval(timerId);
-      showSuccess();
-      document.getElementById("nextBtn").style.display = "inline-block";
+      triggerExplosion();
     }
-  }
+  }, 1000);
+}
 
-  function markWrong() {
-    if (!started) return;
+/* -------------------------
+   正解
+------------------------- */
+function markCorrect() {
+  if (!started) return;
 
-    const s = document.getElementById("sound-wrong");
-    s.load();
-    s.play();
+  soundCorrect.currentTime = 0;
+  soundCorrect.play();
 
-    const box = document.getElementById("box" + found);
-    box.classList.add("wrongFlash");
+  const box = document.getElementById("box" + found);
+  box.classList.add("correct");
+  box.textContent = "👍";
 
-    setTimeout(() => box.classList.remove("wrongFlash"), 400);
-  }
+  timerStopped[found] = true;
+  found++;
 
-  function triggerExplosion() {
-    document.getElementById("explosion").style.display = "block";
-    const s = document.getElementById("sound-explosion");
-    s.load();
-    s.play();
+  totalScore++;
+  document.getElementById("score").childNodes[0].textContent = "正解数：" + totalScore + " ";
 
+  if (found === barNum) {
+    clearInterval(timerId);
+    showSuccess();
     document.getElementById("nextBtn").style.display = "inline-block";
   }
+}
 
-  function showSuccess() {
-    document.getElementById("successEffect").style.display = "block";
-  }
+/* -------------------------
+   不正解
+------------------------- */
+function markWrong() {
+  if (!started) return;
 
-  function nextQuestion() {
-    currentQuestion++;
-    if (currentQuestion >= questions.length) currentQuestion = 0;
-    init();
-  }
+  soundWrong.currentTime = 0;
+  soundWrong.play();
 
-  function resetScore() {
-    totalScore = 0;
-    document.getElementById("score").childNodes[0].textContent = "正解数：" + totalScore + " ";
-  }
+  const box = document.getElementById("box" + found);
+  box.classList.add("wrongFlash");
+  setTimeout(() => box.classList.remove("wrongFlash"), 400);
+}
 
-  function resetGame() {
-    clearInterval(timerId);
-    init();
-  }
+/* -------------------------
+   爆発（失敗）
+------------------------- */
+function triggerExplosion() {
+  document.getElementById("explosion").style.display = "block";
 
+  soundBomb.currentTime = 0;
+  soundBomb.play();
+
+  /* 時間切れでも操作可能 */
+  document.getElementById("nextBtn").style.display = "inline-block";
+}
+
+/* -------------------------
+   成功
+------------------------- */
+function showSuccess() {
+  document.getElementById("successEffect").style.display = "block";
+}
+
+/* -------------------------
+   次の問題
+------------------------- */
+function nextQuestion() {
+  currentQuestion++;
+  if (currentQuestion >= questions.length) currentQuestion = 0;
   init();
+}
+
+/* -------------------------
+   点数リセット
+------------------------- */
+function resetScore() {
+  totalScore = 0;
+  document.getElementById("score").childNodes[0].textContent = "正解数：" + totalScore + " ";
+}
+
+/* -------------------------
+   リセット
+------------------------- */
+function resetGame() {
+  clearInterval(timerId);
+  init();
+}
+
+init();
 </script>
 
-<!-- 操作説明 -->
 <div id="manual">
   【操作方法】<br>
   ・START：ゲーム開始<br>
