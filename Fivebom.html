@@ -53,11 +53,27 @@
   }
 
   .answer-box {
+    width: 70px;
+    height: 260px;
+    border-radius: 12px;
+    font-size: 1.6rem;
+    display: flex;
+    justify-content: center;
+    align-items: flex-end;
+    padding-bottom: 15px;
     position: relative;
-    z-index: 1; /* 緑背景 */
-}
+    overflow: hidden;
+    transition: 0.3s;
+    z-index: 1;
+  }
 
-.fill {
+  .answer-box span {
+    position: relative;
+    z-index: 2;
+  }
+
+  /* 赤い部分 */
+  .fill {
     position: absolute;
     top: 0;
     left: 0;
@@ -65,27 +81,26 @@
     height: 0%;
     background: rgba(255,0,0,0.6);
     transition: height 0.2s linear;
-    z-index: 3; /* ★追加 */
-}
-  
-　.answer-box span {
-    position: relative;
-    z-index: 2; /* 👍 は赤より下、緑より上 */
-}
-  
-  .correct {
-    background: #28a745 !important;
-    transform: scale(1.05);
+    z-index: 3;
+  }
+
+  /* ★ 追加：最先端のグレー1mm */
+  .tip {
+    position: absolute;
+    left: 0;
+    width: 100%;
+    height: 1px;      /* 1mm相当の細さ */
+    background: #888; /* グレー */
+    z-index: 4;
   }
 
   @keyframes wrongFlash {
     0% { background: #ff0000; }
-    50% { background: #333; }
+    50% { background: inherit; }
     100% { background: #ff0000; }
   }
   .wrongFlash { animation: wrongFlash 0.4s ease-out; }
 
-  /* ★ 追加：成功エフェクトもクリックをブロックしない */
   #successEffect {
     display: none;
     font-size: 3rem;
@@ -100,7 +115,6 @@
     100% { opacity: 0; transform: scale(1); }
   }
 
-  /* ★ explosion はすでに pointer-events:none を付けてある */
   #explosion {
     display: none;
     font-size: 4rem;
@@ -245,6 +259,15 @@ let started = false;
 let timerStopped = [];
 let totalScore = 0;
 
+/* ★ バーの色（5色ループ） */
+const barColors = [
+  "#a8d8ff", // 薄い青
+  "#b8ffcc", // 薄い緑
+  "#fff5a8", // 薄い黄色
+  "#ffd8a8", // 薄いオレンジ
+  "#ffb8b8"  // 薄い赤
+];
+
 const questions = [
  　 "色のつく曲を答えよ！",
     "アニメの曲を答えよ！",
@@ -297,12 +320,22 @@ function init() {
     box.className = "answer-box";
     box.id = "box" + i;
 
+    /* ★ バーの色を順番に設定 */
+    box.style.background = barColors[i % barColors.length];
+
+    /* 赤い fill */
     const fill = document.createElement("div");
     fill.className = "fill";
     fill.id = "fill" + i;
 
+    /* ★ グレーの先端 */
+    const tip = document.createElement("div");
+    tip.className = "tip";
+    tip.id = "tip" + i;
+
     box.appendChild(fill);
-    box.append("？");
+    box.appendChild(tip);
+    box.innerHTML += "<span>？</span>";
     document.getElementById("answers").appendChild(box);
   }
 }
@@ -331,6 +364,9 @@ function startTimer() {
 
         const percent = ((timeLimit - timeLeft) / timeLimit) * 100;
         document.getElementById("fill" + i).style.height = percent + "%";
+
+        /* ★ グレー先端を fill の先端に追従させる */
+        document.getElementById("tip" + i).style.top = percent + "%";
       }
     }
 
@@ -350,7 +386,8 @@ function markCorrect() {
   playCorrect();
 
   const box = document.getElementById("box" + found);
-  box.classList.add("correct");
+
+  /* ★ 背景色は変えずに 👍 だけ表示 */
   box.innerHTML = "<span>👍</span>";
 
   timerStopped[found] = true;
@@ -390,7 +427,6 @@ function triggerExplosion() {
 
   started = false;
 
-  /* ★ explosion をアニメ後に消す */
   setTimeout(() => {
     document.getElementById("explosion").style.display = "none";
   }, 900);
@@ -404,7 +440,6 @@ function triggerExplosion() {
 function showSuccess() {
   document.getElementById("successEffect").style.display = "block";
 
-  /* ★ 成功エフェクトもアニメ後に消す */
   setTimeout(() => {
     document.getElementById("successEffect").style.display = "none";
   }, 1200);
