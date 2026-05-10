@@ -67,7 +67,6 @@
     transition: 0.3s;
   }
 
-  /* 赤い部分（時間経過） */
   .fill {
     position: absolute;
     top: 0;
@@ -78,7 +77,6 @@
     transition: height 0.2s linear;
   }
 
-  /* 正解時の緑 */
   .correct {
     background: #28a745 !important;
   }
@@ -159,7 +157,6 @@
 <button id="startBtn" onclick="startGame()">START</button>
 <button onclick="markCorrect()">正解</button>
 <button onclick="markWrong()">不正解</button>
-  
 <button onclick="resetGame()">リセット</button>
 
 <button id="nextBtn" onclick="nextQuestion()" style="display:none;">次の問題へ</button>
@@ -171,7 +168,83 @@
 
 <script>
 /* -------------------------
-   変数
+   WebAudio：正解音
+------------------------- */
+function playCorrect(){
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+
+    const o1 = ctx.createOscillator();
+    const g1 = ctx.createGain();
+    o1.type = "sine";
+    o1.frequency.setValueAtTime(784, ctx.currentTime);
+    g1.gain.setValueAtTime(0.25, ctx.currentTime);
+    o1.connect(g1);
+    g1.connect(ctx.destination);
+    o1.start();
+    o1.stop(ctx.currentTime + 0.18);
+
+    const o2 = ctx.createOscillator();
+    const g2 = ctx.createGain();
+    o2.type = "sine";
+    o2.frequency.setValueAtTime(1046, ctx.currentTime + 0.18);
+    g2.gain.setValueAtTime(0.25, ctx.currentTime + 0.18);
+    o2.connect(g2);
+    g2.connect(ctx.destination);
+    o2.start(ctx.currentTime + 0.18);
+    o2.stop(ctx.currentTime + 0.45);
+}
+
+/* -------------------------
+   WebAudio：不正解音
+------------------------- */
+function playWrong(){
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+
+    osc.type = "square";
+    osc.frequency.setValueAtTime(120, ctx.currentTime);
+    gain.gain.setValueAtTime(0.3, ctx.currentTime);
+
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+
+    osc.start();
+    osc.frequency.exponentialRampToValueAtTime(60, ctx.currentTime + 0.3);
+    osc.stop(ctx.currentTime + 0.3);
+}
+
+/* -------------------------
+   WebAudio：爆発音
+------------------------- */
+function playExplosion(){
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+
+    const bufferSize = 2 * ctx.sampleRate;
+    const noiseBuffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+    const output = noiseBuffer.getChannelData(0);
+
+    for (let i = 0; i < bufferSize; i++) {
+        output[i] = (Math.random() * 2 - 1) * (1 - i / bufferSize);
+    }
+
+    const noise = ctx.createBufferSource();
+    noise.buffer = noiseBuffer;
+
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(1, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 1);
+
+    noise.connect(gain);
+    gain.connect(ctx.destination);
+
+    noise.start();
+    noise.stop(ctx.currentTime + 1);
+}
+
+/* -------------------------
+   ゲーム変数
 ------------------------- */
 let barNum = 5;
 let timeLimit = 50;
@@ -181,36 +254,7 @@ let timerId;
 let started = false;
 let timerStopped = [];
 let totalScore = 0;
-let audioUnlocked = false;
 
-/* -------------------------
-   音声（JS生成：iPhoneでも確実に鳴る）
-------------------------- */
-const soundCorrect = new Audio("https://soundeffect-lab.info/sound/anime/mp3/decision1.mp3");
-const soundWrong   = new Audio("https://soundeffect-lab.info/sound/anime/mp3/buzzer1.mp3");
-const soundBomb    = new Audio("https://soundeffect-lab.info/sound/anime/mp3/bomb1.mp3");
-
-/* 音声アンロック（iPhone対策） */
-function unlockAudio() {
-  if (audioUnlocked) return;
-
-  const list = [soundCorrect, soundWrong, soundBomb];
-
-  list.forEach(a => {
-    a.volume = 0;
-    a.play().then(() => {
-      a.pause();
-      a.currentTime = 0;
-      a.volume = 1;
-    });
-  });
-
-  audioUnlocked = true;
-}
-
-/* -------------------------
-   問題
-------------------------- */
 const questions = [
  　 "色のつく曲を答えよ！",
     "アニメの曲を答えよ！",
@@ -278,7 +322,6 @@ function init() {
 ------------------------- */
 function startGame() {
   if (started) return;
-  unlockAudio();
   started = true;
   document.getElementById("startBtn").style.display = "none";
   startTimer();
@@ -314,8 +357,7 @@ function startTimer() {
 function markCorrect() {
   if (!started) return;
 
-  soundCorrect.currentTime = 0;
-  soundCorrect.play();
+  playCorrect();
 
   const box = document.getElementById("box" + found);
   box.classList.add("correct");
@@ -330,6 +372,7 @@ function markCorrect() {
   if (found === barNum) {
     clearInterval(timerId);
     showSuccess();
+    started = false;  // ← 成功後も操作可能に
     document.getElementById("nextBtn").style.display = "inline-block";
   }
 }
@@ -340,8 +383,7 @@ function markCorrect() {
 function markWrong() {
   if (!started) return;
 
-  soundWrong.currentTime = 0;
-  soundWrong.play();
+  playWrong();
 
   const box = document.getElementById("box" + found);
   box.classList.add("wrongFlash");
@@ -352,7 +394,13 @@ function markWrong() {
    爆発（失敗）
 ------------------------- */
 function triggerExplosion() {
-document.getElementById("explosion").style.display = "block";
+  document.getElementById("explosion").style.display = "block";
+
+  playExplosion();
+
+  started = false;  // ← ★ここが重要（時間切れ後も操作可能）
+
+  document.getElementById("nextBtn").style.display = "inline-block";
 }
 
 /* -------------------------
