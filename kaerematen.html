@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>リアルタイム全員一致ゲーム</title>
+    <style>
+        body { font-family: 'Helvetica Neue', Arial, sans-serif; text-align: center; background: #f0f2f5; padding: 20px; color: #333; }
+        .card { background: white; padding: 30px; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); max-width: 450px; margin: auto; }
+        h1 { font-size: 1.5rem; color: #1a73e8; }
+        input { width: 100%; padding: 12px; box-sizing: border-box; margin: 15px 0; border: 2px solid #ddd; border-radius: 10px; font-size: 16px; outline: none; }
+        input:focus { border-color: #1a73e8; }
+        .btn-group { display: flex; flex-direction: column; gap: 10px; }
+        button { width: 100%; padding: 12px; border: none; border-radius: 10px; cursor: pointer; font-size: 16px; font-weight: bold; transition: 0.3s; }
+        #sendBtn { background: #1a73e8; color: white; }
+        #revealBtn { background: #34a853; color: white; }
+        #resetBtn { background: #ea4335; color: white; margin-top: 20px; font-size: 12px; opacity: 0.7; }
+        button:hover { opacity: 0.8; transform: translateY(-1px); }
+        #status { margin: 20px 0; font-size: 1.1rem; font-weight: bold; }
+        .result-box { margin-top: 20px; padding: 15px; border-top: 2px dashed #ddd; }
+        .answer-tag { display: inline-block; background: #e8f0fe; color: #1a73e8; padding: 5px 15px; border-radius: 20px; margin: 5px; font-weight: bold; }
+        .match-msg { color: #34a853; font-size: 1.8rem; margin-top: 10px; }
+        .miss-msg { color: #ea4335; font-size: 1.8rem; margin-top: 10px; }
+    </style>
+</head>
+<body>
+
+<div class="card">
+    <h1>全員一致ゲーム</h1>
+    <div id="status">接続中...</div>
+    
+    <input type="text" id="answerInput" placeholder="回答を入力してください">
+    
+    <div class="btn-group">
+        <button id="sendBtn">回答を送信</button>
+        <button id="revealBtn">結果を見る</button>
+    </div>
+
+    <div id="resultArea" class="result-box"></div>
+    
+    <button id="resetBtn">データをリセット（次の問題へ）</button>
+</div>
+
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+    import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, getDocs, writeBatch } 
+        from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+    // あなたの設定を適用しました
+    const firebaseConfig = {
+        apiKey: "AIzaSyD5ZZ0LKTthtZ3WbZ-rKpocumbalrYBuHU",
+        authDomain: "zenin-itchi-game.firebaseapp.com",
+        projectId: "zenin-itchi-game",
+        storageBucket: "zenin-itchi-game.firebasestorage.app",
+        messagingSenderId: "1063543597468",
+        appId: "1:1063543597468:web:e3f3c1caf9158e25544059",
+        measurementId: "G-JNZ3QL1TGT"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+    const colRef = collection(db, "answers");
+
+    // リアルタイム監視
+    onSnapshot(query(colRef, orderBy("time", "asc")), (snapshot) => {
+        const answers = snapshot.docs.map(doc => doc.data().text);
+        document.getElementById('status').innerText = `現在 ${answers.length} 人が回答済み`;
+        
+        // 結果表示ボタンのクリックイベントを更新
+        document.getElementById('revealBtn').onclick = () => {
+            if (answers.length === 0) return alert("まだ誰も回答していません");
+            
+            const isMatch = answers.every(v => v === answers[0]);
+            let html = "<div>" + answers.map(a => `<span class="answer-tag">${a}</span>`).join("") + "</div>";
+            html += isMatch ? `<div class="match-msg">全員一致！✨</div>` : `<div class="miss-msg">不一致...💦</div>`;
+            document.getElementById('resultArea').innerHTML = html;
+        };
+    });
+
+    // 回答送信
+    document.getElementById('sendBtn').onclick = async () => {
+        const input = document.getElementById('answerInput');
+        const val = input.value.trim();
+        if (val) {
+            await addDoc(colRef, { text: val, time: Date.now() });
+            input.value = "";
+            input.placeholder = "送信完了！結果を待機中...";
+        }
+    };
+
+    // リセット処理（Firestoreのドキュメントを全削除）
+    document.getElementById('resetBtn').onclick = async () => {
+        if (!confirm("回答データをすべて消去して、新しいゲームを開始しますか？")) return;
+        
+        const snapshot = await getDocs(colRef);
+        const batch = writeBatch(db);
+        snapshot.docs.forEach((doc) => batch.delete(doc.ref));
+        await batch.commit();
+        
+        document.getElementById('resultArea').innerHTML = "";
+        document.getElementById('answerInput').placeholder = "回答を入力してください";
+        alert("リセット完了！");
+    };
+</script>
+
+</body>
+</html>
