@@ -1,52 +1,70 @@
-<!DOCTYPE html>
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>リアルタイム全員一致ゲーム</title>
     <style>
+        /* CSSはそのまま継承しつつ、お題用スタイルを追加 */
         body { font-family: 'Helvetica Neue', Arial, sans-serif; text-align: center; background: #f0f2f5; padding: 20px; color: #333; }
         .card { background: white; padding: 30px; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); max-width: 450px; margin: auto; }
-        h1 { font-size: 1.5rem; color: #1a73e8; }
-        input { width: 100%; padding: 12px; box-sizing: border-box; margin: 15px 0; border: 2px solid #ddd; border-radius: 10px; font-size: 16px; outline: none; }
+        h1 { font-size: 1.5rem; color: #1a73e8; margin-bottom: 10px; }
+        .setup-section { margin-bottom: 15px; padding-bottom: 10px; border-bottom: 1px solid #eee; }
+        .odai-display { background: #fff9c4; padding: 15px; border-radius: 10px; margin: 15px 0; font-weight: bold; font-size: 1.2rem; border: 2px solid #fbc02d; color: #856404; min-height: 1.2rem; }
+        input { width: 100%; padding: 12px; box-sizing: border-box; margin: 10px 0; border: 2px solid #ddd; border-radius: 10px; font-size: 16px; outline: none; }
         input:focus { border-color: #1a73e8; }
         .btn-group { display: flex; flex-direction: column; gap: 10px; }
         button { width: 100%; padding: 12px; border: none; border-radius: 10px; cursor: pointer; font-size: 16px; font-weight: bold; transition: 0.3s; }
         #sendBtn { background: #1a73e8; color: white; }
-        #revealBtn { background: #34a853; color: white; }
+        #setOdaiBtn { background: #6c757d; color: white; font-size: 14px; margin-bottom: 10px; }
+        #revealBtn { background: #34a853; color: white; display: none; }
         #resetBtn { background: #ea4335; color: white; margin-top: 20px; font-size: 12px; opacity: 0.7; }
         button:hover { opacity: 0.8; transform: translateY(-1px); }
-        #status { margin: 20px 0; font-size: 1.1rem; font-weight: bold; }
+        #status { margin: 15px 0; font-size: 1.1rem; font-weight: bold; }
         .result-box { margin-top: 20px; padding: 15px; border-top: 2px dashed #ddd; }
-        .answer-tag { display: inline-block; background: #e8f0fe; color: #1a73e8; padding: 5px 15px; border-radius: 20px; margin: 5px; font-weight: bold; }
-        .match-msg { color: #34a853; font-size: 1.8rem; margin-top: 10px; }
-        .miss-msg { color: #ea4335; font-size: 1.8rem; margin-top: 10px; }
+        .answer-item { display: flex; justify-content: space-between; background: #e8f0fe; color: #1a73e8; padding: 8px 15px; border-radius: 10px; margin: 5px; font-weight: bold; }
+        .name-label { font-size: 0.8rem; color: #666; margin-right: 10px; }
+        .match-msg { color: #34a853; font-size: 1.8rem; margin-top: 10px; font-weight: bold; }
+        .miss-msg { color: #ea4335; font-size: 1.8rem; margin-top: 10px; font-weight: bold; }
+        .pass-section { margin-top: 15px; font-size: 0.9rem; background: #fff3cd; padding: 10px; border-radius: 10px; }
     </style>
 </head>
 <body>
 
 <div class="card">
     <h1>全員一致ゲーム</h1>
+
+    <!-- 名前設定 -->
+    <div class="setup-section">
+        <input type="text" id="userName" placeholder="あなたの名前">
+    </div>
+
+    <!-- お題表示・入力エリア -->
+    <div id="odaiDisplay" class="odai-display">お題を待っています...</div>
+    <input type="text" id="odaiInput" placeholder="新しいお題を入力">
+    <button id="setOdaiBtn">お題を全員に送信</button>
+
     <div id="status">接続中...</div>
     
     <input type="text" id="answerInput" placeholder="回答を入力してください">
     
     <div class="btn-group">
-        <button id="sendBtn">回答を送信</button>
+        <button id="sendBtn">回答を送信/上書き</button>
+        <div class="pass-section" id="passArea">
+            キー(0084)を入力して結果を見る：
+            <input type="password" id="passInput" placeholder="Key..." style="margin: 5px 0;">
+        </div>
         <button id="revealBtn">結果を見る</button>
     </div>
 
     <div id="resultArea" class="result-box"></div>
-    
-    <button id="resetBtn">データをリセット（次の問題へ）</button>
+    <button id="resetBtn">すべてリセットして次へ</button>
 </div>
 
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-    import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, getDocs, writeBatch } 
+    import { getFirestore, collection, setDoc, doc, onSnapshot, query, orderBy, getDocs, writeBatch, deleteDoc } 
         from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-    // あなたの設定を適用しました
     const firebaseConfig = {
         apiKey: "AIzaSyD5ZZ0LKTthtZ3WbZ-rKpocumbalrYBuHU",
         authDomain: "zenin-itchi-game.firebaseapp.com",
@@ -60,48 +78,84 @@
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
     const colRef = collection(db, "answers");
+    const odaiDocRef = doc(db, "config", "current_odai"); // お題用の保存場所
 
-    // リアルタイム監視
+    // --- 名前保存 ---
+    const nameInput = document.getElementById('userName');
+    if (localStorage.getItem('zenin_itchi_name')) nameInput.value = localStorage.getItem('zenin_itchi_name');
+    nameInput.addEventListener('change', () => localStorage.setItem('zenin_itchi_name', nameInput.value));
+
+    // --- お題のリアルタイム監視 ---
+    onSnapshot(odaiDocRef, (docSnap) => {
+        if (docSnap.exists()) {
+            document.getElementById('odaiDisplay').innerText = "お題：" + docSnap.data().text;
+        } else {
+            document.getElementById('odaiDisplay').innerText = "お題を待っています...";
+        }
+    });
+
+    // --- お題を送信する ---
+    document.getElementById('setOdaiBtn').onclick = async () => {
+        const text = document.getElementById('odaiInput').value.trim();
+        if (text) {
+            await setDoc(odaiDocRef, { text: text });
+            document.getElementById('odaiInput').value = "";
+        }
+    };
+
+    // --- パスワード監視 ---
+    const passInput = document.getElementById('passInput');
+    const revealBtn = document.getElementById('revealBtn');
+    passInput.addEventListener('input', () => {
+        if (passInput.value === "0084") {
+            revealBtn.style.display = "block";
+            document.getElementById('passArea').style.display = "none";
+        }
+    });
+
+    // --- 回答のリアルタイム監視 ---
     onSnapshot(query(colRef, orderBy("time", "asc")), (snapshot) => {
-        const answers = snapshot.docs.map(doc => doc.data().text);
-        document.getElementById('status').innerText = `現在 ${answers.length} 人が回答済み`;
+        const data = snapshot.docs.map(doc => doc.data());
+        document.getElementById('status').innerText = `現在 ${data.length} 人が回答済み`;
         
-        // 結果表示ボタンのクリックイベントを更新
-        document.getElementById('revealBtn').onclick = () => {
-            if (answers.length === 0) return alert("まだ誰も回答していません");
-            
+        revealBtn.onclick = () => {
+            if (data.length === 0) return alert("まだ誰も回答していません");
+            const answers = data.map(d => d.text);
             const isMatch = answers.every(v => v === answers[0]);
-            let html = "<div>" + answers.map(a => `<span class="answer-tag">${a}</span>`).join("") + "</div>";
+            let html = "<div>" + data.map(d => `
+                <div class="answer-item">
+                    <span class="name-label">${d.name}</span>
+                    <span>${d.text}</span>
+                </div>`).join("") + "</div>";
             html += isMatch ? `<div class="match-msg">全員一致！✨</div>` : `<div class="miss-msg">不一致...💦</div>`;
             document.getElementById('resultArea').innerHTML = html;
         };
     });
 
-    // 回答送信
+    // --- 回答送信 ---
     document.getElementById('sendBtn').onclick = async () => {
-        const input = document.getElementById('answerInput');
-        const val = input.value.trim();
-        if (val) {
-            await addDoc(colRef, { text: val, time: Date.now() });
-            input.value = "";
-            input.placeholder = "送信完了！結果を待機中...";
-        }
+        const name = nameInput.value.trim();
+        const text = document.getElementById('answerInput').value.trim();
+        if (!name || !text) return alert("名前と回答を入力してください");
+        await setDoc(doc(db, "answers", name), { name: name, text: text, time: Date.now() });
+        document.getElementById('answerInput').value = "";
+        alert("送信しました！");
     };
 
-    // リセット処理（Firestoreのドキュメントを全削除）
+    // --- リセット ---
     document.getElementById('resetBtn').onclick = async () => {
-        if (!confirm("回答データをすべて消去して、新しいゲームを開始しますか？")) return;
-        
-        const snapshot = await getDocs(colRef);
+        if (!confirm("お題と回答をすべてリセットしますか？")) return;
         const batch = writeBatch(db);
-        snapshot.docs.forEach((doc) => batch.delete(doc.ref));
+        const snapshot = await getDocs(colRef);
+        snapshot.docs.forEach((d) => batch.delete(d.ref));
+        batch.delete(odaiDocRef); // お題も消す
         await batch.commit();
         
         document.getElementById('resultArea').innerHTML = "";
-        document.getElementById('answerInput').placeholder = "回答を入力してください";
-        alert("リセット完了！");
+        passInput.value = "";
+        revealBtn.style.display = "none";
+        document.getElementById('passArea').style.display = "block";
     };
 </script>
-
 </body>
 </html>
