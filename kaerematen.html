@@ -3,51 +3,53 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>全員一致ゲーム・オンライン</title>
+    <title>全員一致ゲーム（ルーム機能付き）</title>
     <style>
         :root { --primary: #1a73e8; --success: #34a853; --danger: #ea4335; --admin: #fff3cd; }
         body { font-family: 'Helvetica Neue', Arial, sans-serif; text-align: center; background: #f0f2f5; padding: 20px; color: #333; }
         .card { background: white; padding: 25px; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); max-width: 450px; margin: auto; }
-        h1 { font-size: 1.5rem; color: var(--primary); margin: 0 0 10px; }
+        h1 { font-size: 1.5rem; color: var(--primary); margin: 0; }
+        .room-label { font-size: 0.8rem; background: #eee; padding: 2px 10px; border-radius: 10px; margin-bottom: 10px; display: inline-block; }
         
-        /* モード表示 */
-        .mode-badge { display: inline-block; padding: 6px 16px; border-radius: 20px; font-weight: bold; margin-bottom: 15px; font-size: 0.85rem; transition: 0.3s; }
+        .mode-badge { display: inline-block; padding: 6px 16px; border-radius: 20px; font-weight: bold; margin-bottom: 15px; font-size: 0.85rem; }
         .mode-match { background: #e8f0fe; color: var(--primary); }
         .mode-unmatch { background: #fce4ec; color: #d81b60; }
 
-        /* お題・入力エリア */
         .odai-display { background: #fff9c4; padding: 15px; border-radius: 12px; margin: 15px 0; font-weight: bold; font-size: 1.1rem; border: 2px solid #fbc02d; color: #856404; min-height: 1.5rem; }
-        input { width: 100%; padding: 12px; box-sizing: border-box; margin: 8px 0; border: 2px solid #ddd; border-radius: 10px; font-size: 16px; outline: none; transition: 0.2s; }
-        input:focus { border-color: var(--primary); }
-        
-        /* ボタン */
-        button { width: 100%; padding: 12px; border: none; border-radius: 10px; cursor: pointer; font-size: 16px; font-weight: bold; transition: 0.2s; margin-top: 5px; }
-        button:active { transform: scale(0.98); }
+        input { width: 100%; padding: 12px; box-sizing: border-box; margin: 8px 0; border: 2px solid #ddd; border-radius: 10px; font-size: 16px; outline: none; }
+        button { width: 100%; padding: 12px; border: none; border-radius: 10px; cursor: pointer; font-size: 16px; font-weight: bold; margin-top: 5px; }
         #sendBtn { background: var(--primary); color: white; }
         #setOdaiBtn { background: #6c757d; color: white; }
         
-        /* 管理パネル */
         #adminPanel { display: none; background: var(--admin); padding: 15px; border-radius: 15px; margin-top: 20px; border: 1px solid #ffeeba; text-align: left; }
-        .admin-title { font-size: 0.75rem; font-weight: bold; color: #856404; margin-bottom: 8px; display: block; text-align: center; }
         .admin-btn { font-size: 14px; margin-bottom: 5px; }
         #modeBtn { background: #9c27b0; color: white; }
         #revealBtn { background: var(--success); color: white; }
         #resetBtn { background: var(--danger); color: white; margin-top: 10px; }
 
-        /* 回答表示 */
-        #status { margin: 15px 0; font-weight: bold; font-size: 0.9rem; color: #666; }
         .answer-item { display: flex; justify-content: space-between; background: #f8f9fa; border: 1px solid #eee; padding: 10px 15px; border-radius: 10px; margin: 6px 0; font-weight: bold; }
-        .pass-section { margin-top: 20px; font-size: 0.85rem; color: #999; }
+        #setupArea { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #f0f2f5; display: flex; align-items: center; justify-content: center; z-index: 100; }
     </style>
 </head>
 <body>
 
-<div class="card">
-    <h1>全員一致ゲーム</h1>
-    <div id="modeDisplay" class="mode-badge mode-match">読込中...</div>
+<!-- 入室画面 -->
+<div id="setupArea">
+    <div class="card">
+        <h1>全員一致ゲーム</h1>
+        <p style="font-size: 0.9rem; color: #666;">合言葉を決めて入室してください</p>
+        <input type="text" id="roomInput" placeholder="合言葉 (例: チームA)">
+        <input type="text" id="nameInputInitial" placeholder="あなたの名前">
+        <button id="joinBtn" style="background: var(--primary); color: white;">入室する</button>
+    </div>
+</div>
 
-    <input type="text" id="userName" placeholder="あなたの名前">
-    
+<!-- ゲーム画面 -->
+<div class="card">
+    <div id="currentRoomLabel" class="room-label">合言葉: -</div>
+    <h1>全員一致ゲーム</h1>
+    <div id="modeDisplay" class="mode-badge mode-match">待機中...</div>
+
     <div id="odaiDisplay" class="odai-display">お題を待っています...</div>
     
     <div id="odaiInputArea">
@@ -57,27 +59,25 @@
 
     <div id="status">接続中...</div>
     <input type="text" id="answerInput" placeholder="回答を入力してください">
-    <button id="sendBtn">回答を送信 / 上書き</button>
+    <button id="sendBtn">回答を送信</button>
 
     <div id="resultArea"></div>
 
-    <!-- 管理者エリア -->
     <div id="adminPanel">
-        <span class="admin-title">管理者専用メニュー</span>
         <button id="modeBtn" class="admin-btn">モード切替（一致 ⇔ 不一致）</button>
-        <button id="revealBtn" class="admin-btn">結果を全員の画面に公開！</button>
-        <button id="resetBtn" class="admin-btn">全データをリセットして次へ</button>
+        <button id="revealBtn" class="admin-btn">結果を全員に公開！</button>
+        <button id="resetBtn" class="admin-btn">全リセット</button>
     </div>
 
-    <div class="pass-section" id="passArea">
-        キー入力で管理メニュー表示
-        <input type="password" id="passInput" placeholder="Key..." style="margin-top:5px; height: 35px; font-size: 14px;">
+    <div id="passArea" style="margin-top:20px; font-size: 0.8rem; color: #999;">
+        管理キーでメニュー表示
+        <input type="password" id="passInput" placeholder="Key..." style="height:30px;">
     </div>
 </div>
 
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-    import { getFirestore, collection, setDoc, doc, onSnapshot, query, orderBy, getDocs, writeBatch } 
+    import { getFirestore, collection, setDoc, doc, onSnapshot, query, orderBy, getDocs, writeBatch, deleteDoc } 
         from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
     const firebaseConfig = {
@@ -92,85 +92,91 @@
 
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
-    const colRef = collection(db, "answers");
-    const configDocRef = doc(db, "config", "main");
 
-    // 名前保持
-    const nameInput = document.getElementById('userName');
-    if (localStorage.getItem('zenin_itchi_name')) nameInput.value = localStorage.getItem('zenin_itchi_name');
-    nameInput.addEventListener('change', () => localStorage.setItem('zenin_itchi_name', nameInput.value));
-
+    let roomId = "";
+    let userName = "";
     let currentMode = "match";
 
-    // リアルタイム同期
-    onSnapshot(configDocRef, (docSnap) => {
-        if (!docSnap.exists()) {
-            setDoc(configDocRef, { mode: "match", revealed: false, text: "" });
-            return;
-        }
-        const config = docSnap.data();
-        currentMode = config.mode;
+    // 入室処理
+    document.getElementById('joinBtn').onclick = () => {
+        roomId = document.getElementById('roomInput').value.trim();
+        userName = document.getElementById('nameInputInitial').value.trim();
+        if (!roomId || !userName) return alert("合言葉と名前を入力してください");
         
-        // UI更新
-        document.getElementById('modeDisplay').innerText = config.mode === "unmatch" ? "ミッション：全員バラバラにせよ！" : "ミッション：全員一致させよ！";
-        document.getElementById('modeDisplay').className = config.mode === "unmatch" ? "mode-badge mode-unmatch" : "mode-badge mode-match";
-        document.getElementById('odaiDisplay').innerText = config.text ? `お題：${config.text}` : "お題を待っています...";
-        document.getElementById('odaiInputArea').style.display = config.text ? "none" : "block";
+        document.getElementById('setupArea').style.display = "none";
+        document.getElementById('currentRoomLabel').innerText = `合言葉: ${roomId} / 名前: ${userName}`;
+        startGame();
+    };
 
-        // 回答同期
-        onSnapshot(query(colRef, orderBy("time", "asc")), (snapshot) => {
-            const answersData = snapshot.docs.map(doc => doc.data());
-            document.getElementById('status').innerText = `現在 ${answersData.length} 人が回答済み`;
-            
-            if (config.revealed) {
-                const answers = answersData.map(d => d.text);
-                let isSuccess = false;
-                if (config.mode === "unmatch") {
-                    isSuccess = answers.length > 0 && (new Set(answers)).size === answers.length;
-                } else {
-                    isSuccess = answers.length > 0 && answers.every(v => v === answers[0]);
-                }
+    function startGame() {
+        // 保存先を「rooms / 合言葉 / ...」に変更
+        const configRef = doc(db, "rooms", roomId, "settings", "main");
+        const answersRef = collection(db, "rooms", roomId, "answers");
 
-                let html = answersData.map(d => `<div class="answer-item"><span>${d.name}</span><span>${d.text}</span></div>`).join("");
-                html += isSuccess ? `<h2 style="color:var(--success)">SUCCESS！✨</h2>` : `<h2 style="color:var(--danger)">FAILED...💦</h2>`;
-                document.getElementById('resultArea').innerHTML = html;
-            } else {
-                document.getElementById('resultArea').innerHTML = "";
+        // リアルタイム同期
+        onSnapshot(configRef, (docSnap) => {
+            if (!docSnap.exists()) {
+                setDoc(configRef, { mode: "match", revealed: false, text: "" });
+                return;
             }
-        });
-    });
+            const config = docSnap.data();
+            currentMode = config.mode;
+            
+            document.getElementById('modeDisplay').innerText = config.mode === "unmatch" ? "ミッション：全員バラバラ" : "ミッション：全員一致";
+            document.getElementById('modeDisplay').className = config.mode === "unmatch" ? "mode-badge mode-unmatch" : "mode-badge mode-match";
+            document.getElementById('odaiDisplay').innerText = config.text ? `お題：${config.text}` : "お題を待っています...";
+            document.getElementById('odaiInputArea').style.display = config.text ? "none" : "block";
 
-    // キー入力でパネル解禁
+            onSnapshot(query(answersRef, orderBy("time", "asc")), (snapshot) => {
+                const answersData = snapshot.docs.map(doc => doc.data());
+                document.getElementById('status').innerText = `現在 ${answersData.length} 人回答済み`;
+                
+                if (config.revealed) {
+                    const answers = answersData.map(d => d.text);
+                    let isSuccess = (config.mode === "unmatch") 
+                        ? answers.length > 0 && (new Set(answers)).size === answers.length
+                        : answers.length > 0 && answers.every(v => v === answers[0]);
+
+                    let html = answersData.map(d => `<div class="answer-item"><span>${d.name}</span><span>${d.text}</span></div>`).join("");
+                    html += isSuccess ? `<h2 style="color:var(--success)">SUCCESS！✨</h2>` : `<h2 style="color:var(--danger)">FAILED...💦</h2>`;
+                    document.getElementById('resultArea').innerHTML = html;
+                } else {
+                    document.getElementById('resultArea').innerHTML = "";
+                }
+            });
+        });
+
+        // ボタンイベント（roomId/refsを使用するように修正）
+        document.getElementById('setOdaiBtn').onclick = () => {
+            const val = document.getElementById('odaiInput').value.trim();
+            if(val) setDoc(configRef, { text: val }, { merge: true });
+        };
+        document.getElementById('modeBtn').onclick = () => setDoc(configRef, { mode: currentMode === "match" ? "unmatch" : "match" }, { merge: true });
+        document.getElementById('revealBtn').onclick = () => setDoc(configRef, { revealed: true }, { merge: true });
+        document.getElementById('sendBtn').onclick = () => {
+            const text = document.getElementById('answerInput').value.trim();
+            if (text) setDoc(doc(db, "rooms", roomId, "answers", userName), { name: userName, text, time: Date.now() });
+            document.getElementById('answerInput').value = "";
+            alert("送信しました");
+        };
+
+        document.getElementById('resetBtn').onclick = async () => {
+            if (!confirm("リセットしますか？")) return;
+            const snap = await getDocs(answersRef);
+            const batch = writeBatch(db);
+            snap.docs.forEach(d => batch.delete(d.ref));
+            batch.set(configRef, { text: "", revealed: false, mode: "match" });
+            await batch.commit();
+        };
+    }
+
+    // 管理パネル表示
     document.getElementById('passInput').addEventListener('input', (e) => {
         if (e.target.value === "0001") {
             document.getElementById('adminPanel').style.display = "block";
             document.getElementById('passArea').style.display = "none";
         }
     });
-
-    // 各種アクション
-    document.getElementById('setOdaiBtn').onclick = () => {
-        const val = document.getElementById('odaiInput').value.trim();
-        if(val) setDoc(configDocRef, { text: val }, { merge: true });
-    };
-    document.getElementById('modeBtn').onclick = () => setDoc(configDocRef, { mode: currentMode === "match" ? "unmatch" : "match" }, { merge: true });
-    document.getElementById('revealBtn').onclick = () => setDoc(configDocRef, { revealed: true }, { merge: true });
-    document.getElementById('sendBtn').onclick = () => {
-        const name = nameInput.value.trim();
-        const text = document.getElementById('answerInput').value.trim();
-        if (name && text) setDoc(doc(db, "answers", name), { name, text, time: Date.now() });
-        document.getElementById('answerInput').value = "";
-    };
-
-    document.getElementById('resetBtn').onclick = async () => {
-        if (!confirm("全てのデータを消去して次の問題へ行きますか？")) return;
-        const batch = writeBatch(db);
-        const snap = await getDocs(colRef);
-        snap.docs.forEach(d => batch.delete(d.ref));
-        batch.set(configDocRef, { text: "", revealed: false, mode: "match" });
-        await batch.commit();
-        location.reload(); 
-    };
 </script>
 </body>
 </html>
