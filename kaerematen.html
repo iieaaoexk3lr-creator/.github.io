@@ -1,10 +1,10 @@
+<!DOCTYPE html>
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>リアルタイム全員一致ゲーム</title>
+    <title>全員一致ゲーム</title>
     <style>
-        /* CSSはそのまま継承しつつ、お題用スタイルを追加 */
         body { font-family: 'Helvetica Neue', Arial, sans-serif; text-align: center; background: #f0f2f5; padding: 20px; color: #333; }
         .card { background: white; padding: 30px; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); max-width: 450px; margin: auto; }
         h1 { font-size: 1.5rem; color: #1a73e8; margin-bottom: 10px; }
@@ -33,15 +33,17 @@
 <div class="card">
     <h1>全員一致ゲーム</h1>
 
-    <!-- 名前設定 -->
     <div class="setup-section">
         <input type="text" id="userName" placeholder="あなたの名前">
     </div>
 
-    <!-- お題表示・入力エリア -->
     <div id="odaiDisplay" class="odai-display">お題を待っています...</div>
-    <input type="text" id="odaiInput" placeholder="新しいお題を入力">
-    <button id="setOdaiBtn">お題を全員に送信</button>
+    
+    <!-- お題入力エリア（条件によって隠れる） -->
+    <div id="odaiInputArea">
+        <input type="text" id="odaiInput" placeholder="新しいお題を入力">
+        <button id="setOdaiBtn">お題を全員に送信</button>
+    </div>
 
     <div id="status">接続中...</div>
     
@@ -50,7 +52,7 @@
     <div class="btn-group">
         <button id="sendBtn">回答を送信/上書き</button>
         <div class="pass-section" id="passArea">
-            キー(0084)を入力して結果を見る：
+            キーを入力して結果を見る：
             <input type="password" id="passInput" placeholder="Key..." style="margin: 5px 0;">
         </div>
         <button id="revealBtn">結果を見る</button>
@@ -62,7 +64,7 @@
 
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-    import { getFirestore, collection, setDoc, doc, onSnapshot, query, orderBy, getDocs, writeBatch, deleteDoc } 
+    import { getFirestore, collection, setDoc, doc, onSnapshot, query, orderBy, getDocs, writeBatch } 
         from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
     const firebaseConfig = {
@@ -78,23 +80,25 @@
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
     const colRef = collection(db, "answers");
-    const odaiDocRef = doc(db, "config", "current_odai"); // お題用の保存場所
+    const odaiDocRef = doc(db, "config", "current_odai");
 
-    // --- 名前保存 ---
+    // 名前保存
     const nameInput = document.getElementById('userName');
     if (localStorage.getItem('zenin_itchi_name')) nameInput.value = localStorage.getItem('zenin_itchi_name');
     nameInput.addEventListener('change', () => localStorage.setItem('zenin_itchi_name', nameInput.value));
 
-    // --- お題のリアルタイム監視 ---
+    // お題監視とお題入力欄の制御
     onSnapshot(odaiDocRef, (docSnap) => {
+        const inputArea = document.getElementById('odaiInputArea');
         if (docSnap.exists()) {
             document.getElementById('odaiDisplay').innerText = "お題：" + docSnap.data().text;
+            inputArea.style.display = "none"; // お題がある時は入力欄を隠す
         } else {
             document.getElementById('odaiDisplay').innerText = "お題を待っています...";
+            inputArea.style.display = "block"; // お題がない時は表示する
         }
     });
 
-    // --- お題を送信する ---
     document.getElementById('setOdaiBtn').onclick = async () => {
         const text = document.getElementById('odaiInput').value.trim();
         if (text) {
@@ -103,17 +107,15 @@
         }
     };
 
-    // --- パスワード監視 ---
     const passInput = document.getElementById('passInput');
     const revealBtn = document.getElementById('revealBtn');
     passInput.addEventListener('input', () => {
-        if (passInput.value === "0084") {
+        if (passInput.value === "0001") {
             revealBtn.style.display = "block";
             document.getElementById('passArea').style.display = "none";
         }
     });
 
-    // --- 回答のリアルタイム監視 ---
     onSnapshot(query(colRef, orderBy("time", "asc")), (snapshot) => {
         const data = snapshot.docs.map(doc => doc.data());
         document.getElementById('status').innerText = `現在 ${data.length} 人が回答済み`;
@@ -132,7 +134,6 @@
         };
     });
 
-    // --- 回答送信 ---
     document.getElementById('sendBtn').onclick = async () => {
         const name = nameInput.value.trim();
         const text = document.getElementById('answerInput').value.trim();
@@ -142,13 +143,12 @@
         alert("送信しました！");
     };
 
-    // --- リセット ---
     document.getElementById('resetBtn').onclick = async () => {
-        if (!confirm("お題と回答をすべてリセットしますか？")) return;
+        if (!confirm("すべてリセットしますか？")) return;
         const batch = writeBatch(db);
         const snapshot = await getDocs(colRef);
         snapshot.docs.forEach((d) => batch.delete(d.ref));
-        batch.delete(odaiDocRef); // お題も消す
+        batch.delete(odaiDocRef);
         await batch.commit();
         
         document.getElementById('resultArea').innerHTML = "";
