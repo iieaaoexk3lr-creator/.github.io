@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>リアルタイム全員一致/不一致ゲーム</title>
+    <title>全員一致/不一致ゲーム・完全同期版</title>
     <style>
         body { font-family: 'Helvetica Neue', Arial, sans-serif; text-align: center; background: #f0f2f5; padding: 20px; color: #333; }
         .card { background: white; padding: 30px; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); max-width: 450px; margin: auto; }
@@ -11,22 +11,15 @@
         .mode-badge { display: inline-block; padding: 5px 15px; border-radius: 15px; font-weight: bold; margin-bottom: 10px; font-size: 0.9rem; }
         .mode-match { background: #e8f0fe; color: #1a73e8; }
         .mode-unmatch { background: #fce4ec; color: #d81b60; }
-        .setup-section { margin-bottom: 15px; padding-bottom: 10px; border-bottom: 1px solid #eee; }
         .odai-display { background: #fff9c4; padding: 15px; border-radius: 10px; margin: 15px 0; font-weight: bold; font-size: 1.2rem; border: 2px solid #fbc02d; color: #856404; min-height: 1.2rem; }
         input { width: 100%; padding: 12px; box-sizing: border-box; margin: 10px 0; border: 2px solid #ddd; border-radius: 10px; font-size: 16px; outline: none; }
-        input:focus { border-color: #1a73e8; }
-        .btn-group { display: flex; flex-direction: column; gap: 10px; }
-        button { width: 100%; padding: 12px; border: none; border-radius: 10px; cursor: pointer; font-size: 16px; font-weight: bold; transition: 0.3s; }
+        button { width: 100%; padding: 12px; border: none; border-radius: 10px; cursor: pointer; font-size: 16px; font-weight: bold; transition: 0.3s; margin-top: 5px; }
         #sendBtn { background: #1a73e8; color: white; }
-        #setOdaiBtn { background: #6c757d; color: white; font-size: 14px; margin-bottom: 10px; }
+        #setOdaiBtn { background: #6c757d; color: white; }
+        #modeBtn { background: #9c27b0; color: white; display: none; }
         #revealBtn { background: #34a853; color: white; display: none; }
-        #modeBtn { background: #9c27b0; color: white; display: none; margin-bottom: 10px; }
         #resetBtn { background: #ea4335; color: white; margin-top: 20px; font-size: 12px; opacity: 0.7; }
-        #status { margin: 15px 0; font-size: 1.1rem; font-weight: bold; }
-        .result-box { margin-top: 20px; padding: 15px; border-top: 2px dashed #ddd; }
         .answer-item { display: flex; justify-content: space-between; background: #f8f9fa; border: 1px solid #eee; padding: 8px 15px; border-radius: 10px; margin: 5px; font-weight: bold; }
-        .match-msg { color: #34a853; font-size: 1.8rem; margin-top: 10px; font-weight: bold; }
-        .miss-msg { color: #ea4335; font-size: 1.8rem; margin-top: 10px; font-weight: bold; }
         .pass-section { margin-top: 15px; font-size: 0.9rem; background: #fff3cd; padding: 10px; border-radius: 10px; }
     </style>
 </head>
@@ -34,12 +27,9 @@
 
 <div class="card">
     <h1>全員一致ゲーム</h1>
-    <div id="modeDisplay" class="mode-badge mode-match">現在のモード：全員一致</div>
+    <div id="modeDisplay" class="mode-badge mode-match">読込中...</div>
 
-    <div class="setup-section">
-        <input type="text" id="userName" placeholder="あなたの名前">
-    </div>
-
+    <input type="text" id="userName" placeholder="あなたの名前">
     <div id="odaiDisplay" class="odai-display">お題を待っています...</div>
     
     <div id="odaiInputArea">
@@ -48,26 +38,25 @@
     </div>
 
     <div id="status">接続中...</div>
-    
     <input type="text" id="answerInput" placeholder="回答を入力してください">
     
     <div class="btn-group">
         <button id="sendBtn">回答を送信/上書き</button>
         <div class="pass-section" id="passArea">
-            管理用キー(0001)を入力：
-            <input type="password" id="passInput" placeholder="Key..." style="margin: 5px 0;">
+            管理用キーを入力：
+            <input type="password" id="passInput" placeholder="Key...">
         </div>
         <button id="modeBtn">モード切替（一致⇔不一致）</button>
         <button id="revealBtn">結果を全員に公開！</button>
     </div>
 
-    <div id="resultArea" class="result-box"></div>
-    <button id="resetBtn">すべてリセット</button>
+    <div id="resultArea"></div>
+    <button id="resetBtn">リセット(キー)</button>
 </div>
 
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-    import { getFirestore, collection, setDoc, doc, onSnapshot, query, orderBy, getDocs, writeBatch, updateDoc } 
+    import { getFirestore, collection, setDoc, doc, onSnapshot, query, orderBy, getDocs, writeBatch } 
         from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
     const firebaseConfig = {
@@ -83,48 +72,34 @@
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
     const colRef = collection(db, "answers");
-    const configDocRef = doc(db, "config", "game_config");
+    const configDocRef = doc(db, "config", "main"); // 参照先をシンプルに固定
 
-    // 初期設定（Firebaseに設定がない場合用）
-    async function initConfig() {
-        const snap = await getDocs(query(collection(db, "config")));
-        if (snap.empty) {
-            await setDoc(configDocRef, { mode: "match", revealed: false, text: "" });
-        }
-    }
-    initConfig();
-
-    // 名前保持
+    // --- 名前保持 ---
     const nameInput = document.getElementById('userName');
     if (localStorage.getItem('zenin_itchi_name')) nameInput.value = localStorage.getItem('zenin_itchi_name');
     nameInput.addEventListener('change', () => localStorage.setItem('zenin_itchi_name', nameInput.value));
 
-    // Firebaseの状態監視（お題、モード、公開状態）
+    // --- Firebase状態監視 ---
+    let currentMode = "match";
     onSnapshot(configDocRef, (docSnap) => {
-        if (!docSnap.exists()) return;
+        if (!docSnap.exists()) {
+            // データがなければ初期値を作成
+            setDoc(configDocRef, { mode: "match", revealed: false, text: "" });
+            return;
+        }
         const data = docSnap.data();
+        currentMode = data.mode;
         
-        // モード表示の更新
+        // モード表示更新
         const modeDisp = document.getElementById('modeDisplay');
-        if (data.mode === "unmatch") {
-            modeDisp.innerText = "現在のモード：全員不一致でクリア！";
-            modeDisp.className = "mode-badge mode-unmatch";
-        } else {
-            modeDisp.innerText = "現在のモード：全員一致でクリア！";
-            modeDisp.className = "mode-badge mode-match";
-        }
+        modeDisp.innerText = data.mode === "unmatch" ? "モード：全員不一致" : "モード：全員一致";
+        modeDisp.className = data.mode === "unmatch" ? "mode-badge mode-unmatch" : "mode-badge mode-match";
 
-        // お題表示の更新
-        const inputArea = document.getElementById('odaiInputArea');
-        if (data.text) {
-            document.getElementById('odaiDisplay').innerText = "お題：" + data.text;
-            inputArea.style.display = "none";
-        } else {
-            document.getElementById('odaiDisplay').innerText = "お題を待っています...";
-            inputArea.style.display = "block";
-        }
+        // お題表示更新
+        document.getElementById('odaiDisplay').innerText = data.text ? `お題：${data.text}` : "お題を待っています...";
+        document.getElementById('odaiInputArea').style.display = data.text ? "none" : "block";
 
-        // 回答のリアルタイム監視と判定
+        // 回答判定（ネストして常に最新データと同期）
         onSnapshot(query(colRef, orderBy("time", "asc")), (snapshot) => {
             const answersData = snapshot.docs.map(doc => doc.data());
             document.getElementById('status').innerText = `現在 ${answersData.length} 人が回答済み`;
@@ -132,22 +107,14 @@
             if (data.revealed) {
                 const answers = answersData.map(d => d.text);
                 let isSuccess = false;
-
                 if (data.mode === "unmatch") {
-                    // 全員不一致判定：回答のユニーク数と回答者数が同じなら成功
-                    const uniqueAnswers = new Set(answers);
-                    isSuccess = answers.length > 0 && uniqueAnswers.size === answers.length;
+                    isSuccess = answers.length > 0 && (new Set(answers)).size === answers.length;
                 } else {
-                    // 全員一致判定
                     isSuccess = answers.length > 0 && answers.every(v => v === answers[0]);
                 }
 
-                let html = "<div>" + answersData.map(d => `
-                    <div class="answer-item">
-                        <span style="font-size:0.8rem; color:#666;">${d.name}</span>
-                        <span>${d.text}</span>
-                    </div>`).join("") + "</div>";
-                html += isSuccess ? `<div class="match-msg">ミッション成功！✨</div>` : `<div class="miss-msg">ミッション失敗...💦</div>`;
+                let html = answersData.map(d => `<div class="answer-item"><span>${d.name}</span><span>${d.text}</span></div>`).join("");
+                html += isSuccess ? `<h2 style="color:green">成功！✨</h2>` : `<h2 style="color:red">失敗...💦</h2>`;
                 document.getElementById('resultArea').innerHTML = html;
             } else {
                 document.getElementById('resultArea').innerHTML = "";
@@ -155,61 +122,37 @@
         });
     });
 
-    // キー入力による管理ボタン表示
-    const passInput = document.getElementById('passInput');
-    const revealBtn = document.getElementById('revealBtn');
-    const modeBtn = document.getElementById('modeBtn');
-    passInput.addEventListener('input', () => {
-        if (passInput.value === "0001") {
-            revealBtn.style.display = "block";
-            modeBtn.style.display = "block";
+    // --- 管理用キー入力 ---
+    document.getElementById('passInput').addEventListener('input', (e) => {
+        if (e.target.value === "0001") {
+            document.getElementById('modeBtn').style.display = "block";
+            document.getElementById('revealBtn').style.display = "block";
             document.getElementById('passArea').style.display = "none";
         }
     });
 
-    // モード切替
-    modeBtn.onclick = async () => {
-        const docSnap = await getDocs(query(collection(db, "config")));
-        const currentMode = docSnap.docs[0].data().mode;
-        await updateDoc(configDocRef, { mode: currentMode === "match" ? "unmatch" : "match" });
+    // --- 各種ボタン処理 ---
+    document.getElementById('modeBtn').onclick = () => setDoc(configDocRef, { mode: currentMode === "match" ? "unmatch" : "match" }, { merge: true });
+    document.getElementById('setOdaiBtn').onclick = () => {
+        const val = document.getElementById('odaiInput').value.trim();
+        if(val) setDoc(configDocRef, { text: val }, { merge: true });
     };
-
-    // お題送信
-    document.getElementById('setOdaiBtn').onclick = async () => {
-        const text = document.getElementById('odaiInput').value.trim();
-        if (text) await updateDoc(configDocRef, { text: text });
-    };
-
-    // 結果公開
-    revealBtn.onclick = async () => {
-        await updateDoc(configDocRef, { revealed: true });
-    };
-
-    // 回答送信
-    document.getElementById('sendBtn').onclick = async () => {
+    document.getElementById('revealBtn').onclick = () => setDoc(configDocRef, { revealed: true }, { merge: true });
+    document.getElementById('sendBtn').onclick = () => {
         const name = nameInput.value.trim();
         const text = document.getElementById('answerInput').value.trim();
-        if (!name || !text) return alert("名前と回答を入力してください");
-        await setDoc(doc(db, "answers", name), { name: name, text: text, time: Date.now() });
-        alert("送信しました！");
+        if (name && text) setDoc(doc(db, "answers", name), { name, text, time: Date.now() });
+        document.getElementById('answerInput').value = "";
     };
 
-    // リセット
     document.getElementById('resetBtn').onclick = async () => {
-        const key = prompt("リセット用のキーを入力してください");
-        if (key !== "0001") return alert("キーが違います");
-
+        if (prompt("キーを入力") !== "0001") return;
         const batch = writeBatch(db);
-        const snapshot = await getDocs(colRef);
-        snapshot.docs.forEach((d) => batch.delete(d.ref));
-        batch.update(configDocRef, { text: "", revealed: false });
+        const snap = await getDocs(colRef);
+        snap.docs.forEach(d => batch.delete(d.ref));
+        batch.set(configDocRef, { text: "", revealed: false, mode: "match" });
         await batch.commit();
-        
-        passInput.value = "";
-        revealBtn.style.display = "none";
-        modeBtn.style.display = "none";
-        document.getElementById('passArea').style.display = "block";
-        alert("リセット完了！");
+        location.reload(); // 確実にリセットするためにリロード
     };
 </script>
 </body>
