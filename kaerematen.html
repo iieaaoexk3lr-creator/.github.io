@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>全員一致ゲーム</title>
+    <title>リアルタイム全員一致ゲーム</title>
     <style>
         body { font-family: 'Helvetica Neue', Arial, sans-serif; text-align: center; background: #f0f2f5; padding: 20px; color: #333; }
         .card { background: white; padding: 30px; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); max-width: 450px; margin: auto; }
@@ -39,7 +39,6 @@
 
     <div id="odaiDisplay" class="odai-display">お題を待っています...</div>
     
-    <!-- お題入力エリア（条件によって隠れる） -->
     <div id="odaiInputArea">
         <input type="text" id="odaiInput" placeholder="新しいお題を入力">
         <button id="setOdaiBtn">お題を全員に送信</button>
@@ -52,14 +51,14 @@
     <div class="btn-group">
         <button id="sendBtn">回答を送信/上書き</button>
         <div class="pass-section" id="passArea">
-            キーを入力して結果を見る：
+            キー(0001)を入力して結果を全員に公開：
             <input type="password" id="passInput" placeholder="Key..." style="margin: 5px 0;">
         </div>
-        <button id="revealBtn">結果を見る</button>
+        <button id="revealBtn">結果を全員に公開！</button>
     </div>
 
     <div id="resultArea" class="result-box"></div>
-    <button id="resetBtn">すべてリセットして次へ</button>
+    <button id="resetBtn">すべてリセット（要キー）</button>
 </div>
 
 <script type="module">
@@ -81,32 +80,31 @@
     const db = getFirestore(app);
     const colRef = collection(db, "answers");
     const odaiDocRef = doc(db, "config", "current_odai");
+    const stateDocRef = doc(db, "config", "game_state"); // ゲームの状態（公開フラグ）を保存
 
-    // 名前保存
+    // 名前保持
     const nameInput = document.getElementById('userName');
     if (localStorage.getItem('zenin_itchi_name')) nameInput.value = localStorage.getItem('zenin_itchi_name');
     nameInput.addEventListener('change', () => localStorage.setItem('zenin_itchi_name', nameInput.value));
 
-    // お題監視とお題入力欄の制御
+    // お題と入力欄の監視
     onSnapshot(odaiDocRef, (docSnap) => {
         const inputArea = document.getElementById('odaiInputArea');
         if (docSnap.exists()) {
             document.getElementById('odaiDisplay').innerText = "お題：" + docSnap.data().text;
-            inputArea.style.display = "none"; // お題がある時は入力欄を隠す
+            inputArea.style.display = "none";
         } else {
             document.getElementById('odaiDisplay').innerText = "お題を待っています...";
-            inputArea.style.display = "block"; // お題がない時は表示する
+            inputArea.style.display = "block";
         }
     });
 
     document.getElementById('setOdaiBtn').onclick = async () => {
         const text = document.getElementById('odaiInput').value.trim();
-        if (text) {
-            await setDoc(odaiDocRef, { text: text });
-            document.getElementById('odaiInput').value = "";
-        }
+        if (text) await setDoc(odaiDocRef, { text: text });
     };
 
+    // キー入力によるボタン表示
     const passInput = document.getElementById('passInput');
     const revealBtn = document.getElementById('revealBtn');
     passInput.addEventListener('input', () => {
@@ -116,45 +114,61 @@
         }
     });
 
-    onSnapshot(query(colRef, orderBy("time", "asc")), (snapshot) => {
-        const data = snapshot.docs.map(doc => doc.data());
-        document.getElementById('status').innerText = `現在 ${data.length} 人が回答済み`;
+    // ゲーム状態（結果公開中かどうか）と回答の監視
+    onSnapshot(stateDocRef, (stateSnap) => {
+        const isRevealed = stateSnap.exists() && stateSnap.data().revealed;
         
-        revealBtn.onclick = () => {
-            if (data.length === 0) return alert("まだ誰も回答していません");
-            const answers = data.map(d => d.text);
-            const isMatch = answers.every(v => v === answers[0]);
-            let html = "<div>" + data.map(d => `
-                <div class="answer-item">
-                    <span class="name-label">${d.name}</span>
-                    <span>${d.text}</span>
-                </div>`).join("") + "</div>";
-            html += isMatch ? `<div class="match-msg">全員一致！✨</div>` : `<div class="miss-msg">不一致...💦</div>`;
-            document.getElementById('resultArea').innerHTML = html;
-        };
+        onSnapshot(query(colRef, orderBy("time", "asc")), (snapshot) => {
+            const data = snapshot.docs.map(doc => doc.data());
+            document.getElementById('status').innerText = `現在 ${data.length} 人が回答済み`;
+            
+            // 公開フラグが立っていたら、全員の画面で結果を描画する
+            if (isRevealed) {
+                const answers = data.map(d => d.text);
+                const isMatch = answers.length > 0 && answers.every(v => v === answers[0]);
+                let html = "<div>" + data.map(d => `
+                    <div class="answer-item">
+                        <span class="name-label">${d.name}</span>
+                        <span>${d.text}</span>
+                    </div>`).join("") + "</div>";
+                html += isMatch ? `<div class="match-msg">全員一致！✨</div>` : `<div class="miss-msg">不一致...💦</div>`;
+                document.getElementById('resultArea').innerHTML = html;
+            } else {
+                document.getElementById('resultArea').innerHTML = "";
+            }
+        });
     });
 
+    // 結果を全員に公開するボタン
+    revealBtn.onclick = async () => {
+        await setDoc(stateDocRef, { revealed: true });
+    };
+
+    // 回答送信
     document.getElementById('sendBtn').onclick = async () => {
         const name = nameInput.value.trim();
         const text = document.getElementById('answerInput').value.trim();
         if (!name || !text) return alert("名前と回答を入力してください");
         await setDoc(doc(db, "answers", name), { name: name, text: text, time: Date.now() });
-        document.getElementById('answerInput').value = "";
         alert("送信しました！");
     };
 
+    // リセットボタン（キー認証付き）
     document.getElementById('resetBtn').onclick = async () => {
-        if (!confirm("すべてリセットしますか？")) return;
+        const key = prompt("リセット用のキーを入力してください");
+        if (key !== "0001") return alert("キーが違います");
+
         const batch = writeBatch(db);
         const snapshot = await getDocs(colRef);
         snapshot.docs.forEach((d) => batch.delete(d.ref));
         batch.delete(odaiDocRef);
+        batch.set(stateDocRef, { revealed: false }); // 公開状態を解除
         await batch.commit();
         
-        document.getElementById('resultArea').innerHTML = "";
         passInput.value = "";
         revealBtn.style.display = "none";
         document.getElementById('passArea').style.display = "block";
+        alert("リセット完了！次の問題へ。");
     };
 </script>
 </body>
