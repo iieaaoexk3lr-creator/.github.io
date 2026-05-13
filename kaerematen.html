@@ -3,87 +3,79 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>意思疎通ゲーム・プロ</title>
-    <!-- QRコード生成ライブラリの読み込み -->
+    <title>UNISON GAME | ユニゾン・ゲーム</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <style>
-        :root { --primary: #1a73e8; --success: #34a853; --danger: #ea4335; --admin: #fff3cd; }
-        body { font-family: 'Helvetica Neue', Arial, sans-serif; text-align: center; background: #f0f2f5; padding: 20px; color: #333; margin:0; }
-        .card { background: white; padding: 25px; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); max-width: 450px; margin: 10px auto; position: relative; }
-        h1 { font-size: 1.5rem; color: var(--primary); margin: 0; }
+        :root { --primary: #6200ea; --success: #00c853; --danger: #ff1744; --admin: #fff3cd; --accent: #00b0ff; }
+        body { font-family: 'Helvetica Neue', Arial, sans-serif; text-align: center; background: #121212; padding: 20px; color: #e0e0e0; margin:0; }
+        .card { background: #1e1e1e; padding: 25px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); max-width: 450px; margin: 10px auto; position: relative; border: 1px solid #333; }
+        h1 { font-size: 1.8rem; color: var(--accent); margin: 0; letter-spacing: 2px; text-transform: uppercase; }
         
         .mode-badge { display: inline-block; padding: 6px 16px; border-radius: 20px; font-weight: bold; margin-bottom: 10px; font-size: 0.85rem; }
         .mode-match { background: #e8f0fe; color: var(--primary); }
         .mode-unmatch { background: #fce4ec; color: #d81b60; }
 
-        .odai-display { background: #fff9c4; padding: 15px; border-radius: 12px; margin: 15px 0; font-weight: bold; font-size: 1.1rem; border: 2px solid #fbc02d; color: #856404; min-height: 1.5rem; }
+        .odai-display { background: #2a2a2a; padding: 15px; border-radius: 12px; margin: 15px 0; font-weight: bold; font-size: 1.1rem; border: 2px solid var(--accent); color: #fff; min-height: 1.5rem; }
         
-        /* お題選択エリア */
         .input-group { display: flex; gap: 5px; margin-bottom: 5px; }
-        select, input { padding: 10px; border: 2px solid #ddd; border-radius: 10px; font-size: 16px; box-sizing: border-box; }
-        .help-text { font-size: 0.75rem; color: #666; margin-bottom: 10px; text-align: left; }
+        select, input { padding: 12px; border: 1px solid #444; border-radius: 10px; font-size: 16px; box-sizing: border-box; background: #2c2c2c; color: white; }
+        .help-text { font-size: 0.75rem; color: #bbb; margin-bottom: 10px; text-align: left; }
         
         button { width: 100%; padding: 12px; border: none; border-radius: 10px; cursor: pointer; font-size: 14px; font-weight: bold; margin-top: 5px; transition: 0.2s; }
-        .icon-btn { width: 50px; background:#6c757d; color:white; margin:0; font-size: 1.2rem; display: flex; align-items: center; justify-content: center; }
-        #sendBtn { background: var(--primary); color: white; font-size: 18px; margin-top: 15px; }
+        .icon-btn { width: 50px; background:#444; color:white; margin:0; font-size: 1.2rem; display: flex; align-items: center; justify-content: center; }
+        #sendBtn { background: var(--primary); color: white; font-size: 18px; margin-top: 15px; box-shadow: 0 4px 15px rgba(98, 0, 234, 0.4); }
 
-        /* QRコードエリア */
-        .qr-container { margin-top: 20px; padding: 15px; background: #f9f9f9; border-radius: 15px; display: flex; flex-direction: column; align-items: center; }
-        #qrcode img { border: 5px solid white; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+        .qr-container { margin-top: 20px; padding: 15px; background: #fff; border-radius: 15px; display: flex; flex-direction: column; align-items: center; }
+        #qrcode { margin-top: 5px; }
 
-        /* セレクト用モーダル */
-        #odaiModal { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; width: 90%; max-width: 400px; height: 70vh; z-index: 200; border-radius: 20px; box-shadow: 0 0 20px rgba(0,0,0,0.3); padding: 20px; overflow-y: auto; }
-        .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 150; }
-        .odai-item { padding: 12px; border-bottom: 1px solid #eee; cursor: pointer; text-align: left; font-size: 14px; }
-        .odai-item:hover { background: #f0f7ff; }
+        #odaiModal { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #2c2c2c; width: 90%; max-width: 400px; height: 70vh; z-index: 200; border-radius: 20px; box-shadow: 0 0 30px rgba(0,0,0,0.7); padding: 20px; overflow-y: auto; color: white; }
+        .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 150; }
+        .odai-item { padding: 12px; border-bottom: 1px solid #444; cursor: pointer; text-align: left; font-size: 14px; }
+        .odai-item:hover { background: #3d3d3d; }
 
-        /* 管理者パネル */
-        #adminPanel { display: none; background: var(--admin); padding: 15px; border-radius: 15px; margin-top: 20px; border: 1px solid #ffeeba; text-align: left; }
-        .room-item { background: white; padding: 8px; border-radius: 8px; margin: 5px 0; display: flex; justify-content: space-between; align-items: center; border: 1px solid #ccc; font-size: 12px; }
+        #adminPanel { display: none; background: #333; padding: 15px; border-radius: 15px; margin-top: 20px; border: 1px solid #444; text-align: left; color: #eee; }
+        .room-item { background: #444; padding: 8px; border-radius: 8px; margin: 5px 0; display: flex; justify-content: space-between; align-items: center; font-size: 12px; }
         
-        #setupArea { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #f0f2f5; display: flex; align-items: center; justify-content: center; z-index: 100; overflow-y: auto; }
-        .answer-item { display: flex; justify-content: space-between; padding: 8px; border-bottom: 1px solid #eee; }
+        #setupArea { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #121212; display: flex; align-items: center; justify-content: center; z-index: 100; overflow-y: auto; }
+        .answer-item { display: flex; justify-content: space-between; padding: 10px; border-bottom: 1px solid #333; font-size: 1.1rem; }
     </style>
 </head>
 <body>
 
-<!-- お題選択モーダル -->
 <div id="modalOverlay" class="modal-overlay"></div>
 <div id="odaiModal">
-    <h3 id="modalTitle">リストからお題を選択</h3>
+    <h3>セットリスト（お題一覧）</h3>
     <div id="modalList"></div>
-    <button onclick="closeModal()" style="background:#ccc; margin-top:10px;">閉じる</button>
+    <button onclick="closeModal()" style="background:#555; margin-top:10px; color:white;">閉じる</button>
 </div>
 
 <div id="setupArea">
     <div class="card">
-        <h1>意思疎通ゲーム</h1>
-        <p style="font-size:0.8rem; color:#666;">合言葉を決めて友達と同じ部屋に入ろう</p>
-        <input type="text" id="roomInput" placeholder="部屋の合言葉（例：お正月）">
-        <input type="text" id="nameInputInitial" placeholder="あなたの名前">
-        <button id="joinBtn" style="background: var(--primary); color: white;">入室する</button>
-
-        <!-- QRコード表示エリア -->
+        <h1>UNISON GAME</h1>
+        <p style="font-size:0.8rem; color:#bbb; margin: 15px 0;">合言葉を揃えてステージへ入室</p>
+        <input type="text" id="roomInput" placeholder="部屋の合言葉">
+        <input type="text" id="nameInputInitial" placeholder="プレイヤー名">
+        <button id="joinBtn" style="background: var(--primary); color: white;">セッション開始</button>
         <div class="qr-container">
-            <span style="font-size:0.7rem; color:#888; margin-bottom:8px;">友達を招待（スキャンして開く）</span>
+            <span style="font-size:0.7rem; color:#333; margin-bottom:8px; font-weight:bold;">メンバーを招待</span>
             <div id="qrcode"></div>
         </div>
     </div>
 </div>
 
 <div class="card">
-    <div id="currentRoomLabel" style="font-size:0.7rem; color:#999;">部屋: -</div>
-    <div id="modeDisplay" class="mode-badge mode-match">全員一致</div>
+    <div id="currentRoomLabel" style="font-size:0.7rem; color:#777;">STAGE: -</div>
+    <div id="modeDisplay" class="mode-badge mode-match">MISSION: UNISON</div>
 
-    <div style="display:flex; justify-content:space-around; font-size:0.8rem; font-weight:bold; color:#666; margin:10px 0;">
-        <div>入室(10分以内): <span id="memberCount" style="color:var(--primary)">0</span>名</div>
-        <div>回答済み: <span id="answerCount" style="color:var(--primary)">0</span>名</div>
+    <div style="display:flex; justify-content:space-around; font-size:0.8rem; font-weight:bold; color:#aaa; margin:10px 0;">
+        <div>メンバー: <span id="memberCount" style="color:var(--accent)">0</span></div>
+        <div>マイクON: <span id="answerCount" style="color:var(--accent)">0</span></div>
     </div>
 
-    <div id="odaiDisplay" class="odai-display">お題を待っています...</div>
+    <div id="odaiDisplay" class="odai-display">イントロ待機中...</div>
     
     <div id="odaiInputArea">
-        <div class="help-text">💡 ジャンルを選んで 🎲 でおまかせ、📋 で一覧表示</div>
+        <div class="help-text">🎤 ジャンルを選んで 🎲 でおまかせ、📋 でリスト</div>
         <div class="input-group">
             <select id="genreSelect" style="flex: 1;">
                 <option value="all">全ジャンル</option>
@@ -94,37 +86,40 @@
                 <option value="カラオケ">カラオケ</option>
                 <option value="カスタム">カスタム</option>
             </select>
-            <button id="randomOdaiBtn" class="icon-btn" title="ランダムにお題を選ぶ">🎲</button>
-            <button id="listOdaiBtn" class="icon-btn" title="リストから選ぶ" style="background:var(--primary)">📋</button>
+            <button id="randomOdaiBtn" class="icon-btn">🎲</button>
+            <button id="listOdaiBtn" class="icon-btn" style="background:var(--primary)">📋</button>
         </div>
-        <input type="text" id="odaiInput" placeholder="お題を直接入力もOK">
-        <button id="setOdaiBtn" style="background:#444; color:white;">このお題でゲーム開始！</button>
+        <input type="text" id="odaiInput" placeholder="自由入力もOK">
+        <button id="setOdaiBtn" style="background:#444; color:white;">このお題で演奏開始！</button>
     </div>
 
-    <input type="text" id="answerInput" placeholder="あなたの回答を入力...">
-    <button id="sendBtn">回答を送信</button>
+    <input type="text" id="answerInput" placeholder="あなたの回答（フレーズ）">
+    <button id="sendBtn">アンサーを送信</button>
     <div id="resultArea" style="margin-top:20px;"></div>
 
-    <!-- 管理者パネル -->
     <div id="adminPanel">
-        <b>管理者メニュー</b>
+        <b>MASTER CONTROL</b>
         <div style="display:flex; gap:5px;">
-            <button id="modeBtn" style="background:#9c27b0; color:white; font-size:11px;">モード切替</button>
+            <button id="modeBtn" style="background:#444; color:white; font-size:11px;">UNISON / DISCORD 切替</button>
             <button id="revealBtn" style="background:var(--success); color:white; font-size:11px;">結果公開</button>
-            <button id="resetBtn" style="background:var(--danger); color:white; font-size:11px;">次へ（リセット）</button>
+            <button id="resetBtn" style="background:var(--danger); color:white; font-size:11px;">リセット</button>
         </div>
-        <div style="margin-top:15px; border-top:1px solid #ddd; padding-top:10px;">
-            <b>データベース管理</b> 
-            <button id="refreshRooms" style="width:auto; font-size:10px; padding:4px 10px; margin-bottom:10px;">全ルームをスキャン</button>
+        <div style="margin-top:15px; padding-top:10px; border-top:1px solid #555;">
+            <b>お題をレパートリーに保存</b>
+            <button id="saveMasterBtn" style="background:#6c757d; color:white; font-size:11px; padding:6px;">このお題をDB登録</button>
+        </div>
+        <div style="margin-top:15px; border-top:1px solid #555; padding-top:10px;">
+            <b>全ステージ監視</b> 
+            <button id="refreshRooms" style="width:auto; font-size:10px; padding:4px 10px;">スキャン</button>
             <div id="roomListArea"></div>
         </div>
     </div>
-    <div id="passArea" style="margin-top:20px;"><input type="password" id="passInput" placeholder="Admin..." style="height:25px; width:60px; font-size:10px;"></div>
+    <div id="passArea" style="margin-top:20px;"><input type="password" id="passInput" placeholder="..." style="height:20px; width:40px; font-size:10px; background:transparent; border:none; color:#333;"></div>
 </div>
 
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-    import { getFirestore, collection, setDoc, doc, onSnapshot, query, orderBy, getDocs, writeBatch, deleteDoc, where } 
+    import { getFirestore, collection, setDoc, addDoc, doc, onSnapshot, query, orderBy, getDocs, writeBatch, where } 
         from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
     const firebaseConfig = {
@@ -139,12 +134,7 @@
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
 
-    // QRコードの生成
-    new QRCode(document.getElementById("qrcode"), {
-        text: window.location.href,
-        width: 128,
-        height: 128
-    });
+    new QRCode(document.getElementById("qrcode"), { text: window.location.href, width: 100, height: 100 });
 
     let roomId = "";
     let userName = "";
@@ -154,10 +144,9 @@
     document.getElementById('joinBtn').onclick = async () => {
         roomId = document.getElementById('roomInput').value.trim();
         userName = document.getElementById('nameInputInitial').value.trim();
-        if (!roomId || !userName) return alert("合言葉と名前を入力してください");
+        if (!roomId || !userName) return alert("入力が必要です");
         document.getElementById('setupArea').style.display = "none";
-        document.getElementById('currentRoomLabel').innerText = `部屋: ${roomId} / プレイヤー: ${userName}`;
-        
+        document.getElementById('currentRoomLabel').innerText = `STAGE: ${roomId} / MEMBER: ${userName}`;
         await setDoc(doc(db, "rooms", roomId, "members", userName), { name: userName, lastSeen: Date.now() });
         startGame();
     };
@@ -182,9 +171,9 @@
             if (!docSnap.exists()) { setDoc(configRef, { mode: "match", revealed: false, text: "" }); return; }
             const config = docSnap.data();
             currentMode = config.mode;
-            document.getElementById('modeDisplay').innerText = config.mode === "unmatch" ? "ミッション：全員バラバラ" : "ミッション：全員一致";
+            document.getElementById('modeDisplay').innerText = config.mode === "unmatch" ? "MISSION: DISCORD (バラバラ)" : "MISSION: UNISON (全員一致)";
             document.getElementById('modeDisplay').className = config.mode === "unmatch" ? "mode-badge mode-unmatch" : "mode-badge mode-match";
-            document.getElementById('odaiDisplay').innerText = config.text ? `お題：${config.text}` : "お題を待っています...";
+            document.getElementById('odaiDisplay').innerText = config.text ? `お題：${config.text}` : "イントロ待機中...";
             document.getElementById('odaiInputArea').style.display = config.text ? "none" : "block";
 
             onSnapshot(query(answersRef, orderBy("time", "asc")), (snapshot) => {
@@ -193,14 +182,14 @@
                 if (config.revealed) {
                     const ansList = ansData.map(d => d.text);
                     let isOk = (config.mode === "unmatch") ? (ansList.length > 0 && (new Set(ansList)).size === ansList.length) : (ansList.length > 0 && ansList.every(v => v === ansList[0]));
-                    let html = ansData.map(d => `<div class="answer-item"><span>${d.name}</span><strong>${d.text}</strong></div>`).join("");
-                    html += isOk ? `<h2 style="color:var(--success); margin-top:20px;">SUCCESS！✨</h2>` : `<h2 style="color:var(--danger); margin-top:20px;">FAILED...💦</h2>`;
+                    let html = ansData.map(d => `<div class="answer-item"><span>${d.name}</span><b style="color:var(--accent)">${d.text}</b></div>`).join("");
+                    html += isOk ? `<h2 style="color:var(--success); margin-top:20px;">PERFECT HARMONY! ✨</h2>` : `<h2 style="color:var(--danger); margin-top:20px;">BAD DISCORD... 💦</h2>`;
                     document.getElementById('resultArea').innerHTML = html;
                 } else { document.getElementById('resultArea').innerHTML = ""; }
             });
         });
 
-        const getOdaiListFromDB = async () => {
+        const getOdaiList = async () => {
             const genre = document.getElementById('genreSelect').value;
             let q = collection(db, "master_odai");
             if (genre !== "all") q = query(q, where("category", "==", genre));
@@ -209,66 +198,56 @@
         };
 
         document.getElementById('randomOdaiBtn').onclick = async () => {
-            const list = await getOdaiListFromDB();
+            const list = await getOdaiList();
             if (list.length > 0) document.getElementById('odaiInput').value = list[Math.floor(Math.random() * list.length)];
-            else alert("お題がありません");
         };
 
         document.getElementById('listOdaiBtn').onclick = async () => {
-            const list = await getOdaiListFromDB();
-            if (list.length === 0) return alert("お題が見つかりませんでした");
+            const list = await getOdaiList();
             document.getElementById('modalList').innerHTML = list.map(t => `<div class="odai-item" onclick="selectOdai('${t}')">${t}</div>`).join("");
             document.getElementById('odaiModal').style.display = "block";
             document.getElementById('modalOverlay').style.display = "block";
         };
 
-        window.selectOdai = (text) => {
-            document.getElementById('odaiInput').value = text;
-            closeModal();
-        };
-
-        window.closeModal = () => {
-            document.getElementById('odaiModal').style.display = "none";
-            document.getElementById('modalOverlay').style.display = "none";
-        };
+        window.selectOdai = (text) => { document.getElementById('odaiInput').value = text; closeModal(); };
+        window.closeModal = () => { document.getElementById('odaiModal').style.display = "none"; document.getElementById('modalOverlay').style.display = "none"; };
 
         document.getElementById('setOdaiBtn').onclick = () => {
             const val = document.getElementById('odaiInput').value.trim();
-            if(!val) return alert("お題を選択してください");
+            if(!val) return;
             setDoc(configRef, { text: val, revealed: false }, { merge: true });
+        };
+
+        document.getElementById('saveMasterBtn').onclick = async () => {
+            const text = document.getElementById('odaiInput').value.trim();
+            const category = document.getElementById('genreSelect').value;
+            if(!text || category === "all") return alert("ジャンルを選んでください");
+            await addDoc(collection(db, "master_odai"), { text, category });
+            alert("DBにストックしました！");
         };
 
         document.getElementById('sendBtn').onclick = () => {
             const text = document.getElementById('answerInput').value.trim();
-            if (!text) return alert("回答を入力してください");
+            if (!text) return;
             setDoc(doc(db, "rooms", roomId, "answers", userName), { name: userName, text, time: Date.now() });
             document.getElementById('answerInput').value = "";
         };
 
         document.getElementById('refreshRooms').onclick = async () => {
-            const area = document.getElementById('roomListArea');
-            area.innerHTML = "読込中...";
             const roomsSnap = await getDocs(collection(db, "rooms"));
             let html = "";
-            const now = Date.now();
             for (const rDoc of roomsSnap.docs) {
-                const rName = rDoc.id;
-                const mSnap = await getDocs(collection(db, "rooms", rName, "members"));
-                let active = 0;
-                mSnap.forEach(m => { if (now - m.data().lastSeen < THRESHOLD) active++; });
-                html += `<div class="room-item" style="border-left:5px solid ${active > 0 ? 'var(--success)' : '#ccc'}">
-                    <span><b>${rName}</b> (${active}人活動中)</span>
-                    <button onclick="window.delRoom('${rName}')" style="width:auto; padding:4px; background:var(--danger); color:white; font-size:10px;">削除</button>
-                    </div>`;
+                html += `<div class="room-item"><span><b>${rDoc.id}</b></span><button onclick="window.delRoom('${rDoc.id}')" style="width:auto; padding:4px; background:var(--danger); color:white;">削除</button></div>`;
             }
-            area.innerHTML = html || "ルームなし";
+            document.getElementById('roomListArea').innerHTML = html;
         };
 
         window.delRoom = async (tid) => {
-            if(!confirm(`${tid}を削除しますか？`)) return;
+            if(!confirm("削除しますか？")) return;
             const batch = writeBatch(db);
-            for(const p of ["answers", "members", "settings"]){
-                const snap = await getDocs(collection(db, "rooms", tid, p));
+            const collections = ["answers", "members", "settings"];
+            for (const coll of collections) {
+                const snap = await getDocs(collection(db, "rooms", tid, coll));
                 snap.docs.forEach(d => batch.delete(d.ref));
             }
             batch.delete(doc(db, "rooms", tid));
@@ -290,7 +269,6 @@
     document.getElementById('passInput').addEventListener('input', (e) => {
         if (e.target.value === "0001") {
             document.getElementById('adminPanel').style.display = "block";
-            document.getElementById('passArea').style.display = "none";
         }
     });
 </script>
