@@ -9,108 +9,105 @@
         body { font-family: 'Helvetica Neue', Arial, sans-serif; text-align: center; background: #f0f2f5; padding: 20px; color: #333; margin:0; }
         .card { background: white; padding: 25px; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); max-width: 450px; margin: 10px auto; position: relative; }
         h1 { font-size: 1.5rem; color: var(--primary); margin: 0; }
-        .room-label { font-size: 0.7rem; color: #999; margin-bottom: 5px; }
         
         .mode-badge { display: inline-block; padding: 6px 16px; border-radius: 20px; font-weight: bold; margin-bottom: 10px; font-size: 0.85rem; }
         .mode-match { background: #e8f0fe; color: var(--primary); }
         .mode-unmatch { background: #fce4ec; color: #d81b60; }
 
-        .counter-box { display: flex; justify-content: space-around; margin: 10px 0; font-size: 0.85rem; font-weight: bold; color: #666; }
-        .counter-val { color: var(--primary); font-size: 1.2rem; }
-
         .odai-display { background: #fff9c4; padding: 15px; border-radius: 12px; margin: 15px 0; font-weight: bold; font-size: 1.1rem; border: 2px solid #fbc02d; color: #856404; min-height: 1.5rem; }
         
-        /* 入力エリア */
+        /* お題選択エリア */
         .input-group { display: flex; gap: 5px; margin-bottom: 5px; }
         select, input { padding: 10px; border: 2px solid #ddd; border-radius: 10px; font-size: 16px; box-sizing: border-box; }
-        input[type="text"] { width: 100%; }
         
         button { width: 100%; padding: 12px; border: none; border-radius: 10px; cursor: pointer; font-size: 14px; font-weight: bold; margin-top: 5px; transition: 0.2s; }
-        button:active { transform: scale(0.98); }
+        .icon-btn { width: 50px; background:#6c757d; color:white; margin:0; font-size: 1.2rem; }
         #sendBtn { background: var(--primary); color: white; font-size: 18px; margin-top: 15px; }
+
+        /* セレクト用モーダル */
+        #odaiModal { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; width: 90%; max-width: 400px; height: 70vh; z-index: 200; border-radius: 20px; box-shadow: 0 0 20px rgba(0,0,0,0.3); padding: 20px; overflow-y: auto; }
+        .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 150; }
+        .odai-item { padding: 12px; border-bottom: 1px solid #eee; cursor: pointer; text-align: left; font-size: 14px; }
+        .odai-item:hover { background: #f0f7ff; }
 
         /* 管理パネル */
         #adminPanel { display: none; background: var(--admin); padding: 15px; border-radius: 15px; margin-top: 20px; border: 1px solid #ffeeba; text-align: left; }
-        .admin-section { margin-top: 15px; border-top: 1px solid #ddd; padding-top: 10px; font-size: 12px; }
-        .room-item { background: white; padding: 8px; border-radius: 8px; margin: 5px 0; display: flex; justify-content: space-between; align-items: center; border: 1px solid #ccc; }
+        .room-item { background: white; padding: 8px; border-radius: 8px; margin: 5px 0; display: flex; justify-content: space-between; align-items: center; border: 1px solid #ccc; font-size: 12px; }
         
-        .answer-item { display: flex; justify-content: space-between; background: #f8f9fa; border: 1px solid #eee; padding: 10px 15px; border-radius: 10px; margin: 6px 0; font-weight: bold; }
         #setupArea { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #f0f2f5; display: flex; align-items: center; justify-content: center; z-index: 100; }
     </style>
 </head>
 <body>
 
+<!-- お題選択モーダル -->
+<div id="modalOverlay" class="modal-overlay"></div>
+<div id="odaiModal">
+    <h3 id="modalTitle">お題を選択</h3>
+    <div id="modalList"></div>
+    <button onclick="closeModal()" style="background:#ccc; margin-top:10px;">閉じる</button>
+</div>
+
 <div id="setupArea">
     <div class="card">
         <h1>全員一致ゲーム</h1>
-        <input type="text" id="roomInput" placeholder="合言葉を決める">
+        <input type="text" id="roomInput" placeholder="部屋の合言葉">
         <input type="text" id="nameInputInitial" placeholder="あなたの名前">
         <button id="joinBtn" style="background: var(--primary); color: white;">入室する</button>
     </div>
 </div>
 
 <div class="card">
-    <div id="currentRoomLabel" class="room-label">部屋: -</div>
-    <div id="modeDisplay" class="mode-badge mode-match">ミッション：全員一致</div>
+    <div id="currentRoomLabel" style="font-size:0.7rem; color:#999;">部屋: -</div>
+    <div id="modeDisplay" class="mode-badge mode-match">全員一致</div>
 
-    <div class="counter-box">
-        <div>入室中: <span id="memberCount" class="counter-val">0</span> 人</div>
-        <div>回答済み: <span id="answerCount" class="counter-val">0</span> 人</div>
+    <div style="display:flex; justify-content:space-around; font-size:0.8rem; font-weight:bold; color:#666; margin:10px 0;">
+        <div>入室: <span id="memberCount" style="color:var(--primary)">0</span></div>
+        <div>回答: <span id="answerCount" style="color:var(--primary)">0</span></div>
     </div>
 
     <div id="odaiDisplay" class="odai-display">お題を待っています...</div>
     
     <div id="odaiInputArea">
         <div class="input-group">
-            <select id="genreSelect" style="flex: 2;">
-                <option value="all">全ジャンル混合</option>
+            <select id="genreSelect" style="flex: 1;">
+                <option value="all">全ジャンル</option>
                 <option value="食べ物">食べ物</option>
                 <option value="飲み物">飲み物</option>
                 <option value="生き物">生き物</option>
                 <option value="日常">日常</option>
                 <option value="カラオケ">カラオケ</option>
-                <option value="カスタム">カスタム（追加枠）</option>
+                <option value="カスタム">カスタム</option>
             </select>
-            <button id="randomOdaiBtn" style="flex: 1; background:#6c757d; color:white; margin:0;">🎲</button>
+            <button id="randomOdaiBtn" class="icon-btn" title="ランダム">🎲</button>
+            <button id="listOdaiBtn" class="icon-btn" title="一覧から選ぶ" style="background:var(--primary)">📋</button>
         </div>
-        <input type="text" id="odaiInput" placeholder="お題を入力または🎲で選択">
-        <button id="setOdaiBtn" style="background:#444; color:white;">お題を決定して送信</button>
+        <input type="text" id="odaiInput" placeholder="お題を入力">
+        <button id="setOdaiBtn" style="background:#444; color:white;">お題を決定して全員に送信</button>
     </div>
 
-    <input type="text" id="answerInput" placeholder="あなたの回答を書こう">
+    <input type="text" id="answerInput" placeholder="あなたの回答は？">
     <button id="sendBtn">回答を送信</button>
     <div id="resultArea"></div>
 
     <!-- 管理者パネル -->
     <div id="adminPanel">
-        <b>管理者設定 (Key: 0001)</b>
+        <b>管理者メニュー</b>
         <div style="display:flex; gap:5px;">
-            <button id="modeBtn" style="background:#9c27b0; color:white;">モード切替</button>
-            <button id="revealBtn" style="background:var(--success); color:white;">結果公開</button>
-            <button id="resetBtn" style="background:var(--danger); color:white;">リセット</button>
+            <button id="modeBtn" style="background:#9c27b0; color:white; font-size:11px;">モード切替</button>
+            <button id="revealBtn" style="background:var(--success); color:white; font-size:11px;">結果公開</button>
+            <button id="resetBtn" style="background:var(--danger); color:white; font-size:11px;">リセット</button>
         </div>
-
-        <div class="admin-section">
-            <b>【重要】初期お題の一括登録</b>
-            <button id="setupOdaiBtn" style="background:#ff9800; color:white;">100問をFirebaseに登録する</button>
-            <p style="font-size:10px; color:red;">※一度だけ実行してください</p>
-        </div>
-
-        <div class="admin-section">
-            <b>稼働ルーム一覧 (0人は削除可)</b>
-            <button id="refreshRooms" style="width:auto; font-size:10px; padding:2px 10px;">更新</button>
+        <div style="margin-top:10px; border-top:1px solid #ddd; padding-top:5px;">
+            <b>稼働ルーム一覧</b> <button id="refreshRooms" style="width:auto; font-size:10px; padding:2px 10px;">更新</button>
             <div id="roomListArea"></div>
         </div>
     </div>
-
-    <div id="passArea" style="margin-top:20px;">
-        <input type="password" id="passInput" placeholder="Admin Key..." style="height:30px; width:80px; font-size:10px;">
-    </div>
+    <div id="passArea" style="margin-top:20px;"><input type="password" id="passInput" placeholder="Admin..." style="height:25px; width:60px; font-size:10px;"></div>
 </div>
 
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-    import { getFirestore, collection, setDoc, doc, onSnapshot, query, orderBy, getDocs, writeBatch, deleteDoc, serverTimestamp, addDoc, where } 
+    import { getFirestore, collection, setDoc, doc, onSnapshot, query, orderBy, getDocs, writeBatch, deleteDoc, serverTimestamp, where } 
         from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
     const firebaseConfig = {
@@ -129,14 +126,16 @@
     let userName = "";
     let currentMode = "match";
 
-    // --- 入室・初期設定 ---
+    // --- 入室処理 ---
     document.getElementById('joinBtn').onclick = async () => {
         roomId = document.getElementById('roomInput').value.trim();
         userName = document.getElementById('nameInputInitial').value.trim();
-        if (!roomId || !userName) return alert("合言葉と名前を入れてね");
+        if (!roomId || !userName) return alert("合言葉と名前を入力してください");
         document.getElementById('setupArea').style.display = "none";
         document.getElementById('currentRoomLabel').innerText = `部屋: ${roomId} / 名前: ${userName}`;
-        await setDoc(doc(db, "rooms", roomId, "members", userName), { name: userName, lastSeen: serverTimestamp() });
+        
+        // メンバー登録（生存フラグ付き）
+        await setDoc(doc(db, "rooms", roomId, "members", userName), { name: userName, lastSeen: Date.now() });
         startGame();
     };
 
@@ -145,13 +144,14 @@
         const answersRef = collection(db, "rooms", roomId, "answers");
         const membersRef = collection(db, "rooms", roomId, "members");
 
-        // 生存確認
-        setInterval(() => setDoc(doc(db, "rooms", roomId, "members", userName), { lastSeen: serverTimestamp() }, { merge: true }), 60000);
+        // 定期的に生存確認を更新
+        setInterval(() => setDoc(doc(db, "rooms", roomId, "members", userName), { lastSeen: Date.now() }, { merge: true }), 30000);
 
         onSnapshot(membersRef, (snap) => {
-            let count = 0;
-            snap.forEach(d => { if (d.data().lastSeen) count++; });
-            document.getElementById('memberCount').innerText = count;
+            const now = Date.now();
+            let activeCount = 0;
+            snap.forEach(d => { if (now - d.data().lastSeen < 120000) activeCount++; });
+            document.getElementById('memberCount').innerText = activeCount;
         });
 
         onSnapshot(configRef, (docSnap) => {
@@ -164,102 +164,106 @@
             document.getElementById('odaiInputArea').style.display = config.text ? "none" : "block";
 
             onSnapshot(query(answersRef, orderBy("time", "asc")), (snapshot) => {
-                const answersData = snapshot.docs.map(doc => doc.data());
-                document.getElementById('answerCount').innerText = answersData.length;
+                const ansData = snapshot.docs.map(doc => doc.data());
+                document.getElementById('answerCount').innerText = ansData.length;
                 if (config.revealed) {
-                    const ans = answersData.map(d => d.text);
-                    let ok = (config.mode === "unmatch") ? (ans.length > 0 && (new Set(ans)).size === ans.length) : (ans.length > 0 && ans.every(v => v === ans[0]));
-                    let html = answersData.map(d => `<div class="answer-item"><span>${d.name}</span><span>${d.text}</span></div>`).join("");
-                    html += ok ? `<h2 style="color:var(--success)">SUCCESS！✨</h2>` : `<h2 style="color:var(--danger)">FAILED...💦</h2>`;
+                    const ansList = ansData.map(d => d.text);
+                    let isOk = (config.mode === "unmatch") ? (ansList.length > 0 && (new Set(ansList)).size === ansList.length) : (ansList.length > 0 && ansList.every(v => v === ansList[0]));
+                    let html = ansData.map(d => `<div class="answer-item"><span>${d.name}</span><span>${d.text}</span></div>`).join("");
+                    html += isOk ? `<h2 style="color:var(--success)">SUCCESS！✨</h2>` : `<h2 style="color:var(--danger)">FAILED...💦</h2>`;
                     document.getElementById('resultArea').innerHTML = html;
                 } else { document.getElementById('resultArea').innerHTML = ""; }
             });
         });
 
-        // --- お題取得・送信 ---
-        document.getElementById('randomOdaiBtn').onclick = async () => {
+        // --- お題選択（ランダム & リスト） ---
+        const getOdaiList = async () => {
             const genre = document.getElementById('genreSelect').value;
-            const btn = document.getElementById('randomOdaiBtn');
-            btn.innerText = "⏳";
             let q = collection(db, "master_odai");
             if (genre !== "all") q = query(q, where("category", "==", genre));
-            
             const snap = await getDocs(q);
-            const list = snap.docs.map(d => d.data().text);
+            return snap.docs.map(d => d.data().text);
+        };
+
+        document.getElementById('randomOdaiBtn').onclick = async () => {
+            const list = await getOdaiList();
             if (list.length > 0) document.getElementById('odaiInput').value = list[Math.floor(Math.random() * list.length)];
-            else alert("このジャンルのお題はまだありません");
-            btn.innerText = "🎲";
+            else alert("お題が見つかりません");
+        };
+
+        document.getElementById('listOdaiBtn').onclick = async () => {
+            const list = await getOdaiList();
+            const modalList = document.getElementById('modalList');
+            modalList.innerHTML = list.map(t => `<div class="odai-item" onclick="selectOdai('${t}')">${t}</div>`).join("");
+            document.getElementById('odaiModal').style.display = "block";
+            document.getElementById('modalOverlay').style.display = "block";
+        };
+
+        window.selectOdai = (text) => {
+            document.getElementById('odaiInput').value = text;
+            closeModal();
+        };
+
+        window.closeModal = () => {
+            document.getElementById('odaiModal').style.display = "none";
+            document.getElementById('modalOverlay').style.display = "none";
         };
 
         document.getElementById('setOdaiBtn').onclick = () => {
             const val = document.getElementById('odaiInput').value.trim();
-            if(!val) return alert("お題を入力してね");
+            if(!val) return alert("お題を入力してください");
             setDoc(configRef, { text: val, revealed: false }, { merge: true });
         };
 
         document.getElementById('sendBtn').onclick = () => {
             const text = document.getElementById('answerInput').value.trim();
-            if (!text) return alert("回答を入力してね");
+            if (!text) return alert("回答を入力してください");
             setDoc(doc(db, "rooms", roomId, "answers", userName), { name: userName, text, time: Date.now() });
             document.getElementById('answerInput').value = "";
         };
 
-        // --- 管理者ツール ---
+        // --- 管理者機能 ---
         document.getElementById('modeBtn').onclick = () => setDoc(configRef, { mode: currentMode === "match" ? "unmatch" : "match" }, { merge: true });
         document.getElementById('revealBtn').onclick = () => setDoc(configRef, { revealed: true }, { merge: true });
         document.getElementById('resetBtn').onclick = async () => {
             const snap = await getDocs(answersRef);
             const batch = writeBatch(db);
             snap.docs.forEach(d => batch.delete(d.ref));
-            batch.set(configRef, { text: "", revealed: false, mode: currentMode });
+            batch.set(configRef, { text: "", revealed: false });
             await batch.commit();
         };
 
-        // ルーム一覧・削除
+        // 稼働ルーム表示の修正
         document.getElementById('refreshRooms').onclick = async () => {
             const area = document.getElementById('roomListArea');
             area.innerHTML = "読込中...";
             const roomsSnap = await getDocs(collection(db, "rooms"));
             let html = "";
+            
             for (const rDoc of roomsSnap.docs) {
-                const mSnap = await getDocs(collection(db, "rooms", rDoc.id, "members"));
-                const count = mSnap.size;
-                html += `<div class="room-item"><span>${rDoc.id} (${count}人)</span>
-                    ${count === 0 ? `<button onclick="window.delRoom('${rDoc.id}')" style="width:auto; padding:2px 5px; background:var(--danger); color:white;">削除</button>` : ''}</div>`;
+                const rName = rDoc.id;
+                // 各ルームのmembersサブコレクションを確認
+                const mSnap = await getDocs(collection(db, "rooms", rName, "members"));
+                let activeInRoom = 0;
+                const now = Date.now();
+                mSnap.forEach(m => { if (now - m.data().lastSeen < 600000) activeInRoom++; }); // 10分以内
+                
+                html += `<div class="room-item"><span><b>${rName}</b> (${activeInRoom}人活動中)</span>
+                    <button onclick="window.delRoom('${rName}')" style="width:auto; padding:2px 5px; background:var(--danger); color:white;">削除</button>
+                    </div>`;
             }
-            area.innerHTML = html || "稼働ルームなし";
+            area.innerHTML = html || "ルームがありません";
         };
 
         window.delRoom = async (tid) => {
-            if(!confirm("削除しますか？")) return;
+            if(!confirm("ルームを完全に削除しますか？")) return;
             const batch = writeBatch(db);
-            for(const c of ["answers", "members", "settings"]){
-                const s = await getDocs(collection(db, "rooms", tid, c));
-                s.docs.forEach(d => batch.delete(d.ref));
+            for(const path of ["answers", "members", "settings"]){
+                const col = await getDocs(collection(db, "rooms", tid, path));
+                col.docs.forEach(d => batch.delete(d.ref));
             }
             await batch.commit();
             document.getElementById('refreshRooms').click();
-        };
-
-        // お題一括登録（100問）
-        document.getElementById('setupOdaiBtn').onclick = async () => {
-            if(!confirm("100個のお題をFirebaseに登録しますか？")) return;
-            const btn = document.getElementById('setupOdaiBtn');
-            btn.disabled = true; btn.innerText = "登録中...";
-            
-            const raw = `※食べ物※1おにぎりの具の定番といえば？2カレーに入れる肉といえば？3お味噌汁の具の定番といえば？4ラーメンの味といえば？5おでんの具で一番人気といえば？6お寿司のネタで一番人気といえば？7夏に食べたいかき氷のシロップといえば？8菓子パンの定番といえば？9お弁当のおかずの定番といえば？10冬に食べたい鍋の種類といえば？11ファストフード店といえば？12回転寿司チェーンといえば？13夏祭りの屋台の食べものといえば？14給食の人気メニューといえば？15コンビニスイーツの定番といえば？16クリスマスに食べるものといえば？17お正月に食べるものといえば？18好きなアイスクリームのフレーバーといえば？19ポテトチップスの味で一番人気といえば？20朝ごはんの定番メニューといえば？21天ぷらの具で一番人気といえば？22ピザのトッピングの定番といえば？23夏に食べたい果物といえば？24食後のデザートの定番といえば？25ご飯のお供の定番といえば？※飲み物※26自動販売機でよく買う飲みものといえば？27カフェで注文する飲みものの定番といえば？28夏に飲みたい冷たい飲みものといえば？29冬に飲みたい温かい飲みものといえば？30お茶の種類で一番飲まれているものといえば？31炭酸飲料の定番といえば？32居酒屋で最初に注文する飲みものといえば？33コンビニで買うペットボトル飲料の定番といえば？34子どもが好きなジュースといえば？35仕事中に飲む飲みものといえば？※生き物※36ペットにするなら何？37動物園の人気者といえば？38水族館の人気者といえば？39犬の品種で人気といえば？40夏に鳴く虫といえば？41秋に鳴く虫といえば？42海の生き物で一番大きいものといえば？43速い動物といえば？44かわいい動物といえば？45怖い動物といえば？46日本にいる野生動物といえば？47白い動物といえば？48長生きする動物といえば？49鳥の仲間で身近なものといえば？50干支の動物で最初に思い浮かぶのは？※日常※51家電で一番なくなると困るものといえば？52文房具の定番といえば？53通勤・通学で使う交通手段といえば？54朝起きて最初にすることといえば？55休日の過ごし方の定番といえば？56コンビニでトイレを借りた時に買うものといえば？57日本の祝日で好きな日といえば？58夏の風物詩といえば？59冬の風物詩といえば？60お花見に持っていくものといえば？61引っ越しの時にまず買うものといえば？62旅行に必ず持っていくものといえば？63スマホでよく使うアプリのジャンルといえば？64修学旅行で行く場所の定番といえば？65100円ショップでよく買うものといえば？66人気のスポーツといえば？67オリンピック競技で盛り上がる種目といえば？68人気の旅行先といえば？69日本を代表するアニメといえば？70子どもの頃に流行った遊びといえば？71ボードゲームの定番といえば？72映画のジャンルで人気といえば？73読書するならどんなジャンル？74テーマパークといえば？75楽器を始めるなら何？76日本のお祭りで有名なものといえば？77世界遺産で行ってみたい場所といえば？78温泉地で有名なところといえば？79習い事の定番といえば？※カラオケ※80カラオケで歌いやすい曲といえば？81歌うのが難しい歌手といえば？82カラオケで好きな機種は？83カラオケに行くならどのチェーン店？84一世風靡したアイドルグループといえば？85カラオケで頼みたいメニューといえば？86カラオケの最後に歌う曲といえば？87カラオケで一番盛り上がる曲といえば？88アニメソングの定番といえば？89ドリンクバーで何を飲む？90カラオケでは何時間歌いたい？※カスタム※91無人島に1つだけ持っていけるなら何？92タイムマシンがあったら行きたい時代は？93もし透明人間になれたら最初にすることは？941億円あったら最初に買うものは？95もし動物に生まれ変わるなら何になりたい？96超能力が使えるなら何がほしい？97世界中どこでも住めるならどの国？98もし1日だけ有名人になれるなら誰？99100年後に残っていると思うものは？100地球最後の日に食べたいものは？`;
-
-            const parts = raw.split("※");
-            for (let i = 1; i < parts.length; i += 2) {
-                const category = parts[i];
-                const questions = parts[i+1].split("？");
-                for (let qText of questions) {
-                    if(!qText.trim()) continue;
-                    const cleanText = qText.replace(/^\d+/, "") + "？";
-                    await addDoc(collection(db, "master_odai"), { text: cleanText, category: category });
-                }
-            }
-            alert("登録完了！"); btn.innerText = "登録済み";
         };
     }
 
