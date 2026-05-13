@@ -3,7 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>全員一致ゲーム・プロ</title>
+    <title>意思疎通ゲーム・プロ</title>
+    <!-- QRコード生成ライブラリの読み込み -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <style>
         :root { --primary: #1a73e8; --success: #34a853; --danger: #ea4335; --admin: #fff3cd; }
         body { font-family: 'Helvetica Neue', Arial, sans-serif; text-align: center; background: #f0f2f5; padding: 20px; color: #333; margin:0; }
@@ -25,6 +27,10 @@
         .icon-btn { width: 50px; background:#6c757d; color:white; margin:0; font-size: 1.2rem; display: flex; align-items: center; justify-content: center; }
         #sendBtn { background: var(--primary); color: white; font-size: 18px; margin-top: 15px; }
 
+        /* QRコードエリア */
+        .qr-container { margin-top: 20px; padding: 15px; background: #f9f9f9; border-radius: 15px; display: flex; flex-direction: column; align-items: center; }
+        #qrcode img { border: 5px solid white; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+
         /* セレクト用モーダル */
         #odaiModal { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; width: 90%; max-width: 400px; height: 70vh; z-index: 200; border-radius: 20px; box-shadow: 0 0 20px rgba(0,0,0,0.3); padding: 20px; overflow-y: auto; }
         .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 150; }
@@ -35,7 +41,7 @@
         #adminPanel { display: none; background: var(--admin); padding: 15px; border-radius: 15px; margin-top: 20px; border: 1px solid #ffeeba; text-align: left; }
         .room-item { background: white; padding: 8px; border-radius: 8px; margin: 5px 0; display: flex; justify-content: space-between; align-items: center; border: 1px solid #ccc; font-size: 12px; }
         
-        #setupArea { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #f0f2f5; display: flex; align-items: center; justify-content: center; z-index: 100; }
+        #setupArea { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #f0f2f5; display: flex; align-items: center; justify-content: center; z-index: 100; overflow-y: auto; }
         .answer-item { display: flex; justify-content: space-between; padding: 8px; border-bottom: 1px solid #eee; }
     </style>
 </head>
@@ -56,6 +62,12 @@
         <input type="text" id="roomInput" placeholder="部屋の合言葉（例：お正月）">
         <input type="text" id="nameInputInitial" placeholder="あなたの名前">
         <button id="joinBtn" style="background: var(--primary); color: white;">入室する</button>
+
+        <!-- QRコード表示エリア -->
+        <div class="qr-container">
+            <span style="font-size:0.7rem; color:#888; margin-bottom:8px;">友達を招待（スキャンして開く）</span>
+            <div id="qrcode"></div>
+        </div>
     </div>
 </div>
 
@@ -99,10 +111,10 @@
         <div style="display:flex; gap:5px;">
             <button id="modeBtn" style="background:#9c27b0; color:white; font-size:11px;">モード切替</button>
             <button id="revealBtn" style="background:var(--success); color:white; font-size:11px;">結果公開</button>
-            <button id="resetBtn" style="background:var(--danger); color:white; font-size:11px;">次のゲームへ（リセット）</button>
+            <button id="resetBtn" style="background:var(--danger); color:white; font-size:11px;">次へ（リセット）</button>
         </div>
         <div style="margin-top:15px; border-top:1px solid #ddd; padding-top:10px;">
-            <b>データベース管理（全ルーム表示）</b> 
+            <b>データベース管理</b> 
             <button id="refreshRooms" style="width:auto; font-size:10px; padding:4px 10px; margin-bottom:10px;">全ルームをスキャン</button>
             <div id="roomListArea"></div>
         </div>
@@ -127,10 +139,17 @@
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
 
+    // QRコードの生成
+    new QRCode(document.getElementById("qrcode"), {
+        text: window.location.href,
+        width: 128,
+        height: 128
+    });
+
     let roomId = "";
     let userName = "";
     let currentMode = "match";
-    const THRESHOLD = 10 * 60 * 1000; // 10分
+    const THRESHOLD = 10 * 60 * 1000;
 
     document.getElementById('joinBtn').onclick = async () => {
         roomId = document.getElementById('roomInput').value.trim();
@@ -181,7 +200,6 @@
             });
         });
 
-        // お題選択ロジック（ランダム & リスト）
         const getOdaiListFromDB = async () => {
             const genre = document.getElementById('genreSelect').value;
             let q = collection(db, "master_odai");
@@ -192,11 +210,8 @@
 
         document.getElementById('randomOdaiBtn').onclick = async () => {
             const list = await getOdaiListFromDB();
-            if (list.length > 0) {
-                document.getElementById('odaiInput').value = list[Math.floor(Math.random() * list.length)];
-            } else {
-                alert("このジャンルにお題は登録されていません");
-            }
+            if (list.length > 0) document.getElementById('odaiInput').value = list[Math.floor(Math.random() * list.length)];
+            else alert("お題がありません");
         };
 
         document.getElementById('listOdaiBtn').onclick = async () => {
@@ -219,7 +234,7 @@
 
         document.getElementById('setOdaiBtn').onclick = () => {
             const val = document.getElementById('odaiInput').value.trim();
-            if(!val) return alert("お題を選択または入力してください");
+            if(!val) return alert("お題を選択してください");
             setDoc(configRef, { text: val, revealed: false }, { merge: true });
         };
 
@@ -228,11 +243,8 @@
             if (!text) return alert("回答を入力してください");
             setDoc(doc(db, "rooms", roomId, "answers", userName), { name: userName, text, time: Date.now() });
             document.getElementById('answerInput').value = "";
-            document.getElementById('sendBtn').innerText = "送信完了！修正可";
-            setTimeout(() => { document.getElementById('sendBtn').innerText = "回答を送信"; }, 2000);
         };
 
-        // 管理者機能
         document.getElementById('refreshRooms').onclick = async () => {
             const area = document.getElementById('roomListArea');
             area.innerHTML = "読込中...";
@@ -246,14 +258,14 @@
                 mSnap.forEach(m => { if (now - m.data().lastSeen < THRESHOLD) active++; });
                 html += `<div class="room-item" style="border-left:5px solid ${active > 0 ? 'var(--success)' : '#ccc'}">
                     <span><b>${rName}</b> (${active}人活動中)</span>
-                    <button onclick="window.delRoom('${rName}')" style="width:auto; padding:4px; background:var(--danger); color:white; font-size:10px;">完全削除</button>
+                    <button onclick="window.delRoom('${rName}')" style="width:auto; padding:4px; background:var(--danger); color:white; font-size:10px;">削除</button>
                     </div>`;
             }
             area.innerHTML = html || "ルームなし";
         };
 
         window.delRoom = async (tid) => {
-            if(!confirm(`部屋「${tid}」を完全に消去しますか？`)) return;
+            if(!confirm(`${tid}を削除しますか？`)) return;
             const batch = writeBatch(db);
             for(const p of ["answers", "members", "settings"]){
                 const snap = await getDocs(collection(db, "rooms", tid, p));
