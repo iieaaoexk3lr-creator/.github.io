@@ -19,9 +19,10 @@
         /* お題選択エリア */
         .input-group { display: flex; gap: 5px; margin-bottom: 5px; }
         select, input { padding: 10px; border: 2px solid #ddd; border-radius: 10px; font-size: 16px; box-sizing: border-box; }
+        .help-text { font-size: 0.75rem; color: #666; margin-bottom: 10px; text-align: left; }
         
         button { width: 100%; padding: 12px; border: none; border-radius: 10px; cursor: pointer; font-size: 14px; font-weight: bold; margin-top: 5px; transition: 0.2s; }
-        .icon-btn { width: 50px; background:#6c757d; color:white; margin:0; font-size: 1.2rem; }
+        .icon-btn { width: 50px; background:#6c757d; color:white; margin:0; font-size: 1.2rem; display: flex; align-items: center; justify-content: center; }
         #sendBtn { background: var(--primary); color: white; font-size: 18px; margin-top: 15px; }
 
         /* セレクト用モーダル */
@@ -30,11 +31,12 @@
         .odai-item { padding: 12px; border-bottom: 1px solid #eee; cursor: pointer; text-align: left; font-size: 14px; }
         .odai-item:hover { background: #f0f7ff; }
 
-        /* 管理パネル */
+        /* 管理者パネル */
         #adminPanel { display: none; background: var(--admin); padding: 15px; border-radius: 15px; margin-top: 20px; border: 1px solid #ffeeba; text-align: left; }
         .room-item { background: white; padding: 8px; border-radius: 8px; margin: 5px 0; display: flex; justify-content: space-between; align-items: center; border: 1px solid #ccc; font-size: 12px; }
         
         #setupArea { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #f0f2f5; display: flex; align-items: center; justify-content: center; z-index: 100; }
+        .answer-item { display: flex; justify-content: space-between; padding: 8px; border-bottom: 1px solid #eee; }
     </style>
 </head>
 <body>
@@ -42,15 +44,16 @@
 <!-- お題選択モーダル -->
 <div id="modalOverlay" class="modal-overlay"></div>
 <div id="odaiModal">
-    <h3 id="modalTitle">お題を選択</h3>
+    <h3 id="modalTitle">リストからお題を選択</h3>
     <div id="modalList"></div>
     <button onclick="closeModal()" style="background:#ccc; margin-top:10px;">閉じる</button>
 </div>
 
 <div id="setupArea">
     <div class="card">
-        <h1>全員一致ゲーム</h1>
-        <input type="text" id="roomInput" placeholder="部屋の合言葉">
+        <h1>意思疎通ゲーム</h1>
+        <p style="font-size:0.8rem; color:#666;">合言葉を決めて友達と同じ部屋に入ろう</p>
+        <input type="text" id="roomInput" placeholder="部屋の合言葉（例：お正月）">
         <input type="text" id="nameInputInitial" placeholder="あなたの名前">
         <button id="joinBtn" style="background: var(--primary); color: white;">入室する</button>
     </div>
@@ -61,13 +64,14 @@
     <div id="modeDisplay" class="mode-badge mode-match">全員一致</div>
 
     <div style="display:flex; justify-content:space-around; font-size:0.8rem; font-weight:bold; color:#666; margin:10px 0;">
-        <div>入室: <span id="memberCount" style="color:var(--primary)">0</span></div>
-        <div>回答: <span id="answerCount" style="color:var(--primary)">0</span></div>
+        <div>入室(10分以内): <span id="memberCount" style="color:var(--primary)">0</span>名</div>
+        <div>回答済み: <span id="answerCount" style="color:var(--primary)">0</span>名</div>
     </div>
 
     <div id="odaiDisplay" class="odai-display">お題を待っています...</div>
     
     <div id="odaiInputArea">
+        <div class="help-text">💡 ジャンルを選んで 🎲 でおまかせ、📋 で一覧表示</div>
         <div class="input-group">
             <select id="genreSelect" style="flex: 1;">
                 <option value="all">全ジャンル</option>
@@ -78,16 +82,16 @@
                 <option value="カラオケ">カラオケ</option>
                 <option value="カスタム">カスタム</option>
             </select>
-            <button id="randomOdaiBtn" class="icon-btn" title="ランダム">🎲</button>
-            <button id="listOdaiBtn" class="icon-btn" title="一覧から選ぶ" style="background:var(--primary)">📋</button>
+            <button id="randomOdaiBtn" class="icon-btn" title="ランダムにお題を選ぶ">🎲</button>
+            <button id="listOdaiBtn" class="icon-btn" title="リストから選ぶ" style="background:var(--primary)">📋</button>
         </div>
-        <input type="text" id="odaiInput" placeholder="お題を入力">
-        <button id="setOdaiBtn" style="background:#444; color:white;">お題を決定して全員に送信</button>
+        <input type="text" id="odaiInput" placeholder="お題を直接入力もOK">
+        <button id="setOdaiBtn" style="background:#444; color:white;">このお題でゲーム開始！</button>
     </div>
 
-    <input type="text" id="answerInput" placeholder="あなたの回答は？">
+    <input type="text" id="answerInput" placeholder="あなたの回答を入力...">
     <button id="sendBtn">回答を送信</button>
-    <div id="resultArea"></div>
+    <div id="resultArea" style="margin-top:20px;"></div>
 
     <!-- 管理者パネル -->
     <div id="adminPanel">
@@ -95,10 +99,11 @@
         <div style="display:flex; gap:5px;">
             <button id="modeBtn" style="background:#9c27b0; color:white; font-size:11px;">モード切替</button>
             <button id="revealBtn" style="background:var(--success); color:white; font-size:11px;">結果公開</button>
-            <button id="resetBtn" style="background:var(--danger); color:white; font-size:11px;">リセット</button>
+            <button id="resetBtn" style="background:var(--danger); color:white; font-size:11px;">次のゲームへ（リセット）</button>
         </div>
-        <div style="margin-top:10px; border-top:1px solid #ddd; padding-top:5px;">
-            <b>稼働ルーム一覧</b> <button id="refreshRooms" style="width:auto; font-size:10px; padding:2px 10px;">更新</button>
+        <div style="margin-top:15px; border-top:1px solid #ddd; padding-top:10px;">
+            <b>データベース管理（全ルーム表示）</b> 
+            <button id="refreshRooms" style="width:auto; font-size:10px; padding:4px 10px; margin-bottom:10px;">全ルームをスキャン</button>
             <div id="roomListArea"></div>
         </div>
     </div>
@@ -107,7 +112,7 @@
 
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-    import { getFirestore, collection, setDoc, doc, onSnapshot, query, orderBy, getDocs, writeBatch, deleteDoc, serverTimestamp, where } 
+    import { getFirestore, collection, setDoc, doc, onSnapshot, query, orderBy, getDocs, writeBatch, deleteDoc, where } 
         from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
     const firebaseConfig = {
@@ -125,16 +130,15 @@
     let roomId = "";
     let userName = "";
     let currentMode = "match";
+    const THRESHOLD = 10 * 60 * 1000; // 10分
 
-    // --- 入室処理 ---
     document.getElementById('joinBtn').onclick = async () => {
         roomId = document.getElementById('roomInput').value.trim();
         userName = document.getElementById('nameInputInitial').value.trim();
         if (!roomId || !userName) return alert("合言葉と名前を入力してください");
         document.getElementById('setupArea').style.display = "none";
-        document.getElementById('currentRoomLabel').innerText = `部屋: ${roomId} / 名前: ${userName}`;
+        document.getElementById('currentRoomLabel').innerText = `部屋: ${roomId} / プレイヤー: ${userName}`;
         
-        // メンバー登録（生存フラグ付き）
         await setDoc(doc(db, "rooms", roomId, "members", userName), { name: userName, lastSeen: Date.now() });
         startGame();
     };
@@ -144,14 +148,15 @@
         const answersRef = collection(db, "rooms", roomId, "answers");
         const membersRef = collection(db, "rooms", roomId, "members");
 
-        // 定期的に生存確認を更新
-        setInterval(() => setDoc(doc(db, "rooms", roomId, "members", userName), { lastSeen: Date.now() }, { merge: true }), 30000);
+        setInterval(() => {
+            if(roomId && userName) setDoc(doc(db, "rooms", roomId, "members", userName), { lastSeen: Date.now() }, { merge: true });
+        }, 30000);
 
         onSnapshot(membersRef, (snap) => {
             const now = Date.now();
-            let activeCount = 0;
-            snap.forEach(d => { if (now - d.data().lastSeen < 120000) activeCount++; });
-            document.getElementById('memberCount').innerText = activeCount;
+            let count = 0;
+            snap.forEach(d => { if (now - d.data().lastSeen < THRESHOLD) count++; });
+            document.getElementById('memberCount').innerText = count;
         });
 
         onSnapshot(configRef, (docSnap) => {
@@ -169,15 +174,15 @@
                 if (config.revealed) {
                     const ansList = ansData.map(d => d.text);
                     let isOk = (config.mode === "unmatch") ? (ansList.length > 0 && (new Set(ansList)).size === ansList.length) : (ansList.length > 0 && ansList.every(v => v === ansList[0]));
-                    let html = ansData.map(d => `<div class="answer-item"><span>${d.name}</span><span>${d.text}</span></div>`).join("");
-                    html += isOk ? `<h2 style="color:var(--success)">SUCCESS！✨</h2>` : `<h2 style="color:var(--danger)">FAILED...💦</h2>`;
+                    let html = ansData.map(d => `<div class="answer-item"><span>${d.name}</span><strong>${d.text}</strong></div>`).join("");
+                    html += isOk ? `<h2 style="color:var(--success); margin-top:20px;">SUCCESS！✨</h2>` : `<h2 style="color:var(--danger); margin-top:20px;">FAILED...💦</h2>`;
                     document.getElementById('resultArea').innerHTML = html;
                 } else { document.getElementById('resultArea').innerHTML = ""; }
             });
         });
 
-        // --- お題選択（ランダム & リスト） ---
-        const getOdaiList = async () => {
+        // お題選択ロジック（ランダム & リスト）
+        const getOdaiListFromDB = async () => {
             const genre = document.getElementById('genreSelect').value;
             let q = collection(db, "master_odai");
             if (genre !== "all") q = query(q, where("category", "==", genre));
@@ -186,15 +191,18 @@
         };
 
         document.getElementById('randomOdaiBtn').onclick = async () => {
-            const list = await getOdaiList();
-            if (list.length > 0) document.getElementById('odaiInput').value = list[Math.floor(Math.random() * list.length)];
-            else alert("お題が見つかりません");
+            const list = await getOdaiListFromDB();
+            if (list.length > 0) {
+                document.getElementById('odaiInput').value = list[Math.floor(Math.random() * list.length)];
+            } else {
+                alert("このジャンルにお題は登録されていません");
+            }
         };
 
         document.getElementById('listOdaiBtn').onclick = async () => {
-            const list = await getOdaiList();
-            const modalList = document.getElementById('modalList');
-            modalList.innerHTML = list.map(t => `<div class="odai-item" onclick="selectOdai('${t}')">${t}</div>`).join("");
+            const list = await getOdaiListFromDB();
+            if (list.length === 0) return alert("お題が見つかりませんでした");
+            document.getElementById('modalList').innerHTML = list.map(t => `<div class="odai-item" onclick="selectOdai('${t}')">${t}</div>`).join("");
             document.getElementById('odaiModal').style.display = "block";
             document.getElementById('modalOverlay').style.display = "block";
         };
@@ -211,7 +219,7 @@
 
         document.getElementById('setOdaiBtn').onclick = () => {
             const val = document.getElementById('odaiInput').value.trim();
-            if(!val) return alert("お題を入力してください");
+            if(!val) return alert("お題を選択または入力してください");
             setDoc(configRef, { text: val, revealed: false }, { merge: true });
         };
 
@@ -220,9 +228,42 @@
             if (!text) return alert("回答を入力してください");
             setDoc(doc(db, "rooms", roomId, "answers", userName), { name: userName, text, time: Date.now() });
             document.getElementById('answerInput').value = "";
+            document.getElementById('sendBtn').innerText = "送信完了！修正可";
+            setTimeout(() => { document.getElementById('sendBtn').innerText = "回答を送信"; }, 2000);
         };
 
-        // --- 管理者機能 ---
+        // 管理者機能
+        document.getElementById('refreshRooms').onclick = async () => {
+            const area = document.getElementById('roomListArea');
+            area.innerHTML = "読込中...";
+            const roomsSnap = await getDocs(collection(db, "rooms"));
+            let html = "";
+            const now = Date.now();
+            for (const rDoc of roomsSnap.docs) {
+                const rName = rDoc.id;
+                const mSnap = await getDocs(collection(db, "rooms", rName, "members"));
+                let active = 0;
+                mSnap.forEach(m => { if (now - m.data().lastSeen < THRESHOLD) active++; });
+                html += `<div class="room-item" style="border-left:5px solid ${active > 0 ? 'var(--success)' : '#ccc'}">
+                    <span><b>${rName}</b> (${active}人活動中)</span>
+                    <button onclick="window.delRoom('${rName}')" style="width:auto; padding:4px; background:var(--danger); color:white; font-size:10px;">完全削除</button>
+                    </div>`;
+            }
+            area.innerHTML = html || "ルームなし";
+        };
+
+        window.delRoom = async (tid) => {
+            if(!confirm(`部屋「${tid}」を完全に消去しますか？`)) return;
+            const batch = writeBatch(db);
+            for(const p of ["answers", "members", "settings"]){
+                const snap = await getDocs(collection(db, "rooms", tid, p));
+                snap.docs.forEach(d => batch.delete(d.ref));
+            }
+            batch.delete(doc(db, "rooms", tid));
+            await batch.commit();
+            document.getElementById('refreshRooms').click();
+        };
+
         document.getElementById('modeBtn').onclick = () => setDoc(configRef, { mode: currentMode === "match" ? "unmatch" : "match" }, { merge: true });
         document.getElementById('revealBtn').onclick = () => setDoc(configRef, { revealed: true }, { merge: true });
         document.getElementById('resetBtn').onclick = async () => {
@@ -231,39 +272,6 @@
             snap.docs.forEach(d => batch.delete(d.ref));
             batch.set(configRef, { text: "", revealed: false });
             await batch.commit();
-        };
-
-        // 稼働ルーム表示の修正
-        document.getElementById('refreshRooms').onclick = async () => {
-            const area = document.getElementById('roomListArea');
-            area.innerHTML = "読込中...";
-            const roomsSnap = await getDocs(collection(db, "rooms"));
-            let html = "";
-            
-            for (const rDoc of roomsSnap.docs) {
-                const rName = rDoc.id;
-                // 各ルームのmembersサブコレクションを確認
-                const mSnap = await getDocs(collection(db, "rooms", rName, "members"));
-                let activeInRoom = 0;
-                const now = Date.now();
-                mSnap.forEach(m => { if (now - m.data().lastSeen < 600000) activeInRoom++; }); // 10分以内
-                
-                html += `<div class="room-item"><span><b>${rName}</b> (${activeInRoom}人活動中)</span>
-                    <button onclick="window.delRoom('${rName}')" style="width:auto; padding:2px 5px; background:var(--danger); color:white;">削除</button>
-                    </div>`;
-            }
-            area.innerHTML = html || "ルームがありません";
-        };
-
-        window.delRoom = async (tid) => {
-            if(!confirm("ルームを完全に削除しますか？")) return;
-            const batch = writeBatch(db);
-            for(const path of ["answers", "members", "settings"]){
-                const col = await getDocs(collection(db, "rooms", tid, path));
-                col.docs.forEach(d => batch.delete(d.ref));
-            }
-            await batch.commit();
-            document.getElementById('refreshRooms').click();
         };
     }
 
