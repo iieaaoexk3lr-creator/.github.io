@@ -3,120 +3,141 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>一致不一致ゲーム・プロ</title>
+    <title>意思電信ゲーム</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <style>
-        :root { --primary: #1a73e8; --success: #34a853; --danger: #ea4335; --admin: #fff3cd; }
+        :root { --primary: #1a73e8; --success: #34a853; --danger: #ea4335; --admin: #f8f9fa; --accent: #673ab7; }
         body { font-family: 'Helvetica Neue', Arial, sans-serif; text-align: center; background: #f0f2f5; padding: 20px; color: #333; margin:0; }
         .card { background: white; padding: 25px; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); max-width: 450px; margin: 10px auto; position: relative; }
-        h1 { font-size: 1.5rem; color: var(--primary); margin: 0; }
+        h1 { font-size: 1.8rem; color: var(--primary); margin: 0 0 10px 0; }
         
+        /* モードバッジの色分け */
         .mode-badge { display: inline-block; padding: 6px 16px; border-radius: 20px; font-weight: bold; margin-bottom: 10px; font-size: 0.85rem; }
         .mode-match { background: #e8f0fe; color: var(--primary); }
         .mode-unmatch { background: #fce4ec; color: #d81b60; }
+        .mode-majority { background: #e8f5e9; color: var(--success); }
+        .mode-minority { background: #f3e5f5; color: var(--accent); }
 
         .odai-display { background: #fff9c4; padding: 15px; border-radius: 12px; margin: 15px 0; font-weight: bold; font-size: 1.1rem; border: 2px solid #fbc02d; color: #856404; min-height: 1.5rem; }
         
         .input-group { display: flex; gap: 5px; margin-bottom: 5px; }
-        select, input { padding: 10px; border: 2px solid #ddd; border-radius: 10px; font-size: 16px; box-sizing: border-box; }
+        select, input { padding: 12px; border: 2px solid #ddd; border-radius: 10px; font-size: 16px; box-sizing: border-box; width: 100%; }
         .help-text { font-size: 0.75rem; color: #666; margin-bottom: 10px; text-align: left; }
         
         button { width: 100%; padding: 12px; border: none; border-radius: 10px; cursor: pointer; font-size: 14px; font-weight: bold; margin-top: 5px; transition: 0.2s; }
+        button:active { transform: scale(0.98); }
         .icon-btn { width: 50px; background:#6c757d; color:white; margin:0; font-size: 1.2rem; display: flex; align-items: center; justify-content: center; }
         #sendBtn { background: var(--primary); color: white; font-size: 18px; margin-top: 15px; }
 
-        .qr-container { margin-top: 20px; padding: 15px; background: #f9f9f9; border-radius: 15px; display: flex; flex-direction: column; align-items: center; }
-        #qrcode img { border: 5px solid white; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+        /* QRコードエリア */
+        .qr-container { margin-top: 20px; padding: 15px; background: #f9f9f9; border-radius: 15px; display: flex; flex-direction: column; align-items: center; border: 1px dashed #ccc; }
+        
+        /* 管理画面のデザイン改善 */
+        #adminPanel { display: none; background: var(--admin); padding: 20px; border-radius: 15px; margin-top: 20px; border: 2px solid #ddd; text-align: left; }
+        .admin-sec { margin-bottom: 20px; padding-bottom: 15px; border-bottom: 1px solid #dee2e6; }
+        .admin-sec:last-child { border-bottom: none; }
+        .admin-label { font-size: 0.85rem; font-weight: bold; color: #555; margin-bottom: 8px; display: block; }
+        .room-item { background: white; padding: 10px; border-radius: 8px; margin: 5px 0; display: flex; justify-content: space-between; align-items: center; border: 1px solid #eee; font-size: 12px; }
+
+        #setupArea { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #f0f2f5; display: flex; align-items: center; justify-content: center; z-index: 100; overflow-y: auto; }
+        .answer-item { display: flex; justify-content: space-between; padding: 12px; border-bottom: 1px solid #eee; align-items: center; }
+        .winner-row { background: #e8f5e9; font-weight: bold; }
 
         #odaiModal { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; width: 90%; max-width: 400px; height: 70vh; z-index: 200; border-radius: 20px; box-shadow: 0 0 20px rgba(0,0,0,0.3); padding: 20px; overflow-y: auto; }
         .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 150; }
-        .odai-item { padding: 12px; border-bottom: 1px solid #eee; cursor: pointer; text-align: left; font-size: 14px; }
-        .odai-item:hover { background: #f0f7ff; }
-
-        #adminPanel { display: none; background: var(--admin); padding: 15px; border-radius: 15px; margin-top: 20px; border: 1px solid #ffeeba; text-align: left; }
-        .room-item { background: white; padding: 8px; border-radius: 8px; margin: 5px 0; display: flex; justify-content: space-between; align-items: center; border: 1px solid #ccc; font-size: 12px; }
-        
-        #setupArea { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #f0f2f5; display: flex; align-items: center; justify-content: center; z-index: 100; overflow-y: auto; }
-        .answer-item { display: flex; justify-content: space-between; padding: 8px; border-bottom: 1px solid #eee; }
+        .odai-item { padding: 12px; border-bottom: 1px solid #eee; cursor: pointer; text-align: left; }
     </style>
 </head>
 <body>
 
 <div id="modalOverlay" class="modal-overlay"></div>
 <div id="odaiModal">
-    <h3 id="modalTitle">リストからお題を選択</h3>
+    <h3>お題リスト</h3>
     <div id="modalList"></div>
     <button onclick="closeModal()" style="background:#ccc; margin-top:10px;">閉じる</button>
 </div>
 
+<!-- 入室画面 -->
 <div id="setupArea">
     <div class="card">
-        <h1>一致不一致ゲーム</h1>
-        <p style="font-size:0.8rem; color:#666;">合言葉を決めて友達と同じ部屋に入ろう</p>
-        <input type="text" id="roomInput" placeholder="部屋の合言葉（例：お正月）">
+        <h1>意思電信ゲーム</h1>
+        <p style="font-size:0.8rem; color:#666;">同じ合言葉の部屋に集合しましょう</p>
+        <input type="text" id="roomInput" placeholder="部屋の合言葉（例：お正月）" style="margin-bottom:10px;">
         <input type="text" id="nameInputInitial" placeholder="あなたの名前">
-        <button id="joinBtn" style="background: var(--primary); color: white;">入室する</button>
+        <button id="joinBtn" style="background: var(--primary); color: white; height: 50px; font-size: 1.1rem;">入室する</button>
         <div class="qr-container">
-            <span style="font-size:0.7rem; color:#888; margin-bottom:8px;">友達を招待（スキャンして開く）</span>
+            <span style="font-size:0.7rem; color:#888; margin-bottom:8px;">友達を招待（このページを開く）</span>
             <div id="qrcode"></div>
         </div>
     </div>
 </div>
 
+<!-- メイン画面 -->
 <div class="card">
-    <div id="currentRoomLabel" style="font-size:0.7rem; color:#999;">部屋: -</div>
-    <div id="modeDisplay" class="mode-badge mode-match">全員一致</div>
+    <h1>意思電信ゲーム</h1>
+    <div id="currentRoomLabel" style="font-size:0.7rem; color:#999; margin-bottom:5px;">部屋: -</div>
+    <div id="modeDisplay" class="mode-badge mode-match">一致モード</div>
 
     <div style="display:flex; justify-content:space-around; font-size:0.8rem; font-weight:bold; color:#666; margin:10px 0;">
-        <div>入室(10分以内): <span id="memberCount" style="color:var(--primary)">0</span>名</div>
+        <div>入室中: <span id="memberCount" style="color:var(--primary)">0</span>名</div>
         <div>回答済み: <span id="answerCount" style="color:var(--primary)">0</span>名</div>
     </div>
 
     <div id="odaiDisplay" class="odai-display">お題を待っています...</div>
     
     <div id="odaiInputArea">
-        <div class="help-text">💡 ジャンルを選んで 🎲 おまかせ、📋 リストから選択</div>
+        <div class="help-text">💡 ジャンルを選んで 🎲 か 📋 でお題を決定</div>
         <div class="input-group">
             <select id="genreSelect" style="flex: 1;">
                 <option value="all">全ジャンル</option>
                 <option value="食べ物">食べ物</option>
-                <option value="飲み物">飲み物</option>
                 <option value="生き物">生き物</option>
                 <option value="日常">日常</option>
                 <option value="カラオケ">カラオケ</option>
-                <option value="カスタム">カスタム</option>
             </select>
-            <button id="randomOdaiBtn" class="icon-btn" title="ランダムにお題を選ぶ">🎲</button>
-            <button id="listOdaiBtn" class="icon-btn" title="リストから選ぶ" style="background:var(--primary)">📋</button>
+            <button id="randomOdaiBtn" class="icon-btn">🎲</button>
+            <button id="listOdaiBtn" class="icon-btn" style="background:var(--primary)">📋</button>
         </div>
         <input type="text" id="odaiInput" placeholder="お題を自由に入力">
-        <button id="setOdaiBtn" style="background:#444; color:white;">このお題でゲーム開始！</button>
+        <button id="setOdaiBtn" style="background:#444; color:white;">このお題で開始！</button>
     </div>
 
-    <input type="text" id="answerInput" placeholder="あなたの回答を入力...">
-    <button id="sendBtn">回答を送信</button>
+    <div id="gamePlayArea">
+        <input type="text" id="answerInput" placeholder="回答を入力...">
+        <button id="sendBtn">回答を送信</button>
+    </div>
+    
     <div id="resultArea" style="margin-top:20px;"></div>
 
+    <!-- 管理画面 -->
     <div id="adminPanel">
-        <b>管理者メニュー</b>
-        <div style="display:flex; gap:5px;">
-            <button id="modeBtn" style="background:#9c27b0; color:white; font-size:11px;">モード切替</button>
-            <button id="revealBtn" style="background:var(--success); color:white; font-size:11px;">結果公開</button>
-            <button id="resetBtn" style="background:var(--danger); color:white; font-size:11px;">次へ(リセット)</button>
+        <h3 style="margin-top:0; color:var(--accent);">ADMIN CONTROL</h3>
+        
+        <div class="admin-sec">
+            <span class="admin-label">1. ゲーム進行</span>
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:5px;">
+                <button id="modeBtn" style="background:var(--accent); color:white; font-size:11px;">モード切替</button>
+                <button id="revealBtn" style="background:var(--success); color:white; font-size:11px;">結果公開</button>
+                <button id="resetBtn" style="background:var(--danger); color:white; font-size:11px; grid-column: span 2;">次のゲームへ（リセット）</button>
+            </div>
         </div>
-        <!-- 追加：お題登録機能 -->
-        <div style="margin-top:15px; padding-top:10px; border-top:1px solid #ddd;">
-            <b>マスターお題の追加</b>
-            <p style="font-size:10px; color:#666; margin:4px 0;">上記入力欄のお題をDBに保存します</p>
-            <button id="saveMasterBtn" style="background:#6c757d; color:white; font-size:11px; padding:6px;">現在のお題をマスターに保存</button>
+
+        <div class="admin-sec">
+            <span class="admin-label">2. お題マスター登録（重複チェック付）</span>
+            <p style="font-size:10px; color:#666;">入力欄のお題をDBに保存します</p>
+            <button id="saveMasterBtn" style="background:#6c757d; color:white; font-size:11px;">現在のお題をDBに保存</button>
         </div>
-        <div style="margin-top:15px; border-top:1px solid #ddd; padding-top:10px;">
-            <b>全ルーム管理</b> 
-            <button id="refreshRooms" style="width:auto; font-size:10px; padding:4px 10px; margin-bottom:10px;">スキャン</button>
-            <div id="roomListArea"></div>
+
+        <div class="admin-sec">
+            <span class="admin-label">3. データベース管理</span> 
+            <button id="refreshRooms" style="width:auto; font-size:10px; padding:4px 10px;">稼働ルームをスキャン</button>
+            <div id="roomListArea" style="margin-top:10px;"></div>
         </div>
     </div>
-    <div id="passArea" style="margin-top:20px;"><input type="password" id="passInput" placeholder="Admin..." style="height:25px; width:60px; font-size:10px;"></div>
+    
+    <div id="passArea" style="margin-top:20px;">
+        <input type="password" id="passInput" placeholder="Admin Pass..." style="height:25px; width:80px; font-size:10px; border:none; background:transparent; text-align:center;">
+    </div>
 </div>
 
 <script type="module">
@@ -136,17 +157,20 @@
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
 
+    // QR生成
     new QRCode(document.getElementById("qrcode"), { text: window.location.href, width: 128, height: 128 });
 
     let roomId = "";
     let userName = "";
     let currentMode = "match";
+    const modes = ["match", "unmatch", "majority", "minority"];
+    const modeLabels = { match: "一致モード", unmatch: "不一致モード", majority: "多数派勝利モード", minority: "少数派勝利モード" };
     const THRESHOLD = 10 * 60 * 1000;
 
     document.getElementById('joinBtn').onclick = async () => {
         roomId = document.getElementById('roomInput').value.trim();
         userName = document.getElementById('nameInputInitial').value.trim();
-        if (!roomId || !userName) return alert("入力してください");
+        if (!roomId || !userName) return alert("合言葉と名前を入力してください");
         document.getElementById('setupArea').style.display = "none";
         document.getElementById('currentRoomLabel').innerText = `部屋: ${roomId} / プレイヤー: ${userName}`;
         await setDoc(doc(db, "rooms", roomId, "members", userName), { name: userName, lastSeen: Date.now() });
@@ -158,10 +182,12 @@
         const answersRef = collection(db, "rooms", roomId, "answers");
         const membersRef = collection(db, "rooms", roomId, "members");
 
+        // 生存確認
         setInterval(() => {
             if(roomId && userName) setDoc(doc(db, "rooms", roomId, "members", userName), { lastSeen: Date.now() }, { merge: true });
         }, 30000);
 
+        // メンバーカウント監視
         onSnapshot(membersRef, (snap) => {
             const now = Date.now();
             let count = 0;
@@ -169,29 +195,68 @@
             document.getElementById('memberCount').innerText = count;
         });
 
+        // リアルタイム反映
         onSnapshot(configRef, (docSnap) => {
             if (!docSnap.exists()) { setDoc(configRef, { mode: "match", revealed: false, text: "" }); return; }
             const config = docSnap.data();
-            currentMode = config.mode;
-            document.getElementById('modeDisplay').innerText = config.mode === "unmatch" ? "ミッション：全員バラバラ" : "ミッション：全員一致";
-            document.getElementById('modeDisplay').className = config.mode === "unmatch" ? "mode-badge mode-unmatch" : "mode-badge mode-match";
+            currentMode = config.mode || "match";
+            
+            const badge = document.getElementById('modeDisplay');
+            badge.innerText = modeLabels[currentMode];
+            badge.className = `mode-badge mode-${currentMode}`;
+            
             document.getElementById('odaiDisplay').innerText = config.text ? `お題：${config.text}` : "お題を待っています...";
             document.getElementById('odaiInputArea').style.display = config.text ? "none" : "block";
 
             onSnapshot(query(answersRef, orderBy("time", "asc")), (snapshot) => {
                 const ansData = snapshot.docs.map(doc => doc.data());
                 document.getElementById('answerCount').innerText = ansData.length;
+
                 if (config.revealed) {
                     const ansList = ansData.map(d => d.text);
-                    let isOk = (config.mode === "unmatch") ? (ansList.length > 0 && (new Set(ansList)).size === ansList.length) : (ansList.length > 0 && ansList.every(v => v === ansList[0]));
-                    let html = ansData.map(d => `<div class="answer-item"><span>${d.name}</span><strong>${d.text}</strong></div>`).join("");
-                    html += isOk ? `<h2 style="color:var(--success); margin-top:20px;">SUCCESS！✨</h2>` : `<h2 style="color:var(--danger); margin-top:20px;">FAILED...💦</h2>`;
+                    const counts = {};
+                    ansList.forEach(a => counts[a] = (counts[a] || 0) + 1);
+
+                    let winners = [];
+                    let isOk = false;
+
+                    if (currentMode === "match") {
+                        isOk = (new Set(ansList)).size === 1 && ansList.length > 0;
+                        if (isOk) winners = [ansList[0]];
+                    } else if (currentMode === "unmatch") {
+                        isOk = (new Set(ansList)).size === ansList.length && ansList.length > 0;
+                        if (isOk) winners = ansList;
+                    } else if (currentMode === "majority") {
+                        const maxVal = Math.max(...Object.values(counts));
+                        Object.keys(counts).forEach(k => { if(counts[k] === maxVal) winners.push(k); });
+                        isOk = true;
+                    } else if (currentMode === "minority") {
+                        const minVal = Math.min(...Object.values(counts));
+                        Object.keys(counts).forEach(k => { if(counts[k] === minVal) winners.push(k); });
+                        isOk = true;
+                    }
+
+                    let html = ansData.map(d => {
+                        const win = winners.includes(d.text);
+                        return `<div class="answer-item ${win ? 'winner-row' : ''}">
+                                    <span>${d.name} ${win ? '👑' : ''}</span>
+                                    <strong>${d.text}</strong>
+                                </div>`;
+                    }).join("");
+                    
+                    if(currentMode === "match" || currentMode === "unmatch") {
+                        html += isOk ? `<h2 style="color:var(--success)">SUCCESS! ✨</h2>` : `<h2 style="color:var(--danger)">FAILED... 💦</h2>`;
+                    } else {
+                        html += `<h2 style="color:var(--primary)">RESULT</h2>`;
+                    }
                     document.getElementById('resultArea').innerHTML = html;
-                } else { document.getElementById('resultArea').innerHTML = ""; }
+                } else {
+                    document.getElementById('resultArea').innerHTML = "";
+                }
             });
         });
 
-        // お題関連
+        // お題管理
         const getOdaiList = async () => {
             const genre = document.getElementById('genreSelect').value;
             let q = collection(db, "master_odai");
@@ -222,16 +287,21 @@
             setDoc(configRef, { text: val, revealed: false }, { merge: true });
         };
 
-        // 追加：マスターお題への保存機能
+        // マスター登録（重複チェック）
         document.getElementById('saveMasterBtn').onclick = async () => {
             const text = document.getElementById('odaiInput').value.trim();
             const category = document.getElementById('genreSelect').value;
-            if(!text || category === "all") return alert("お題を入力し、保存するジャンルを選択してください（全ジャンル以外）");
+            if(!text || category === "all") return alert("お題を入力し、全ジャンル以外のカテゴリーを選択してください");
             
+            const q = query(collection(db, "master_odai"), where("text", "==", text));
+            const snap = await getDocs(q);
+            if (!snap.empty) return alert("そのお題は既に登録されています！");
+
             await addDoc(collection(db, "master_odai"), { text, category });
-            alert(`「${text}」をマスターリスト（${category}）に追加しました！`);
+            alert("DBに新規保存しました！");
         };
 
+        // 回答送信
         document.getElementById('sendBtn').onclick = () => {
             const text = document.getElementById('answerInput').value.trim();
             if (!text) return alert("回答を入力してください");
@@ -239,10 +309,10 @@
             document.getElementById('answerInput').value = "";
         };
 
-        // 管理・リセット
+        // ルームスキャン
         document.getElementById('refreshRooms').onclick = async () => {
             const area = document.getElementById('roomListArea');
-            area.innerHTML = "読込中...";
+            area.innerHTML = "スキャン中...";
             const roomsSnap = await getDocs(collection(db, "rooms"));
             let html = "";
             const now = Date.now();
@@ -251,16 +321,16 @@
                 const mSnap = await getDocs(collection(db, "rooms", rName, "members"));
                 let active = 0;
                 mSnap.forEach(m => { if (now - m.data().lastSeen < THRESHOLD) active++; });
-                html += `<div class="room-item" style="border-left:5px solid ${active > 0 ? 'var(--success)' : '#ccc'}">
-                    <span><b>${rName}</b> (${active}人)</span>
-                    <button onclick="window.delRoom('${rName}')" style="width:auto; padding:4px; background:var(--danger); color:white; font-size:10px;">削除</button>
+                html += `<div class="room-item" style="border-left:4px solid ${active > 0 ? 'var(--success)' : '#ccc'}">
+                    <span><b>${rName}</b> (${active}名)</span>
+                    <button onclick="window.delRoom('${rName}')" style="width:auto; padding:4px 8px; background:var(--danger); color:white; font-size:10px;">削除</button>
                     </div>`;
             }
-            area.innerHTML = html || "ルームなし";
+            area.innerHTML = html || "稼働中の部屋はありません";
         };
 
         window.delRoom = async (tid) => {
-            if(!confirm(`${tid}を完全消去？`)) return;
+            if(!confirm(`${tid} を削除しますか？`)) return;
             const batch = writeBatch(db);
             for(const p of ["answers", "members", "settings"]){
                 const snap = await getDocs(collection(db, "rooms", tid, p));
@@ -271,7 +341,11 @@
             document.getElementById('refreshRooms').click();
         };
 
-        document.getElementById('modeBtn').onclick = () => setDoc(configRef, { mode: currentMode === "match" ? "unmatch" : "match" }, { merge: true });
+        // 管理ボタン
+        document.getElementById('modeBtn').onclick = () => {
+            let next = modes[(modes.indexOf(currentMode) + 1) % modes.length];
+            setDoc(configRef, { mode: next }, { merge: true });
+        };
         document.getElementById('revealBtn').onclick = () => setDoc(configRef, { revealed: true }, { merge: true });
         document.getElementById('resetBtn').onclick = async () => {
             const snap = await getDocs(answersRef);
@@ -279,13 +353,15 @@
             snap.docs.forEach(d => batch.delete(d.ref));
             batch.set(configRef, { text: "", revealed: false });
             await batch.commit();
+            document.getElementById('odaiInput').value = "";
         };
     }
 
+    // パスワード監視
     document.getElementById('passInput').addEventListener('input', (e) => {
         if (e.target.value === "0001") {
             document.getElementById('adminPanel').style.display = "block";
-            document.getElementById('passArea').style.display = "none";
+            document.getElementById('passArea').style.opacity = "0.2";
         }
     });
 </script>
