@@ -112,7 +112,7 @@
 
     <!-- 管理画面 -->
     <div id="adminPanel">
-        <h3 style="margin-top:0; color:var(--accent);">ADMIN CONTROL</h3>
+        <h3 style="margin-top:0; color:var(--accent);">進行パネル</h3>
         
         <div class="admin-sec">
             <span class="admin-label">1. ゲーム進行</span>
@@ -124,7 +124,7 @@
         </div>
 
         <div class="admin-sec">
-            <span class="admin-label">2. お題マスター登録（重複チェック付）</span>
+            <span class="admin-label">2. お題マスター登録</span>
             <p style="font-size:10px; color:#666;">入力欄のお題をDBに保存します</p>
             <button id="saveMasterBtn" style="background:#6c757d; color:white; font-size:11px;">現在のお題をDBに保存</button>
         </div>
@@ -165,7 +165,7 @@
     let userName = "";
     let currentMode = "match";
     const modes = ["match", "unmatch", "majority", "minority"];
-    const modeLabels = { match: "一致モード", unmatch: "不一致モード", majority: "多数派勝利モード", minority: "少数派勝利モード" };
+    const modeLabels = { match: "一致モード", unmatch: "不一致モード", majority: "多数派Winモード", minority: "少数派Winモード" };
     const THRESHOLD = 10 * 60 * 1000;
 
     document.getElementById('joinBtn').onclick = async () => {
