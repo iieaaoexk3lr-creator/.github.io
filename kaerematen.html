@@ -128,7 +128,7 @@
 
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-    import { getFirestore, collection, setDoc, updateDoc, addDoc, doc, onSnapshot, query, orderBy, getDocs, where, writeBatch } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+    import { getFirestore, collection, setDoc, updateDoc, addDoc, doc, onSnapshot, query, orderBy, getDocs, where, writeBatch, deleteDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
     const firebaseConfig = {
         apiKey: "AIzaSyD5ZZ0LKTthtZ3WbZ-rKpocumbalrYBuHU",
@@ -149,7 +149,19 @@
 
     new QRCode(document.getElementById("qrcode"), { text: window.location.href, width: 128, height: 128 });
 
-    document.getElementById('backBtn').onclick = () => document.getElementById('setupArea').style.display = "flex";
+    document.getElementById('backBtn').onclick = async () => {
+    if (roomId && userName) {
+        // Firestoreから自分の参加データを削除
+        const myMemberRef = doc(db, "rooms", roomId, "members", userName);
+        await deleteDoc(myMemberRef);
+        
+        // 変数をクリア（ハートベイト等による意図しない再登録を防止）
+        roomId = ""; 
+        userName = "";
+    }
+    // 画面を戻す
+    document.getElementById('setupArea').style.display = "flex";
+};
     
     document.getElementById('toggleAdminBtn').onclick = (e) => {
         const panel = document.getElementById('adminPanel');
