@@ -17,7 +17,10 @@
         .mode-majority { background: #e8f5e9; color: var(--success); }
         .mode-minority { background: #f3e5f5; color: var(--accent); }
 
-        .odai-display { background: #fff9c4; padding: 15px; border-radius: 12px; margin: 15px 0; font-weight: bold; font-size: 1.1rem; border: 2px solid #fbc02d; color: #856404; min-height: 1.5rem; }
+        .status-bar { display: flex; justify-content: space-around; font-size: 0.85rem; font-weight: bold; color: #666; margin-bottom: 5px; }
+        .status-bar span { color: var(--primary); }
+
+        .odai-display { background: #fff9c4; padding: 15px; border-radius: 12px; margin: 5px 0 15px 0; font-weight: bold; font-size: 1.1rem; border: 2px solid #fbc02d; color: #856404; min-height: 1.5rem; }
         
         .input-group { display: flex; gap: 5px; margin-bottom: 5px; }
         select, input { padding: 12px; border: 2px solid #ddd; border-radius: 10px; font-size: 16px; box-sizing: border-box; width: 100%; }
@@ -26,20 +29,16 @@
         button:active { transform: scale(0.98); }
         .icon-btn { width: 50px; background:#6c757d; color:white; margin:0; font-size: 1.2rem; display: flex; align-items: center; justify-content: center; }
         
-        /* 回答エリアの初期状態 */
         #gamePlayArea { display: none; margin-top: 15px; border-top: 1px solid #eee; padding-top: 15px; }
         #sendBtn { background: var(--primary); color: white; font-size: 18px; }
 
         /* 管理パネル */
         #adminPanel { display: none; background: var(--admin); padding: 20px; border-radius: 15px; margin-top: 20px; border: 2px solid #ddd; text-align: left; position: relative; }
         .admin-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 15px; }
-        .close-admin { position: absolute; bottom: 10px; right: 10px; width: auto; padding: 4px 10px; font-size: 11px; background: #ccc; color: #333; margin: 0; }
         
-        /* モーダル */
         #odaiModal { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; width: 90%; max-width: 400px; height: 70vh; z-index: 200; border-radius: 20px; box-shadow: 0 0 30px rgba(0,0,0,0.3); padding: 20px; overflow-y: auto; }
         .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 150; }
         .odai-item { padding: 12px; border-bottom: 1px solid #eee; cursor: pointer; text-align: left; font-size: 14px; }
-        .odai-item:hover { background: #f8f9fa; }
 
         #setupArea { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #f0f2f5; display: flex; align-items: center; justify-content: center; z-index: 100; }
         .answer-item { display: flex; justify-content: space-between; padding: 12px; border-bottom: 1px solid #eee; align-items: center; }
@@ -68,6 +67,11 @@
     <h1>意思電信ゲーム</h1>
     <div id="modeDisplay" class="mode-badge mode-match">一致モード</div>
 
+    <div class="status-bar">
+        <div>参加中: <span id="memberCount">0</span>名</div>
+        <div id="answerCountWrapper" style="visibility: hidden;">回答済み: <span id="answerCount">0</span>名</div>
+    </div>
+
     <div id="odaiDisplay" class="odai-display">お題を待機中...</div>
     
     <div id="odaiInputArea">
@@ -87,7 +91,6 @@
         <button id="setOdaiBtn" style="background:#444; color:white;">お題を確定する</button>
     </div>
 
-    <!-- お題確定後のみ表示されるエリア -->
     <div id="gamePlayArea">
         <input type="text" id="answerInput" placeholder="回答を入力...">
         <button id="sendBtn">回答を送信</button>
@@ -95,20 +98,19 @@
     
     <div id="resultArea" style="margin-top:20px;"></div>
 
-    <button id="toggleAdminBtn" style="background:#f0f0f0; color:#888; margin-top:40px; font-size:12px; border:1px solid #ddd;">管理進行</button>
+    <!-- 統合された管理進行ボタン -->
+    <button id="toggleAdminBtn" style="background:#f0f0f0; color:#888; margin-top:40px; font-size:12px; border:1px solid #ddd;">管理進行（開く）</button>
 
     <div id="adminPanel">
         <button id="revealBtn" style="background:var(--success); color:white; height:50px; font-size:16px;">結果公開</button>
         <button id="resetBtn" style="background:var(--danger); color:white; margin-top:10px;">リセット（次のお題へ）</button>
         
-        <div style="height:15px;"></div> <!-- 1行空ける -->
+        <div style="height:15px;"></div>
 
         <div class="admin-grid">
             <button id="saveMasterBtn" style="background:#6c757d; color:white;">お題を保存</button>
             <button id="modeBtn" style="background:var(--accent); color:white;">モード切替</button>
         </div>
-        
-        <button id="closeAdminBtn" class="close-admin">閉じる</button>
     </div>
 </div>
 
@@ -131,15 +133,22 @@
     let roomId = "", userName = "", currentMode = "match";
     const modes = ["match", "unmatch", "majority", "minority"];
     const modeLabels = { match: "一致モード", unmatch: "不一致モード", majority: "多数派勝利モード", minority: "少数派勝利モード" };
+    const THRESHOLD = 10 * 60 * 1000;
 
-    document.getElementById('toggleAdminBtn').onclick = () => document.getElementById('adminPanel').style.display = "block";
-    document.getElementById('closeAdminBtn').onclick = () => document.getElementById('adminPanel').style.display = "none";
+    // 管理パネル開閉トグル
+    document.getElementById('toggleAdminBtn').onclick = (e) => {
+        const panel = document.getElementById('adminPanel');
+        const isHidden = panel.style.display !== "block";
+        panel.style.display = isHidden ? "block" : "none";
+        e.target.innerText = isHidden ? "管理進行（閉じる）" : "管理進行（開く）";
+    };
 
     document.getElementById('joinBtn').onclick = async () => {
         roomId = document.getElementById('roomInput').value.trim();
         userName = document.getElementById('nameInputInitial').value.trim();
-        if (!roomId || !userName) return alert("部屋名と名前を入力してください");
+        if (!roomId || !userName) return alert("入力してください");
         document.getElementById('setupArea').style.display = "none";
+        await setDoc(doc(db, "rooms", roomId, "members", userName), { name: userName, lastSeen: Date.now() });
         startGame();
     };
 
@@ -156,6 +165,15 @@
     function startGame() {
         const configRef = doc(db, "rooms", roomId, "settings", "main");
         const answersRef = collection(db, "rooms", roomId, "answers");
+        const membersRef = collection(db, "rooms", roomId, "members");
+
+        onSnapshot(membersRef, (snap) => {
+            const now = Date.now();
+            let count = 0;
+            snap.forEach(d => { if (now - d.data().lastSeen < THRESHOLD) count++; });
+            document.getElementById('memberCount').innerText = count;
+        });
+        setInterval(() => { if(roomId && userName) setDoc(doc(db, "rooms", roomId, "members", userName), { lastSeen: Date.now() }, { merge: true }); }, 30000);
 
         onSnapshot(configRef, (docSnap) => {
             if (!docSnap.exists()) return;
@@ -167,11 +185,12 @@
             document.getElementById('modeDisplay').className = `mode-badge mode-${currentMode}`;
             document.getElementById('odaiDisplay').innerText = config.text ? `お題：${config.text}` : "お題を待機中...";
             
-            // お題が決まっていれば回答エリアを表示
             document.getElementById('odaiInputArea').style.display = config.text ? "none" : "block";
             document.getElementById('gamePlayArea').style.display = config.text ? "block" : "none";
+            document.getElementById('answerCountWrapper').style.visibility = config.text ? "visible" : "hidden";
 
             onSnapshot(query(answersRef, orderBy("time", "asc")), (snapshot) => {
+                document.getElementById('answerCount').innerText = snapshot.size;
                 if (config.revealed) {
                     const ansData = snapshot.docs.map(d => d.data());
                     const counts = {}; ansData.forEach(a => counts[a.text] = (counts[a.text] || 0) + 1);
@@ -189,7 +208,6 @@
             });
         });
 
-        // お題リスト取得
         const fetchOdai = async () => {
             const genre = document.getElementById('genreSelect').value;
             let q = collection(db, "master_odai");
