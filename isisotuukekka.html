@@ -3,86 +3,86 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>意思電信ゲーム - 履歴アーカイブ</title>
+    <title>意思電信 - 履歴ログ</title>
     <style>
         :root {
-            --primary: #1a73e8; --bg: #f8f9fa; --card: #ffffff;
+            --primary: #1a73e8; --bg: #f0f2f5; --card: #ffffff;
+            --accent: #673ab7; --text: #333;
         }
-        body { font-family: 'Helvetica Neue', Arial, sans-serif; background: var(--bg); margin: 0; padding: 20px; color: #333; }
-        .container { max-width: 800px; margin: 0 auto; }
-        .card { background: var(--card); padding: 25px; border-radius: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
-        h1 { color: var(--primary); font-size: 1.5rem; margin-bottom: 20px; }
-
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--bg); margin: 0; padding: 0; color: var(--text); line-height: 1.5; }
+        
+        .container { max-width: 100%; padding: 15px; box-sizing: border-box; }
+        
         /* 入室エリア */
-        #roomAuth { text-align: center; padding: 40px 0; }
-        input[type="text"] { padding: 12px; border: 2px solid #ddd; border-radius: 10px; width: 250px; font-size: 16px; margin-right: 10px; }
-        button { padding: 12px 24px; border: none; border-radius: 10px; background: var(--primary); color: white; font-weight: bold; cursor: pointer; }
+        #roomAuth { margin-top: 50px; text-align: center; background: white; padding: 30px 20px; border-radius: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+        h1 { font-size: 1.4rem; margin-bottom: 20px; color: var(--primary); }
+        input[type="text"], select { 
+            width: 100%; padding: 15px; margin-bottom: 15px; border: 2px solid #ddd; border-radius: 12px; font-size: 16px; box-sizing: border-box; 
+            -webkit-appearance: none; /* iOS対策 */
+        }
+        button { 
+            width: 100%; padding: 15px; border: none; border-radius: 12px; background: var(--primary); color: white; font-weight: bold; font-size: 16px; cursor: pointer; 
+        }
 
-        /* フィルターエリア */
-        .filter-bar { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; }
-        .filter-bar input { flex: 1; min-width: 150px; padding: 10px; border: 1px solid #ccc; border-radius: 8px; }
-        .filter-bar select { padding: 10px; border: 1px solid #ccc; border-radius: 8px; background: white; }
+        /* 検索・ソートエリア（上部に固定） */
+        .sticky-header {
+            position: sticky; top: 0; background: var(--bg); z-index: 100; padding: 10px 0;
+            border-bottom: 1px solid #ddd;
+        }
+        .filter-group { background: white; padding: 10px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+        .filter-group input, .filter-group select { margin-bottom: 8px; font-size: 14px; padding: 10px; }
 
-        /* テーブルスタイル */
-        .table-wrapper { overflow-x: auto; }
-        table { width: 100%; border-collapse: collapse; margin-top: 10px; background: white; }
-        th, td { border-bottom: 1px solid #eee; padding: 15px; text-align: left; font-size: 14px; }
-        th { background: #f1f3f4; color: #555; cursor: pointer; position: relative; }
-        th:hover { background: #e8eaed; }
-        th::after { content: ' ↕'; font-size: 10px; color: #aaa; }
+        /* 履歴カード */
+        .history-card { 
+            background: white; border-radius: 16px; padding: 15px; margin-bottom: 15px; 
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05); border-left: 6px solid var(--primary);
+        }
+        .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; border-bottom: 1px solid #f0f0f0; padding-bottom: 8px; }
+        .date { font-size: 12px; color: #888; }
+        .mode-tag { background: #e8f0fe; color: var(--primary); font-size: 11px; padding: 3px 8px; border-radius: 20px; font-weight: bold; }
         
-        .mode-tag { font-size: 11px; padding: 2px 8px; border-radius: 10px; font-weight: bold; }
-        .res-item { display: inline-block; background: #f0f0f0; padding: 2px 6px; border-radius: 4px; margin: 2px; font-size: 12px; }
-        .no-data { text-align: center; padding: 40px; color: #888; }
+        .odai-text { font-size: 1.1rem; font-weight: bold; color: #d81b60; margin: 10px 0; display: block; }
         
-        .back-link { display: inline-block; margin-bottom: 15px; color: var(--primary); text-decoration: none; font-size: 14px; }
+        .results-container { display: flex; flex-wrap: wrap; gap: 6px; }
+        .res-item { background: #f8f9fa; border: 1px solid #eee; padding: 5px 10px; border-radius: 8px; font-size: 13px; display: flex; flex-direction: column; }
+        .res-name { font-size: 10px; color: #777; }
+        .res-val { font-weight: bold; color: #333; }
+
+        .no-data { text-align: center; padding: 50px 20px; color: #999; }
+        .back-link { display: inline-block; margin: 10px 0; color: #666; text-decoration: none; font-size: 14px; }
     </style>
 </head>
 <body>
 
 <div class="container">
     <!-- 【1】部屋名入力画面 -->
-    <div id="roomAuth" class="card">
-        <h1>履歴を閲覧する</h1>
-        <p>閲覧したい部屋の合言葉を入力してください</p>
-        <input type="text" id="targetRoom" placeholder="部屋の合言葉">
-        <button id="viewBtn">履歴を表示</button>
+    <div id="roomAuth">
+        <h1>履歴ログにアクセス</h1>
+        <input type="text" id="targetRoom" placeholder="部屋の合言葉を入力">
+        <button id="viewBtn">履歴を表示する</button>
     </div>
 
     <!-- 【2】履歴表示画面 -->
     <div id="historyView" style="display: none;">
-        <a href="javascript:location.reload()" class="back-link">← 戻る</a>
-        <div class="card">
-            <h1 id="roomTitle">部屋: -- の履歴</h1>
-            
-            <div class="filter-bar">
-                <input type="text" id="searchOdai" placeholder="お題で検索...">
-                <input type="text" id="searchName" placeholder="名前で検索...">
+        <a href="javascript:location.reload()" class="back-link">← 部屋選択に戻る</a>
+        
+        <div class="sticky-header">
+            <div class="filter-group">
+                <input type="text" id="searchOdai" placeholder="🔍 お題で検索">
+                <input type="text" id="searchName" placeholder="👤 名前・回答で検索">
                 <select id="sortOrder">
                     <option value="time-desc">新しい順</option>
                     <option value="time-asc">古い順</option>
-                    <option value="odai-asc">お題(昇順)</option>
-                    <option value="name-asc">名前(昇順)</option>
+                    <option value="odai-asc">お題の50音順</option>
                 </select>
             </div>
-
-            <div class="table-wrapper">
-                <table>
-                    <thead>
-                        <tr>
-                            <th>日時</th>
-                            <th>モード</th>
-                            <th>お題</th>
-                            <th>全員の回答</th>
-                        </tr>
-                    </thead>
-                    <tbody id="historyBody">
-                        <!-- ここにデータが入ります -->
-                    </tbody>
-                </table>
-                <div id="noDataMsg" class="no-data" style="display:none">該当するデータが見つかりません。</div>
-            </div>
         </div>
+
+        <div id="historyList" style="margin-top:15px;">
+            <!-- ここにカードが動的に生成されます -->
+        </div>
+        
+        <div id="noDataMsg" class="no-data" style="display:none">該当する履歴はありません。</div>
     </div>
 </div>
 
@@ -90,7 +90,6 @@
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
     import { getFirestore, collection, getDocs, query, orderBy } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-    // プロジェクトのFirebase設定（ゲームと同じものを使用）
     const firebaseConfig = {
         apiKey: "AIzaSyD5ZZ0LKTthtZ3WbZ-rKpocumbalrYBuHU",
         authDomain: "zenin-itchi-game.firebaseapp.com",
@@ -114,18 +113,13 @@
             const snap = await getDocs(query(historyRef, orderBy("time", "desc")));
             rawData = snap.docs.map(d => ({ id: d.id, ...d.data() }));
 
-            if (rawData.length === 0) {
-                alert("この部屋にはまだ履歴がありません。");
-                return;
-            }
+            if (rawData.length === 0) return alert("履歴が見つかりません");
 
             document.getElementById('roomAuth').style.display = "none";
             document.getElementById('historyView').style.display = "block";
-            document.getElementById('roomTitle').innerText = `部屋: ${roomId} の履歴`;
-            
             renderHistory();
         } catch (e) {
-            alert("データの取得に失敗しました。部屋名を確認してください。");
+            alert("読み込みに失敗しました");
         }
     };
 
@@ -134,46 +128,54 @@
         const nameQuery = document.getElementById('searchName').value.toLowerCase();
         const sortType = document.getElementById('sortOrder').value;
 
-        // フィルタリング
         let filtered = rawData.filter(item => {
             const matchOdai = item.odai.toLowerCase().includes(odaiQuery);
-            // results配列の中に指定した名前が含まれているかチェック
             const matchName = item.results.some(res => res.toLowerCase().includes(nameQuery));
             return matchOdai && matchName;
         });
 
-        // ソート処理
         filtered.sort((a, b) => {
             if (sortType === "time-desc") return b.time - a.time;
             if (sortType === "time-asc") return a.time - b.time;
             if (sortType === "odai-asc") return a.odai.localeCompare(b.odai, 'ja');
-            if (sortType === "name-asc") {
-                // 代表として一人目の名前で比較
-                return a.results[0].localeCompare(b.results[0], 'ja');
-            }
         });
 
-        const tbody = document.getElementById('historyBody');
-        tbody.innerHTML = "";
-        
+        const listContainer = document.getElementById('historyList');
+        listContainer.innerHTML = "";
         document.getElementById('noDataMsg').style.display = filtered.length ? "none" : "block";
 
         filtered.forEach(item => {
-            const date = new Date(item.time).toLocaleString('ja-JP', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
-            const tr = document.createElement('tr');
-            tr.innerHTML = `
-                <td style="color:#888; font-size:12px;">${date}</td>
-                <td><span class="mode-tag">${item.modeName || '不明'}</span></td>
-                <td style="font-weight:bold;">${item.odai}</td>
-                <td>
-                    ${item.results.map(r => `<span class="res-item">${r}</span>`).join('')}
-                </td>
+            const dateStr = new Date(item.time).toLocaleString('ja-JP', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+            
+            const card = document.createElement('div');
+            card.className = "history-card";
+            
+            // 回答をパース（"名前:回答" の形式を想定）
+            const resultsHtml = item.results.map(r => {
+                const parts = r.split(':');
+                const name = parts[0] || '??';
+                const val = parts[1] || '';
+                return `
+                    <div class="res-item">
+                        <span class="res-name">${name}</span>
+                        <span class="res-val">${val}</span>
+                    </div>`;
+            }).join('');
+
+            card.innerHTML = `
+                <div class="card-header">
+                    <span class="date">${dateStr}</span>
+                    <span class="mode-tag">${item.modeName || '通常'}</span>
+                </div>
+                <span class="odai-text">Q. ${item.odai}</span>
+                <div class="results-container">
+                    ${resultsHtml}
+                </div>
             `;
-            tbody.appendChild(tr);
+            listContainer.appendChild(card);
         });
     }
 
-    // 検索・ソートイベント
     document.getElementById('searchOdai').oninput = renderHistory;
     document.getElementById('searchName').oninput = renderHistory;
     document.getElementById('sortOrder').onchange = renderHistory;
