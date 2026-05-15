@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>意思電信ゲーム - 履歴アーカイブ</title>
+    <style>
+        :root {
+            --primary: #1a73e8; --bg: #f8f9fa; --card: #ffffff;
+        }
+        body { font-family: 'Helvetica Neue', Arial, sans-serif; background: var(--bg); margin: 0; padding: 20px; color: #333; }
+        .container { max-width: 800px; margin: 0 auto; }
+        .card { background: var(--card); padding: 25px; border-radius: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
+        h1 { color: var(--primary); font-size: 1.5rem; margin-bottom: 20px; }
+
+        /* 入室エリア */
+        #roomAuth { text-align: center; padding: 40px 0; }
+        input[type="text"] { padding: 12px; border: 2px solid #ddd; border-radius: 10px; width: 250px; font-size: 16px; margin-right: 10px; }
+        button { padding: 12px 24px; border: none; border-radius: 10px; background: var(--primary); color: white; font-weight: bold; cursor: pointer; }
+
+        /* フィルターエリア */
+        .filter-bar { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; }
+        .filter-bar input { flex: 1; min-width: 150px; padding: 10px; border: 1px solid #ccc; border-radius: 8px; }
+        .filter-bar select { padding: 10px; border: 1px solid #ccc; border-radius: 8px; background: white; }
+
+        /* テーブルスタイル */
+        .table-wrapper { overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; background: white; }
+        th, td { border-bottom: 1px solid #eee; padding: 15px; text-align: left; font-size: 14px; }
+        th { background: #f1f3f4; color: #555; cursor: pointer; position: relative; }
+        th:hover { background: #e8eaed; }
+        th::after { content: ' ↕'; font-size: 10px; color: #aaa; }
+        
+        .mode-tag { font-size: 11px; padding: 2px 8px; border-radius: 10px; font-weight: bold; }
+        .res-item { display: inline-block; background: #f0f0f0; padding: 2px 6px; border-radius: 4px; margin: 2px; font-size: 12px; }
+        .no-data { text-align: center; padding: 40px; color: #888; }
+        
+        .back-link { display: inline-block; margin-bottom: 15px; color: var(--primary); text-decoration: none; font-size: 14px; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <!-- 【1】部屋名入力画面 -->
+    <div id="roomAuth" class="card">
+        <h1>履歴を閲覧する</h1>
+        <p>閲覧したい部屋の合言葉を入力してください</p>
+        <input type="text" id="targetRoom" placeholder="部屋の合言葉">
+        <button id="viewBtn">履歴を表示</button>
+    </div>
+
+    <!-- 【2】履歴表示画面 -->
+    <div id="historyView" style="display: none;">
+        <a href="javascript:location.reload()" class="back-link">← 戻る</a>
+        <div class="card">
+            <h1 id="roomTitle">部屋: -- の履歴</h1>
+            
+            <div class="filter-bar">
+                <input type="text" id="searchOdai" placeholder="お題で検索...">
+                <input type="text" id="searchName" placeholder="名前で検索...">
+                <select id="sortOrder">
+                    <option value="time-desc">新しい順</option>
+                    <option value="time-asc">古い順</option>
+                    <option value="odai-asc">お題(昇順)</option>
+                    <option value="name-asc">名前(昇順)</option>
+                </select>
+            </div>
+
+            <div class="table-wrapper">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>日時</th>
+                            <th>モード</th>
+                            <th>お題</th>
+                            <th>全員の回答</th>
+                        </tr>
+                    </thead>
+                    <tbody id="historyBody">
+                        <!-- ここにデータが入ります -->
+                    </tbody>
+                </table>
+                <div id="noDataMsg" class="no-data" style="display:none">該当するデータが見つかりません。</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+    import { getFirestore, collection, getDocs, query, orderBy } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+    // プロジェクトのFirebase設定（ゲームと同じものを使用）
+    const firebaseConfig = {
+        apiKey: "AIzaSyD5ZZ0LKTthtZ3WbZ-rKpocumbalrYBuHU",
+        authDomain: "zenin-itchi-game.firebaseapp.com",
+        projectId: "zenin-itchi-game",
+        storageBucket: "zenin-itchi-game.firebasestorage.app",
+        messagingSenderId: "1063543597468",
+        appId: "1:1063543597468:web:e3f3c1caf9158e25544059"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    let rawData = [];
+
+    document.getElementById('viewBtn').onclick = async () => {
+        const roomId = document.getElementById('targetRoom').value.trim();
+        if (!roomId) return alert("部屋名を入力してください");
+
+        const historyRef = collection(db, "rooms", roomId, "history");
+        try {
+            const snap = await getDocs(query(historyRef, orderBy("time", "desc")));
+            rawData = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+            if (rawData.length === 0) {
+                alert("この部屋にはまだ履歴がありません。");
+                return;
+            }
+
+            document.getElementById('roomAuth').style.display = "none";
+            document.getElementById('historyView').style.display = "block";
+            document.getElementById('roomTitle').innerText = `部屋: ${roomId} の履歴`;
+            
+            renderHistory();
+        } catch (e) {
+            alert("データの取得に失敗しました。部屋名を確認してください。");
+        }
+    };
+
+    function renderHistory() {
+        const odaiQuery = document.getElementById('searchOdai').value.toLowerCase();
+        const nameQuery = document.getElementById('searchName').value.toLowerCase();
+        const sortType = document.getElementById('sortOrder').value;
+
+        // フィルタリング
+        let filtered = rawData.filter(item => {
+            const matchOdai = item.odai.toLowerCase().includes(odaiQuery);
+            // results配列の中に指定した名前が含まれているかチェック
+            const matchName = item.results.some(res => res.toLowerCase().includes(nameQuery));
+            return matchOdai && matchName;
+        });
+
+        // ソート処理
+        filtered.sort((a, b) => {
+            if (sortType === "time-desc") return b.time - a.time;
+            if (sortType === "time-asc") return a.time - b.time;
+            if (sortType === "odai-asc") return a.odai.localeCompare(b.odai, 'ja');
+            if (sortType === "name-asc") {
+                // 代表として一人目の名前で比較
+                return a.results[0].localeCompare(b.results[0], 'ja');
+            }
+        });
+
+        const tbody = document.getElementById('historyBody');
+        tbody.innerHTML = "";
+        
+        document.getElementById('noDataMsg').style.display = filtered.length ? "none" : "block";
+
+        filtered.forEach(item => {
+            const date = new Date(item.time).toLocaleString('ja-JP', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td style="color:#888; font-size:12px;">${date}</td>
+                <td><span class="mode-tag">${item.modeName || '不明'}</span></td>
+                <td style="font-weight:bold;">${item.odai}</td>
+                <td>
+                    ${item.results.map(r => `<span class="res-item">${r}</span>`).join('')}
+                </td>
+            `;
+            tbody.appendChild(tr);
+        });
+    }
+
+    // 検索・ソートイベント
+    document.getElementById('searchOdai').oninput = renderHistory;
+    document.getElementById('searchName').oninput = renderHistory;
+    document.getElementById('sortOrder').onchange = renderHistory;
+
+</script>
+</body>
+</html>
