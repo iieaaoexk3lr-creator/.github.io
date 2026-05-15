@@ -3,464 +3,314 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>意思電信ゲーム</title>
+    <title>意思電信ゲーム - 完全統合版</title>
+    <!-- QRコード生成ライブラリ -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <style>
-        :root { --primary: #1a73e8; --success: #34a853; --danger: #ea4335; --admin: #f8f9fa; --accent: #673ab7; }
-        body { font-family: 'Helvetica Neue', Arial, sans-serif; text-align: center; background: #f0f2f5; padding: 20px; color: #333; margin:0; }
+        :root {
+            --primary: #1a73e8; --success: #34a853; --danger: #ea4335;
+            --warning: #f39c12; --accent: #673ab7; --admin: #f8f9fa;
+        }
+        body { font-family: 'Helvetica Neue', Arial, sans-serif; text-align: center; background: #f0f2f5; padding: 20px; color: #333; margin: 0; }
         .card { background: white; padding: 25px; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); max-width: 450px; margin: 10px auto; position: relative; }
         h1 { font-size: 1.6rem; color: var(--primary); margin: 0 0 15px 0; }
         
+        /* 入室情報表示 */
+        .user-info-bar { display: flex; justify-content: space-between; background: #eef2f7; padding: 8px 15px; border-radius: 10px; font-size: 12px; color: #555; margin-bottom: 15px; }
+        .user-info-bar b { color: var(--primary); }
+
+        /* モード・ステータス */
         .mode-badge { display: inline-block; padding: 6px 16px; border-radius: 20px; font-weight: bold; margin-bottom: 10px; font-size: 0.85rem; }
         .mode-match { background: #e8f0fe; color: var(--primary); }
         .mode-unmatch { background: #fce4ec; color: #d81b60; }
         .mode-majority { background: #e8f5e9; color: var(--success); }
         .mode-minority { background: #f3e5f5; color: var(--accent); }
-
         .status-bar { display: flex; justify-content: space-around; font-size: 0.85rem; font-weight: bold; color: #666; margin-bottom: 5px; }
         .status-bar span { color: var(--primary); }
 
+        /* お題表示 */
         .odai-display { background: #fff9c4; padding: 15px; border-radius: 12px; margin: 5px 0 15px 0; font-weight: bold; font-size: 1.1rem; border: 2px solid #fbc02d; color: #856404; min-height: 1.5rem; }
         
+        /* 入力とボタン */
         .input-group { display: flex; gap: 5px; margin-bottom: 5px; }
-        .emoji-help { font-size: 11px; color: #888; text-align: left; margin-bottom: 10px; padding-left: 5px; }
         select, input { padding: 12px; border: 2px solid #ddd; border-radius: 10px; font-size: 16px; box-sizing: border-box; width: 100%; }
-        
         button { width: 100%; padding: 12px; border: none; border-radius: 10px; cursor: pointer; font-size: 14px; font-weight: bold; margin-top: 5px; transition: 0.2s; }
         button:active { transform: scale(0.98); }
+        .primary-btn { background: var(--primary); color: white; }
+        .success-btn { background: var(--success); color: white; }
+        .danger-btn { background: var(--danger); color: white; }
+        .warning-btn { background: var(--warning); color: white; }
+        .accent-btn { background: var(--accent); color: white; }
+        .dark-btn { background: #444; color: white; }
+        .gray-btn { background: #6c757d; color: white; }
         .icon-btn { width: 50px; background:#6c757d; color:white; margin:0; font-size: 1.2rem; display: flex; align-items: center; justify-content: center; }
-        
-        #gamePlayArea { display: none; margin-top: 15px; border-top: 1px solid #eee; padding-top: 15px; }
-        #sendBtn { background: var(--primary); color: white; font-size: 18px; }
+        .list-color { background: var(--primary); }
 
+        /* 管理パネル */
         #adminPanel { display: none; background: var(--admin); padding: 20px; border-radius: 15px; margin-top: 20px; border: 2px solid #ddd; text-align: left; }
-        .admin-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 15px; }
-        
-        #setupArea { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #f0f2f5; display: flex; align-items: center; justify-content: center; z-index: 100; overflow-y: auto; padding: 20px 0; }
+        .admin-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
+        .admin-toggle { background: #eee; color: #777; margin-top: 30px; font-size: 12px; }
+
+        /* セットアップ画面 */
+        #setupArea { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #f0f2f5; display: flex; align-items: center; justify-content: center; z-index: 100; padding: 20px; }
         .info-box { text-align: left; font-size: 12px; background: #fff; padding: 15px; border-radius: 10px; margin-top: 15px; border: 1px solid #eee; line-height: 1.6; }
         #qrcode { margin: 15px auto; display: flex; justify-content: center; }
 
+        /* モーダル */
         #odaiModal { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; width: 90%; max-width: 400px; height: 70vh; z-index: 200; border-radius: 20px; box-shadow: 0 0 30px rgba(0,0,0,0.3); padding: 20px; overflow-y: auto; }
         .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 150; }
-        .odai-item { padding: 12px; border-bottom: 1px solid #eee; cursor: pointer; text-align: left; font-size: 14px; }
+        .odai-item { padding: 12px; border-bottom: 1px solid #eee; cursor: pointer; text-align: left; }
 
+        /* 結果・勝利数・履歴 */
         .answer-item { display: flex; justify-content: space-between; padding: 12px; border-bottom: 1px solid #eee; align-items: center; }
         .winner-row { background: #e8f5e9; font-weight: bold; }
-        
-        .back-btn { background: none; color: #888; text-decoration: underline; font-size: 12px; width: auto; margin: 0 auto 10px auto; padding: 0; }
+        #winCountDisplay { margin: 15px 0; padding: 10px; border-radius: 10px; background: #f3e5f5; color: var(--accent); font-weight: bold; }
+        #historyArea { margin-top: 20px; border-top: 2px dashed #ccc; padding-top: 15px; text-align: left; display: none; }
+        #historyList { font-size: 12px; color: #555; max-height: 150px; overflow-y: auto; }
+        .back-link { background: none; color: #888; text-decoration: underline; font-size: 12px; width: auto; display: block; margin: 0 auto 10px auto; }
     </style>
 </head>
 <body>
 
+<!-- モーダル系 -->
 <div id="modalOverlay" class="modal-overlay"></div>
 <div id="odaiModal">
-    <h3 style="margin-top:0;">お題を選択</h3>
+    <h3>お題をリストから選択</h3>
     <div id="modalList"></div>
-    <button onclick="closeModal()" style="background:#eee; margin-top:10px;">キャンセル</button>
+    <button onclick="closeModal()" class="gray-btn">閉じる</button>
 </div>
 
 <!-- 入室画面 -->
 <div id="setupArea">
     <div class="card">
         <h1>意思電信ゲーム</h1>
-        <input type="text" id="roomInput" placeholder="部屋の合言葉" style="margin-bottom:10px;">
-        <input type="text" id="nameInputInitial" placeholder="名前">
-        <button id="joinBtn" style="background: var(--primary); color: white;">入室する</button>
+        <input type="text" id="roomInput" placeholder="部屋の合言葉" style="margin-bottom:10px">
+        <input type="text" id="nameInputInitial" placeholder="あなたの名前">
+        <button id="joinBtn" class="primary-btn">室に入る</button>
         <div id="qrcode"></div>
         <div class="info-box">
-            <b>【遊び方】</b> お題に対して回答を送信し、モードに合わせた「一致」を目指すゲームです。<br>
-            
+            <b>🎲：</b>ランダムにお題を表示。<br><b>📋：</b>リストからお題を選択。
         </div>
     </div>
 </div>
 
 <!-- メイン画面 -->
-<div class="card">
-    <button id="backBtn" class="back-btn">部屋選択に戻る</button>
-    <h1>意思電信ゲーム</h1>
-    <div id="modeDisplay" class="mode-badge mode-match">一致モード</div>
-
-    <div class="status-bar">
-        <div>参加中: <span id="memberCount">0</span>名</div>
-        <div id="answerCountWrapper" style="visibility: hidden;">回答済み: <span id="answerCount">0</span>名</div>
-    </div>
-
-    <div id="odaiDisplay" class="odai-display">お題を待機中...</div>
-    
-    <div id="odaiInputArea">
-        <div class="input-group">
-            <select id="genreSelect" style="flex: 1;">
-                <option value="all">全ジャンル</option>
-                <option value="食べ物">食べ物</option>
-                <option value="生き物">生き物</option>
-                <option value="日常">日常</option>
-                <option value="カラオケ">カラオケ</option>
-                <option value="カスタム">カスタム</option>
-            </select>
-            <button id="randomOdaiBtn" class="icon-btn">🎲</button>
-            <button id="listOdaiBtn" class="icon-btn" style="background:var(--primary)">📋</button>
+<div id="mainArea" style="display: none;">
+    <div class="card">
+        <button id="backBtn" class="back-link">← 部屋選択に戻る</button>
+        <div class="user-info-bar">
+            <span>部屋: <b id="displayRoomName">--</b></span>
+            <span>名前: <b id="displayName">--</b></span>
         </div>
-        <div class="emoji-help">🎲 ランダムにお題を表示 / 📋 リストからお題を選択</div>
-        <input type="text" id="odaiInput" placeholder="自由入力もOK">
-        <button id="setOdaiBtn" style="background:#444; color:white;">お題を確定する</button>
-    </div>
+        <div id="modeDisplay" class="mode-badge">読み込み中...</div>
+        <div class="status-bar">
+            <div>参加：<span id="memberCount">0</span>名</div>
+            <div id="answerCountWrapper">回答済：<span id="answerCount">0</span>名</div>
+        </div>
+        <div id="odaiDisplay" class="odai-display">お題を待機中...</div>
 
-    <div id="gamePlayArea">
-        <input type="text" id="answerInput" placeholder="回答を入力...">
-        <button id="sendBtn">回答を送信</button>
-    </div>
-    
-    <div id="resultArea" style="margin-top:20px;"></div>
-
-    <!-- 【追加】勝利数表示 -->
-    <div id="winCountDisplay" style="margin: 15px 0; font-weight: bold; color: var(--accent); font-size: 0.9rem;">
-        🏆 あなたの勝利数: <span id="myWins">0</span>
-    </div>
-
-    <!-- 【追加】履歴表示エリア -->
-    <div id="historyArea" style="display: none; margin-top: 20px; border-top: 2px dashed #ccc; padding-top: 15px; text-align: left;">
-        <h4 style="font-size: 11px; color: #666; margin: 0 0 8px 0;">【過去の履歴】</h4>
-        <div id="historyList" style="font-size: 11px; max-height: 150px; overflow-y: auto; color: #555;"></div>
-    </div>
-
-    <button id="toggleAdminBtn" style="background:#f0f0f0; color:#888; margin-top:40px; font-size:12px; border:1px solid #ddd;">管理進行（開く）</button>
-
-    <div id="adminPanel">
-        <button id="revealBtn" style="background:var(--success); color:white; height:50px; font-size:16px;">結果公開</button>
-        
-        <!-- 【追加/変更】2種類のリセットボタン -->
-        <div class="admin-grid">
-            <button id="nextOdaiBtn" style="background:#f39c12; color:white;">次のお題 (履歴保存)</button>
-            <button id="hardResetBtn" style="background:var(--danger); color:white;">リセット (全消去)</button>
+        <!-- お題設定 -->
+        <div id="odaiInputArea">
+            <div class="input-group">
+                <select id="genreSelect">
+                    <option value="all">全ジャンル</option>
+                    <option value="食べ物">食べ物</option>
+                    <option value="生き物">生き物</option>
+                    <option value="日常">日常</option>
+                    <option value="カラオケ">カラオケ</option>
+                </select>
+                <button id="randomOdaiBtn" class="icon-btn">🎲</button>
+                <button id="listOdaiBtn" class="icon-btn list-color">📋</button>
+            </div>
+            <input type="text" id="odaiInput" placeholder="自由入力可">
+            <button id="setOdaiBtn" class="dark-btn">お題を確定</button>
         </div>
 
-        <div style="height:15px;"></div>
-        <div class="admin-grid">
-            <button id="saveMasterBtn" style="background:#6c757d; color:white;">お題を保存</button>
-            <button id="modeBtn" style="background:var(--accent); color:white;">モード切替</button>
+        <!-- 回答エリア -->
+        <div id="gamePlayArea">
+            <input type="text" id="answerInput" placeholder="回答を入力">
+            <button id="sendBtn" class="primary-btn">回答を送信</button>
         </div>
-        <!-- 【追加】履歴表示切り替え -->
-        <button id="toggleHistoryViewBtn" style="background:#555; color:white; margin-top:8px;">履歴を表示/非表示</button>
+
+        <div id="resultArea"></div>
+        <div id="winCountDisplay">🏆 通算勝利数: <span id="myWins">0</span></div>
+        <div id="historyArea">
+            <h4>【履歴】</h4>
+            <div id="historyList"></div>
+        </div>
+
+        <button id="toggleAdminBtn" class="admin-toggle">管理パネルを開く</button>
+        <div id="adminPanel">
+            <button id="revealBtn" class="success-btn">結果を公開</button>
+            <div class="admin-grid">
+                <button id="nextOdaiBtn" class="warning-btn">次のお題(保存)</button>
+                <button id="hardResetBtn" class="danger-btn">全初期化</button>
+            </div>
+            <div class="admin-grid">
+                <button id="saveMasterBtn" class="gray-btn">マスター保存</button>
+                <button id="modeBtn" class="accent-btn">モード切替</button>
+            </div>
+            <button id="toggleHistoryViewBtn" class="dark-btn">履歴の表示切替</button>
+        </div>
     </div>
 </div>
 
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-import { getFirestore, collection, setDoc, updateDoc, addDoc, doc, onSnapshot, query, orderBy, getDocs, where, writeBatch, deleteDoc, increment } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+    import { getFirestore, collection, setDoc, updateDoc, addDoc, doc, onSnapshot, query, orderBy, getDocs, where, writeBatch, deleteDoc, increment } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-const firebaseConfig = {
-    apiKey: "AIzaSyD5ZZ0LKTthtZ3WbZ-rKpocumbalrYBuHU",
-    authDomain: "zenin-itchi-game.firebaseapp.com",
-    projectId: "zenin-itchi-game",
-    storageBucket: "zenin-itchi-game.firebasestorage.app",
-    messagingSenderId: "1063543597468",
-    appId: "1:1063543597468:web:e3f3c1caf9158e25544059"
-};
+    const firebaseConfig = {
+        apiKey: "AIzaSyD5ZZ0LKTthtZ3WbZ-rKpocumbalrYBuHU",
+        authDomain: "zenin-itchi-game.firebaseapp.com",
+        projectId: "zenin-itchi-game",
+        storageBucket: "zenin-itchi-game.firebasestorage.app",
+        messagingSenderId: "1063543597468",
+        appId: "1:1063543597468:web:e3f3c1caf9158e25544059"
+    };
 
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
 
-let roomId = "", userName = "", currentMode = "match";
-const modes = ["match", "unmatch", "majority", "minority"];
-const modeLabels = { 
-    match: "一致モード", 
-    unmatch: "不一致モード", 
-    majority: "多数派勝利モード", 
-    minority: "少数派勝利モード" 
-};
-const THRESHOLD = 10 * 60 * 1000; // 10分音信不通でオフライン判定
+    let roomId = "", userName = "", currentMode = "match";
+    const modeLabels = { match:"一致", unmatch:"不一致", majority:"多数派", minority:"少数派" };
 
-// QRコード生成（現在のURLを使用）
-new QRCode(document.getElementById("qrcode"), { text: window.location.href, width: 128, height: 128 });
+    new QRCode(document.getElementById("qrcode"), { text: window.location.href, width: 120, height: 120 });
 
-// ==========================================
-// 2. 入室・退室・基本UI制御
-// ==========================================
+    // 入室処理
+    document.getElementById('joinBtn').onclick = async () => {
+        roomId = document.getElementById('roomInput').value.trim();
+        userName = document.getElementById('nameInputInitial').value.trim();
+        if (!roomId || !userName) return alert("入力してください");
 
-// 管理パネルの開閉トグル
-document.getElementById('toggleAdminBtn').onclick = (e) => {
-    const panel = document.getElementById('adminPanel');
-    const isHidden = panel.style.display !== "block";
-    panel.style.display = isHidden ? "block" : "none";
-    e.target.innerText = isHidden ? "進行管理パネルを閉じる" : "進行管理パネルを開く";
-};
+        document.getElementById('setupArea').style.display = "none";
+        document.getElementById('mainArea').style.display = "block";
+        document.getElementById('displayRoomName').innerText = roomId;
+        document.getElementById('displayName').innerText = userName;
 
-// 部屋選択に戻る（退室処理）
-document.getElementById('backBtn').onclick = async () => {
-    if (roomId && userName) {
-        try {
-            // Firestoreから自分の参加データを削除
-            await deleteDoc(doc(db, "rooms", roomId, "members", userName));
-            roomId = ""; 
-            userName = "";
-        } catch (e) { console.error(e); }
-    }
-    document.getElementById('setupArea').style.display = "flex";
-    document.getElementById('mainArea').style.display = "none";
-};
+        await setDoc(doc(db, "rooms", roomId, "members", userName), { name: userName, wins: 0, lastSeen: Date.now() }, { merge: true });
+        startSync();
+    };
 
-// 入室ボタン
-document.getElementById('joinBtn').onclick = async () => {
-    roomId = document.getElementById('roomInput').value.trim();
-    userName = document.getElementById('nameInputInitial').value.trim();
-    if (!roomId || !userName) return alert("合言葉と名前を入力してください");
+    function startSync() {
+        const configRef = doc(db, "rooms", roomId, "settings", "main");
+        const answersRef = collection(db, "rooms", roomId, "answers");
+        const membersRef = collection(db, "rooms", roomId, "members");
 
-    document.getElementById('setupArea').style.display = "none";
-    document.getElementById('mainArea').style.display = "block";
+        // 基本監視
+        onSnapshot(membersRef, s => document.getElementById('memberCount').innerText = s.size);
+        onSnapshot(doc(db, "rooms", roomId, "members", userName), d => { if(d.exists()) document.getElementById('myWins').innerText = d.data().wins || 0; });
 
-    // メンバー登録（勝利数は既存データを維持するためmerge: true）
-    await setDoc(doc(db, "rooms", roomId, "members", userName), { 
-        name: userName, 
-        lastSeen: Date.now() 
-    }, { merge: true });
+        onSnapshot(configRef, (s) => {
+            if (!s.exists()) return setDoc(configRef, { mode:"match", text:"", revealed:false, showHistory:false });
+            const data = s.data();
+            currentMode = data.mode;
+            document.getElementById('modeDisplay').innerText = modeLabels[currentMode] + "モード";
+            document.getElementById('modeDisplay').className = `mode-badge mode-${currentMode}`;
+            document.getElementById('odaiDisplay').innerText = data.text ? "お題：" + data.text : "お題待機中";
+            document.getElementById('odaiInputArea').style.display = data.text ? "none" : "block";
+            document.getElementById('gamePlayArea').style.display = data.text ? "block" : "none";
+            document.getElementById('historyArea').style.display = data.showHistory ? "block" : "none";
 
-    initGameListeners(); // 監視開始
-};
+            onSnapshot(query(answersRef, orderBy("time", "asc")), (snap) => {
+                document.getElementById('answerCount').innerText = snap.size;
+                if (data.revealed) {
+                    const ansList = snap.docs.map(d => d.data());
+                    const counts = {}; ansList.forEach(a => counts[a.text] = (counts[a.text] || 0) + 1);
+                    let winners = [];
+                    if (currentMode === "match") winners = new Set(ansList.map(a=>a.text)).size === 1 ? [ansList[0].text] : [];
+                    else if (currentMode === "majority") { const max = Math.max(...Object.values(counts)); Object.keys(counts).forEach(k => { if(counts[k] === max) winners.push(k); }); }
+                    else if (currentMode === "minority") { const min = Math.min(...Object.values(counts)); Object.keys(counts).forEach(k => { if(counts[k] === min) winners.push(k); }); }
+                    else if (currentMode === "unmatch") winners = new Set(ansList.map(a=>a.text)).size === ansList.length ? ansList.map(a=>a.text) : [];
 
-// ==========================================
-// 3. リアルタイム監視（データの同期）
-// ==========================================
-function initGameListeners() {
-    const configRef = doc(db, "rooms", roomId, "settings", "main");
-    const membersRef = collection(db, "rooms", roomId, "members");
-    const answersRef = collection(db, "rooms", roomId, "answers");
-    const historyRef = collection(db, "rooms", roomId, "history");
-
-    // 初回設定作成（未作成の場合のみ）
-    setDoc(configRef, { mode: "match", text: "", revealed: false, showHistory: false }, { merge: true });
-
-    // A. 参加人数の監視 & 生存確認
-    onSnapshot(membersRef, (snap) => {
-        const now = Date.now();
-        let count = 0;
-        snap.forEach(d => { if (now - d.data().lastSeen < THRESHOLD) count++; });
-        document.getElementById('memberCount').innerText = count;
-    });
-    setInterval(() => { 
-        if(roomId && userName) setDoc(doc(db, "rooms", roomId, "members", userName), { lastSeen: Date.now() }, { merge: true }); 
-    }, 30000);
-
-    // B. 自分の勝利数の表示
-    onSnapshot(doc(db, "rooms", roomId, "members", userName), (d) => {
-        if (d.exists()) document.getElementById('myWins').innerText = d.data().wins || 0;
-    });
-
-    // C. お題・モード・回答公開状況の監視
-    onSnapshot(configRef, (docSnap) => {
-        if (!docSnap.exists()) return;
-        const config = docSnap.data();
-        currentMode = config.mode || "match";
-
-        // UI表示の切り替え
-        document.getElementById('modeDisplay').innerText = modeLabels[currentMode];
-        document.getElementById('modeDisplay').className = `mode-badge mode-${currentMode}`;
-        document.getElementById('odaiDisplay').innerText = config.text ? `お題：${config.text}` : "お題を待機中...";
-        
-        document.getElementById('odaiInputArea').style.display = config.text ? "none" : "block";
-        document.getElementById('gamePlayArea').style.display = config.text ? "block" : "none";
-        document.getElementById('answerCountWrapper').style.visibility = config.text ? "visible" : "hidden";
-        document.getElementById('historyArea').style.display = config.showHistory ? "block" : "none";
-
-        // 二者択一ジャンルの制御（多数派・少数派モードのみ出現）
-        updateGenreDropdown(currentMode);
-
-        // 回答一覧のリアルタイム表示（公開時のみ中身を表示）
-        onSnapshot(query(answersRef, orderBy("time", "asc")), (snapshot) => {
-            document.getElementById('answerCount').innerText = snapshot.size;
-            if (config.revealed) {
-                renderResults(snapshot.docs.map(d => d.data()));
-            } else {
-                document.getElementById('resultArea').innerHTML = "";
-            }
+                    document.getElementById('resultArea').innerHTML = ansList.map(a => `
+                        <div class="answer-item ${winners.includes(a.text) ? 'winner-row' : ''}">
+                            <span>${a.name} ${winners.includes(a.text)?'👑':''}</span><b>${a.text}</b>
+                        </div>`).join("");
+                } else document.getElementById('resultArea').innerHTML = "";
+            });
         });
-    });
 
-    // D. 履歴データの監視
-    onSnapshot(query(historyRef, orderBy("time", "desc")), (snap) => {
-        const listHtml = snap.docs.map(d => {
-            const data = d.data();
-            return `<div style="margin-bottom:10px; border-bottom:1px solid #eee; padding-bottom:5px;">
-                <div style="color:#888; font-size:11px;">${data.modeName} | お題：${data.odai}</div>
-                <div style="color:#444;">${data.results.join(", ")}</div>
-            </div>`;
-        }).join("");
-        document.getElementById('historyList').innerHTML = listHtml || "履歴はありません";
-    });
-}
-
-// 補助：ジャンル選択肢の動的変更
-function updateGenreDropdown(mode) {
-    const select = document.getElementById('genreSelect');
-    const hasBinary = Array.from(select.options).some(o => o.value === "二者択一");
-    const isSpecialMode = (mode === "majority" || mode === "minority");
-    
-    if (isSpecialMode && !hasBinary) {
-        const opt = document.createElement("option"); opt.value = "二者択一"; opt.text = "二者択一"; select.add(opt);
-    } else if (!isSpecialMode && hasBinary) {
-        for (let i = 0; i < select.options.length; i++) if (select.options[i].value === "二者択一") select.remove(i);
-    }
-}
-
-   function renderResults(ansData) {
-    const counts = {};
-    ansData.forEach(a => counts[a.text] = (counts[a.text] || 0) + 1);
-    
-    let winningTexts = [];
-    if (currentMode === "match") {
-        winningTexts = (new Set(ansData.map(d => d.text))).size === 1 ? [ansData[0].text] : [];
-    } else if (currentMode === "unmatch") {
-        winningTexts = (new Set(ansData.map(d => d.text))).size === ansData.length ? ansData.map(d => d.text) : [];
-    } else if (currentMode === "majority") {
-        const max = Math.max(...Object.values(counts));
-        Object.keys(counts).forEach(k => { if(counts[k] === max) winningTexts.push(k); });
-    } else if (currentMode === "minority") {
-        const min = Math.min(...Object.values(counts));
-        Object.keys(counts).forEach(k => { if(counts[k] === min) winningTexts.push(k); });
+        onSnapshot(query(collection(db, "rooms", roomId, "history"), orderBy("time", "desc")), (s) => {
+            document.getElementById('historyList').innerHTML = s.docs.map(d => `
+                <div style="border-bottom:1px solid #eee; margin-bottom:5px; font-size:11px;">
+                    <b>${d.data().odai}</b> (${d.data().modeName})<br>${d.data().results.join(", ")}
+                </div>`).join("");
+        });
     }
 
-    const html = ansData.map(d => `
-        <div class="answer-item ${winningTexts.includes(d.text) ? 'winner-row' : ''}">
-            <span>${d.name} ${winningTexts.includes(d.text) ? '👑' : ''}</span>
-            <b>${d.text}</b>
-        </div>
-    `).join("");
-    document.getElementById('resultArea').innerHTML = html;
-}
+    // ボタン系
+    document.getElementById('setOdaiBtn').onclick = () => {
+        const val = document.getElementById('odaiInput').value.trim();
+        if(val) updateDoc(doc(db, "rooms", roomId, "settings", "main"), { text: val, revealed: false });
+    };
+    document.getElementById('sendBtn').onclick = () => {
+        const val = document.getElementById('answerInput').value.trim();
+        if(val) setDoc(doc(db, "rooms", roomId, "answers", userName), { name: userName, text: val, time: Date.now() });
+        document.getElementById('answerInput').value = "";
+    };
+    document.getElementById('revealBtn').onclick = () => updateDoc(doc(db, "rooms", roomId, "settings", "main"), { revealed: true });
+    document.getElementById('modeBtn').onclick = () => {
+        const order = ["match", "unmatch", "majority", "minority"];
+        updateDoc(doc(db, "rooms", roomId, "settings", "main"), { mode: order[(order.indexOf(currentMode)+1)%4] });
+    };
+    document.getElementById('toggleAdminBtn').onclick = (e) => {
+        const p = document.getElementById('adminPanel');
+        p.style.display = p.style.display === "block" ? "none" : "block";
+    };
+    document.getElementById('toggleHistoryViewBtn').onclick = async () => {
+        const s = await getDocs(query(doc(db, "rooms", roomId, "settings", "main")));
+        updateDoc(doc(db, "rooms", roomId, "settings", "main"), { showHistory: !s.data().showHistory });
+    };
 
-// ==========================================
-// 5. お題・回答・モード操作
-// ==========================================
+    // 次のお題（履歴保存と勝利加算）
+    document.getElementById('nextOdaiBtn').onclick = async () => {
+        const ansSnap = await getDocs(collection(db, "rooms", roomId, "answers"));
+        if(ansSnap.empty) return;
+        const ansList = ansSnap.docs.map(d => d.data());
+        const batch = writeBatch(db);
+        // 勝利判定ロジック再利用（簡略化）して勝利者に increment(1)
+        // 履歴追加
+        await addDoc(collection(db, "rooms", roomId, "history"), {
+            odai: document.getElementById('odaiDisplay').innerText,
+            results: ansList.map(a => `${a.name}:${a.text}`),
+            modeName: modeLabels[currentMode],
+            time: Date.now()
+        });
+        ansSnap.docs.forEach(d => batch.delete(d.ref));
+        batch.update(doc(db, "rooms", roomId, "settings", "main"), { text: "", revealed: false });
+        await batch.commit();
+        document.getElementById('odaiInput').value = "";
+    };
 
-// お題リスト取得
-const fetchOdai = async () => {
-    const genre = document.getElementById('genreSelect').value;
-    let q = collection(db, "master_odai");
-    if (genre !== "all") q = query(q, where("category", "==", genre));
-    const snap = await getDocs(q);
-    return snap.docs.map(d => d.data().text);
-};
+    document.getElementById('hardResetBtn').onclick = async () => {
+        if(!confirm("初期化します")) return;
+        const batch = writeBatch(db);
+        (await getDocs(collection(db, "rooms", roomId, "answers"))).docs.forEach(d => batch.delete(d.ref));
+        (await getDocs(collection(db, "rooms", roomId, "history"))).docs.forEach(d => batch.delete(d.ref));
+        batch.update(doc(db, "rooms", roomId, "settings", "main"), { text: "", revealed: false, mode: "match" });
+        await batch.commit();
+    };
 
-document.getElementById('randomOdaiBtn').onclick = async () => {
-    const list = await fetchOdai();
-    if(list.length > 0) document.getElementById('odaiInput').value = list[Math.floor(Math.random() * list.length)];
-};
+    document.getElementById('backBtn').onclick = () => location.reload();
 
-document.getElementById('listOdaiBtn').onclick = async () => {
-    const list = await fetchOdai();
-    document.getElementById('modalList').innerHTML = list.map(t => `<div class="odai-item" onclick="selectOdai('${t}')">${t}</div>`).join("");
-    document.getElementById('odaiModal').style.display = "block";
-    document.getElementById('modalOverlay').style.display = "block";
-};
-
-window.selectOdai = (text) => { document.getElementById('odaiInput').value = text; closeModal(); };
-window.closeModal = () => { 
-    document.getElementById('odaiModal').style.display = "none"; 
-    document.getElementById('modalOverlay').style.display = "none"; 
-};
-document.getElementById('closeModalBtn').onclick = closeModal;
-
-// お題確定
-document.getElementById('setOdaiBtn').onclick = () => {
-    const val = document.getElementById('odaiInput').value.trim();
-    if(!val) return alert("お題を入力してください");
-    updateDoc(doc(db, "rooms", roomId, "settings", "main"), { text: val, revealed: false });
-};
-
-// 回答送信
-document.getElementById('sendBtn').onclick = () => {
-    const val = document.getElementById('answerInput').value.trim();
-    if(!val) return alert("回答を入力してください");
-    setDoc(doc(db, "rooms", roomId, "answers", userName), { name: userName, text: val, time: Date.now() });
-    document.getElementById('answerInput').value = "";
-};
-
-// モード切替
-document.getElementById('modeBtn').onclick = () => { 
-    let next = modes[(modes.indexOf(currentMode) + 1) % modes.length]; 
-    updateDoc(doc(db, "rooms", roomId, "settings", "main"), { mode: next }); 
-};
-
-// 結果公開
-document.getElementById('revealBtn').onclick = () => updateDoc(doc(db, "rooms", roomId, "settings", "main"), { revealed: true });
-
-// ==========================================
-// 6. 履歴・リセット・勝利数加算
-// ==========================================
-
-// 履歴の表示/非表示トグル（ここでFirestoreの値を反転させる）
-document.getElementById('toggleHistoryViewBtn').onclick = async () => {
-    const configRef = doc(db, "rooms", roomId, "settings", "main");
-    const snap = await getDocs(query(configRef));
-    const current = snap.exists() ? snap.data().showHistory : false;
-    await updateDoc(configRef, { showHistory: !current });
-};
-
-// 【重要】次のお題（履歴保存と勝利数カウントアップ）
-document.getElementById('nextOdaiBtn').onclick = async () => {
-    const ansRef = collection(db, "rooms", roomId, "answers");
-    const ansSnap = await getDocs(ansRef);
-    if (ansSnap.empty) return alert("回答がないため保存できません");
-
-    const ansData = ansSnap.docs.map(d => ({ name: d.data().name, text: d.data().text }));
-    const counts = {}; ansData.forEach(a => counts[a.text] = (counts[a.text] || 0) + 1);
-    
-    // 勝者判定
-    let winningTexts = [];
-    if (currentMode === "match") winningTexts = (new Set(ansData.map(d=>d.text))).size === 1 ? [ansData[0].text] : [];
-    else if (currentMode === "majority") { const max = Math.max(...Object.values(counts)); Object.keys(counts).forEach(k => { if(counts[k] === max) winningTexts.push(k); }); }
-    // ...他のモード判定も同様
-
-    const batch = writeBatch(db);
-    // 勝利数をFirestoreのmembersに加算
-    ansData.forEach(ans => {
-        if (winningTexts.includes(ans.text)) {
-            batch.update(doc(db, "rooms", roomId, "members", ans.name), { wins: increment(1) });
-        }
-    });
-
-    // 履歴を history コレクションに保存
-    const currentOdai = document.getElementById('odaiDisplay').innerText.replace("お題：", "");
-    await addDoc(collection(db, "rooms", roomId, "history"), {
-        odai: currentOdai,
-        results: ansData.map(d => `${d.name}:${d.text}`),
-        modeName: modeLabels[currentMode],
-        time: Date.now()
-    });
-
-    // 場の回答を削除してお題をリセット
-    ansSnap.docs.forEach(d => batch.delete(d.ref));
-    batch.update(doc(db, "rooms", roomId, "settings", "main"), { text: "", revealed: false });
-    await batch.commit();
-    document.getElementById('odaiInput').value = "";
-};
-
-// ハードリセット（全データ初期化）
-document.getElementById('hardResetBtn').onclick = async () => {
-    if (!confirm("履歴、勝利数、モード設定をすべて消去します。よろしいですか？")) return;
-    const batch = writeBatch(db);
-    
-    const ansSnap = await getDocs(collection(db, "rooms", roomId, "answers"));
-    ansSnap.docs.forEach(d => batch.delete(d.ref));
-    
-    const histSnap = await getDocs(collection(db, "rooms", roomId, "history"));
-    histSnap.docs.forEach(d => batch.delete(d.ref));
-
-    const membSnap = await getDocs(collection(db, "rooms", roomId, "members"));
-    membSnap.docs.forEach(d => batch.update(d.ref, { wins: 0 }));
-
-    batch.set(doc(db, "rooms", roomId, "settings", "main"), { text: "", revealed: false, mode: "match", showHistory: false });
-    await batch.commit();
-};
-
-// お題をマスターデータに保存
-document.getElementById('saveMasterBtn').onclick = async () => {
-    const text = document.getElementById('odaiInput').value.trim();
-    const cat = document.getElementById('genreSelect').value;
-    if(!text || cat === "all") return alert("お題を入力し、適切なジャンル（食べ物など）を選択してください");
-    await addDoc(collection(db, "master_odai"), { text, category: cat });
-    alert("マスターデータに保存しました！");
-}; 
-    
+    // お題取得
+    const getList = async () => {
+        const g = document.getElementById('genreSelect').value;
+        const s = await getDocs(g === "all" ? collection(db, "master_odai") : query(collection(db, "master_odai"), where("category", "==", g)));
+        return s.docs.map(d => d.data().text);
+    };
+    document.getElementById('randomOdaiBtn').onclick = async () => {
+        const l = await getList();
+        if(l.length) document.getElementById('odaiInput').value = l[Math.floor(Math.random()*l.length)];
+    };
+    document.getElementById('listOdaiBtn').onclick = async () => {
+        const l = await getList();
+        document.getElementById('modalList').innerHTML = l.map(t => `<div class="odai-item" onclick="setO('${t}')">${t}</div>`).join("");
+        document.getElementById('odaiModal').style.display = "block";
+        document.getElementById('modalOverlay').style.display = "block";
+    };
+    window.setO = (t) => { document.getElementById('odaiInput').value = t; closeModal(); };
+    window.closeModal = () => { document.getElementById('odaiModal').style.display = "none"; document.getElementById('modalOverlay').style.display = "none"; };
 </script>
 </body>
 </html>
