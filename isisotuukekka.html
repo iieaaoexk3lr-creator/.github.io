@@ -3,86 +3,286 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>意思電信 - 履歴ログ</title>
+    <title>意思電信ゲーム - 決定版</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <style>
         :root {
-            --primary: #1a73e8; --bg: #f0f2f5; --card: #ffffff;
-            --accent: #673ab7; --text: #333;
+            --primary: #1a73e8; --success: #34a853; --danger: #ea4335;
+            --warning: #f39c12; --accent: #673ab7; --admin: #f8f9fa;
         }
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--bg); margin: 0; padding: 0; color: var(--text); line-height: 1.5; }
-        
-        .container { max-width: 100%; padding: 15px; box-sizing: border-box; }
-        
-        /* 入室エリア */
-        #roomAuth { margin-top: 50px; text-align: center; background: white; padding: 30px 20px; border-radius: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
-        h1 { font-size: 1.4rem; margin-bottom: 20px; color: var(--primary); }
-        input[type="text"], select { 
-            width: 100%; padding: 15px; margin-bottom: 15px; border: 2px solid #ddd; border-radius: 12px; font-size: 16px; box-sizing: border-box; 
-            -webkit-appearance: none; /* iOS対策 */
-        }
-        button { 
-            width: 100%; padding: 15px; border: none; border-radius: 12px; background: var(--primary); color: white; font-weight: bold; font-size: 16px; cursor: pointer; 
-        }
-
-        /* 検索・ソートエリア（上部に固定） */
-        .sticky-header {
-            position: sticky; top: 0; background: var(--bg); z-index: 100; padding: 10px 0;
-            border-bottom: 1px solid #ddd;
-        }
-        .filter-group { background: white; padding: 10px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
-        .filter-group input, .filter-group select { margin-bottom: 8px; font-size: 14px; padding: 10px; }
-
-        /* 履歴カード */
-        .history-card { 
-            background: white; border-radius: 16px; padding: 15px; margin-bottom: 15px; 
-            box-shadow: 0 2px 10px rgba(0,0,0,0.05); border-left: 6px solid var(--primary);
-        }
-        .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; border-bottom: 1px solid #f0f0f0; padding-bottom: 8px; }
-        .date { font-size: 12px; color: #888; }
-        .mode-tag { background: #e8f0fe; color: var(--primary); font-size: 11px; padding: 3px 8px; border-radius: 20px; font-weight: bold; }
-        
-        .odai-text { font-size: 1.1rem; font-weight: bold; color: #d81b60; margin: 10px 0; display: block; }
-        
-        .results-container { display: flex; flex-wrap: wrap; gap: 6px; }
-        .res-item { background: #f8f9fa; border: 1px solid #eee; padding: 5px 10px; border-radius: 8px; font-size: 13px; display: flex; flex-direction: column; }
-        .res-name { font-size: 10px; color: #777; }
-        .res-val { font-weight: bold; color: #333; }
-
-        .no-data { text-align: center; padding: 50px 20px; color: #999; }
-        .back-link { display: inline-block; margin: 10px 0; color: #666; text-decoration: none; font-size: 14px; }
+        body { font-family: 'Helvetica Neue', Arial, sans-serif; text-align: center; background: #f0f2f5; padding: 20px; color: #333; margin: 0; }
+        .card { background: white; padding: 25px; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); max-width: 450px; margin: 10px auto; position: relative; }
+        h1 { font-size: 1.6rem; color: var(--primary); margin: 0 0 15px 0; }
+        .user-info-bar { display: flex; justify-content: space-between; background: #eef2f7; padding: 8px 15px; border-radius: 10px; font-size: 12px; color: #555; margin-bottom: 15px; }
+        .mode-badge { display: inline-block; padding: 6px 16px; border-radius: 20px; font-weight: bold; margin-bottom: 10px; font-size: 0.85rem; }
+        .mode-match { background: #e8f0fe; color: var(--primary); }
+        .mode-unmatch { background: #fce4ec; color: #d81b60; }
+        .mode-majority { background: #e8f5e9; color: var(--success); }
+        .mode-minority { background: #f3e5f5; color: var(--accent); }
+        .status-bar { display: flex; justify-content: space-around; font-size: 0.85rem; font-weight: bold; color: #666; margin-bottom: 5px; }
+        .odai-display { background: #fff9c4; padding: 15px; border-radius: 12px; margin: 5px 0 15px 0; font-weight: bold; font-size: 1.1rem; border: 2px solid #fbc02d; color: #856404; min-height: 1.5rem; }
+        .victory-msg { color: var(--danger); font-size: 2.2rem; font-weight: bold; margin: 10px 0; animation: blink 0.5s infinite alternate; display: none; }
+        @keyframes blink { from { opacity: 1; } to { opacity: 0.4; } }
+        .input-group { display: flex; gap: 5px; margin-bottom: 5px; }
+        select, input { padding: 12px; border: 2px solid #ddd; border-radius: 10px; font-size: 16px; box-sizing: border-box; width: 100%; }
+        button { width: 100%; padding: 12px; border: none; border-radius: 10px; cursor: pointer; font-size: 14px; font-weight: bold; margin-top: 5px; transition: 0.2s; }
+        .primary-btn { background: var(--primary); color: white; }
+        .success-btn { background: var(--success); color: white; height: 50px; font-size: 16px; }
+        .danger-btn { background: var(--danger); color: white; }
+        .warning-btn { background: var(--warning); color: white; }
+        .dark-btn { background: #444; color: white; }
+        .icon-btn { width: 50px; background:#6c757d; color:white; font-size: 1.2rem; display: flex; align-items: center; justify-content: center; margin: 0; }
+        #adminPanel { display: none; background: var(--admin); padding: 20px; border-radius: 15px; margin-top: 20px; border: 2px solid #ddd; text-align: left; }
+        .admin-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
+        #odaiModal { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; width: 90%; max-width: 400px; height: 70vh; z-index: 200; border-radius: 20px; box-shadow: 0 0 30px rgba(0,0,0,0.3); padding: 20px; overflow-y: auto; }
+        .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 150; }
+        .odai-item { padding: 12px; border-bottom: 1px solid #eee; cursor: pointer; text-align: left; }
+        .answer-item { display: flex; justify-content: space-between; padding: 12px; border-bottom: 1px solid #eee; }
+        .winner-row { background: #e8f5e9; font-weight: bold; border-left: 5px solid var(--success); }
+        .back-link { background: none; color: #888; text-decoration: underline; font-size: 12px; width: auto; display: block; margin: 0 auto 10px auto; }
     </style>
 </head>
 <body>
+<div id="modalOverlay" class="modal-overlay"></div>
+<div id="odaiModal"><h3>お題リスト</h3><div id="modalList"></div><button onclick="closeModal()" class="dark-btn">閉じる</button></div>
 
+<div id="setupArea">
+    <div class="card">
+        <h1>意思電信ゲーム</h1>
+        <input type="text" id="roomInput" placeholder="部屋名（合言葉）" style="margin-bottom:10px">
+        <input type="text" id="nameInputInitial" placeholder="あなたの名前">
+        <button id="joinBtn" class="primary-btn">入室する</button>
+        <div id="qrcode" style="margin-top:20px; display:flex; justify-content:center;"></div>
+    </div>
+</div>
+
+<div id="mainArea" style="display: none;">
+    <div class="card">
+        <h1>意思電信ゲーム</h1>
+        <button id="backBtn" class="back-link">← 退室</button>
+        <div class="user-info-bar">
+            <span>部屋: <b id="displayRoomName">--</b></span>
+            <span>名前: <b id="displayName">--</b></span>
+        </div>
+        <div id="modeDisplay" class="mode-badge">読み込み中...</div>
+        <div class="status-bar">
+            <div>参加：<span id="memberCount">0</span>名</div>
+            <div>回答済：<span id="answerCount">0</span>名</div>
+        </div>
+        <div id="odaiDisplay" class="odai-display">お題待機中...</div>
+        <div id="victoryDisplay" class="victory-msg">勝利！！</div>
+
+        <div id="odaiInputArea">
+            <div class="input-group">
+                <select id="genreSelect">
+                    <option value="all">全ジャンル</option>
+                    <option value="食べ物">食べ物</option>
+                    <option value="生き物">生き物</option>
+                    <option value="日常">日常</option>
+                    <option value="カラオケ">カラオケ</option>
+                    <option value="カスタム">カスタム</option>
+                </select>
+                <button id="randomOdaiBtn" class="icon-btn">🎲</button>
+                <button id="listOdaiBtn" class="icon-btn" style="background:var(--primary)">📋</button>
+            </div>
+            <input type="text" id="odaiInput" placeholder="自由入力">
+            <button id="setOdaiBtn" class="dark-btn">お題を確定</button>
+        </div>
+
+        <div id="gamePlayArea" style="display:none">
+            <input type="text" id="answerInput" placeholder="回答を入力">
+            <button id="sendBtn" class="primary-btn">送信</button>
+        </div>
+        <div id="resultArea"></div>
+        <div style="margin-top:15px; font-weight:bold;">🏆 勝利数: <span id="myWins">0</span></div>
+
+        <button id="toggleAdminBtn" class="dark-btn" style="background:#eee; color:#666; margin-top:30px">管理パネルを開く</button>
+        <div id="adminPanel">
+            <button id="revealBtn" class="success-btn">結果公開</button>
+            <div class="admin-grid">
+                <button id="nextOdaiBtn" class="warning-btn">次のお題(保存)</button>
+                <button id="resetBtn" class="danger-btn">リセット</button>
+            </div>
+            <div class="admin-grid">
+                <button id="saveMasterBtn" style="background:#6c757d; color:white">お題保存</button>
+                <button id="modeBtn" style="background:var(--accent); color:white">モード切替</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+    import { getFirestore, collection, setDoc, updateDoc, addDoc, doc, onSnapshot, query, orderBy, getDocs, where, writeBatch, deleteDoc, increment } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+    const firebaseConfig = { apiKey: "AIzaSyD5ZZ0LKTthtZ3WbZ-rKpocumbalrYBuHU", authDomain: "zenin-itchi-game.firebaseapp.com", projectId: "zenin-itchi-game", storageBucket: "zenin-itchi-game.firebasestorage.app", messagingSenderId: "1063543597468", appId: "1:1063543597468:web:e3f3c1caf9158e25544059" };
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    let roomId = "", userName = "", currentMode = "match";
+    const modeLabels = { match:"全員一致", unmatch:"不一致", majority:"多数派", minority:"少数派" };
+
+    new QRCode(document.getElementById("qrcode"), { text: window.location.href, width: 100, height: 100 });
+
+    document.getElementById('joinBtn').onclick = async () => {
+        roomId = document.getElementById('roomInput').value.trim();
+        userName = document.getElementById('nameInputInitial').value.trim();
+        if (!roomId || !userName) return alert("入力してください");
+        document.getElementById('setupArea').style.display = "none";
+        document.getElementById('mainArea').style.display = "block";
+        document.getElementById('displayRoomName').innerText = roomId;
+        document.getElementById('displayName').innerText = userName;
+        await setDoc(doc(db, "rooms", roomId, "members", userName), { name: userName, wins: 0, lastSeen: Date.now() }, { merge: true });
+        startSync();
+    };
+
+    function startSync() {
+        onSnapshot(doc(db, "rooms", roomId, "settings", "main"), (s) => {
+            if (!s.exists()) return setDoc(doc(db, "rooms", roomId, "settings", "main"), { mode:"match", text:"", revealed:false });
+            const d = s.data(); currentMode = d.mode;
+            const badge = document.getElementById('modeDisplay');
+            badge.innerText = modeLabels[currentMode] + "勝利";
+            badge.className = `mode-badge mode-${currentMode}`;
+            document.getElementById('odaiDisplay').innerText = d.text ? "お題：" + d.text : "お題待機中...";
+            document.getElementById('odaiInputArea').style.display = d.text ? "none" : "block";
+            document.getElementById('gamePlayArea').style.display = d.text ? "block" : "none";
+            updateGenreSelect(currentMode);
+
+            onSnapshot(collection(db, "rooms", roomId, "answers"), (snap) => {
+                const ansList = snap.docs.map(doc => doc.data());
+                document.getElementById('answerCount').innerText = snap.size;
+                if (d.revealed) {
+                    const counts = {}; ansList.forEach(a => counts[a.text] = (counts[a.text] || 0) + 1);
+                    let wins = [];
+                    if (currentMode === "match") wins = new Set(ansList.map(a=>a.text)).size === 1 ? [ansList[0].text] : [];
+                    else if (currentMode === "majority") { const max = Math.max(...Object.values(counts)); Object.keys(counts).forEach(k => { if(counts[k] === max) wins.push(k); }); }
+                    else if (currentMode === "minority") { const min = Math.min(...Object.values(counts)); Object.keys(counts).forEach(k => { if(counts[k] === min) wins.push(k); }); }
+                    else if (currentMode === "unmatch") wins = new Set(ansList.map(a=>a.text)).size === ansList.length ? ansList.map(a=>a.text) : [];
+                    
+                    const myAns = ansList.find(a => a.name === userName)?.text;
+                    document.getElementById('victoryDisplay').style.display = (myAns && wins.includes(myAns)) ? "block" : "none";
+                    document.getElementById('resultArea').innerHTML = ansList.map(a => `<div class="answer-item ${wins.includes(a.text)?'winner-row':''}"><span>${a.name}</span><b>${a.text}</b></div>`).join("");
+                } else {
+                    document.getElementById('resultArea').innerHTML = "";
+                    document.getElementById('victoryDisplay').style.display = "none";
+                }
+            });
+        });
+        onSnapshot(collection(db, "rooms", roomId, "members"), s => document.getElementById('memberCount').innerText = s.size);
+        onSnapshot(doc(db, "rooms", roomId, "members", userName), d => document.getElementById('myWins').innerText = d.data()?.wins || 0);
+    }
+
+    function updateGenreSelect(mode) {
+        const sel = document.getElementById('genreSelect');
+        const hasB = Array.from(sel.options).some(o => o.value === "二者択一");
+        const isSpec = (mode === "majority" || mode === "minority");
+        if (isSpec && !hasB) { const opt = new Option("二者択一", "二者択一"); sel.add(opt); }
+        else if (!isSpec && hasB) { if (sel.value === "二者択一") sel.value = "all"; for (let i=0; i<sel.options.length; i++) if(sel.options[i].value === "二者択一") sel.remove(i); }
+    }
+
+    const getL = async () => {
+        const g = document.getElementById('genreSelect').value;
+        const isSpec = (currentMode === "majority" || currentMode === "minority");
+        let q;
+        if (g === "all") { q = isSpec ? collection(db, "master_odai") : query(collection(db, "master_odai"), where("category", "!=", "二者択一")); }
+        else { q = query(collection(db, "master_odai"), where("category", "==", g)); }
+        const s = await getDocs(q); return s.docs.map(d => d.data().text);
+    };
+
+    document.getElementById('randomOdaiBtn').onclick = async () => { const l = await getL(); if(l.length) document.getElementById('odaiInput').value = l[Math.floor(Math.random()*l.length)]; };
+    document.getElementById('listOdaiBtn').onclick = async () => { 
+        const l = await getL(); document.getElementById('modalList').innerHTML = l.map(t => `<div class="odai-item" onclick="setO('${t}')">${t}</div>`).join("");
+        document.getElementById('odaiModal').style.display = "block"; document.getElementById('modalOverlay').style.display = "block";
+    };
+    window.setO = (t) => { document.getElementById('odaiInput').value = t; closeModal(); };
+    window.closeModal = () => { document.getElementById('odaiModal').style.display = "none"; document.getElementById('modalOverlay').style.display = "none"; };
+
+    document.getElementById('setOdaiBtn').onclick = () => { const v = document.getElementById('odaiInput').value.trim(); if(v) updateDoc(doc(db, "rooms", roomId, "settings", "main"), { text: v, revealed: false }); };
+    document.getElementById('sendBtn').onclick = () => { const v = document.getElementById('answerInput').value.trim(); if(v) setDoc(doc(db, "rooms", roomId, "answers", userName), { name: userName, text: v, time: Date.now() }); document.getElementById('answerInput').value = ""; };
+    document.getElementById('revealBtn').onclick = () => updateDoc(doc(db, "rooms", roomId, "settings", "main"), { revealed: true });
+    document.getElementById('modeBtn').onclick = () => { const order = ["match", "unmatch", "majority", "minority"]; updateDoc(doc(db, "rooms", roomId, "settings", "main"), { mode: order[(order.indexOf(currentMode)+1)%4] }); };
+    document.getElementById('toggleAdminBtn').onclick = (e) => { const p = document.getElementById('adminPanel'); const open = p.style.display === "block"; p.style.display = open ? "none" : "block"; e.target.innerText = open ? "管理パネルを開く" : "管理パネルを閉じる"; };
+    
+    document.getElementById('nextOdaiBtn').onclick = async () => {
+        const snap = await getDocs(collection(db, "rooms", roomId, "answers")); if(snap.empty) return;
+        const list = snap.docs.map(d => d.data());
+        const counts = {}; list.forEach(a => counts[a.text] = (counts[a.text] || 0) + 1);
+        let wins = [];
+        if (currentMode === "match") wins = new Set(list.map(a=>a.text)).size === 1 ? [list[0].text] : [];
+        else if (currentMode === "majority") { const max = Math.max(...Object.values(counts)); Object.keys(counts).forEach(k => { if(counts[k] === max) wins.push(k); }); }
+        else if (currentMode === "minority") { const min = Math.min(...Object.values(counts)); Object.keys(counts).forEach(k => { if(counts[k] === min) wins.push(k); }); }
+        else if (currentMode === "unmatch") wins = new Set(list.map(a=>a.text)).size === list.length ? list.map(a=>a.text) : [];
+
+        const batch = writeBatch(db);
+        list.forEach(a => { if(wins.includes(a.text)) batch.update(doc(db, "rooms", roomId, "members", a.name), { wins: increment(1) }); });
+        await addDoc(collection(db, "rooms", roomId, "history"), { odai: document.getElementById('odaiDisplay').innerText.replace("お題：",""), results: list.map(a => `${a.name}:${a.text}`), modeName: modeLabels[currentMode], time: Date.now() });
+        snap.docs.forEach(d => batch.delete(d.ref));
+        batch.update(doc(db, "rooms", roomId, "settings", "main"), { text: "", revealed: false });
+        await batch.commit(); document.getElementById('odaiInput').value = "";
+    };
+
+    document.getElementById('resetBtn').onclick = async () => {
+        const batch = writeBatch(db); (await getDocs(collection(db, "rooms", roomId, "answers"))).docs.forEach(d => batch.delete(d.ref));
+        batch.update(doc(db, "rooms", roomId, "settings", "main"), { text: "", revealed: false }); await batch.commit();
+    };
+
+    document.getElementById('saveMasterBtn').onclick = async () => {
+        const t = document.getElementById('odaiInput').value.trim(); const c = document.getElementById('genreSelect').value;
+        if(!t || c === "all") return alert("お題とジャンルを選んでください");
+        await addDoc(collection(db, "master_odai"), { text: t, category: c }); alert("保存しました");
+    };
+    document.getElementById('backBtn').onclick = async () => { if(roomId && userName) await deleteDoc(doc(db, "rooms", roomId, "members", userName)); location.reload(); };
+</script>
+</body>
+</html>
+2. 履歴専用ページ (history.html)
+検索が「自由入力」から「既存データからのプルダウン選択」になったスマホ特化版です。
+
+HTML
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>意思電信 - 履歴ログ</title>
+    <style>
+        :root { --primary: #1a73e8; --bg: #f0f2f5; --card: #ffffff; }
+        body { font-family: -apple-system, sans-serif; background: var(--bg); margin: 0; padding: 0; color: #333; }
+        .container { padding: 15px; }
+        #roomAuth { margin-top: 50px; text-align: center; background: white; padding: 30px 20px; border-radius: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+        input, select, button { width: 100%; padding: 15px; margin-bottom: 15px; border: 2px solid #ddd; border-radius: 12px; font-size: 16px; box-sizing: border-box; }
+        button { background: var(--primary); color: white; border: none; font-weight: bold; }
+        .sticky-header { position: sticky; top: 0; background: var(--bg); z-index: 100; padding: 10px 0; border-bottom: 1px solid #ddd; }
+        .filter-group { background: white; padding: 10px; border-radius: 12px; }
+        .history-card { background: white; border-radius: 16px; padding: 15px; margin-bottom: 15px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); border-left: 6px solid var(--primary); }
+        .card-header { display: flex; justify-content: space-between; font-size: 12px; color: #888; border-bottom: 1px solid #f0f0f0; padding-bottom: 5px; }
+        .odai-text { font-size: 1.1rem; font-weight: bold; color: #d81b60; margin: 10px 0; display: block; }
+        .results-container { display: flex; flex-wrap: wrap; gap: 6px; }
+        .res-item { background: #f8f9fa; border: 1px solid #eee; padding: 5px 10px; border-radius: 8px; font-size: 13px; }
+        .res-name { font-size: 10px; color: #777; display: block; }
+        .res-val { font-weight: bold; }
+    </style>
+</head>
+<body>
 <div class="container">
-    <!-- 【1】部屋名入力画面 -->
     <div id="roomAuth">
         <h1>履歴ログにアクセス</h1>
-        <input type="text" id="targetRoom" placeholder="部屋の合言葉を入力">
-        <button id="viewBtn">履歴を表示する</button>
+        <input type="text" id="targetRoom" placeholder="部屋名を入力">
+        <button id="viewBtn">履歴を表示</button>
     </div>
-
-    <!-- 【2】履歴表示画面 -->
     <div id="historyView" style="display: none;">
-        <a href="javascript:location.reload()" class="back-link">← 部屋選択に戻る</a>
-        
         <div class="sticky-header">
             <div class="filter-group">
-                <input type="text" id="searchOdai" placeholder="🔍 お題で検索">
-                <input type="text" id="searchName" placeholder="👤 名前・回答で検索">
+                <select id="searchOdai"><option value="">すべてのお題から選ぶ</option></select>
+                <select id="searchName"><option value="">すべての参加者から選ぶ</option></select>
                 <select id="sortOrder">
                     <option value="time-desc">新しい順</option>
                     <option value="time-asc">古い順</option>
-                    <option value="odai-asc">お題の50音順</option>
+                    <option value="odai-asc">お題50音順</option>
                 </select>
             </div>
         </div>
-
-        <div id="historyList" style="margin-top:15px;">
-            <!-- ここにカードが動的に生成されます -->
-        </div>
-        
-        <div id="noDataMsg" class="no-data" style="display:none">該当する履歴はありません。</div>
+        <div id="historyList" style="margin-top:15px;"></div>
     </div>
 </div>
 
@@ -90,96 +290,44 @@
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
     import { getFirestore, collection, getDocs, query, orderBy } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-    const firebaseConfig = {
-        apiKey: "AIzaSyD5ZZ0LKTthtZ3WbZ-rKpocumbalrYBuHU",
-        authDomain: "zenin-itchi-game.firebaseapp.com",
-        projectId: "zenin-itchi-game",
-        storageBucket: "zenin-itchi-game.firebasestorage.app",
-        messagingSenderId: "1063543597468",
-        appId: "1:1063543597468:web:e3f3c1caf9158e25544059"
-    };
-
-    const app = initializeApp(firebaseConfig);
-    const db = getFirestore(app);
-
+    const firebaseConfig = { apiKey: "AIzaSyD5ZZ0LKTthtZ3WbZ-rKpocumbalrYBuHU", authDomain: "zenin-itchi-game.firebaseapp.com", projectId: "zenin-itchi-game", storageBucket: "zenin-itchi-game.firebasestorage.app", messagingSenderId: "1063543597468", appId: "1:1063543597468:web:e3f3c1caf9158e25544059" };
+    const db = getFirestore(initializeApp(firebaseConfig));
     let rawData = [];
 
     document.getElementById('viewBtn').onclick = async () => {
-        const roomId = document.getElementById('targetRoom').value.trim();
-        if (!roomId) return alert("部屋名を入力してください");
+        const rid = document.getElementById('targetRoom').value.trim(); if(!rid) return;
+        const snap = await getDocs(query(collection(db, "rooms", rid, "history"), orderBy("time", "desc")));
+        rawData = snap.docs.map(d => d.data()); if(!rawData.length) return alert("履歴なし");
 
-        const historyRef = collection(db, "rooms", roomId, "history");
-        try {
-            const snap = await getDocs(query(historyRef, orderBy("time", "desc")));
-            rawData = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        const oSel = document.getElementById('searchOdai');
+        const nSel = document.getElementById('searchName');
+        [...new Set(rawData.map(i => i.odai))].sort().forEach(o => oSel.add(new Option(o, o)));
+        [...new Set(rawData.flatMap(i => i.results.map(r => r.split(':')[0])))].sort().forEach(n => nSel.add(new Option(n, n)));
 
-            if (rawData.length === 0) return alert("履歴が見つかりません");
-
-            document.getElementById('roomAuth').style.display = "none";
-            document.getElementById('historyView').style.display = "block";
-            renderHistory();
-        } catch (e) {
-            alert("読み込みに失敗しました");
-        }
+        document.getElementById('roomAuth').style.display = "none";
+        document.getElementById('historyView').style.display = "block";
+        render();
     };
 
-    function renderHistory() {
-        const odaiQuery = document.getElementById('searchOdai').value.toLowerCase();
-        const nameQuery = document.getElementById('searchName').value.toLowerCase();
-        const sortType = document.getElementById('sortOrder').value;
+    function render() {
+        const sO = document.getElementById('searchOdai').value;
+        const sN = document.getElementById('searchName').value;
+        const sort = document.getElementById('sortOrder').value;
 
-        let filtered = rawData.filter(item => {
-            const matchOdai = item.odai.toLowerCase().includes(odaiQuery);
-            const matchName = item.results.some(res => res.toLowerCase().includes(nameQuery));
-            return matchOdai && matchName;
-        });
+        let filtered = rawData.filter(i => (sO === "" || i.odai === sO) && (sN === "" || i.results.some(r => r.split(':')[0] === sN)));
+        filtered.sort((a,b) => sort==="time-desc" ? b.time-a.time : sort==="time-asc" ? a.time-b.time : a.odai.localeCompare(b.odai,'ja'));
 
-        filtered.sort((a, b) => {
-            if (sortType === "time-desc") return b.time - a.time;
-            if (sortType === "time-asc") return a.time - b.time;
-            if (sortType === "odai-asc") return a.odai.localeCompare(b.odai, 'ja');
-        });
-
-        const listContainer = document.getElementById('historyList');
-        listContainer.innerHTML = "";
-        document.getElementById('noDataMsg').style.display = filtered.length ? "none" : "block";
-
-        filtered.forEach(item => {
-            const dateStr = new Date(item.time).toLocaleString('ja-JP', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' });
-            
-            const card = document.createElement('div');
-            card.className = "history-card";
-            
-            // 回答をパース（"名前:回答" の形式を想定）
-            const resultsHtml = item.results.map(r => {
-                const parts = r.split(':');
-                const name = parts[0] || '??';
-                const val = parts[1] || '';
-                return `
-                    <div class="res-item">
-                        <span class="res-name">${name}</span>
-                        <span class="res-val">${val}</span>
-                    </div>`;
-            }).join('');
-
-            card.innerHTML = `
-                <div class="card-header">
-                    <span class="date">${dateStr}</span>
-                    <span class="mode-tag">${item.modeName || '通常'}</span>
-                </div>
-                <span class="odai-text">Q. ${item.odai}</span>
-                <div class="results-container">
-                    ${resultsHtml}
-                </div>
-            `;
-            listContainer.appendChild(card);
-        });
+        document.getElementById('historyList').innerHTML = filtered.map(i => `
+            <div class="history-card">
+                <div class="card-header"><span>${new Date(i.time).toLocaleString()}</span><span>${i.modeName}</span></div>
+                <span class="odai-text">Q. ${i.odai}</span>
+                <div class="results-container">${i.results.map(r => `<div class="res-item"><span class="res-name">${r.split(':')[0]}</span><span class="res-val">${r.split(':')[1]}</span></div>`).join('')}</div>
+            </div>
+        `).join('');
     }
-
-    document.getElementById('searchOdai').oninput = renderHistory;
-    document.getElementById('searchName').oninput = renderHistory;
-    document.getElementById('sortOrder').onchange = renderHistory;
-
+    document.getElementById('searchOdai').onchange = render;
+    document.getElementById('searchName').onchange = render;
+    document.getElementById('sortOrder').onchange = render;
 </script>
 </body>
 </html>
