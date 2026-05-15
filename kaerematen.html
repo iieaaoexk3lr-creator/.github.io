@@ -125,12 +125,6 @@
         <div id="resultArea"></div>
         <div id="winCountDisplay">🏆 累計勝利数: <span id="myWins">0</span></div>
 
-        <!-- 履歴表示 -->
-        <div id="historyArea">
-            <h4>【履歴】</h4>
-            <div id="historyList">履歴はありません</div>
-        </div>
-
         <button id="toggleAdminBtn" class="dark-btn" style="background:#eee; color:#666; margin-top:30px">管理パネルを開く</button>
         <div id="adminPanel">
             <button id="revealBtn" class="success-btn">結果を公開する</button>
@@ -230,13 +224,6 @@
             });
         });
 
-        // 履歴監視（常に表示）
-        onSnapshot(query(collection(db, "rooms", roomId, "history"), orderBy("time", "desc")), (s) => {
-            document.getElementById('historyList').innerHTML = s.docs.map(d => `
-                <div style="border-bottom:1px solid #eee; padding-bottom:5px; margin-top:5px">
-                    <b>${d.data().odai}</b> <small>(${d.data().modeName})</small><br>${d.data().results.join(", ")}
-                </div>`).join("") || "履歴はありません";
-        });
     }
 
     function updateGenreSelect(mode) {
