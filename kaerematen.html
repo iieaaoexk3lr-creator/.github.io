@@ -312,10 +312,23 @@
 
     // お題リスト操作
     const getL = async () => {
-        const g = document.getElementById('genreSelect').value;
-        const s = await getDocs(g==="all" ? collection(db, "master_odai") : query(collection(db, "master_odai"), where("category", "==", g)));
-        return s.docs.map(d => d.data().text);
-    };
+    const g = document.getElementById('genreSelect').value;
+    const isSpecial = (currentMode === "majority" || currentMode === "minority");
+    
+    let q;
+    if (g === "all") {
+        // 全ジャンルの時：多数・少数派モードでなければ「二者択一」を除外
+        q = isSpecial 
+            ? collection(db, "master_odai") 
+            : query(collection(db, "master_odai"), where("category", "!=", "二者択一"));
+    } else {
+        // 特定ジャンル選択時
+        q = query(collection(db, "master_odai"), where("category", "==", g));
+    }
+    
+    const s = await getDocs(q);
+    return s.docs.map(d => d.data().text);
+};
     document.getElementById('randomOdaiBtn').onclick = async () => {
         const l = await getL();
         if(l.length) document.getElementById('odaiInput').value = l[Math.floor(Math.random()*l.length)];
