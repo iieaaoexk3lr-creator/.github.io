@@ -58,7 +58,6 @@
 
     <!-- 【2】履歴表示画面 -->
     <div id="historyView" style="display: none;">
-        <!-- ご指定のタイトル形式 -->
         <div class="main-title">意思電信ゲーム</div>
         <div class="sub-title"><span id="roomNameLabel">--</span> ルーム履歴</div>
         
@@ -70,7 +69,7 @@
                 <select id="searchDate" class="f-date"><option value="">📅 すべての日付</option></select>
             </div>
             <div class="grid-2x2">
-                <select id="searchOdai" class="f-name" style="background-color: var(--c-odai); border-color: #ffa726;"><option value="">❓ すべてのお題</option></select>
+                <select id="searchOdai" class="f-odai"><option value="">❓ すべてのお題</option></select>
                 <select id="searchMode" class="f-mode">
                     <option value="">🎮 すべてのモード</option>
                     <option value="全員一致">全員一致</option>
@@ -79,7 +78,6 @@
                     <option value="少数派">少数派</option>
                 </select>
             </div>
-            <!-- ソート順をその下に配置 -->
             <select id="sortOrder" style="margin-top: 5px; margin-bottom: 0;">
                 <option value="time-desc">⏳ 新しい順</option>
                 <option value="time-asc">⌛ 古い順</option>
@@ -102,42 +100,44 @@
     let currentRoomId = "";
 
     document.getElementById('viewBtn').onclick = async () => {
-        currentRoomId = document.getElementById('targetRoom').value.trim(); if(!currentRoomId) return;
+        currentRoomId = document.getElementById('targetRoom').value.trim(); 
+        if(!currentRoomId) return alert("部屋名を入力してください");
         await loadData();
     };
 
-    async () => {
-        const snap = await getDocs(query(collection(db, "rooms", currentRoomId, "history"), orderBy("time", "desc")));
-        // ドキュメントID(消去用)も一緒に保持
-        rawData = snap.docs.map(d => ({ docId: d.id, ...d.data() })); 
-        
-        if(!rawData.length) {
-            alert("この部屋の履歴はありません");
-            return;
+    // データの読み込み関数を正しく定義
+    async function loadData() {
+        try {
+            const snap = await getDocs(query(collection(db, "rooms", currentRoomId, "history"), orderBy("time", "desc")));
+            rawData = snap.docs.map(d => ({ docId: d.id, ...d.data() })); 
+            
+            if(!rawData.length) {
+                alert("この部屋の履歴はありません");
+                return;
+            }
+
+            const oSel = document.getElementById('searchOdai');
+            const nSel = document.getElementById('searchName');
+            const dSel = document.getElementById('searchDate');
+            
+            oSel.innerHTML = '<option value="">❓ すべてのお題</option>';
+            nSel.innerHTML = '<option value="">👤 すべての参加者</option>';
+            dSel.innerHTML = '<option value="">📅 すべての日付</option>';
+
+            [...new Set(rawData.map(i => i.odai))].sort().forEach(o => oSel.add(new Option(o, o)));
+            [...new Set(rawData.flatMap(i => i.results.map(r => r.split(':')[0])))].sort().forEach(n => nSel.add(new Option(n, n)));
+            
+            const dates = rawData.map(i => new Date(i.time).toLocaleDateString('ja-JP'));
+            [...new Set(dates)].forEach(d => dSel.add(new Option(d, d)));
+
+            document.getElementById('roomNameLabel').innerText = currentRoomId;
+            document.getElementById('roomAuth').style.display = "none";
+            document.getElementById('historyView').style.display = "block";
+            render();
+        } catch (e) {
+            alert("データの取得に失敗しました。");
+            console.error(e);
         }
-
-        // セレクトボックスの初期化
-        const oSel = document.getElementById('searchOdai');
-        const nSel = document.getElementById('searchName');
-        const dSel = document.getElementById('searchDate');
-        
-        // 既存の選択肢をリセット（「すべて」以外を削除）
-        oSel.innerHTML = '<option value="">❓ すべてのお題</option>';
-        nSel.innerHTML = '<option value="">👤 すべての参加者</option>';
-        dSel.innerHTML = '<option value="">📅 すべての日付</option>';
-
-        // ユニークなデータを抽出してセット
-        [...new Set(rawData.map(i => i.odai))].sort().forEach(o => oSel.add(new Option(o, o)));
-        [...new Set(rawData.flatMap(i => i.results.map(r => r.split(':')[0])))].sort().forEach(n => nSel.add(new Option(n, n)));
-        
-        // 日付（YYYY/MM/DD形式）の抽出
-        const dates = rawData.map(i => new Date(i.time).toLocaleDateString('ja-JP'));
-        [...new Set(dates)].forEach(d => dSel.add(new Option(d, d)));
-
-        document.getElementById('roomNameLabel').innerText = currentRoomId;
-        document.getElementById('roomAuth').style.display = "none";
-        document.getElementById('historyView').style.display = "block";
-        render();
     }
 
     function render() {
@@ -147,7 +147,6 @@
         const sM = document.getElementById('searchMode').value;
         const sort = document.getElementById('sortOrder').value;
 
-        // 4項目すべての絞り込み条件を適用
         let filtered = rawData.filter(i => {
             const matchO = sO === "" || i.odai === sO;
             const matchN = sN === "" || i.results.some(r => r.split(':')[0] === sN);
@@ -156,7 +155,6 @@
             return matchO && matchN && matchD && matchM;
         });
 
-        // ソート処理
         filtered.sort((a,b) => sort==="time-desc" ? b.time-a.time : sort==="time-asc" ? a.time-b.time : a.odai.localeCompare(b.odai,'ja'));
 
         const listContainer = document.getElementById('historyList');
@@ -184,16 +182,15 @@
 
     // パスキー付き削除機能
     window.deleteHistory = async (docId) => {
-        // パスキーを簡易設定（ルーム名+123など、あるいは固定値「admin」など現場の運用に合わせて変更してください）
         const password = prompt("この履歴を削除するにはパスキーを入力してください:");
-        if (password === null) return; // キャンセル
+        if (password === null) return; 
         
-        if (password === "admin") { // パスキーを「admin」に設定しています
+        if (password === "0001") { // パスキーは「0001」
             if (confirm("本当にこの履歴を削除しますか？")) {
                 try {
-                    await deleteDoc(doc docId));
+                    await deleteDoc(doc(db, "rooms", currentRoomId, "history", docId));
                     alert("削除しました。");
-                    await loadData(); // データをリロードして再描画
+                    await loadData(); 
                 } catch (e) {
                     alert("削除に失敗しました。");
                 }
