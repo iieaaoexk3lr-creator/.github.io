@@ -3,89 +3,211 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>意思電信 - 履歴ログ</title>
+    <title>意思電信ゲーム 履歴アーカイブ</title>
     <style>
-        :root { --primary: #1a73e8; --bg: #f0f2f5; --card: #ffffff; }
+        :root { 
+            --primary: #1a73e8; --bg: #f0f2f5; --card: #ffffff; 
+            --c-name: #ffeb3b; --c-date: #b2dfdb; --c-odai: #ffcc80; --c-mode: #e1bee7;
+        }
         body { font-family: -apple-system, sans-serif; background: var(--bg); margin: 0; padding: 0; color: #333; }
-        .container { padding: 15px; }
+        .container { padding: 15px; max-width: 500px; margin: 0 auto; }
+        
+        /* 部屋選択 */
         #roomAuth { margin-top: 50px; text-align: center; background: white; padding: 30px 20px; border-radius: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
-        input, select, button { width: 100%; padding: 15px; margin-bottom: 15px; border: 2px solid #ddd; border-radius: 12px; font-size: 16px; box-sizing: border-box; }
-        button { background: var(--primary); color: white; border: none; font-weight: bold; }
-        .sticky-header { position: sticky; top: 0; background: var(--bg); z-index: 100; padding: 10px 0; border-bottom: 1px solid #ddd; }
-        .filter-group { background: white; padding: 10px; border-radius: 12px; }
-        .history-card { background: white; border-radius: 16px; padding: 15px; margin-bottom: 15px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); border-left: 6px solid var(--primary); }
-        .card-header { display: flex; justify-content: space-between; font-size: 12px; color: #888; border-bottom: 1px solid #f0f0f0; padding-bottom: 5px; }
+        input, select, button { width: 100%; padding: 14px; margin-bottom: 12px; border: 2px solid #ddd; border-radius: 12px; font-size: 15px; box-sizing: border-box; }
+        button { background: var(--primary); color: white; border: none; font-weight: bold; cursor: pointer; }
+        
+        /* メインタイトル */
+        .main-title { font-size: 1.3rem; font-weight: bold; color: #444; margin: 15px 0 5px 0; text-align: center; }
+        .sub-title { font-size: 1.1rem; font-weight: bold; color: var(--primary); margin: 0 0 15px 0; text-align: center; }
+
+        /* 絞り込み枠（2列×2行） */
+        .filter-box { background: white; padding: 15px; border-radius: 16px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); margin-bottom: 15px; }
+        .filter-box h3 { margin: 0 0 10px 0; font-size: 14px; color: #666; }
+        .grid-2x2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 8px; }
+        
+        /* それぞれ枠の色を変更 */
+        .f-name { background-color: var(--c-name); border-color: #fbc02d; color: #000; }
+        .f-date { background-color: var(--c-date); border-color: #4db6ac; color: #000; }
+        .f-odai { background-color: var(--c-odai); border-color: #ffa726; color: #000; }
+        .f-mode { background-color: var(--c-mode); border-color: #ba68c8; color: #000; }
+
+        /* カードデザイン */
+        .history-card { position: relative; background: white; border-radius: 16px; padding: 15px; margin-bottom: 15px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); border-left: 6px solid var(--primary); }
+        .card-header { display: flex; justify-content: space-between; font-size: 12px; color: #888; border-bottom: 1px solid #f0f0f0; padding-bottom: 5px; padding-right: 30px; }
         .odai-text { font-size: 1.1rem; font-weight: bold; color: #d81b60; margin: 10px 0; display: block; }
         .results-container { display: flex; flex-wrap: wrap; gap: 6px; }
         .res-item { background: #f8f9fa; border: 1px solid #eee; padding: 5px 10px; border-radius: 8px; font-size: 13px; }
         .res-name { font-size: 10px; color: #777; display: block; }
         .res-val { font-weight: bold; }
+        
+        /* 削除ゴミ箱ボタン */
+        .delete-btn { position: absolute; top: 12px; right: 12px; background: none; border: none; color: #aaa; font-size: 16px; cursor: pointer; padding: 5px; width: auto; margin: 0; }
+        .delete-btn:hover { color: #d9534f; }
+        .no-data { text-align: center; padding: 30px; color: #999; font-size: 14px; }
     </style>
 </head>
 <body>
 <div class="container">
+    <!-- 【1】部屋名入力画面 -->
     <div id="roomAuth">
-        <h1>履歴ログにアクセス</h1>
-        <input type="text" id="targetRoom" placeholder="部屋名を入力">
+        <h2>履歴ログにアクセス</h2>
+        <input type="text" id="targetRoom" placeholder="部屋の合言葉を入力">
         <button id="viewBtn">履歴を表示</button>
     </div>
+
+    <!-- 【2】履歴表示画面 -->
     <div id="historyView" style="display: none;">
-        <div class="sticky-header">
-            <div class="filter-group">
-                <select id="searchOdai"><option value="">すべてのお題から選ぶ</option></select>
-                <select id="searchName"><option value="">すべての参加者から選ぶ</option></select>
-                <select id="sortOrder">
-                    <option value="time-desc">新しい順</option>
-                    <option value="time-asc">古い順</option>
-                    <option value="odai-asc">お題50音順</option>
+        <!-- ご指定のタイトル形式 -->
+        <div class="main-title">意思電信ゲーム</div>
+        <div class="sub-title"><span id="roomNameLabel">--</span> ルーム履歴</div>
+        
+        <!-- 絞り込み枠 -->
+        <div class="filter-box">
+            <h3>絞り込み</h3>
+            <div class="grid-2x2">
+                <select id="searchName" class="f-name"><option value="">👤 すべての参加者</option></select>
+                <select id="searchDate" class="f-date"><option value="">📅 すべての日付</option></select>
+            </div>
+            <div class="grid-2x2">
+                <select id="searchOdai" class="f-name" style="background-color: var(--c-odai); border-color: #ffa726;"><option value="">❓ すべてのお題</option></select>
+                <select id="searchMode" class="f-mode">
+                    <option value="">🎮 すべてのモード</option>
+                    <option value="全員一致">全員一致</option>
+                    <option value="不一致">不一致</option>
+                    <option value="多数派">多数派</option>
+                    <option value="少数派">少数派</option>
                 </select>
             </div>
+            <!-- ソート順をその下に配置 -->
+            <select id="sortOrder" style="margin-top: 5px; margin-bottom: 0;">
+                <option value="time-desc">⏳ 新しい順</option>
+                <option value="time-asc">⌛ 古い順</option>
+                <option value="odai-asc">🔤 お題50音順</option>
+            </select>
         </div>
-        <div id="historyList" style="margin-top:15px;"></div>
+
+        <div id="historyList"></div>
+        <div id="noDataMsg" class="no-data" style="display:none">該当する履歴はありません。</div>
     </div>
 </div>
 
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-    import { getFirestore, collection, getDocs, query, orderBy } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+    import { getFirestore, collection, getDocs, query, orderBy, doc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
     const firebaseConfig = { apiKey: "AIzaSyD5ZZ0LKTthtZ3WbZ-rKpocumbalrYBuHU", authDomain: "zenin-itchi-game.firebaseapp.com", projectId: "zenin-itchi-game", storageBucket: "zenin-itchi-game.firebasestorage.app", messagingSenderId: "1063543597468", appId: "1:1063543597468:web:e3f3c1caf9158e25544059" };
     const db = getFirestore(initializeApp(firebaseConfig));
     let rawData = [];
+    let currentRoomId = "";
 
     document.getElementById('viewBtn').onclick = async () => {
-        const rid = document.getElementById('targetRoom').value.trim(); if(!rid) return;
-        const snap = await getDocs(query(collection(db, "rooms", rid, "history"), orderBy("time", "desc")));
-        rawData = snap.docs.map(d => d.data()); if(!rawData.length) return alert("履歴なし");
+        currentRoomId = document.getElementById('targetRoom').value.trim(); if(!currentRoomId) return;
+        await loadData();
+    };
 
+    async () => {
+        const snap = await getDocs(query(collection(db, "rooms", currentRoomId, "history"), orderBy("time", "desc")));
+        // ドキュメントID(消去用)も一緒に保持
+        rawData = snap.docs.map(d => ({ docId: d.id, ...d.data() })); 
+        
+        if(!rawData.length) {
+            alert("この部屋の履歴はありません");
+            return;
+        }
+
+        // セレクトボックスの初期化
         const oSel = document.getElementById('searchOdai');
         const nSel = document.getElementById('searchName');
+        const dSel = document.getElementById('searchDate');
+        
+        // 既存の選択肢をリセット（「すべて」以外を削除）
+        oSel.innerHTML = '<option value="">❓ すべてのお題</option>';
+        nSel.innerHTML = '<option value="">👤 すべての参加者</option>';
+        dSel.innerHTML = '<option value="">📅 すべての日付</option>';
+
+        // ユニークなデータを抽出してセット
         [...new Set(rawData.map(i => i.odai))].sort().forEach(o => oSel.add(new Option(o, o)));
         [...new Set(rawData.flatMap(i => i.results.map(r => r.split(':')[0])))].sort().forEach(n => nSel.add(new Option(n, n)));
+        
+        // 日付（YYYY/MM/DD形式）の抽出
+        const dates = rawData.map(i => new Date(i.time).toLocaleDateString('ja-JP'));
+        [...new Set(dates)].forEach(d => dSel.add(new Option(d, d)));
 
+        document.getElementById('roomNameLabel').innerText = currentRoomId;
         document.getElementById('roomAuth').style.display = "none";
         document.getElementById('historyView').style.display = "block";
         render();
-    };
+    }
 
     function render() {
         const sO = document.getElementById('searchOdai').value;
         const sN = document.getElementById('searchName').value;
+        const sD = document.getElementById('searchDate').value;
+        const sM = document.getElementById('searchMode').value;
         const sort = document.getElementById('sortOrder').value;
 
-        let filtered = rawData.filter(i => (sO === "" || i.odai === sO) && (sN === "" || i.results.some(r => r.split(':')[0] === sN)));
+        // 4項目すべての絞り込み条件を適用
+        let filtered = rawData.filter(i => {
+            const matchO = sO === "" || i.odai === sO;
+            const matchN = sN === "" || i.results.some(r => r.split(':')[0] === sN);
+            const matchD = sD === "" || new Date(i.time).toLocaleDateString('ja-JP') === sD;
+            const matchM = sM === "" || i.modeName === sM;
+            return matchO && matchN && matchD && matchM;
+        });
+
+        // ソート処理
         filtered.sort((a,b) => sort==="time-desc" ? b.time-a.time : sort==="time-asc" ? a.time-b.time : a.odai.localeCompare(b.odai,'ja'));
 
-        document.getElementById('historyList').innerHTML = filtered.map(i => `
+        const listContainer = document.getElementById('historyList');
+        if(filtered.length === 0) {
+            listContainer.innerHTML = "";
+            document.getElementById('noDataMsg').style.display = "block";
+            return;
+        }
+        document.getElementById('noDataMsg').style.display = "none";
+
+        listContainer.innerHTML = filtered.map(i => `
             <div class="history-card">
-                <div class="card-header"><span>${new Date(i.time).toLocaleString()}</span><span>${i.modeName}</span></div>
+                <button class="delete-btn" onclick="deleteHistory('${i.docId}')">🗑️</button>
+                <div class="card-header">
+                    <span>${new Date(i.time).toLocaleString('ja-JP')}</span>
+                    <span>${i.modeName || '通常'}</span>
+                </div>
                 <span class="odai-text">Q. ${i.odai}</span>
-                <div class="results-container">${i.results.map(r => `<div class="res-item"><span class="res-name">${r.split(':')[0]}</span><span class="res-val">${r.split(':')[1]}</span></div>`).join('')}</div>
+                <div class="results-container">
+                    ${i.results.map(r => `<div class="res-item"><span class="res-name">${r.split(':')[0]}</span><span class="res-val">${r.split(':')[1]}</span></div>`).join('')}
+                </div>
             </div>
         `).join('');
     }
+
+    // パスキー付き削除機能
+    window.deleteHistory = async (docId) => {
+        // パスキーを簡易設定（ルーム名+123など、あるいは固定値「admin」など現場の運用に合わせて変更してください）
+        const password = prompt("この履歴を削除するにはパスキーを入力してください:");
+        if (password === null) return; // キャンセル
+        
+        if (password === "admin") { // パスキーを「admin」に設定しています
+            if (confirm("本当にこの履歴を削除しますか？")) {
+                try {
+                    await deleteDoc(doc docId));
+                    alert("削除しました。");
+                    await loadData(); // データをリロードして再描画
+                } catch (e) {
+                    alert("削除に失敗しました。");
+                }
+            }
+        } else {
+            alert("パスキーが正しくありません。");
+        }
+    };
+
     document.getElementById('searchOdai').onchange = render;
     document.getElementById('searchName').onchange = render;
+    document.getElementById('searchDate').onchange = render;
+    document.getElementById('searchMode').onchange = render;
     document.getElementById('sortOrder').onchange = render;
 </script>
 </body>
+</html>
