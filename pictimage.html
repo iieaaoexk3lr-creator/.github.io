@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>クイズ＆お絵かきルーム</title>
+    <title>クイズ＆お絵かきルーム（超節約・ボタン送信版）</title>
     <style>
         /* 全体：スマホファースト＆レスポンシブ */
         body { font-family: sans-serif; margin: 10px; background-color: #f0f2f5; font-size: 14px; }
@@ -27,6 +27,8 @@
         button:hover { background: #0056b3; }
         button.secondary { background: #6c757d; }
         button.danger { background: #dc3545; }
+        button.success { background: #28a745; }
+        button.success:hover { background: #218838; }
 
         /* ヘッダー・ステータス表示 */
         .room-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #eee; padding-bottom: 10px; margin-bottom: 15px; gap: 10px; }
@@ -66,42 +68,6 @@
         .sidebar { border-top: 2px solid #eee; padding-top: 15px; }
         .member-item { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; border-bottom: 1px solid #eee; }
     </style>
-
-    <!-- Firebase SDK の読み込み -->
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getFirestore, collection, getDocs } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
-
-        // ⚠️ 設定値をご自身のプロジェクトのものに書き換えてください
-        const firebaseConfig = {
-            apiKey: "YOUR_API_KEY",
-            authDomain: "YOUR_AUTH_DOMAIN",
-            projectId: "YOUR_PROJECT_ID",
-            storageBucket: "YOUR_STORAGE_BUCKET",
-            messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
-            appId: "YOUR_APP_ID"
-        };
-
-        const app = initializeApp(firebaseConfig);
-        const db = getFirestore(app);
-
-        window.getThemesFromFirebase = async function() {
-            try {
-                const querySnapshot = await getDocs(collection(db, "themes"));
-                const themes = [];
-                querySnapshot.forEach((doc) => {
-                    const data = doc.data();
-                    if (data.word) {
-                        themes.push(data.word);
-                    }
-                });
-                return themes;
-            } catch (error) {
-                console.error("Firebaseデータ取得失敗:", error);
-                return [];
-            }
-        };
-    </script>
 </head>
 <body>
 
@@ -109,7 +75,7 @@
     <!-- 入室ページ -->
     <div id="login-page">
         <div class="admin-link-box">
-            <a href="pictodai.html" target="_blank">⚙️ お題の登録・管理はこちら</a>
+            <a href="https://iieaaoexk3lr-creator.github.io/.github.io/pictodai.html" target="_blank">⚙️ お題の登録・管理はこちら</a>
         </div>
         <h2>ルームに入室</h2>
         <div class="form-group">
@@ -158,13 +124,6 @@
                 <div id="host-panel" class="host-controls hidden">
                     <h4 style="margin: 0 0 10px 0;">👑 司会進行者コントロールパネル</h4>
                     <div class="form-group">
-                        <label>【回答モード設定】</label>
-                        <select id="game-mode-select">
-                            <option value="first-win">先勝ちモード (正解者が出たら即終了)</option>
-                            <option value="all-together">全員一斉回答モード (司会が終了するまで回答可能)</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
                         <label>【役割変更・指名】</label>
                         <select id="change-drawer-select">
                             <option value="">-- 出題者(描く人)を指名 --</option>
@@ -180,12 +139,11 @@
                         </div>
                         <button id="random-theme-btn" style="background: #28a745;">🎲 ランダムでお題を決定して出題</button>
                     </div>
-                    <button id="clear-game-btn" class="secondary" style="font-size:13px; padding:8px;">正解ログとキャンバスを全クリア</button>
+                    <button id="clear-game-btn" class="secondary" style="font-size:13px; padding:8px;">回答ログとキャンバスを全クリア</button>
                 </div>
 
                 <!-- キャンバスエリア -->
                 <div class="canvas-area">
-                    <div id="current-mode-display" style="font-weight: bold; font-size:0.9em; color: #555; margin-bottom: 5px;">現在のモード: 先勝ちモード</div>
                     <div class="canvas-wrapper">
                         <canvas id="paint-canvas" width="600" height="450"></canvas>
                     </div>
@@ -199,8 +157,10 @@
                             <option value="12">太い (12px)</option>
                             <option value="24">極太 (24px)</option>
                         </select>
-                        <button id="undo-btn" class="secondary">1画消す</button>
+                        <button id="undo-btn" class="secondary">1画戻す</button>
                         <button id="clear-btn" class="danger">全消去</button>
+                        <!-- 絵を送信するボタンを新規設置 -->
+                        <button id="send-image-btn" class="success" style="flex-basis: 100%; margin-top: 5px;">📤 描き終わったら回答者に絵を送信！</button>
                     </div>
                 </div>
 
@@ -230,545 +190,423 @@
     </div>
 </div>
 
-<!-- Mock WebSocket (擬似通信クラス - 行を省略せず完全に展開) -->
-<script>
-class MockSignalingServer {
-    constructor() {
-        this.rooms = new Map();
-        this.listeners = new Map();
-    }
-    join(roomId, user) {
-        if (!this.rooms.has(roomId)) {
-            this.rooms.set(roomId, {
-                members: [],
-                mode: 'first-win',
-                lines: [],
-                currentTheme: "",
-                isThemeHiddenFromHost: false
-            });
-        }
-        const room = this.rooms.get(roomId);
-        room.members = room.members.filter(m => m.name !== user.name);
-        
-        if (user.role === 'drawer') {
-            room.members.forEach(m => {
-                if (m.role === 'drawer') {
-                    m.role = 'answerer';
-                }
-            });
-        }
+<!-- Firebase SDK の統合ロジック（ボタン送信節約版） -->
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+    import { getFirestore, collection, doc, setDoc, onSnapshot, getDocs, updateDoc, arrayUnion } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-        room.members.push(user);
-        this.broadcast(roomId, { 
-            type: 'room-update', 
-            members: room.members, 
-            mode: room.mode, 
-            lines: room.lines,
-            currentTheme: room.currentTheme,
-            isThemeHiddenFromHost: room.isThemeHiddenFromHost
-        });
-    }
-    leave(roomId, userName) {
-        if (!this.rooms.has(roomId)) return;
-        const room = this.rooms.get(roomId);
-        room.members = room.members.filter(m => m.name !== userName);
-        this.broadcast(roomId, { type: 'room-update', members: room.members });
-    }
-    send(roomId, message) {
-        const room = this.rooms.get(roomId);
-        if (!room) return;
-
-        if (message.type === 'draw-stroke') {
-            room.lines.push(message.stroke);
-        } else if (message.type === 'clear-canvas') {
-            room.lines = [];
-        } else if (message.type === 'undo-canvas') {
-            room.lines.pop();
-            message.lines = room.lines;
-        } else if (message.type === 'change-mode') {
-            room.mode = message.mode;
-        } else if (message.type === 'change-drawer') {
-            room.members.forEach(m => {
-                if (m.name === message.targetName) {
-                    m.role = 'drawer';
-                } else if (m.role === 'drawer') {
-                    m.role = 'answerer';
-                }
-            });
-            message.members = room.members;
-        } else if (message.type === 'set-theme') {
-            room.currentTheme = message.theme;
-            room.isThemeHiddenFromHost = message.hideFromHost || false;
-        } else if (message.type === 'clear-game') {
-            room.lines = [];
-            room.currentTheme = "";
-            room.isThemeHiddenFromHost = false;
-        }
-
-        this.broadcast(roomId, message);
-    }
-    broadcast(roomId, message) {
-        const list = this.listeners.get(roomId) || [];
-        list.forEach(cb => {
-            cb(JSON.parse(JSON.stringify(message)));
-        });
-    }
-    onMessage(roomId, userId, callback) {
-        if (!this.listeners.has(roomId)) {
-            this.listeners.set(roomId, []);
-        }
-        this.listeners.get(roomId).push(callback);
-    }
-}
-const server = new MockSignalingServer();
-</script>
-
-<!-- メインのアプリケーションロジック -->
-<script>
-let myRoomId = "";
-let myName = "";
-let myRole = "answerer"; 
-let isHostUser = false; 
-let gameMode = "first-win"; 
-let hasWon = false; 
-let currentTheme = ""; 
-let isThemeHiddenFromHost = false; 
-
-// 描画関連
-const canvas = document.getElementById('paint-canvas');
-const ctx = canvas.getContext('2d');
-let isDrawing = false;
-let currentStroke = []; 
-let remoteLines = [];   
-
-// DOM要素の取得
-const loginPage = document.getElementById('login-page');
-const roomPage = document.getElementById('room-page');
-const hostPanel = document.getElementById('host-panel');
-const canvasControls = document.getElementById('canvas-controls');
-const answerFormArea = document.getElementById('answer-form-area');
-const memberListDiv = document.getElementById('member-list');
-const answerLogDiv = document.getElementById('answer-log');
-const winnerBanner = document.getElementById('winner-banner');
-const changeDrawerSelect = document.getElementById('change-drawer-select');
-const gameModeSelect = document.getElementById('game-mode-select');
-const currentModeDisplay = document.getElementById('current-mode-display');
-const themeWordDisplay = document.getElementById('theme-word');
-const themeLabelDisplay = document.getElementById('theme-label');
-const firebaseThemeSelect = document.getElementById('firebase-theme-select');
-
-// --- スマホ対応の位置計算修正ロジック ---
-function getCanvasPos(e) {
-    const rect = canvas.getBoundingClientRect();
-    const clientX = e.touches && e.touches.length > 0 ? e.touches[0].clientX : e.clientX;
-    const clientY = e.touches && e.touches.length > 0 ? e.touches[0].clientY : e.clientY;
-
-    // CSSで伸縮された比率を元に内部解像度（600x450）に正しく変換
-    const scaleX = canvas.width / rect.width;
-    const scaleY = canvas.height / rect.height;
-
-    return {
-        x: (clientX - rect.left) * scaleX,
-        y: (clientY - rect.top) * scaleY
+    // ⚠️ 必須：ここにpictodai.htmlで使っているのと同じFirebaseの接続設定を貼り付けてください！
+    const firebaseConfig = {
+        apiKey: "YOUR_API_KEY",
+        authDomain: "YOUR_AUTH_DOMAIN",
+        projectId: "YOUR_PROJECT_ID",
+        storageBucket: "YOUR_STORAGE_BUCKET",
+        messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
+        appId: "YOUR_APP_ID"
     };
-}
 
-// --- 入室処理 ---
-document.getElementById('join-btn').addEventListener('click', () => {
-    myRoomId = document.getElementById('room-id').value.trim();
-    myName = document.getElementById('user-name').value.trim();
-    const selectedRole = document.getElementById('user-role-init').value;
-    const adminKey = document.getElementById('admin-key').value.trim();
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
 
-    if (!myRoomId || !myName) {
-        alert('ルーム名と名前を入力してください。');
-        return;
+    // グローバル変数群
+    let myRoomId = "";
+    let myName = "";
+    let myRole = "answerer"; 
+    let isHostUser = false; 
+    let currentTheme = ""; 
+    let isThemeHiddenFromHost = false; 
+    let unsubscribeRoom = null;
+
+    // キャンバス要素
+    const canvas = document.getElementById('paint-canvas');
+    const ctx = canvas.getContext('2d');
+    let isDrawing = false;
+    let localLines = []; // 自分の手元だけの線の履歴（未送信分を含む）
+    let remoteLines = []; // サーバーから降ってきた確定済みの線
+
+    // DOM要素
+    const loginPage = document.getElementById('login-page');
+    const roomPage = document.getElementById('room-page');
+    const hostPanel = document.getElementById('host-panel');
+    const canvasControls = document.getElementById('canvas-controls');
+    const answerFormArea = document.getElementById('answer-form-area');
+    const memberListDiv = document.getElementById('member-list');
+    const answerLogDiv = document.getElementById('answer-log');
+    const winnerBanner = document.getElementById('winner-banner');
+    const changeDrawerSelect = document.getElementById('change-drawer-select');
+    const themeWordDisplay = document.getElementById('theme-word');
+    const themeLabelDisplay = document.getElementById('theme-label');
+    const firebaseThemeSelect = document.getElementById('firebase-theme-select');
+
+    // スマホ対応：座標変換
+    function getCanvasPos(e) {
+        const rect = canvas.getBoundingClientRect();
+        const clientX = e.touches && e.touches.length > 0 ? e.touches[0].clientX : e.clientX;
+        const clientY = e.touches && e.touches.length > 0 ? e.touches[0].clientY : e.clientY;
+        return {
+            x: (clientX - rect.left) * (canvas.width / rect.width),
+            y: (clientY - rect.top) * (canvas.height / rect.height)
+        };
     }
 
-    if (selectedRole === 'host') {
-        if (adminKey !== '0001') {
-            alert('管理キーが正しくありません。司会進行者として入室できません。');
+    // Firebaseからお題一覧を取得
+    async function loadFirebaseThemesForSelect() {
+        try {
+            const querySnapshot = await getDocs(collection(db, "themes"));
+            firebaseThemeSelect.innerHTML = '<option value="">-- 登録済みのお題から選択 --</option>';
+            querySnapshot.forEach((doc) => {
+                const data = doc.data();
+                if (data.word) {
+                    const opt = document.createElement('option');
+                    opt.value = data.word;
+                    opt.innerText = data.word;
+                    firebaseThemeSelect.appendChild(opt);
+                }
+            });
+        } catch (e) {
+            console.error("お題取得失敗:", e);
+        }
+    }
+
+    // 入室ボタンクリック
+    document.getElementById('join-btn').addEventListener('click', async () => {
+        myRoomId = document.getElementById('room-id').value.trim();
+        myName = document.getElementById('user-name').value.trim();
+        const selectedRole = document.getElementById('user-role-init').value;
+        const adminKey = document.getElementById('admin-key').value.trim();
+
+        if (!myRoomId || !myName) {
+            alert('ルーム名と名前を入力してください。');
             return;
         }
-        isHostUser = true;
-        myRole = 'host';
-    } else {
-        isHostUser = false;
-        myRole = selectedRole;
-    }
-
-    initRoom();
-});
-
-function initRoom() {
-    loginPage.classList.add('hidden');
-    roomPage.classList.remove('hidden');
-    document.getElementById('display-room-id').innerText = `ルーム: ${myRoomId}`;
-    document.getElementById('display-user-name').innerText = myName;
-
-    server.onMessage(myRoomId, myName, (msg) => {
-        handleNetworkMessage(msg);
-    });
-
-    server.join(myRoomId, { name: myName, role: myRole, isHost: isHostUser });
-
-    if (isHostUser) {
-        loadFirebaseThemesForSelect();
-    }
-}
-
-async function loadFirebaseThemesForSelect() {
-    if (typeof window.getThemesFromFirebase === 'function') {
-        const themes = await window.getThemesFromFirebase();
-        firebaseThemeSelect.innerHTML = '<option value="">-- 登録済みのお題から選択 --</option>';
-        themes.forEach(t => {
-            const opt = document.createElement('option');
-            opt.value = t;
-            opt.innerText = t;
-            firebaseThemeSelect.appendChild(opt);
-        });
-    }
-}
-
-// --- UI役割制御とお題の見え方制御 ---
-function updateRoleUI() {
-    const badge = document.getElementById('my-status-badge');
-    badge.className = "status-badge";
-    
-    if (isHostUser) {
-        badge.innerText = `司会者兼 [${myRole === 'drawer' ? '出題者' : '回答者'}]`;
-        badge.classList.add('status-host');
-    } else {
-        if (myRole === 'drawer') { badge.innerText = "出題者"; badge.classList.add('status-drawer'); }
-        if (myRole === 'answerer') { badge.innerText = "回答者"; badge.classList.add('status-answerer'); }
-    }
-
-    if (isHostUser) hostPanel.classList.remove('hidden'); else hostPanel.classList.add('hidden');
-    if (myRole === 'drawer') canvasControls.classList.remove('hidden'); else canvasControls.classList.add('hidden');
-    if (myRole !== 'drawer') answerFormArea.classList.remove('hidden'); else answerFormArea.classList.add('hidden');
-
-    refreshThemeDisplay();
-}
-
-function refreshThemeDisplay() {
-    if (!currentTheme) {
-        themeWordDisplay.innerText = "未設定 (司会者の指示待ち)";
-        themeLabelDisplay.innerText = "お題";
-        return;
-    }
-
-    if (myRole === 'drawer') {
-        if (isHostUser && isThemeHiddenFromHost) {
-            themeLabelDisplay.innerText = "🎨 あなたはお題を知らない出題者です！(神の悪戯)";
-            themeWordDisplay.innerText = "〇 ".repeat(currentTheme.length).trim() + ` (${currentTheme.length}文字)`;
-            themeWordDisplay.style.color = "#ffc107";
+        if (selectedRole === 'host') {
+            if (adminKey !== '0001') {
+                alert('管理キーが正しくありません。');
+                return;
+            }
+            isHostUser = true;
+            myRole = 'host';
         } else {
-            themeLabelDisplay.innerText = "🎨 あなたへのお題 (描いてください)";
-            themeWordDisplay.innerText = currentTheme;
-            themeWordDisplay.style.color = "#24292f";
+            isHostUser = false;
+            myRole = selectedRole;
         }
-        return;
-    }
 
-    if (isHostUser) {
-        if (isThemeHiddenFromHost) {
-            themeLabelDisplay.innerText = "👑 設定中のお題 (あなたも知らない状態です)";
-            themeWordDisplay.innerText = "〇 ".repeat(currentTheme.length).trim() + ` (${currentTheme.length}文字)`;
-            themeWordDisplay.style.color = "#ffc107";
-        } else {
-            themeLabelDisplay.innerText = "👑 設定中のお題 (正解)";
-            themeWordDisplay.innerText = currentTheme;
-            themeWordDisplay.style.color = "#24292f";
+        loginPage.classList.add('hidden');
+        roomPage.classList.remove('hidden');
+        document.getElementById('display-room-id').innerText = `ルーム: ${myRoomId}`;
+        document.getElementById('display-user-name').innerText = myName;
+
+        if (isHostUser) {
+            loadFirebaseThemesForSelect();
         }
-        return;
-    }
 
-    themeLabelDisplay.innerText = "💬 お題を当ててください！";
-    themeWordDisplay.innerText = "〇 ".repeat(currentTheme.length).trim() + ` (${currentTheme.length}文字)`;
-    themeWordDisplay.style.color = "#007bff";
-}
+        const roomRef = doc(db, "rooms", myRoomId);
+        
+        // リアルタイム同期（何かが更新された時だけ動く）
+        unsubscribeRoom = onSnapshot(roomRef, async (snapshot) => {
+            if (!snapshot.exists()) {
+                await setDoc(roomRef, {
+                    lines: [],
+                    currentTheme: "",
+                    isThemeHiddenFromHost: false,
+                    members: [{ name: myName, role: myRole, isHost: isHostUser }],
+                    answers: []
+                });
+                return;
+            }
 
-// --- ネットワーク通信同期のハンドリング ---
-function handleNetworkMessage(msg) {
-    switch (msg.type) {
-        case 'room-update':
-            displayMembers(msg.members);
-            const me = msg.members.find(m => m.name === myName);
+            const data = snapshot.data();
+            
+            // 出題者以外は、サーバーの絵データ（確定分）を即時反映
+            if (myRole !== 'drawer') {
+                remoteLines = data.lines || [];
+                redrawCanvas(remoteLines);
+            }
+
+            currentTheme = data.currentTheme || "";
+            isThemeHiddenFromHost = data.isThemeHiddenFromHost || false;
+            refreshThemeDisplay();
+
+            const members = data.members || [];
+            if (!members.find(m => m.name === myName)) {
+                members.push({ name: myName, role: myRole, isHost: isHostUser });
+                await updateDoc(roomRef, { members: members });
+                return;
+            }
+
+            const me = members.find(m => m.name === myName);
             if (me) {
+                // 役割が変わった瞬間、お絵かきをしていたらデータを初期化
+                if (myRole !== 'drawer' && me.role === 'drawer') {
+                    localLines = [];
+                }
                 myRole = me.role;
                 isHostUser = me.isHost;
             }
-            if (msg.mode) {
-                gameMode = msg.mode;
-                gameModeSelect.value = gameMode;
-                updateModeDisplay();
-            }
-            if (msg.lines) {
-                remoteLines = msg.lines;
-                redrawCanvas();
-            }
-            if (msg.currentTheme !== undefined) {
-                currentTheme = msg.currentTheme;
-                isThemeHiddenFromHost = msg.isThemeHiddenFromHost || false;
-                refreshThemeDisplay();
-            }
             updateRoleUI();
-            break;
+            displayMembers(members);
+            renderAnswerLog(data.answers || []);
+        });
+    });
 
-        case 'change-drawer':
-            displayMembers(msg.members);
-            const targetMe = msg.members.find(m => m.name === myName);
-            if (targetMe) {
-                myRole = targetMe.role;
-            }
-            updateRoleUI();
-            break;
+    function updateRoleUI() {
+        const badge = document.getElementById('my-status-badge');
+        badge.className = "status-badge";
+        if (isHostUser) {
+            badge.innerText = `司会者兼 [${myRole === 'drawer' ? '出題者' : '回答者'}]`;
+            badge.classList.add('status-host');
+        } else {
+            if (myRole === 'drawer') { badge.innerText = "出題者"; badge.classList.add('status-drawer'); }
+            if (myRole === 'answerer') { badge.innerText = "回答者"; badge.classList.add('status-answerer'); }
+        }
+        if (isHostUser) hostPanel.classList.remove('hidden'); else hostPanel.classList.add('hidden');
+        if (myRole === 'drawer') canvasControls.classList.remove('hidden'); else canvasControls.classList.add('hidden');
+        if (myRole !== 'drawer') answerFormArea.classList.remove('hidden'); else answerFormArea.classList.add('hidden');
+        refreshThemeDisplay();
+    }
 
-        case 'mode-changed':
-            gameMode = msg.mode;
-            gameModeSelect.value = gameMode;
-            updateModeDisplay();
-            break;
-
-        case 'set-theme':
-            currentTheme = msg.theme;
-            isThemeHiddenFromHost = msg.hideFromHost || false;
-            refreshThemeDisplay();
-            winnerBanner.classList.add('hidden'); // 新しいお題が出たらバナーを隠す
-            hasWon = false;
-            break;
-
-        case 'draw-stroke':
-            remoteLines.push(msg.stroke);
-            redrawCanvas();
-            break;
-
-        case 'undo-canvas':
-            remoteLines = msg.lines;
-            redrawCanvas();
-            break;
-
-        case 'clear-canvas':
-            remoteLines = [];
-            redrawCanvas();
-            break;
-
-        case 'submit-answer':
-            logAnswer(msg.userName, msg.answer, msg.isCorrect);
-            break;
-
-        case 'clear-game':
-            remoteLines = [];
-            currentTheme = "";
-            isThemeHiddenFromHost = false;
-            redrawCanvas();
-            refreshThemeDisplay();
-            answerLogDiv.innerHTML = "";      // ログクリア機能を完全復帰
+    function refreshThemeDisplay() {
+        if (!currentTheme) {
+            themeWordDisplay.innerText = "未設定 (司会者の指示待ち)";
+            themeLabelDisplay.innerText = "お題";
             winnerBanner.classList.add('hidden');
-            hasWon = false;
-            break;
+            return;
+        }
+        if (myRole === 'drawer') {
+            if (isHostUser && isThemeHiddenFromHost) {
+                themeLabelDisplay.innerText = "🎨 あなたはお題を知らない出題者です！";
+                themeWordDisplay.innerText = "〇 ".repeat(currentTheme.length).trim() + ` (${currentTheme.length}文字)`;
+                themeWordDisplay.style.color = "#ffc107";
+            } else {
+                themeLabelDisplay.innerText = "🎨 あなたへのお題 (描いてください)";
+                themeWordDisplay.innerText = currentTheme;
+                themeWordDisplay.style.color = "#24292f";
+            }
+            return;
+        }
+        if (isHostUser) {
+            if (isThemeHiddenFromHost) {
+                themeLabelDisplay.innerText = "👑 設定中のお題 (あなたも知らない状態です)";
+                themeWordDisplay.innerText = "〇 ".repeat(currentTheme.length).trim() + ` (${currentTheme.length}文字)`;
+                themeWordDisplay.style.color = "#ffc107";
+            } else {
+                themeLabelDisplay.innerText = "👑 設定中のお題 (正解)";
+                themeWordDisplay.innerText = currentTheme;
+                themeWordDisplay.style.color = "#24292f";
+            }
+            return;
+        }
+        themeLabelDisplay.innerText = "💬 お題を当ててください！";
+        themeWordDisplay.innerText = "〇 ".repeat(currentTheme.length).trim() + ` (${currentTheme.length}文字)`;
+        themeWordDisplay.style.color = "#007bff";
     }
-}
 
-function displayMembers(members) {
-    memberListDiv.innerHTML = "";
-    changeDrawerSelect.innerHTML = '<option value="">-- 出題者(描く人)を指名 --</option>';
+    function displayMembers(members) {
+        memberListDiv.innerHTML = "";
+        changeDrawerSelect.innerHTML = '<option value="">-- 出題者(描く人)を指名 --</option>';
+        members.forEach(m => {
+            const div = document.createElement('div');
+            div.className = "member-item";
+            let roleStr = m.isHost ? '👑' : '';
+            roleStr += (m.role === 'drawer' ? '✏️' : '💬');
+            div.innerText = `${roleStr} ${m.name}`;
+            memberListDiv.appendChild(div);
 
-    members.forEach(m => {
-        const div = document.createElement('div');
-        div.className = "member-item";
-        let roleStr = m.isHost ? '👑' : '';
-        roleStr += (m.role === 'drawer' ? '✏️' : '💬');
-        div.innerText = `${roleStr} ${m.name}`;
-        memberListDiv.appendChild(div);
-
-        const opt = document.createElement('option');
-        opt.value = m.name;
-        opt.innerText = m.name + (m.isHost ? ' (司会)' : '') + (m.role === 'drawer' ? ' [現出題者]' : '');
-        changeDrawerSelect.appendChild(opt);
-    });
-}
-
-function updateModeDisplay() {
-    const modeText = gameMode === 'first-win' ? "先勝ちモード" : "全員一斉回答モード";
-    currentModeDisplay.innerText = `現在のモード: ${modeText}`;
-}
-
-// 司会進行コントロール
-gameModeSelect.addEventListener('change', (e) => {
-    server.send(myRoomId, { type: 'change-mode', mode: e.target.value });
-});
-
-changeDrawerSelect.addEventListener('change', (e) => {
-    const targetName = e.target.value;
-    if (!targetName) return;
-    server.send(myRoomId, { type: 'change-drawer', targetName: targetName });
-});
-
-document.getElementById('select-theme-btn').addEventListener('click', () => {
-    const selectedTheme = firebaseThemeSelect.value;
-    if (!selectedTheme) {
-        alert("お題を選択してください。");
-        return;
+            const opt = document.createElement('option');
+            opt.value = m.name;
+            opt.innerText = m.name + (m.isHost ? ' (司会)' : '') + (m.role === 'drawer' ? ' [現出題者]' : '');
+            changeDrawerSelect.appendChild(opt);
+        });
     }
-    server.send(myRoomId, { type: 'set-theme', theme: selectedTheme, hideFromHost: false });
-});
 
-document.getElementById('random-theme-btn').addEventListener('click', async () => {
-    const btn = document.getElementById('random-theme-btn');
-    btn.disabled = true;
+    function renderAnswerLog(answers) {
+        answerLogDiv.innerHTML = "";
+        let correctUsers = [];
+        answers.forEach(ans => {
+            const p = document.createElement('p');
+            p.style.margin = "4px 0";
+            if (ans.isCorrect) {
+                p.innerHTML = `<b style="color: green;">🎉 ${ans.userName}: ${ans.answer} (正解！)</b>`;
+                if (!correctUsers.includes(ans.userName)) correctUsers.push(ans.userName);
+            } else {
+                p.innerHTML = `❌ ${ans.userName}: ${ans.answer}`;
+            }
+            answerLogDiv.appendChild(p);
+        });
+        answerLogDiv.scrollTop = answerLogDiv.scrollHeight;
 
-    if (typeof window.getThemesFromFirebase === 'function') {
-        const firebaseThemes = await window.getThemesFromFirebase();
-        if (firebaseThemes && firebaseThemes.length > 0) {
-            const randomIndex = Math.floor(Math.random() * firebaseThemes.length);
-            const selectedTheme = firebaseThemes[randomIndex];
-            server.send(myRoomId, { type: 'set-theme', theme: selectedTheme, hideFromHost: true });
-        } else {
-            alert("Firebaseにお題が登録されていません。pictodai.html から登録してください。");
+        if (correctUsers.length > 0) {
+            winnerBanner.innerText = `✨ 正解者: ${correctUsers.join(', ')}さん！ (正解: ${currentTheme})`;
+            winnerBanner.classList.remove('hidden');
         }
     }
-    btn.disabled = false;
-});
 
-document.getElementById('clear-game-btn').addEventListener('click', () => {
-    if(confirm("すべてリセットしますか？")) {
-        server.send(myRoomId, { type: 'clear-game' });
-    }
-});
+    // 司会コントロール処理
+    changeDrawerSelect.addEventListener('change', async (e) => {
+        const targetName = e.target.value;
+        if (!targetName) return;
+        const roomRef = doc(db, "rooms", myRoomId);
+        const snapshot = await getDocs(collection(db, "rooms")); 
+        const roomSnap = await snapshot.docs.find(d => d.id === myRoomId);
+        if(roomSnap) {
+            const members = roomSnap.data().members.map(m => {
+                if (m.name === targetName) m.role = 'drawer';
+                else if (m.role === 'drawer') m.role = 'answerer';
+                return m;
+            });
+            // 出題者が変わるタイミングで、キャンバス上の絵も自動全クリアして通信
+            await updateDoc(roomRef, { members: members, lines: [] });
+        }
+    });
+
+    document.getElementById('select-theme-btn').addEventListener('click', async () => {
+        const selectedTheme = firebaseThemeSelect.value;
+        if (!selectedTheme) return alert("お題を選択してください。");
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        localLines = [];
+        await updateDoc(doc(db, "rooms", myRoomId), { currentTheme: selectedTheme, isThemeHiddenFromHost: false, answers: [], lines: [] });
+    });
+
+    document.getElementById('random-theme-btn').addEventListener('click', async () => {
+        const querySnapshot = await getDocs(collection(db, "themes"));
+        const themes = [];
+        querySnapshot.forEach(doc => { if(doc.data().word) themes.push(doc.data().word); });
+        if (themes.length > 0) {
+            const randomWord = themes[Math.floor(Math.random() * themes.length)];
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            localLines = [];
+            await updateDoc(doc(db, "rooms", myRoomId), { currentTheme: randomWord, isThemeHiddenFromHost: true, answers: [], lines: [] });
+        } else {
+            alert("登録されているお題がありません。");
+        }
+    });
+
+    document.getElementById('clear-game-btn').addEventListener('click', async () => {
+        if(confirm("すべてリセットしますか？")) {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            localLines = [];
+            await updateDoc(doc(db, "rooms", myRoomId), { lines: [], currentTheme: "", isThemeHiddenFromHost: false, answers: [] });
+        }
+    });
 
 
-// --- お絵かき描画ロジック ---
-function startDrawing(e) {
-    if (myRole !== 'drawer') return;
-    isDrawing = true;
-    const pos = getCanvasPos(e);
-    
-    currentStroke = {
-        color: document.getElementById('color-picker').value,
-        size: parseInt(document.getElementById('brush-size').value),
-        points: [{ x: pos.x, y: pos.y }]
-    };
+    // --- ローカルお絵かき描画ロジック（ボタンを押すまでFirebaseに送らない） ---
+    let currentStroke = null;
 
-    ctx.beginPath();
-    ctx.strokeStyle = currentStroke.color;
-    ctx.lineWidth = currentStroke.size;
-    ctx.lineCap = 'round';
-    ctx.lineJoin = 'round';
-    ctx.moveTo(pos.x, pos.y);
-}
-
-function draw(e) {
-    if (!isDrawing || myRole !== 'drawer') return;
-    if (e.cancelable) e.preventDefault(); // スマホのスクロール暴発を防止
-    
-    const pos = getCanvasPos(e);
-    currentStroke.points.push({ x: pos.x, y: pos.y });
-    ctx.lineTo(pos.x, pos.y);
-    ctx.stroke();
-}
-
-function stopDrawing() {
-    if (!isDrawing || myRole !== 'drawer') return;
-    isDrawing = false;
-    if (currentStroke && currentStroke.points.length > 0) {
-        remoteLines.push(currentStroke);
-        server.send(myRoomId, { type: 'draw-stroke', stroke: currentStroke });
-    }
-    currentStroke = null;
-}
-
-function redrawCanvas() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    remoteLines.forEach(stroke => {
-        if (!stroke.points || stroke.points.length === 0) return;
+    function startDrawing(e) {
+        if (myRole !== 'drawer') return;
+        isDrawing = true;
+        const pos = getCanvasPos(e);
+        currentStroke = {
+            color: document.getElementById('color-picker').value,
+            size: parseInt(document.getElementById('brush-size').value),
+            points: [{ x: pos.x, y: pos.y }]
+        };
         ctx.beginPath();
-        ctx.strokeStyle = stroke.color;
-        ctx.lineWidth = stroke.size;
+        ctx.strokeStyle = currentStroke.color;
+        ctx.lineWidth = currentStroke.size;
         ctx.lineCap = 'round';
-        ctx.lineJoin = 'round';
-        ctx.moveTo(stroke.points[0].x, stroke.points[0].y);
-        for (let i = 1; i < stroke.points.length; i++) {
-            ctx.lineTo(stroke.points[i].x, stroke.points[i].y);
-        }
+        ctx.moveTo(pos.x, pos.y);
+    }
+
+    function draw(e) {
+        if (!isDrawing || myRole !== 'drawer') return;
+        if (e.cancelable) e.preventDefault();
+        const pos = getCanvasPos(e);
+        currentStroke.points.push({ x: pos.x, y: pos.y });
+        ctx.lineTo(pos.x, pos.y);
         ctx.stroke();
-    });
-}
-
-// イベント設定
-canvas.addEventListener('mousedown', startDrawing);
-canvas.addEventListener('mousemove', draw);
-window.addEventListener('mouseup', stopDrawing);
-
-canvas.addEventListener('touchstart', startDrawing, { passive: false });
-canvas.addEventListener('touchmove', draw, { passive: false });
-window.addEventListener('touchend', stopDrawing);
-
-document.getElementById('clear-btn').addEventListener('click', () => {
-    server.send(myRoomId, { type: 'clear-canvas' });
-});
-document.getElementById('undo-btn').addEventListener('click', () => {
-    server.send(myRoomId, { type: 'undo-canvas' });
-});
-
-
-// --- クイズ回答ロジック ---
-document.getElementById('submit-answer-btn').addEventListener('click', submitAnswer);
-document.getElementById('answer-input').addEventListener('keypress', (e) => {
-    if (e.key === 'Enter') submitAnswer();
-});
-
-function submitAnswer() {
-    if (myRole === 'drawer') return; 
-    if (!currentTheme) return;
-    if (gameMode === 'first-win' && hasWon) {
-        alert('この問題は終了しています。');
-        return;
     }
 
-    const inputEl = document.getElementById('answer-input');
-    const answerText = inputEl.value.trim();
-    if (!answerText) return;
-
-    const isCorrect = (answerText === currentTheme);
-
-    server.send(myRoomId, {
-        type: 'submit-answer',
-        userName: myName,
-        answer: answerText,
-        isCorrect: isCorrect
-    });
-
-    inputEl.value = "";
-}
-
-function logAnswer(user, answer, isCorrect) {
-    const p = document.createElement('p');
-    p.style.margin = "4px 0";
-    
-    if (isCorrect) {
-        p.innerHTML = `<b style="color: green;">🎉 ${user}: ${answer} (正解！)</b>`;
-        if (gameMode === 'first-win') {
-            hasWon = true;
-            winnerBanner.innerText = `👑 正解者が出ました！勝者: ${user}さん (正解: ${currentTheme})`;
-            winnerBanner.classList.remove('hidden');
-        } else {
-            winnerBanner.innerText = `✨ ${user}さんが正解しました！`;
-            winnerBanner.classList.remove('hidden');
+    function stopDrawing() {
+        if (!isDrawing || myRole !== 'drawer') return;
+        isDrawing = false;
+        if (currentStroke && currentStroke.points.length > 0) {
+            localLines.push(currentStroke); // 手元の履歴にだけ保存
         }
-    } else {
-        p.innerHTML = `❌ ${user}: ${answer}`;
+        currentStroke = null;
     }
-    
-    answerLogDiv.appendChild(p);
-    answerLogDiv.scrollTop = answerLogDiv.scrollHeight;
-}
 
-document.getElementById('leave-btn').addEventListener('click', () => {
-    server.leave(myRoomId, myName);
-    location.reload(); 
-});
+    function redrawCanvas(linesArray) {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        linesArray.forEach(stroke => {
+            if (!stroke.points || stroke.points.length === 0) return;
+            ctx.beginPath();
+            ctx.strokeStyle = stroke.color;
+            ctx.lineWidth = stroke.size;
+            ctx.lineCap = 'round';
+            ctx.moveTo(stroke.points[0].x, stroke.points[0].y);
+            for (let i = 1; i < stroke.points.length; i++) {
+                ctx.lineTo(stroke.points[i].x, stroke.points[i].y);
+            }
+            ctx.stroke();
+        });
+    }
+
+    canvas.addEventListener('mousedown', startDrawing);
+    canvas.addEventListener('mousemove', draw);
+    window.addEventListener('mouseup', stopDrawing);
+    canvas.addEventListener('touchstart', startDrawing, { passive: false });
+    canvas.addEventListener('touchmove', draw, { passive: false });
+    window.addEventListener('touchend', stopDrawing);
+
+    // 手元で全消去
+    document.getElementById('clear-btn').addEventListener('click', () => {
+        if (myRole !== 'drawer') return;
+        localLines = [];
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+    });
+
+    // 手元で1画戻す
+    document.getElementById('undo-btn').addEventListener('click', () => {
+        if (myRole !== 'drawer') return;
+        localLines.pop();
+        redrawCanvas(localLines);
+    });
+
+    // 【重要】ここで初めてFirebaseにデータを一括送信！
+    document.getElementById('send-image-btn').addEventListener('click', async () => {
+        if (myRole !== 'drawer') return;
+        const btn = document.getElementById('send-image-btn');
+        btn.disabled = true;
+        btn.innerText = "⏳ 送信中...";
+        
+        try {
+            await updateDoc(doc(db, "rooms", myRoomId), { lines: localLines });
+            alert("回答者に絵を送信しました！");
+        } catch(err) {
+            console.error(err);
+            alert("送信に失敗しました。");
+        } finally {
+            btn.disabled = false;
+            btn.innerText = "📤 描き終わったら回答者に絵を送信！";
+        }
+    });
+
+
+    // クイズ回答ロジック
+    document.getElementById('submit-answer-btn').addEventListener('click', submitAnswer);
+    document.getElementById('answer-input').addEventListener('keypress', (e) => { if (e.key === 'Enter') submitAnswer(); });
+
+    async function submitAnswer() {
+        if (myRole === 'drawer' || !currentTheme) return;
+
+        const inputEl = document.getElementById('answer-input');
+        const answerText = inputEl.value.trim();
+        if (!answerText) return;
+
+        const isCorrect = (answerText === currentTheme);
+        await updateDoc(doc(db, "rooms", myRoomId), {
+            answers: arrayUnion({ userName: myName, answer: answerText, isCorrect: isCorrect })
+        });
+        inputEl.value = "";
+    }
+
+    // 退室
+    document.getElementById('leave-btn').addEventListener('click', async () => {
+        if (unsubscribeRoom) unsubscribeRoom();
+        location.reload();
+    });
 </script>
-
 </body>
 </html>
