@@ -45,15 +45,15 @@
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
     import { getFirestore, collection, addDoc, onSnapshot, doc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-    // ⚠️ 必須：ここにメイン画面（ゲーム画面）と同じFirebaseの設定を貼り付けてください！
+    // ご提示いただいたFirebaseの設定を適用しました
     const firebaseConfig = {
-  apiKey: "AIzaSyBC29jEB2svBZVJGfr0sPtgPylS4Gc1fBs",
-  authDomain: "pict-view.firebaseapp.com",
-  projectId: "pict-view",
-  storageBucket: "pict-view.firebasestorage.app",
-  messagingSenderId: "449019232957",
-  appId: "1:449019232957:web:0fc10da2920dc975282dd4",
-  measurementId: "G-DECQJ87XMK"
+        apiKey: "AIzaSyBC29jEB2svBZVJGfr0sPtgPylS4Gc1fBs",
+        authDomain: "pict-view.firebaseapp.com",
+        projectId: "pict-view",
+        storageBucket: "pict-view.firebasestorage.app",
+        messagingSenderId: "449019232957",
+        appId: "1:449019232957:web:0fc10da2920dc975282dd4",
+        measurementId: "G-DECQJ87XMK"
     };
 
     // Firebaseの初期化
@@ -87,7 +87,7 @@
             wordInput.focus();
         } catch (error) {
             console.error("登録エラー:", error);
-            alert("登録に失敗しました。Firebaseのルール設定（Security Rules）などを確認してください。");
+            alert("登録に失敗しました。\nFirebase管理画面のFirestore Databaseで「セキュリティルール」が許可されているか確認してください。");
         } finally {
             addBtn.disabled = false;
             addBtn.innerText = "Firebaseに登録する";
@@ -140,7 +140,7 @@
         }
     }, (error) => {
         console.error("読み込みエラー:", error);
-        countInfo.innerText = "データの読み込みに失敗しました。";
+        countInfo.innerText = "データの読み込みに失敗しました。接続設定またはルールに問題があります。";
     });
 </script>
 </body>
