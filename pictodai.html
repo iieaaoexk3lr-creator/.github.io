@@ -3,126 +3,145 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>お題管理パネル (Firebase対応)</title>
+    <title>お題登録・管理パネル</title>
     <style>
-        body { font-family: sans-serif; margin: 20px; background-color: #f4f7f6; color: #333; }
-        .container { max-width: 600px; margin: 0 auto; background: white; padding: 30px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
-        h2 { border-bottom: 2px solid #007bff; padding-bottom: 10px; color: #007bff; }
-        .form-group { margin-bottom: 20px; }
-        label { display: block; margin-bottom: 8px; font-weight: bold; }
-        input[type="text"] { width: 100%; padding: 10px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px; font-size: 16px; }
-        button { padding: 10px 20px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 16px; font-weight: bold; }
+        body { font-family: sans-serif; margin: 20px; background-color: #f0f2f5; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        h2 { border-bottom: 2px solid #007bff; padding-bottom: 8px; margin-top: 0; }
+        .form-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; font-weight: bold; }
+        input[type="text"] { width: 100%; padding: 10px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 6px; font-size: 16px; }
+        button { padding: 10px 15px; background: #007bff; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 15px; font-weight: bold; width: 100%; }
         button:hover { background: #0056b3; }
         
-        /* リストスタイル */
-        .theme-list { margin-top: 30px; border-top: 1px solid #eee; padding-top: 20px; }
-        .theme-item { display: flex; justify-content: space-between; align-items: center; padding: 10px; background: #f8f9fa; border: 1px solid #ddd; border-radius: 4px; margin-bottom: 8px; }
-        .delete-btn { background: #dc3545; padding: 5px 10px; font-size: 14px; }
+        .theme-list-section { margin-top: 30px; }
+        .theme-item { display: flex; justify-content: space-between; align-items: center; padding: 10px; background: #f8f9fa; border: 1px solid #ddd; border-radius: 6px; margin-bottom: 8px; }
+        .delete-btn { background: #dc3545; color: white; padding: 5px 10px; font-size: 12px; width: auto; border-radius: 4px; }
         .delete-btn:hover { background: #bd2130; }
-        .count-badge { font-size: 0.9em; color: #666; font-weight: normal; float: right; }
+        .count-info { font-size: 0.9em; color: #666; text-align: right; margin-bottom: 10px; }
     </style>
-
-    <!-- Firebase SDK の読み込み -->
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
-
-        // ⚠️ ゲーム画面と同じFirebaseプロジェクトの設定値に書き換えてください
-        const firebaseConfig = {
-            apiKey: "YOUR_API_KEY",
-            authDomain: "YOUR_AUTH_DOMAIN",
-            projectId: "YOUR_PROJECT_ID",
-            storageBucket: "YOUR_STORAGE_BUCKET",
-            messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
-            appId: "YOUR_APP_ID"
-        };
-
-        // Firebase初期化
-        const app = initializeApp(firebaseConfig);
-        const db = getFirestore(app);
-        const themesCollection = collection(db, "themes");
-
-        // --- 1. お題の追加処理 ---
-        document.getElementById('add-form').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const inputEl = document.getElementById('new-word');
-            const word = inputEl.value.trim();
-
-            if (!word) return;
-
-            try {
-                // Firestoreの 'themes' コレクションに { word: "入力文字" } を追加
-                await addDoc(themesCollection, { word: word });
-                inputEl.value = ""; // 入力欄をクリア
-            } catch (error) {
-                alert("登録に失敗しました: " + error.message);
-            }
-        });
-
-        // --- 2. リアルタイムでの一覧表示・同期 ---
-        // 誰かが追加・削除したらこの画面の一覧も自動で書き換わります
-        onSnapshot(themesCollection, (snapshot) => {
-            const listEl = document.getElementById('theme-list-container');
-            const countEl = document.getElementById('theme-count');
-            listEl.innerHTML = "";
-            
-            countEl.innerText = `（登録数: ${snapshot.size}件）`;
-
-            if (snapshot.empty) {
-                listEl.innerHTML = "<p style='color:#999; text-align:center;'>お題が登録されていません</p>";
-                return;
-            }
-
-            snapshot.forEach((documentSnapshot) => {
-                const data = documentSnapshot.data();
-                const docId = documentSnapshot.id;
-
-                if (!data.word) return;
-
-                // 各お題のHTML要素を作成
-                const itemDiv = document.createElement('div');
-                itemDiv.className = "theme-item";
-                itemDiv.innerHTML = `
-                    <span><strong>${data.word}</strong> <small style="color:#aaa;">(${data.word.length}文字)</small></span>
-                    <button class="delete-btn" data-id="${docId}">削除</button>
-                `;
-                listEl.appendChild(itemDiv);
-            });
-
-            // 削除ボタンへのイベントリスナー紐付け
-            document.querySelectorAll('.delete-btn').forEach(btn => {
-                btn.addEventListener('click', async (e) => {
-                    const id = e.target.getAttribute('data-id');
-                    if (confirm("このお題を削除してもよろしいですか？")) {
-                        await deleteDoc(doc(db, "themes", id));
-                    }
-                });
-            });
-        });
-    </script>
 </head>
 <body>
 
 <div class="container">
-    <h2>🎯 お題データ登録・管理</h2>
-    
-    <!-- 新規登録フォーム -->
-    <form id="add-form" class="form-group">
-        <label for="new-word">新しいお題を追加</label>
-        <div style="display: flex; gap: 10px;">
-            <input type="text" id="new-word" placeholder="例: カレーライス" autocomplete="off" required>
-            <button type="submit">登録</button>
-        </div>
-    </form>
+    <h2>➕ 新しいお題を追加する</h2>
+    <div class="form-group">
+        <label for="new-word">お題（キーワード）</label>
+        <input type="text" id="new-word" placeholder="例: りんご、ピカチュウ、新幹線">
+    </div>
+    <button id="add-btn">Firebaseに登録する</button>
 
-    <!-- 登録済み一覧表示エリア -->
-    <div class="theme-list">
-        <h3>登録済みのお題一覧 <span id="theme-count" class="count-badge">（登録数: 0件）</span></h3>
-        <div id="theme-list-container">
-            <p style="color:#999; text-align:center;">読み込み中...</p>
+    <div class="theme-list-section">
+        <h2>📋 登録済みのお題一覧</h2>
+        <div id="count-info" class="count-info">読込中...</div>
+        <div id="theme-list">
+            <!-- ここに登録済みのお題がリアルタイムに並びます -->
         </div>
     </div>
 </div>
 
+<!-- Firebase SDK の読み込みと登録ロジック -->
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+    import { getFirestore, collection, addDoc, onSnapshot, doc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+    // ⚠️ 必須：ここにメイン画面（ゲーム画面）と同じFirebaseの設定を貼り付けてください！
+    const firebaseConfig = {
+  apiKey: "AIzaSyBC29jEB2svBZVJGfr0sPtgPylS4Gc1fBs",
+  authDomain: "pict-view.firebaseapp.com",
+  projectId: "pict-view",
+  storageBucket: "pict-view.firebasestorage.app",
+  messagingSenderId: "449019232957",
+  appId: "1:449019232957:web:0fc10da2920dc975282dd4",
+  measurementId: "G-DECQJ87XMK"
+    };
+
+    // Firebaseの初期化
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+    const themesCollection = collection(db, "themes");
+
+    const wordInput = document.getElementById('new-word');
+    const addBtn = document.getElementById('add-btn');
+    const themeListDiv = document.getElementById('theme-list');
+    const countInfo = document.getElementById('count-info');
+
+    // お題を追加する処理
+    addBtn.addEventListener('click', async () => {
+        const word = wordInput.value.trim();
+        if (!word) {
+            alert('お題を入力してください。');
+            return;
+        }
+
+        addBtn.disabled = true;
+        addBtn.innerText = "⏳ 登録中...";
+
+        try {
+            // Firestoreの「themes」コレクションにドキュメントを追加
+            await addDoc(themesCollection, {
+                word: word,
+                createdAt: new Date()
+            });
+            wordInput.value = ""; // 入力欄をクリア
+            wordInput.focus();
+        } catch (error) {
+            console.error("登録エラー:", error);
+            alert("登録に失敗しました。Firebaseのルール設定（Security Rules）などを確認してください。");
+        } finally {
+            addBtn.disabled = false;
+            addBtn.innerText = "Firebaseに登録する";
+        }
+    });
+
+    // エンターキーでも登録できるようにする
+    wordInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') addBtn.click();
+    });
+
+    // 登録されているお題一覧をリアルタイムで監視・表示する処理
+    onSnapshot(themesCollection, (snapshot) => {
+        themeListDiv.innerHTML = "";
+        let count = 0;
+
+        snapshot.forEach((documentSnapshot) => {
+            const data = documentSnapshot.data();
+            const id = documentSnapshot.id;
+
+            if (data.word) {
+                count++;
+                const itemDiv = document.createElement('div');
+                itemDiv.className = "theme-item";
+                
+                // お題テキスト
+                const textSpan = document.createElement('span');
+                textSpan.innerText = data.word;
+                textSpan.style.fontWeight = "bold";
+                
+                // 削除ボタン
+                const delBtn = document.createElement('button');
+                delBtn.className = "delete-btn";
+                delBtn.innerText = "削除";
+                delBtn.addEventListener('click', async () => {
+                    if (confirm(`「${data.word}」を削除してもよろしいですか？`)) {
+                        await deleteDoc(doc(db, "themes", id));
+                    }
+                });
+
+                itemDiv.appendChild(textSpan);
+                itemDiv.appendChild(delBtn);
+                themeListDiv.appendChild(itemDiv);
+            }
+        });
+
+        countInfo.innerText = `現在のお題登録数: ${count} 件`;
+        if (count === 0) {
+            themeListDiv.innerHTML = "<p style='color:#999; text-align:center;'>お題が1件も登録されていません。</p>";
+        }
+    }, (error) => {
+        console.error("読み込みエラー:", error);
+        countInfo.innerText = "データの読み込みに失敗しました。";
+    });
+</script>
 </body>
 </html>
