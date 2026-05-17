@@ -29,6 +29,11 @@
         .status-drawer { background: #e8f5e9; color: #1b5e20; }
         .status-answerer { background: #fff3e0; color: #e65100; }
 
+        /* リンク用ボタン */
+        .admin-link-box { text-align: right; margin-bottom: 10px; }
+        .admin-link-box a { color: #007bff; text-decoration: none; font-size: 0.9em; font-weight: bold; }
+        .admin-link-box a:hover { text-decoration: underline; }
+
         /* お題表示エリア */
         .theme-panel { background: #eef2f7; padding: 12px; border-radius: 6px; margin-bottom: 15px; text-align: center; border: 1px solid #d0d7de; }
         .theme-word { font-size: 1.4em; font-weight: bold; color: #24292f; }
@@ -50,12 +55,12 @@
         .winner-announcement { background: #d4edda; color: #155724; padding: 10px; border-radius: 4px; margin-bottom: 10px; font-weight: bold; text-align: center; }
     </style>
 
-    <!-- Firebase SDK の読み込み (v10+) -->
+    <!-- Firebase SDK の読み込み -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
         import { getFirestore, collection, getDocs } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-        // TODO: あなたのFirebaseプロジェクトの設定値に置き換えてください
+        // ⚠️ あなたのFirebaseプロジェクトの設定値に置き換えてください
         const firebaseConfig = {
             apiKey: "YOUR_API_KEY",
             authDomain: "YOUR_AUTH_DOMAIN",
@@ -65,22 +70,17 @@
             appId: "YOUR_APP_ID"
         };
 
-        // Firebase初期化
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
 
-        // グローバルに関数を公開して、下の通常スクリプトから呼べるようにする
+        // Firebaseからお題の一覧を取得する共通関数
         window.getThemesFromFirebase = async function() {
             try {
-                // 'themes' コレクションからドキュメントを全件取得
                 const querySnapshot = await getDocs(collection(db, "themes"));
                 const themes = [];
                 querySnapshot.forEach((doc) => {
-                    // ドキュメント内の 'word' フィールドを取得（例: { word: "リンゴ" }）
                     const data = doc.data();
-                    if (data.word) {
-                        themes.push(data.word);
-                    }
+                    if (data.word) themes.push(data.word);
                 });
                 return themes;
             } catch (error) {
@@ -95,6 +95,11 @@
 <div class="container">
     <!-- 入室ページ -->
     <div id="login-page">
+        <!-- お題登録ページへのリンク -->
+        <div class="admin-link-box">
+            <a href="pictodai.html" target="_blank">⚙️ お題の登録・管理はこちら</a>
+        </div>
+
         <h2>ルームに入室</h2>
         <div class="form-group">
             <label for="room-id">ルーム名 (Room ID)</label>
@@ -109,8 +114,13 @@
             <select id="user-role-init">
                 <option value="answerer">回答者</option>
                 <option value="drawer">出題者（描く人）</option>
-                <option value="host">司会進行者</option>
+                <option value="host">司会進行者（お題コントロール権あり）</option>
             </select>
+        </div>
+        <!-- 管理キー入力フォーム -->
+        <div class="form-group">
+            <label for="admin-key">管理キー（司会進行者になる場合のみ必須）</label>
+            <input type="password" id="admin-key" placeholder="司会者以外は空欄でOK">
         </div>
         <button id="join-btn">入室する</button>
     </div>
@@ -136,7 +146,7 @@
             <div class="flex-1">
                 <!-- 司会者用：コントロールパネル -->
                 <div id="host-panel" class="host-controls hidden">
-                    <h4>👑 司会者コントロールパネル</h4>
+                    <h4>👑 司会進行者コントロールパネル</h4>
                     <div class="form-group">
                         <label>【回答モード設定】</label>
                         <select id="game-mode-select">
@@ -145,18 +155,23 @@
                         </select>
                     </div>
                     <div class="form-group">
-                        <label for="change-drawer-select">【出題者の指名】</label>
+                        <label for="change-drawer-select">【役割変更・指名】</label>
                         <select id="change-drawer-select">
-                            <option value="">-- 出題者を選択 --</option>
+                            <option value="">-- 出題者(描く人)を指名 --</option>
                         </select>
                     </div>
-                    <div class="form-group" style="display: flex; gap: 10px; align-items: flex-end;">
-                        <div style="flex: 1;">
-                            <label>【お題の設定】</label>
-                            <button id="random-theme-btn" style="width: 100%; background: #28a745;">🔥 Firebaseからお題をランダム決定</button>
+                    
+                    <div class="form-group" style="border-top: 1px dashed #fab005; padding-top: 10px;">
+                        <label>【お題を Firebase から選んで出題】</label>
+                        <div style="display: flex; gap: 10px; margin-bottom: 8px;">
+                            <select id="firebase-theme-select" style="flex: 1;">
+                                <option value="">-- 登録済みのお題から選択 --</option>
+                            </select>
+                            <button id="select-theme-btn" style="background: #17a2b8;">選択したお題を出題</button>
                         </div>
+                        <button id="random-theme-btn" style="width: 100%; background: #28a745;">🎲 ランダムでお題を決定して出題</button>
                     </div>
-                    <button id="clear-game-btn" class="secondary">正解ログとキャンバスを全クリア</button>
+                    <button id="clear-game-btn" class="secondary" style="width: 100%;">正解ログとキャンバスを全クリア</button>
                 </div>
 
                 <!-- キャンバスエリア -->
@@ -164,7 +179,7 @@
                     <div id="current-mode-display" style="font-weight: bold; color: #333; margin-bottom: 5px;">現在のモード: 先勝ちモード</div>
                     <canvas id="paint-canvas" width="600" height="400"></canvas>
                     
-                    <!-- 出題者のみに見えるコントロール -->
+                    <!-- お絵かきコントロール (出題者、またはお絵かき権限のある人に表示) -->
                     <div id="canvas-controls" class="controls hidden">
                         <input type="color" id="color-picker" class="color-picker" value="#000000">
                         <select id="brush-size">
@@ -182,7 +197,7 @@
                 <div class="answer-zone">
                     <div id="winner-banner" class="winner-announcement hidden"></div>
                     
-                    <!-- 回答者専用の入力フォーム -->
+                    <!-- 回答入力フォーム (出題者以外、または司会者、全員共通で条件が合えば表示) -->
                     <div id="answer-form-area">
                         <h3>クイズに回答する</h3>
                         <div class="form-group" style="display: flex; gap: 10px;">
@@ -205,7 +220,7 @@
     </div>
 </div>
 
-<!-- Mock WebSocket (テスト・動作確認用の擬似通信クラス) -->
+<!-- Mock WebSocket (擬似通信クラス) -->
 <script>
 class MockSignalingServer {
     constructor() {
@@ -214,14 +229,13 @@ class MockSignalingServer {
     }
     join(roomId, user) {
         if (!this.rooms.has(roomId)) {
-            this.rooms.set(roomId, { members: [], mode: 'first-win', lines: [], currentTheme: "" });
+            this.rooms.set(roomId, { members: [], mode: 'first-win', lines: [], currentTheme: "", isThemeHiddenFromHost: false });
         }
         const room = this.rooms.get(roomId);
         room.members = room.members.filter(m => m.name !== user.name);
         
-        if (user.role === 'host') {
-            room.members.forEach(m => { if(m.role === 'host') m.role = 'answerer'; });
-        } else if (user.role === 'drawer') {
+        // 司会者は重複を許す（他の人がなっても前任者を弾かないが、一応重複制御なし）
+        if (user.role === 'drawer') {
             room.members.forEach(m => { if(m.role === 'drawer') m.role = 'answerer'; });
         }
 
@@ -231,7 +245,8 @@ class MockSignalingServer {
             members: room.members, 
             mode: room.mode, 
             lines: room.lines,
-            currentTheme: room.currentTheme
+            currentTheme: room.currentTheme,
+            isThemeHiddenFromHost: room.isThemeHiddenFromHost
         });
     }
     leave(roomId, userName) {
@@ -255,15 +270,20 @@ class MockSignalingServer {
             room.mode = message.mode;
         } else if (message.type === 'change-drawer') {
             room.members.forEach(m => {
-                if (m.name === message.targetName) m.role = 'drawer';
-                else if (m.role === 'drawer') m.role = 'answerer';
+                if (m.name === message.targetName) {
+                    m.role = 'drawer';
+                } else if (m.role === 'drawer') {
+                    m.role = 'answerer';
+                }
             });
             message.members = room.members;
         } else if (message.type === 'set-theme') {
             room.currentTheme = message.theme;
+            room.isThemeHiddenFromHost = message.hideFromHost || false;
         } else if (message.type === 'clear-game') {
             room.lines = [];
             room.currentTheme = "";
+            room.isThemeHiddenFromHost = false;
         }
 
         this.broadcast(roomId, message);
@@ -285,18 +305,20 @@ const server = new MockSignalingServer();
 let myRoomId = "";
 let myName = "";
 let myRole = "answerer"; 
+let isHostUser = false; // 司会者権限を持っているか
 let gameMode = "first-win"; 
 let hasWon = false; 
 let currentTheme = ""; 
+let isThemeHiddenFromHost = false; // 司会者自身もお題を知らないフラグ
 
-// 描画関連の変数 (B方式)
+// 描画
 const canvas = document.getElementById('paint-canvas');
 const ctx = canvas.getContext('2d');
 let isDrawing = false;
 let currentStroke = []; 
 let remoteLines = [];   
 
-// DOM要素
+// DOM
 const loginPage = document.getElementById('login-page');
 const roomPage = document.getElementById('room-page');
 const hostPanel = document.getElementById('host-panel');
@@ -310,17 +332,33 @@ const gameModeSelect = document.getElementById('game-mode-select');
 const currentModeDisplay = document.getElementById('current-mode-display');
 const themeWordDisplay = document.getElementById('theme-word');
 const themeLabelDisplay = document.getElementById('theme-label');
+const firebaseThemeSelect = document.getElementById('firebase-theme-select');
 
 // --- 入室処理 ---
 document.getElementById('join-btn').addEventListener('click', () => {
     myRoomId = document.getElementById('room-id').value.trim();
     myName = document.getElementById('user-name').value.trim();
-    myRole = document.getElementById('user-role-init').value;
+    const selectedRole = document.getElementById('user-role-init').value;
+    const adminKey = document.getElementById('admin-key').value.trim();
 
     if (!myRoomId || !myName) {
         alert('ルーム名と名前を入力してください。');
         return;
     }
+
+    // 司会進行者を選んだ場合のみ、管理キーチェック
+    if (selectedRole === 'host') {
+        if (adminKey !== '0001') {
+            alert('管理キーが正しくありません。司会進行者として入室できません。');
+            return;
+        }
+        isHostUser = true;
+        myRole = 'host'; // 初期はホスト兼回答者ベース
+    } else {
+        isHostUser = false;
+        myRole = selectedRole;
+    }
+
     initRoom();
 });
 
@@ -334,30 +372,63 @@ function initRoom() {
         handleNetworkMessage(msg);
     });
 
-    server.join(myRoomId, { name: myName, role: myRole });
+    server.join(myRoomId, { name: myName, role: myRole, isHost: isHostUser });
+
+    // 司会者の場合は、Firebaseから選択用お題リストをロードする
+    if (isHostUser) {
+        loadFirebaseThemesForSelect();
+    }
+}
+
+// 選択ボックスにお題を詰める
+async function loadFirebaseThemesForSelect() {
+    if (typeof window.getThemesFromFirebase === 'function') {
+        const themes = await window.getThemesFromFirebase();
+        firebaseThemeSelect.innerHTML = '<option value="">-- 登録済みのお題から選択 --</option>';
+        themes.forEach(t => {
+            const opt = document.createElement('option');
+            opt.value = t;
+            opt.innerText = t;
+            firebaseThemeSelect.appendChild(opt);
+        });
+    }
 }
 
 // --- UI制御とお題見え方の切り替え ---
 function updateRoleUI() {
     const badge = document.getElementById('my-status-badge');
     badge.className = "status-badge";
-    if (myRole === 'host') { badge.innerText = "司会者"; badge.classList.add('status-host'); }
-    if (myRole === 'drawer') { badge.innerText = "出題者"; badge.classList.add('status-drawer'); }
-    if (myRole === 'answerer') { badge.innerText = "回答者"; badge.classList.add('status-answerer'); }
-
-    if (myRole === 'host') {
-        hostPanel.classList.remove('hidden');
-        canvasControls.classList.add('hidden');
-        answerFormArea.classList.add('hidden');
-    } else if (myRole === 'drawer') {
-        hostPanel.classList.add('hidden');
-        canvasControls.classList.remove('hidden');
-        answerFormArea.classList.add('hidden');
-    } else { 
-        hostPanel.classList.add('hidden');
-        canvasControls.classList.add('hidden');
-        answerFormArea.classList.remove('hidden');
+    
+    // バッジ表示
+    if (isHostUser) {
+        badge.innerText = `司会者兼 [${myRole === 'drawer' ? '出題者' : '回答者'}]`;
+        badge.classList.add('status-host');
+    } else {
+        if (myRole === 'drawer') { badge.innerText = "出題者"; badge.classList.add('status-drawer'); }
+        if (myRole === 'answerer') { badge.innerText = "回答者"; badge.classList.add('status-answerer'); }
     }
+
+    // コントロールパネルの表示（司会者なら常に出す）
+    if (isHostUser) {
+        hostPanel.classList.remove('hidden');
+    } else {
+        hostPanel.classList.add('hidden');
+    }
+
+    // お絵かきツールの表示（現在の役割がdrawerなら出す。司会者でも自分がdrawerなら描ける）
+    if (myRole === 'drawer') {
+        canvasControls.classList.remove('hidden');
+    } else {
+        canvasControls.classList.add('hidden');
+    }
+
+    // 回答フォームの表示（現在の役割がdrawer「以外」なら出す。司会者でも回答可能に）
+    if (myRole !== 'drawer') {
+        answerFormArea.classList.remove('hidden');
+    } else {
+        answerFormArea.classList.add('hidden');
+    }
+
     refreshThemeDisplay();
 }
 
@@ -368,15 +439,39 @@ function refreshThemeDisplay() {
         return;
     }
 
-    if (myRole === 'host' || myRole === 'drawer') {
-        themeLabelDisplay.innerText = myRole === 'drawer' ? "🎨 あなたへのお題 (描いてください)" : "👑 設定中のお題 (正解)";
-        themeWordDisplay.innerText = currentTheme;
-        themeWordDisplay.style.color = "#24292f";
-    } else {
-        themeLabelDisplay.innerText = "💬 お題を当ててください！";
-        themeWordDisplay.innerText = "〇 ".repeat(currentTheme.length).trim() + ` (${currentTheme.length}文字)`;
-        themeWordDisplay.style.color = "#007bff";
+    // 自分が出題者(描く人)のとき
+    if (myRole === 'drawer') {
+        // もし「ランダムで選ばれて、かつ自分が司会者」かつ「Host非表示フラグ」がONなら、出題者であっても見えない
+        if (isHostUser && isThemeHiddenFromHost) {
+            themeLabelDisplay.innerText = "🎨 あなたはお題を知らない出題者です！(神の悪戯)";
+            themeWordDisplay.innerText = "〇 ".repeat(currentTheme.length).trim() + ` (${currentTheme.length}文字)`;
+            themeWordDisplay.style.color = "#ffc107";
+        } else {
+            themeLabelDisplay.innerText = "🎨 あなたへのお題 (描いてください)";
+            themeWordDisplay.innerText = currentTheme;
+            themeWordDisplay.style.color = "#24292f";
+        }
+        return;
     }
+
+    // 自分が司会者（描く人ではない）のとき
+    if (isHostUser) {
+        if (isThemeHiddenFromHost) {
+            themeLabelDisplay.innerText = "👑 設定中のお題 (あなたも知らない状態です)";
+            themeWordDisplay.innerText = "〇 ".repeat(currentTheme.length).trim() + ` (${currentTheme.length}文字)`;
+            themeWordDisplay.style.color = "#ffc107";
+        } else {
+            themeLabelDisplay.innerText = "👑 設定中のお題 (正解)";
+            themeWordDisplay.innerText = currentTheme;
+            themeWordDisplay.style.color = "#24292f";
+        }
+        return;
+    }
+
+    // 一般の回答者のとき
+    themeLabelDisplay.innerText = "💬 お題を当ててください！";
+    themeWordDisplay.innerText = "〇 ".repeat(currentTheme.length).trim() + ` (${currentTheme.length}文字)`;
+    themeWordDisplay.style.color = "#007bff";
 }
 
 // --- ネットワークメッセージ処理 ---
@@ -384,6 +479,12 @@ function handleNetworkMessage(msg) {
     switch (msg.type) {
         case 'room-update':
             displayMembers(msg.members);
+            // 自分の役割を最新サーバーデータから同期（Host属性を維持しつつroleを更新）
+            const me = msg.members.find(m => m.name === myName);
+            if (me) {
+                myRole = me.role;
+                isHostUser = me.isHost;
+            }
             if (msg.mode) {
                 gameMode = msg.mode;
                 gameModeSelect.value = gameMode;
@@ -395,17 +496,19 @@ function handleNetworkMessage(msg) {
             }
             if (msg.currentTheme !== undefined) {
                 currentTheme = msg.currentTheme;
+                isThemeHiddenFromHost = msg.isThemeHiddenFromHost || false;
                 refreshThemeDisplay();
             }
+            updateRoleUI();
             break;
 
-        case 'role-changed':
-            const targetUser = msg.members.find(m => m.name === myName);
-            if (targetUser) {
-                myRole = targetUser.role;
-                updateRoleUI();
-            }
+        case 'change-drawer':
             displayMembers(msg.members);
+            const targetMe = msg.members.find(m => m.name === myName);
+            if (targetMe) {
+                myRole = targetMe.role;
+            }
+            updateRoleUI();
             break;
 
         case 'mode-changed':
@@ -416,6 +519,7 @@ function handleNetworkMessage(msg) {
 
         case 'set-theme':
             currentTheme = msg.theme;
+            isThemeHiddenFromHost = msg.hideFromHost || false;
             refreshThemeDisplay();
             winnerBanner.classList.add('hidden');
             hasWon = false;
@@ -443,6 +547,7 @@ function handleNetworkMessage(msg) {
         case 'clear-game':
             remoteLines = [];
             currentTheme = "";
+            isThemeHiddenFromHost = false;
             redrawCanvas();
             refreshThemeDisplay();
             answerLogDiv.innerHTML = "";
@@ -454,26 +559,26 @@ function handleNetworkMessage(msg) {
 
 function displayMembers(members) {
     memberListDiv.innerHTML = "";
-    changeDrawerSelect.innerHTML = '<option value="">-- 出題者を選択 --</option>';
+    changeDrawerSelect.innerHTML = '<option value="">-- 出題者(描く人)を指名 --</option>';
 
     members.forEach(m => {
         const div = document.createElement('div');
         div.className = "member-item";
-        let roleStr = m.role === 'host' ? '👑' : (m.role === 'drawer' ? '✏️' : '💬');
+        let roleStr = m.isHost ? '👑' : '';
+        roleStr += (m.role === 'drawer' ? '✏️' : '💬');
         div.innerText = `${roleStr} ${m.name}`;
         memberListDiv.appendChild(div);
 
-        if (m.role !== 'drawer') {
-            const opt = document.createElement('option');
-            opt.value = m.name;
-            opt.innerText = m.name + (m.role === 'host' ? ' (司会)' : '');
-            changeDrawerSelect.appendChild(opt);
-        }
+        // 指名用のプルダウンリスト（自分も含めて全員指名可能にする）
+        const opt = document.createElement('option');
+        opt.value = m.name;
+        opt.innerText = m.name + (m.isHost ? ' (司会)' : '') + (m.role === 'drawer' ? ' [現出題者]' : '');
+        changeDrawerSelect.appendChild(opt);
     });
 }
 
 function updateModeDisplay() {
-    const modeText = gameMode === 'first-win' ? "先勝ちモード (最初の正解者で終了)" : "全員一斉回答モード (何度でも回答可)";
+    const modeText = gameMode === 'first-win' ? "先勝ちモード" : "全員一斉回答モード";
     currentModeDisplay.innerText = `現在のモード: ${modeText}`;
 }
 
@@ -488,13 +593,22 @@ changeDrawerSelect.addEventListener('change', (e) => {
     server.send(myRoomId, { type: 'change-drawer', targetName: targetName });
 });
 
-// 【Firebase連携】ランダムお題決定ボタン
+// 【選択して出題】
+document.getElementById('select-theme-btn').addEventListener('click', () => {
+    const selectedTheme = firebaseThemeSelect.value;
+    if (!selectedTheme) {
+        alert("お題を選択してください。");
+        return;
+    }
+    // 選択して出題する場合は、司会者にはお題が見える状態（hideFromHost: false）
+    server.send(myRoomId, { type: 'set-theme', theme: selectedTheme, hideFromHost: false });
+});
+
+// 【ランダムに出題】★司会者自身も答えを知らない設定
 document.getElementById('random-theme-btn').addEventListener('click', async () => {
     const btn = document.getElementById('random-theme-btn');
     btn.disabled = true;
-    btn.innerText = "⌛ Firebaseから読込中...";
 
-    // Firebaseモジュール側でグローバルに紐付けた関数を呼び出す
     if (typeof window.getThemesFromFirebase === 'function') {
         const firebaseThemes = await window.getThemesFromFirebase();
         
@@ -502,21 +616,17 @@ document.getElementById('random-theme-btn').addEventListener('click', async () =
             const randomIndex = Math.floor(Math.random() * firebaseThemes.length);
             const selectedTheme = firebaseThemes[randomIndex];
             
-            // ルーム全員に配信
-            server.send(myRoomId, { type: 'set-theme', theme: selectedTheme });
+            // ランダム時は司会者（自分）も答えを知りたくないので、隠蔽フラグ(hideFromHost: true)を送信
+            server.send(myRoomId, { type: 'set-theme', theme: selectedTheme, hideFromHost: true });
         } else {
-            alert("Firebaseの 'themes' コレクションにお題が見つかりませんでした。データを確認してください。");
+            alert("Firebaseにお題が登録されていません。pictodai.html から登録してください。");
         }
-    } else {
-        alert("Firebaseの初期化がまだ完了していないか、設定が正しくありません。");
     }
-
     btn.disabled = false;
-    btn.innerText = "🔥 Firebaseからお題をランダム決定";
 });
 
 document.getElementById('clear-game-btn').addEventListener('click', () => {
-    if(confirm("キャンバス、お題、正解ログをすべてリセットしますか？")) {
+    if(confirm("すべてリセットしますか？")) {
         server.send(myRoomId, { type: 'clear-game' });
     }
 });
@@ -607,13 +717,10 @@ document.getElementById('answer-input').addEventListener('keypress', (e) => {
 });
 
 function submitAnswer() {
-    if (myRole !== 'answerer') return;
-    if (!currentTheme) {
-        alert('お題がまだ設定されていません。');
-        return;
-    }
+    if (myRole === 'drawer') return; // 描く担当の人は送信不可
+    if (!currentTheme) return;
     if (gameMode === 'first-win' && hasWon) {
-        alert('この問題はすでに終了しています。');
+        alert('この問題は終了しています。');
         return;
     }
 
