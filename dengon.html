@@ -2,121 +2,314 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<title>逆再生伝言ゲーム</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>逆再生伝言ゲーム - 連動システム</title>
+<script src="https://cdn.tailwindcss.com"></script>
 <style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@700;900&display=swap');
   body {
-    font-family: sans-serif;
-    background: #111;
+    font-family: 'Noto+Sans+JP', sans-serif;
+    background: #0f0f15;
     color: #fff;
-    text-align: center;
-    padding: 20px;
   }
-
-  h1 {
-    font-size: 2.2rem;
-    margin-bottom: 20px;
+  .app-gradient {
+    background: linear-gradient(135deg, #ff3366, #ff6633);
   }
-
-  .quiz-row {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    gap: 12px;
-    margin: 14px 0;
+  .glass-box {
+    background: rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
   }
-
-  button {
-    font-size: 1.3rem;
-    padding: 10px 20px;
-    border-radius: 10px;
-    border: none;
-    cursor: pointer;
-  }
-
-  .question-box {
-    font-size: 2.6rem;
-    margin-top: 25px;
-    min-height: 60px;
-  }
-
-  .answer-box {
-    font-size: 2.2rem;
-    margin-top: 15px;
-    min-height: 50px;
-    color: #00ffcc;
-  }
-
-  @media (max-width: 600px) {
-    button { font-size: 1.1rem; padding: 8px 14px; }
-    .question-box { font-size: 2rem; }
-    .answer-box { font-size: 1.7rem; }
+  .score-hidden {
+    filter: blur(12px);
+    user-select: none;
   }
 </style>
 </head>
-  <a href="gyakusaisei.html">📘 逆再生</a>
-<body>
+<body class="p-4 min-h-screen flex flex-col items-center">
 
-<h1>逆再生伝言ゲーム</h1>
+  <div class="w-full max-w-md flex flex-col min-h-screen justify-between pb-6">
+    
+    <div>
+      <!-- 管理キー入力（トグル式） -->
+      <div class="mb-4 flex justify-end items-center gap-2">
+        <input type="password" id="adminKeyInput" placeholder="管理キー" class="w-24 bg-gray-800 text-white px-3 py-1 rounded-xl border border-gray-700 text-xs focus:outline-none">
+        <button id="authBtn" class="bg-gray-700 hover:bg-gray-600 px-3 py-1 rounded-xl text-xs font-bold transition-all">Panel</button>
+      </div>
 
-<div class="question-box" id="question">ボタンを押してお題を表示</div>
-<div class="answer-box" id="answer"></div>
+      <!-- ⚙️ 管理者コントロールパネル (初期状態hidden) -->
+      <div id="adminPanel" class="hidden bg-gray-900 border-2 border-pink-500 rounded-3xl p-4 mb-6 shadow-2xl">
+        <h2 class="text-lg font-black text-pink-500 mb-3 flex justify-between items-center">
+          <span>🛠️ 管理者パネル (操作用)</span>
+          <button onclick="resetSync()" class="text-xs bg-red-900 px-2 py-0.5 rounded text-red-200">全リセット</button>
+        </h2>
+        
+        <!-- 管理用問題選択 -->
+        <p class="text-xs font-bold text-gray-400 mb-1">1. 出題する問題を選択（全員に配信）</p>
+        <div class="flex gap-1.5 overflow-x-auto pb-2 mb-4" id="adminButtons">
+          <!-- 管理者用10問ボタンがここに生成されます -->
+        </div>
 
-<!-- 10問分のボタン -->
-<div id="buttons"></div>
+        <!-- 管理用答え公開スイッチ -->
+        <p class="text-xs font-bold text-gray-400 mb-1">2. 答えの表示コントロール</p>
+        <div class="grid grid-cols-2 gap-2">
+          <button onclick="setAnswerVisibility(true)" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 rounded-xl text-sm shadow">
+            🔓 答えを全員に公開
+          </button>
+          <button onclick="setAnswerVisibility(false)" class="bg-gray-700 hover:bg-gray-600 text-white font-bold py-2 rounded-xl text-sm shadow">
+            🔒 答えを隠す
+          </button>
+        </div>
+      </div>
 
-<!-- 共通ボタン -->
-<button onclick="showAnswer()">答え</button>
-<button onclick="clearText()">消す</button>
+      <!-- ==================== 参加者/メイン画面 ==================== -->
+      
+      <!-- 1. ログイン画面 -->
+      <div id="loginScreen" class="w-full glass-box p-8 rounded-3xl shadow-2xl my-12">
+        <div class="text-center mb-8">
+          <span class="text-5xl">🔄</span>
+          <h1 class="text-3xl font-black mt-4 tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-pink-500 to-orange-400">
+            逆再生ゲーム
+          </h1>
+          <p class="text-sm text-gray-400 mt-1">チーム名と名前を入力して参加</p>
+        </div>
 
+        <div class="space-y-4">
+          <div>
+            <label class="block text-xs font-bold text-gray-400 mb-1 uppercase tracking-wider">部屋名 / チーム名</label>
+            <input type="text" id="roomInput" placeholder="例: Aチーム" class="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-3 text-lg font-bold focus:outline-none focus:border-pink-500 text-white">
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-gray-400 mb-1 uppercase tracking-wider">あなたの名前</label>
+            <input type="text" id="nameInput" placeholder="例: たろう" class="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-3 text-lg font-bold focus:outline-none focus:border-pink-500 text-white">
+          </div>
+          <button id="loginBtn" class="w-full app-gradient hover:opacity-90 text-white font-black py-4 rounded-xl text-xl shadow-lg transition-all active:scale-95 mt-4">
+            ゲーム画面に入る
+          </button>
+        </div>
+      </div>
 
-<script>
-  // 逆再生すると意味が分かる言葉（10問）
-  const quiz = [
-    { q: "あいさか", a: "アカシア" },
-    { q: "うたかひあ", a: "愛は勝つ" },
-    { q: "にずおひ", a: "異邦人" },
-    { q: "あぼとくるこ", a: "贈る言葉" },
-    { q: "うぐにしるべ", a: "EVERYTHING" },
-    { q: "にらあだ", a: "ダーリン" },
-    { q: "いけしか", a: "キセキ" },
-    { q: "あばたなは", a: "花束" },
-    { q: "おぶなるかさ", a: "さくらんぼ" },
-    { q: "いすもつばか", a: "カブトムシ" }
-  ];
+      <!-- 2. ゲームメイン画面（待機・受信状態） -->
+      <div id="gameScreen" class="hidden w-full flex flex-col">
+        
+        <!-- ステータスバー -->
+        <div class="flex justify-between items-center glass-box px-4 py-2.5 rounded-2xl mb-4 text-xs font-bold">
+          <div class="flex items-center gap-1 text-pink-400">🏠 <span id="displayRoom" class="text-white"></span></div>
+          <div class="flex items-center gap-1 text-orange-400">👤 <span id="displayName" class="text-white"></span></div>
+        </div>
 
-  let currentIndex = -1;
+        <!-- リアルタイム同期ボード -->
+        <div class="glass-box rounded-3xl p-6 text-center shadow-xl mb-6 min-h-[220px] flex flex-col justify-center border-2 border-white/10">
+          <div class="text-xs font-black text-gray-400 uppercase tracking-widest mb-1" id="syncStatusLabel">待機中</div>
+          <div class="text-xs font-bold text-pink-500 mb-3" id="quizNumDisplay">管理者が出題するまでお待ちください</div>
+          
+          <div class="text-4xl font-black text-white tracking-wide min-h-[48px] flex items-center justify-center mb-4" id="question">
+            ーーー
+          </div>
+          
+          <div class="text-2xl font-black text-emerald-400 min-h-[36px] flex items-center justify-center border-t border-white/10 pt-4" id="answerContainer">
+            <span id="answer" class="score-hidden">？ ？ ？</span>
+          </div>
+        </div>
 
-  // ボタン生成
-  const btnArea = document.getElementById("buttons");
-  quiz.forEach((item, index) => {
-    const row = document.createElement("div");
-    row.className = "quiz-row";
+        <!-- 回答結果の自己申告ボタン -->
+        <div class="bg-black/40 border border-white/10 p-4 rounded-2xl">
+          <div class="text-xs font-bold text-center text-gray-400 mb-2">答え合わせ後の結果を送信</div>
+          <div class="grid grid-cols-2 gap-3">
+            <button onclick="submitResult(true)" class="bg-emerald-600 hover:bg-emerald-700 text-white font-black py-3 rounded-xl flex items-center justify-center gap-2 text-md active:scale-95 transition-all shadow">
+              ⭕ 正解 (+10点)
+            </button>
+            <button onclick="submitResult(false)" class="bg-red-600 hover:bg-red-700 text-white font-black py-3 rounded-xl flex items-center justify-center gap-2 text-md active:scale-95 transition-all shadow">
+              ❌ 不正解
+            </button>
+          </div>
+        </div>
 
-    const qBtn = document.createElement("button");
-    qBtn.textContent = "問題 " + (index + 1);
-    qBtn.onclick = () => {
-      currentIndex = index;
-      document.getElementById("question").textContent = item.q;
-      document.getElementById("answer").textContent = "";
+      </div>
+    </div>
+
+    <!-- フッター・戻る -->
+    <div class="text-center mt-8">
+      <a href="index.html" class="inline-block text-sm font-bold text-gray-500 hover:text-gray-300 border border-gray-800 rounded-full px-6 py-2 transition-all bg-gray-900/50">
+        メニューへ戻る
+      </a>
+    </div>
+
+  </div>
+
+  <!-- Firebase SDK (Version 9 compat) -->
+  <script src="https://www.gstatic.com/firebasejs/9.1.3/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.1.3/firebase-database-compat.js"></script>
+
+  <script>
+    // --- Firebase Configuration ---
+    const firebaseConfig = {
+      apiKey: "AIzaSyC4DQhH_swesAD98Xyjg8d1lcWEkkrHrgw",
+      authDomain: "gamehistory-m84.firebaseapp.com",
+      databaseURL: "https://gamehistory-m84-default-rtdb.firebaseio.com",
+      projectId: "gamehistory-m84",
+      storageBucket: "gamehistory-m84.firebasestorage.app",
+      messagingSenderId: "475761727837",
+      appId: "1:475761727837:web:06d07e1ab4120a7ccaf0b4",
+      measurementId: "G-3636W6LC4F"
+    };
+    
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    // 逆再生データ
+    const quiz = [
+      { q: "あいさか", a: "アカシア" },
+      { q: "うたかひあ", a: "愛は勝つ" },
+      { q: "にずおひ", a: "異邦人" },
+      { q: "あぼとくるこ", a: "贈る言葉" },
+      { q: "うぐにしるべ", a: "EVERYTHING" },
+      { q: "にらあだ", a: "ダーリン" },
+      { q: "いけしか", a: "キセキ" },
+      { q: "あばたなは", a: "花束" },
+      { q: "おぶなるかさ", a: "さくらんぼ" },
+      { q: "いすもつばか", a: "カブトムシ" }
+    ];
+
+    let currentRoom = "";
+    let currentPlayerName = "";
+    let serverCurrentIndex = -1;
+
+    // DOM要素
+    const adminKeyInput = document.getElementById("adminKeyInput");
+    const authBtn = document.getElementById("authBtn");
+    const adminPanel = document.getElementById("adminPanel");
+    const loginScreen = document.getElementById("loginScreen");
+    const gameScreen = document.getElementById("gameScreen");
+    const roomInput = document.getElementById("roomInput");
+    const nameInput = document.getElementById("nameInput");
+    const loginBtn = document.getElementById("loginBtn");
+    const displayRoom = document.getElementById("displayRoom");
+    const displayName = document.getElementById("displayName");
+    
+    const syncStatusLabel = document.getElementById("syncStatusLabel");
+    const quizNumDisplay = document.getElementById("quizNumDisplay");
+    const questionText = document.getElementById("question");
+    const answerText = document.getElementById("answer");
+
+    // --- 1. 管理者認証トグル (キー: 0001) ---
+    authBtn.onclick = () => {
+      if (adminKeyInput.value === "0001") {
+        adminPanel.classList.toggle("hidden");
+        adminKeyInput.value = "";
+      } else {
+        alert("管理キーが正しくありません。");
+      }
     };
 
-    row.appendChild(qBtn);
-    btnArea.appendChild(row);
-  });
+    // --- 2. 管理者用：10問のボタンを生成 ---
+    const adminButtonsArea = document.getElementById("adminButtons");
+    quiz.forEach((item, index) => {
+      const btn = document.createElement("button");
+      btn.textContent = index + 1;
+      btn.className = "w-10 h-10 flex-shrink-0 bg-gray-800 text-white font-bold rounded-xl text-sm border border-gray-700 transition-all";
+      btn.onclick = () => {
+        // Firebaseサーバー上の「現在の問題インデックス」を更新
+        db.ref('syncState/currentIndex').set(index);
+        // 問題切り替え時は、自動で答えを非表示(false)にする仕様
+        db.ref('syncState/showAnswer').set(false);
+      };
+      adminButtonsArea.appendChild(btn);
+    });
 
-  // 答えボタン
-  function showAnswer() {
-    if (currentIndex === -1) return;
-    document.getElementById("answer").textContent = quiz[currentIndex].a;
-  }
+    // 管理者用：答えの表示・非表示を設定
+    window.setAnswerVisibility = (visible) => {
+      db.ref('syncState/showAnswer').set(visible);
+    };
 
-  // 表示を消す
-  function clearText() {
-    document.getElementById("question").textContent = "";
-    document.getElementById("answer").textContent = "";
-    currentIndex = -1;
-  }
-</script>
+    // 管理者用：初期状態に戻す
+    window.resetSync = () => {
+      if(confirm("全参加者の同期状態を初期化しますか？")) {
+        db.ref('syncState').set({
+          currentIndex: -1,
+          showAnswer: false
+        });
+      }
+    };
+
+    // --- 3. 参加者：ログイン処理 ---
+    loginBtn.onclick = () => {
+      currentRoom = roomInput.value.trim();
+      currentPlayerName = nameInput.value.trim();
+
+      if (!currentRoom || !currentPlayerName) {
+        alert("部屋名と名前を入力してください。");
+        return;
+      }
+
+      displayRoom.textContent = currentRoom;
+      displayName.textContent = currentPlayerName;
+
+      loginScreen.classList.add("hidden");
+      gameScreen.classList.remove("hidden");
+    };
+
+    // --- 4. 🚀 最重要：全員の画面をリアルタイム同期するリスナー ---
+    db.ref('syncState').on('value', (snapshot) => {
+      const data = snapshot.val() || { currentIndex: -1, showAnswer: false };
+      serverCurrentIndex = data.currentIndex;
+      const showAnswer = data.showAnswer;
+
+      // 管理者パネル内ボタンのスタイル同期
+      document.querySelectorAll("#adminButtons button").forEach((b, idx) => {
+        if (idx === serverCurrentIndex) {
+          b.className = "w-10 h-10 flex-shrink-0 bg-pink-600 text-white font-bold rounded-xl text-sm border border-pink-400 scale-105 shadow-lg";
+        } else {
+          b.className = "w-10 h-10 flex-shrink-0 bg-gray-800 text-white font-bold rounded-xl text-sm border border-gray-700";
+        }
+      });
+
+      // 表示ボードの書き換え
+      if (serverCurrentIndex === -1) {
+        syncStatusLabel.textContent = "待機中";
+        quizNumDisplay.textContent = "管理者が出題するまでお待ちください";
+        questionText.textContent = "ーーー";
+        answerText.textContent = "？ ？ ？";
+        answerText.className = "score-hidden";
+      } else {
+        syncStatusLabel.textContent = "🔴 LIVE 同期中";
+        quizNumDisplay.textContent = `QUESTION 0${serverCurrentIndex + 1}`;
+        questionText.textContent = quiz[serverCurrentIndex].q;
+        
+        // 答えの公開状態による分岐
+        if (showAnswer) {
+          answerText.textContent = quiz[serverCurrentIndex].a;
+          answerText.classList.remove("score-hidden");
+        } else {
+          answerText.textContent = "？ ？ ？";
+          answerText.classList.add("score-hidden");
+        }
+      }
+    });
+
+    // --- 5. 参加者：結果（スコア）送信 ---
+    window.submitResult = (isCorrect) => {
+      if (serverCurrentIndex === -1) {
+        alert("現在問題が出題されていません。");
+        return;
+      }
+
+      const recordRef = db.ref(`gameResults/reverseGame/${currentRoom}/${currentPlayerName}/q${serverCurrentIndex + 1}`);
+      const scoreValue = isCorrect ? 10 : 0;
+
+      recordRef.set({
+        question: quiz[serverCurrentIndex].q,
+        answer: quiz[serverCurrentIndex].a,
+        isCorrect: isCorrect,
+        score: scoreValue,
+        timestamp: firebase.database.ServerValue.TIMESTAMP
+      }).then(() => {
+        alert(`問題 ${serverCurrentIndex + 1} の結果（${isCorrect ? "⭕ 正解" : "❌ 不正解"}）を保存しました！`);
+      }).catch((error) => {
+        alert("送信失敗: " + error.message);
+      });
+    };
+  </script>
 
 </body>
 </html>
