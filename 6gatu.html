@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>カラオケ企画メニュー</title>
+<style>
+  /* 全体のリセットと基本スタイル */
+  * {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+  }
+
+  body {
+    font-family: 'Helvetica Neue', Arial, 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', sans-serif;
+    background: #0f0f15;
+    color: #fff;
+    text-align: center;
+    padding: 20px 15px;
+  }
+
+  h1 {
+    font-size: 1.8rem;
+    margin-bottom: 25px;
+    letter-spacing: 1px;
+    text-shadow: 0 0 10px rgba(255,255,255,0.2);
+  }
+
+  h2 {
+    font-size: 1.2rem;
+    color: #aaa;
+    margin: 30px 0 15px;
+    text-align: left;
+    max-width: 500px;
+    margin-left: auto;
+    margin-right: auto;
+    padding-left: 5px;
+    border-left: 4px solid #ff007f;
+  }
+
+  /* 共通のボタン基盤 */
+  a {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    text-decoration: none;
+    font-weight: bold;
+    border-radius: 12px;
+    transition: transform 0.2s, opacity 0.2s;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+  }
+
+  a:active {
+    transform: scale(0.95);
+    opacity: 0.9;
+  }
+
+  /* ゲームエリア（1行2枠 / Gridレイアウト） */
+  .game-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+    max-width: 500px;
+    margin: 0 auto;
+  }
+
+  .game-grid a {
+    height: 90px;
+    font-size: 0.95rem;
+    padding: 10px;
+    line-height: 1.4;
+  }
+
+  /* ゲームごとのカラフルな背景（グラデーション） */
+  .btn-reverse { background: linear-gradient(135deg, #ff3366, #ff6633); }
+  .btn-translate { background: linear-gradient(135deg, #ff9900, #ffcc00); color: #111; }
+  .btn-kokon { background: linear-gradient(135deg, #00cc66, #00ffcc); color: #111; }
+
+  /* 結果エリア（旧ツールエリア） */
+  .tool-box {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    max-width: 500px;
+    margin: 0 auto;
+  }
+
+  .tool-box h2 {
+    border-left-color: #00e5ff;
+  }
+
+  .tool-box a {
+    flex-direction: row;
+    height: 65px;
+    font-size: 1.1rem;
+    gap: 10px;
+    background: #222530;
+    border: 2px solid #3a3f58;
+  }
+
+  /* メニュー（戻る）ボタン専用スタイル */
+  .back-box {
+    max-w-width: 500px;
+    margin: 40px auto 0;
+    display: flex;
+    justify-content: center;
+  }
+
+  .btn-back {
+    width: 100px;
+    height: 40px;
+    font-size: 0.9rem;
+    background: #2a2a35;
+    border: 1px solid #444;
+    border-radius: 20px;
+    color: #ccc;
+    box-shadow: none;
+  }
+
+  /* PCやタブレットなど少し大きめの画面用の微調整 */
+  @media (min-width: 450px) {
+    .game-grid a {
+      font-size: 1.05rem;
+      height: 100px;
+    }
+    h1 { font-size: 2.2rem; }
+  }
+</style>
+</head>
+<body>
+
+<h1>カラオケ企画メニュー</h1>
+
+<h2>🎮 GAMES (3)</h2>
+<div class="game-grid">
+  <a href="" class="btn-reverse"><span>🔄</span><span>逆再生ゲーム</span></a>
+  <a href="" class="btn-translate"><span>🌐</span><span>翻訳曲当てゲーム</span></a>
+  <a href="" class="btn-kokon"><span>🎤</span><span>古今東西曲出しゲーム</span></a>
+</div>
+
+<div class="tool-box">
+  <h2>📊 結果</h2>
+  <a href="gamehistory.html"><span>📈</span> スコアボード <span>🗓️</span></a>
+</div>
+
+<!-- メニュー(index)に戻るボタン -->
+<div class="back-box">
+  <a href="index.html" class="btn-back">メニューへ戻る</a>
+</div>
+
+</body>
+</html>
