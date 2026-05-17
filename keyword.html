@@ -1,324 +1,345 @@
+HTML
 <!DOCTYPE html>
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>キーワード曲名当てゲーム</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>古今東西曲出しゲーム - リアルタイムスコアボード</title>
+    <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        :root { --primary: #e63946; --bg: #f8f9fa; --panel: #ffffff; }
-        body { font-family: sans-serif; background: var(--bg); margin: 0; padding: 20px; color: #333; }
-        .container { max-width: 1000px; margin: 0 auto; display: grid; grid-template-columns: 1fr 350px; gap: 20px; }
-        header { grid-column: 1 / -1; background: var(--panel); padding: 15px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
-        .header-left { display: flex; align-items: center; gap: 15px; }
-        .card { background: var(--panel); padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); margin-bottom: 20px; }
-        h2 { margin-top: 0; font-size: 1.2rem; border-bottom: 2px solid #eee; padding-bottom: 8px; }
-        
-        /* ボタン共通 */
-        .btn-menu { background: #6c757d; color: white; text-decoration: none; padding: 8px 12px; border-radius: 4px; font-weight: bold; font-size: 0.9rem; }
-        .btn-menu:hover { opacity: 0.9; }
-        
-        /* チーム選択セレクト */
-        select { padding: 8px; border-radius: 4px; border: 1px solid #ccc; font-weight: bold; background: #fff; cursor: pointer; }
-        
-        /* キャンバスエリア */
-        #canvas { display: flex; flex-wrap: wrap; gap: 10px; min-height: 200px; background: #eaeaea; padding: 15px; border-radius: 6px; align-content: flex-start; }
-        .song-badge { background: white; padding: 8px 12px; border-radius: 20px; display: flex; align-items: center; gap: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); font-weight: bold; animation: pop 0.3s ease; }
-        .song-badge.bonus { border: 2px solid #ffb703; background: #fffde7; }
-        .song-badge .admin-del { color: #aaa; cursor: pointer; font-size: 0.9rem; border: none; background: none; padding: 0 2px; }
-        .song-badge .admin-del:hover { color: var(--primary); }
-        
-        /* フォーム系 */
-        .flex-input { display: flex; gap: 5px; margin-bottom: 10px; }
-        input, button { padding: 8px; border: 1px solid #ccc; border-radius: 4px; }
-        input[type="text"] { flex: 1; }
-        button { background: #4a4e69; color: white; border: none; cursor: pointer; font-weight: bold; }
-        button:hover { opacity: 0.9; }
-        button.action-btn { background: var(--primary); width: 100%; padding: 12px; font-size: 1rem; margin-top: 10px; }
-        
-        #log { height: 150px; overflow-y: auto; background: #222; color: #fff; padding: 10px; font-family: monospace; font-size: 0.85rem; border-radius: 4px; }
-        .log-err { color: #ff85a1; } .log-war { color: #ffd166; } .log-ok { color: #06d6a0; }
-        
-        @keyframes pop { 0% { transform: scale(0.7); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
+        @import url('https://fonts.googleapis.com/css2?family=Fredoka+One&family=Noto+Sans+JP:wght@500;800;900&display=swap');
+        body {
+            font-family: 'Noto+Sans+JP', sans-serif;
+            background-color: #0b0f19;
+            color: #f1f5f9;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .font-numeric { font-family: 'Fredoka One', sans-serif; }
+        .score-blur { filter: blur(14px); user-select: none; }
+        .app-card {
+            background: rgba(22, 30, 49, 0.7);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+        }
     </style>
 </head>
-<body>
+<body class="p-3 md:p-6 min-h-screen flex flex-col justify-between">
 
-<header>
-    <div class="header-left">
-        <!-- メニューに戻るボタンを追加 -->
-        <a href="6gatu.html" class="btn-menu">🏠 メニューへ戻る</a>
-        <div>
-            👥 チーム選択: 
-            <select id="team-select" onchange="switchTeam()">
-                <option value="team_A">チームA</option>
-                <option value="team_B">チームB</option>
-                <option value="team_C">チームC</option>
-                <option value="team_D">チームD</option>
-            </select>
+    <!-- メインコンテンツコンテナ -->
+    <div class="max-w-md mx-auto w-full flex-grow flex flex-col justify-start">
+        
+        <!-- ナビゲーション・管理者ログイン -->
+        <div class="flex justify-between items-center mb-4">
+            <a href="6gatu.html" class="app-card px-4 py-2 rounded-xl text-xs font-bold text-gray-400 hover:text-white transition-all">🏠 Menu</a>
+            <div class="flex items-center gap-1.5">
+                <input type="password" id="adminKeyInput" placeholder="🔑" class="w-16 text-center bg-gray-900/60 text-white px-2 py-1.5 rounded-xl border border-gray-800 text-xs focus:outline-none focus:border-blue-500">
+                <button id="authBtn" class="bg-blue-600/20 hover:bg-blue-600/40 text-blue-400 text-xs font-bold px-3 py-1.5 rounded-xl border border-blue-500/30 transition-all">Login</button>
+            </div>
         </div>
+
+        <!-- 🔑 他のゲームと統一した「合言葉入力エリア」 -->
+        <div class="app-card p-4 rounded-2xl mb-6 border border-blue-500/30 shadow-lg">
+            <label class="text-xs font-black text-blue-400 block mb-1.5">🔑 合言葉（ルーム名）を入力</label>
+            <div class="flex gap-2">
+                <input type="text" id="roomKeyInput" placeholder="例: ひみつ の部屋" class="flex-grow bg-gray-900 text-white font-bold text-sm px-4 py-2.5 rounded-xl border border-gray-700 outline-none focus:border-blue-500">
+                <button onclick="loadRoomData()" class="bg-gradient-to-r from-blue-500 to-indigo-600 text-white text-xs font-black px-5 py-2.5 rounded-xl hover:opacity-90 transition-all shadow-md shadow-blue-500/10">
+                    読み込み
+                </button>
+            </div>
+        </div>
+
+        <!-- 管理者コントロールパネル -->
+        <div id="adminPanel" class="hidden app-card border-2 border-blue-500/50 rounded-3xl p-5 mb-6 shadow-2xl">
+            <h2 class="text-lg font-black text-blue-400 mb-3 flex items-center gap-1">🛠️ コントロールセンター</h2>
+            
+            <div class="grid grid-cols-2 gap-2 mb-4">
+                <button id="toggleScores" class="bg-red-500/20 hover:bg-red-500/30 border border-red-500/40 text-red-300 py-2 rounded-xl text-xs font-bold transition-all">
+                    👁️ スコア公開/秘匿
+                </button>
+                <button onclick="resetCurrentRoom()" class="bg-gray-900 hover:bg-red-950 border border-red-900/60 py-2 rounded-xl text-xs font-bold transition-all text-red-400">
+                    🧹 このルームをリセット
+                </button>
+            </div>
+
+            <!-- 自動判定条件（漢字・よみがな・ボーナス） -->
+            <div class="space-y-2 border-t border-gray-800 pt-3">
+                <div>
+                    <label class="text-[10px] font-black text-gray-400 block mb-0.5">お題ワード（一致条件：複数ある場合はカンマ「,」区切り）</label>
+                    <input type="text" id="setup-keyword" placeholder="例: 赤,あか,アカ (空欄時は全曲正解)" class="w-full bg-gray-900 text-white text-xs px-3 py-2 rounded-xl border border-gray-700 font-bold focus:outline-none focus:border-blue-500">
+                </div>
+                <div>
+                    <label class="text-[10px] font-black text-gray-400 block mb-0.5">★ボーナス対象曲名（一致で+3点：複数はカンマ区切り）</label>
+                    <input type="text" id="setup-bonus" placeholder="例: 赤いスイートピー,あかいすいーとぴー" class="w-full bg-gray-900 text-white text-xs px-3 py-2 rounded-xl border border-gray-700 font-bold focus:outline-none focus:border-blue-500">
+                </div>
+                <button onclick="syncGameSettings()" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white py-2 rounded-xl font-bold text-sm transition-all shadow mt-1">
+                    🎯 お題を同期して自動判定を実行
+                </button>
+            </div>
+        </div>
+
+        <!-- アプリヘッダータイトル -->
+        <div class="text-center mb-6">
+            <h1 class="text-3xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-b from-white to-gray-400">
+                古今東西曲出しゲーム
+            </h1>
+            <div id="currentModeLabel" class="inline-block bg-blue-500/10 text-blue-400 border border-blue-500/20 text-[11px] font-bold px-3 py-1 rounded-full mt-2">
+                合言葉を入力してください
+            </div>
+        </div>
+
+        <!-- 現在読み込んでいるルーム内のユーザー一覧・スコアボード -->
+        <div id="boardGrid" class="space-y-4 flex-grow">
+            <!-- 参加者がここにリアルタイムに並びます -->
+            <div class="text-center text-xs text-gray-500 py-12">合言葉を入力して「読み込み」を押すと<br>スコアボードが展開されます。</div>
+        </div>
+
     </div>
-    <div>🔑 お題: <strong id="current-keyword">-</strong></div>
-    <div>🏆 現在のスコア: <strong id="score">0</strong> 点</div>
-</header>
 
-<div class="container" style="margin-top: 20px;">
-    <!-- 左側：メインキャンバス -->
-    <main>
-        <div class="card">
-            <h2>🎵 ピクト風ソングキャンバス (<span id="canvas-team-name">チームA</span>)</h2>
-            <div id="canvas"><!-- 曲名バッジがここに同期される --></div>
-        </div>
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.1.3/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.1.3/firebase-database-compat.js"></script>
+
+    <script>
+        // --- Firebase Configuration ---
+        const firebaseConfig = {
+            apiKey: "AIzaSyC4DQhH_swesAD98Xyjg8d1lcWEkkrHrgw",
+            authDomain: "gamehistory-m84.firebaseapp.com",
+            databaseURL: "https://gamehistory-m84-default-rtdb.firebaseio.com",
+            projectId: "gamehistory-m84",
+            storageBucket: "gamehistory-m84.firebasestorage.app",
+            messagingSenderId: "475761727837",
+            appId: "1:475761727837:web:06d07e1ab4120a7ccaf0b4",
+            measurementId: "G-3636W6LC4F"
+        };
         
-        <div class="card" id="result-box" style="display:none;">
-            <h2>📋 最終結果テキスト (代表者用送信データ)</h2>
-            <textarea id="result-text" style="width:100%; height:60px;" readonly></textarea>
-            <button class="action-btn" onclick="sendFinalResult()">👑 最終結果を公式送信</button>
-        </div>
-    </main>
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
 
-    <!-- 右側：操作パネル群 -->
-    <aside>
-        <!-- 1. メンバー入力パネル -->
-        <div class="card">
-            <h2>👤 メンバー入力欄</h2>
-            <div class="flex-input">
-                <input type="text" id="input-song" placeholder="曲名 (例: 赤いスイートピー)">
-            </div>
-            <div class="flex-input">
-                <input type="text" id="input-kana" placeholder="よみがな (例: あかいすいーとぴー)">
-                <button onclick="submitSong()">送信</button>
-            </div>
-            <div id="log"></div>
-        </div>
+        const ADMIN_SECRET = "admin123"; 
+        let isAdmin = false;
+        let currentRoomKey = ""; // 現在開いている合言葉（ルーム）
+        let activeFirebaseRef = null;
 
-        <!-- 2. 管理者コントロール（全チーム共通設定） -->
-        <div class="card" style="background: #f1f5f9;">
-            <h2>🛠 管理者コントロール（共通設定）</h2>
-            <label>お題キーワード:</label>
-            <input type="text" id="setup-keyword" value="赤" style="width:90%; margin-bottom:8px;">
-            <label>一致ボーナス曲 (1曲):</label>
-            <input type="text" id="setup-bonus" value="赤いスイートピー" style="width:90%; margin-bottom:8px;">
-            <button onclick="setupGame()" style="width:100%; background:#2a9d8f;">🎯 全チームのお題を一括セット</button>
-        </div>
-    </aside>
-</div>
+        let state = {
+            showScores: false,
+            keyword: "",
+            bonus_song: "",
+            players: {} // 入力された合言葉（ルーム名）の中のプレイヤーたちを格納
+        };
 
-<!-- Firebase SDK JS -->
-<script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-app.js";
-    import { getDatabase, ref, set, push, onValue, update, off } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-database.js";
+        // 管理者ログイン
+        document.getElementById('authBtn').onclick = () => {
+            if (document.getElementById('adminKeyInput').value === ADMIN_SECRET) {
+                isAdmin = true;
+                document.getElementById('adminPanel').classList.remove('hidden');
+                document.getElementById('adminKeyInput').disabled = true;
+                document.getElementById('authBtn').innerText = "管理者";
+                document.getElementById('authBtn').className = "bg-emerald-600/20 text-emerald-400 border border-emerald-500/30 text-xs font-bold px-3 py-1.5 rounded-xl";
+                if(currentRoomKey) calculateAndRender(); 
+            } else {
+                alert("管理キーが違います。");
+            }
+        };
 
-    const firebaseConfig = {
-        apiKey: "AIzaSyC4DQhH_swesAD98Xyjg8d1lcWEkkrHrgw",
-        authDomain: "gamehistory-m84.firebaseapp.com",
-        databaseURL: "https://gamehistory-m84-default-rtdb.firebaseio.com",
-        projectId: "gamehistory-m84",
-        storageBucket: "gamehistory-m84.firebasestorage.app",
-        messagingSenderId: "475761727837",
-        appId: "1:475761727837:web:06d07e1ab4120a7ccaf0b4",
-        measurementId: "G-3636W6LC4F"
-    };
+        // 🔑 合言葉の部屋をロードする関数
+        window.loadRoomData = function() {
+            const roomKey = document.getElementById('roomKeyInput').value.trim();
+            if(!roomKey) {
+                alert("合言葉を入力してください。");
+                return;
+            }
+            
+            currentRoomKey = roomKey;
 
-    const app = initializeApp(firebaseConfig);
-    const db = getDatabase(app);
+            // 古いリスナーがあれば解除
+            if(activeFirebaseRef) activeFirebaseRef.off();
 
-    let currentTeam = "team_A";
-    let currentKeyword = "";
-    let currentBonusSong = "";
-    let localSongsArray = []; 
-    let currentRoomListener = null; // リスナー解除用の保持変数
+            // 指定された合言葉（ルーム）のデータをリアルタイム監視開始
+            activeFirebaseRef = db.ref(`game_rooms/${currentRoomKey}`);
+            activeFirebaseRef.on('value', (snap) => {
+                const roomData = snap.val() || {};
+                
+                // ルーム内に格納されているお題条件やプレイヤーリストをstateにマージ
+                state.keyword = roomData.keyword || "";
+                state.bonus_song = roomData.bonus_song || "";
+                state.showScores = roomData.showScores || false;
+                
+                // プレイヤーの送信データ（submitted_songsや手動調整スコア）を整理
+                state.players = roomData.players || {};
 
-    // --------------------------------------------------
-    // チーム切り替え処理（通信の購読先ノードを変更）
-    // --------------------------------------------------
-    window.switchTeam = function() {
-        const teamSelect = document.getElementById('team-select');
-        currentTeam = teamSelect.value;
-        
-        // 画面上のチーム名表示を変更
-        document.getElementById('canvas-team-name').innerText = teamSelect.options[teamSelect.selectedIndex].text;
-        
-        addLog(`チームを【${teamSelect.options[teamSelect.selectedIndex].text}】に切り替えました`, "ok");
-        
-        // 古いチームの同期イベントを解除して、新しいチームで再同期
-        startListening();
-    };
+                // 管理パネル側のインプットに初期値を同期
+                if(document.getElementById('setup-keyword') && !document.getElementById('setup-keyword').matches(':focus')) {
+                    document.getElementById('setup-keyword').value = state.keyword;
+                }
+                if(document.getElementById('setup-bonus') && !document.getElementById('setup-bonus').matches(':focus')) {
+                    document.getElementById('setup-bonus').value = state.bonus_song;
+                }
 
-    // --------------------------------------------------
-    // メイン同期リスナー設定（通信量を最適化しつつリアルタイム監視）
-    // --------------------------------------------------
-    function startListening() {
-        // すでに動いているリスナーがあれば一旦解除（重複して通信が走るのを防ぐ）
-        if (currentRoomListener) {
-            off(ref(db, `game_rooms/${currentTeam}`));
+                calculateAndRender();
+            });
+        };
+
+        // 手動スコア微調整（プレイヤー個別）
+        window.updateManualAdjustment = (playerKey, value) => {
+            const adjustVal = parseInt(value) || 0;
+            if(!currentRoomKey) return;
+            db.ref(`game_rooms/${currentRoomKey}/players/${playerKey}/manualAdjust`).set(adjustVal);
+        };
+
+        // お題・ボーナス条件をこの合言葉ルームに送信
+        window.syncGameSettings = function() {
+            if(!currentRoomKey) {
+                alert("先に合言葉を読み込んでください。");
+                return;
+            }
+            const kw = document.getElementById('setup-keyword').value.trim();
+            const bonus = document.getElementById('setup-bonus').value.trim();
+
+            db.ref(`game_rooms/${currentRoomKey}/keyword`).set(kw);
+            db.ref(`game_rooms/${currentRoomKey}/bonus_song`).set(bonus);
+            alert("このルームにお題・ボーナス条件を同期しました！");
+        };
+
+        // ルームリセット
+        window.resetCurrentRoom = function() {
+            if(!currentRoomKey) return;
+            if(confirm(`合言葉「${currentRoomKey}」の全参加者の曲データを完全に初期化します。よろしいですか？`)) {
+                db.ref(`game_rooms/${currentRoomKey}/players`).remove();
+            }
+        };
+
+        // 公開・秘匿のトグル
+        document.getElementById('toggleScores').onclick = () => {
+            if(!currentRoomKey) return;
+            db.ref(`game_rooms/${currentRoomKey}/showScores`).set(!state.showScores);
+        };
+
+        // 🏆 漢字・よみがな対応 全自動判定・集計コアロジック 🏆
+        function calculateAndRender() {
+            const keywords = state.keyword ? state.keyword.split(',').map(k => k.trim().toLowerCase()).filter(k => k) : [];
+            const bonusSongs = state.bonus_song ? state.bonus_song.split(',').map(b => b.trim().toLowerCase()).filter(b => b) : [];
+
+            let displayArray = [];
+
+            // ルーム内の全プレイヤーをループ処理
+            Object.keys(state.players).forEach(playerKey => {
+                const playerData = state.players[playerKey] || {};
+                const name = playerData.name || playerKey;
+                const songsData = playerData.submitted_songs || {};
+                const manualAdjust = playerData.manualAdjust || 0;
+
+                let autoScore = 0;
+                let validSongNames = [];
+
+                Object.values(songsData).forEach(song => {
+                    if (!song || !song.song_name) return;
+                    const cleanInput = song.song_name.trim().toLowerCase();
+
+                    let isMatchWord = false;
+                    let isBonusMatch = false;
+
+                    // 1. お題（漢字・よみがな）部分一致判定
+                    if (keywords.length === 0) {
+                        isMatchWord = true;
+                    } else {
+                        isMatchWord = keywords.some(kw => cleanInput.includes(kw));
+                    }
+
+                    // 2. 特典ボーナス曲判定
+                    if (bonusSongs.length > 0) {
+                        isBonusMatch = bonusSongs.some(b => cleanInput === b || cleanInput.includes(b));
+                    }
+
+                    // 3. スコア計算
+                    if (isMatchWord) {
+                        autoScore += 1; // 通常正解 +1点
+                        if (isBonusMatch) {
+                            autoScore += 3; // ボーナス加算 +3点
+                            validSongNames.push(`👑${song.song_name}(+3)`);
+                        } else {
+                            validSongNames.push(song.song_name);
+                        }
+                    }
+                });
+
+                displayArray.push({
+                    key: playerKey,
+                    name: name,
+                    autoScore: autoScore,
+                    manualAdjust: manualAdjust,
+                    total: autoScore + manualAdjust,
+                    songListDisplay: validSongNames.length > 0 ? validSongNames.join('、') : "一致曲はここに表示されます"
+                });
+            });
+
+            // 高得点順にソート
+            displayArray.sort((a, b) => b.total - a.total);
+
+            render(displayArray);
         }
 
-        const roomRef = ref(db, `game_rooms/${currentTeam}`);
-
-        currentRoomListener = onValue(roomRef, (snapshot) => {
-            const data = snapshot.val();
+        // スマホ表示最適化レンダリング
+        function render(dataList) {
+            const boardGrid = document.getElementById('boardGrid');
+            boardGrid.innerHTML = '';
             
-            // まだお題がセットされていない初期状態などのケア
-            if (!data) {
-                document.getElementById('current-keyword').innerText = "-";
-                document.getElementById('canvas').innerHTML = "";
-                document.getElementById('score').innerText = "0";
-                document.getElementById('result-box').style.display = 'none';
-                localSongsArray = [];
-                currentKeyword = "";
-                currentBonusSong = "";
+            document.getElementById('currentModeLabel').innerHTML = `部屋: <span class="text-cyan-400 font-bold">${currentRoomKey}</span> ｜ お題: <span class="text-white">${state.keyword || '未設定'}</span> ｜ ${state.showScores ? '🔓 公開' : '🔒 秘匿'}`;
+
+            if(dataList.length === 0) {
+                boardGrid.innerHTML = `<div class="text-center text-xs text-gray-500 py-12">この合言葉（部屋）には、まだ参加者がいません。</div>`;
                 return;
             }
 
-            currentKeyword = data.keyword || "";
-            currentBonusSong = data.bonus_song || "";
-            document.getElementById('current-keyword').innerText = currentKeyword;
+            dataList.forEach((player, index) => {
+                const isTop = index === 0 && player.total > 0;
+                const scoreClass = (!state.showScores && !isAdmin) ? 'score-blur' : '';
 
-            const canvas = document.getElementById('canvas');
-            canvas.innerHTML = ""; 
-            localSongsArray = [];  
-
-            let validCount = 0;
-            let songNamesList = [];
-
-            if (data.submitted_songs) {
-                Object.entries(data.submitted_songs).forEach(([key, value]) => {
-                    localSongsArray.push(value);
-
-                    // 審査で弾かれていない（valid）曲のみ表示
-                    if (value.is_valid) {
-                        validCount++;
-                        songNamesList.push(value.song_name);
-
-                        const isBonus = (value.song_name === currentBonusSong || value.kana === currentBonusSong);
+                const row = document.createElement('div');
+                row.className = `app-card p-4 rounded-2xl flex flex-col gap-2 transition-all relative overflow-hidden ${isTop ? 'border-l-4 border-amber-400 bg-gradient-to-r from-amber-500/5 to-transparent' : ''}`;
+                
+                row.innerHTML = `
+                    <div class="flex justify-between items-center">
+                        <div class="flex items-center gap-3">
+                            <span class="font-numeric text-lg font-black ${index==0?'text-amber-400':index==1?'text-slate-300':index==2?'text-amber-700':'text-gray-500'}">
+                                ${String(index + 1).padStart(2, '0')}
+                            </span>
+                            <span class="text-base font-black tracking-tight text-white">${player.name}</span>
+                        </div>
                         
-                        const badge = document.createElement('div');
-                        badge.className = `song-badge ${isBonus ? 'bonus' : ''}`;
-                        badge.innerHTML = `
-                            <span>${isBonus ? '🎯 ' : ''}${value.song_name}</span>
-                            <button class="admin-del" onclick="deleteSong('${key}')" title="削除（無効化）">×</button>
-                        `;
-                        canvas.appendChild(badge);
-                    }
-                });
-            }
+                        <div class="flex items-center gap-2">
+                            <!-- 手動微調整機能 -->
+                            <div class="text-right">
+                                ${isAdmin ? `
+                                    <span class="text-[9px] text-gray-400 block">調整</span>
+                                    <input type="number" value="${player.manualAdjust}" 
+                                        onchange="updateManualAdjustment('${player.key}', this.value)" 
+                                        class="w-12 text-center bg-white/10 rounded font-bold text-xs p-0.5 focus:outline-none text-cyan-400">
+                                ` : `
+                                    <span class="text-xs text-gray-500 font-bold">${player.manualAdjust >= 0 ? '+' : ''}${player.manualAdjust}</span>
+                                `}
+                            </div>
+                            <!-- 総合点 -->
+                            <div class="bg-gray-900/80 px-4 py-1 rounded-xl min-w-[70px] text-center border border-gray-800">
+                                <span class="font-numeric text-2xl font-black text-transparent bg-clip-text bg-gradient-to-b from-white to-blue-400 ${scoreClass}">
+                                    ${player.total}
+                                </span>
+                                <span class="text-[9px] text-gray-400 block -mt-1 font-bold">PTS</span>
+                            </div>
+                        </div>
+                    </div>
 
-            // 「、」繋ぎの最終テキスト生成
-            if(songNamesList.length > 0) {
-                document.getElementById('result-box').style.display = 'block';
-                document.getElementById('result-text').value = songNamesList.join('、');
-            } else {
-                document.getElementById('result-box').style.display = 'none';
-                document.getElementById('result-text').value = "";
-            }
-
-            document.getElementById('score').innerText = validCount;
-        });
-    }
-
-    // --------------------------------------------------
-    // 管理者：全チームにお題を一括セット
-    // --------------------------------------------------
-    window.setupGame = function() {
-        const kw = document.getElementById('setup-keyword').value.trim();
-        const bonus = document.getElementById('setup-bonus').value.trim();
-        if(!kw) return alert("キーワードを入力してください");
-
-        const teams = ["team_A", "team_B", "team_C", "team_D"];
-        
-        // 全チームのノードを同時に初期化
-        teams.forEach(teamId => {
-            set(ref(db, `game_rooms/${teamId}`), {
-                keyword: kw,
-                bonus_song: bonus,
-                submitted_songs: {} 
+                    <!-- 曲名内訳表示 -->
+                    <div class="bg-black/30 rounded-xl p-2 border border-gray-900/60">
+                        <div class="text-[10px] text-gray-500 font-bold mb-0.5">📋 一致曲内訳 (自動判定: ${player.autoScore}点分)</div>
+                        <p class="text-xs text-gray-300 leading-relaxed font-medium">
+                            ${player.songListDisplay}
+                        </p>
+                    </div>
+                `;
+                boardGrid.appendChild(row);
             });
-        });
-        
-        addLog(`【管理者】全チームにお題「${kw}」、ボーナス「${bonus}」を一括セットしました！`, 'ok');
-    };
-
-    // --------------------------------------------------
-    // メンバー：曲名の入力と判定
-    // --------------------------------------------------
-    window.submitSong = function() {
-        const songInput = document.getElementById('input-song');
-        const kanaInput = document.getElementById('input-kana');
-        const song = songInput.value.trim();
-        const kana = kanaInput.value.trim();
-
-        if (!song || !kana) {
-            addLog("曲名とよみがなを入力してください", "err");
-            return;
         }
-        if (!currentKeyword) {
-            addLog("お題がセットされるまでお待ちください", "err");
-            return;
-        }
-
-        // 1. ゆるい条件一致（漢字かよみがなにキーワードが含まれるか）
-        if (!song.includes(currentKeyword) && !kana.includes(currentKeyword)) {
-            addLog(`❌ 条件不一致: 「${currentKeyword}」が含まれていません [${song}]`, "err");
-            return;
-        }
-
-        // 2. チーム内重複チェック
-        const isDuplicate = localSongsArray.some(item => 
-            item.is_valid && (item.song_name === song || item.kana === kana)
-        );
-
-        if (isDuplicate) {
-            addLog(`⚠️ 重複しています: [${song}] は既にこのチームで送信済です`, "war");
-            return;
-        }
-
-        // 3. 現在選択中のチームのノードにのみ保存
-        const songsRef = ref(db, `game_rooms/${currentTeam}/submitted_songs`);
-        const newSongRef = push(songsRef);
-        set(newSongRef, {
-            song_name: song,
-            kana: kana,
-            is_valid: true,
-            timestamp: Date.now()
-        });
-
-        addLog(`送信成功(${currentTeam}): ${song}`, "ok");
-        songInput.value = "";
-        kanaInput.value = "";
-        songInput.focus();
-    };
-
-    // --------------------------------------------------
-    // 管理者：曲の削除（無効化フラグの書き換え）
-    // --------------------------------------------------
-    window.deleteSong = function(key) {
-        const targetRef = ref(db, `game_rooms/${currentTeam}/submitted_songs/${key}`);
-        update(targetRef, { is_valid: false });
-        addLog("選択された曲を審査により非表示にしました", "war");
-    };
-
-    // --------------------------------------------------
-    // 代表者：公式結果の集計・送信
-    // --------------------------------------------------
-    window.sendFinalResult = function() {
-        const textData = document.getElementById('result-text').value;
-        if(!textData) return alert("送信するデータがありません");
-
-        // 「、」の数 + 1 判定法
-        const songCount = textData.split('、').length;
-
-        alert(`【${currentTeam} 結果送信完了】\nデータ: ${textData}\n最終スコア: ${songCount}点`);
-    };
-
-    // ログ出力
-    function addLog(msg, type="") {
-        const log = document.getElementById('log');
-        const className = type === 'err' ? 'log-err' : type === 'war' ? 'log-war' : type === 'ok' ? 'log-ok' : '';
-        log.innerHTML = `<div class="${className}">${msg}</div>` + log.innerHTML;
-    }
-
-    // 起動時に初期チームの同期を開始
-    startListening();
-</script>
+    </script>
 </body>
 </html>
