@@ -2,372 +2,664 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>ピクトイメージ風 オンライン対戦クイズ</title>
-    <!-- スタイリングを爆速でスマホ最適化するTailwind CSS -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <!-- QRコードを瞬時に自動生成するライブラリ -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>クイズ＆お絵かきルーム</title>
     <style>
-        *, *::before, *::after {
-            box-sizing: border-box;
-            -webkit-user-select: none;
-            user-select: none;
-        }
-        body {
-            touch-action: manipulation;
-            font-family: 'Helvetica Neue', Arial, 'Hiragino Kaku Gothic ProN', sans-serif;
-        }
-        canvas {
-            touch-action: none;
-            image-rendering: -webkit-optimize-contrast;
-            image-rendering: crisp-edges;
-        }
-        input, textarea {
-            -webkit-user-select: text !important;
-            user-select: text !important;
-        }
+        body { font-family: sans-serif; margin: 20px; background-color: #f0f2f5; }
+        .container { max-width: 900px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .hidden { display: none !important; }
+        .flex { display: flex; gap: 20px; }
+        .flex-1 { flex: 1; }
+        
+        /* フォーム類 */
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; margin-bottom: 5px; font-weight: bold; }
+        .form-group input, .form-group select { width: 100%; padding: 8px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px; }
+        button { padding: 10px 15px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; }
+        button:hover { background: #0056b3; }
+        button.secondary { background: #6c757d; }
+        button.secondary:hover { background: #5a6268; }
+        button.danger { background: #dc3545; }
+        button.danger:hover { background: #bd2130; }
+
+        /* ヘッダー・ステータス表示 */
+        .room-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #eee; padding-bottom: 10px; margin-bottom: 20px; }
+        .status-badge { padding: 5px 10px; border-radius: 15px; font-size: 0.9em; font-weight: bold; }
+        .status-host { background: #e3f2fd; color: #0d47a1; }
+        .status-drawer { background: #e8f5e9; color: #1b5e20; }
+        .status-answerer { background: #fff3e0; color: #e65100; }
+
+        /* お題表示エリア */
+        .theme-panel { background: #eef2f7; padding: 12px; border-radius: 6px; margin-bottom: 15px; text-align: center; border: 1px solid #d0d7de; }
+        .theme-word { font-size: 1.4em; font-weight: bold; color: #24292f; }
+
+        /* キャンバスエリア */
+        .canvas-area { text-align: center; }
+        canvas { border: 2px solid #333; background: #fff; cursor: crosshair; max-width: 100%; height: auto; }
+        .controls { margin-top: 10px; display: flex; gap: 10px; justify-content: center; }
+        .color-picker { width: 40px; height: 40px; padding: 0; border: none; border-radius: 50%; cursor: pointer; }
+
+        /* メンバーリスト・管理パネル */
+        .sidebar { width: 250px; border-left: 1px solid #eee; padding-left: 20px; }
+        .member-item { display: flex; justify-content: space-between; align-items: center; padding: 8px; border-bottom: 1px solid #eee; }
+        .host-controls { background: #fff9db; padding: 10px; border-radius: 6px; border: 1px solid #fab005; margin-bottom: 15px; }
+
+        /* 回答エリア */
+        .answer-zone { margin-top: 20px; padding: 15px; background: #f8f9fa; border-radius: 6px; }
+        .answer-log { max-height: 150px; overflow-y: auto; background: white; border: 1px solid #ddd; padding: 10px; margin-top: 10px; border-radius: 4px; }
+        .winner-announcement { background: #d4edda; color: #155724; padding: 10px; border-radius: 4px; margin-bottom: 10px; font-weight: bold; text-align: center; }
     </style>
-</head>
-<body class="bg-slate-100 text-slate-800 antialiased min-h-screen pb-10">
 
-    <div class="max-w-4xl mx-auto px-4 py-6">
-        <header class="text-center mb-6">
-            <h1 class="text-2xl font-black text-indigo-600 tracking-wider">🎨 ピクトイメージ風 オンライン</h1>
-            <p class="text-xs text-slate-500 mt-1">スマホ対応版・リアルタイム描画クイズ</p>
-        </header>
+    <!-- Firebase SDK の読み込み (v10+) -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getFirestore, collection, getDocs } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-        <!-- ==================== 1. 入室・部屋作成画面 ==================== -->
-        <div id="screen-login" class="bg-white rounded-2xl shadow-xl p-6 max-w-md mx-auto">
-            <h2 class="text-lg font-bold text-slate-700 mb-4 border-b pb-2">🚪 ゲームに参加する</h2>
-            <div class="space-y-4">
-                <div>
-                    <label class="block text-xs font-bold text-slate-500 mb-1">あなたのなまえ</label>
-                    <input type="text" id="input-name" maxlength="10" placeholder="ニックネームを入力" 
-                           class="w-full px-4 py-3 border-2 border-slate-200 rounded-xl focus:border-indigo-500 outline-none transition-all font-bold">
-                </div>
-                <div>
-                    <label class="block text-xs font-bold text-slate-500 mb-1">部屋の合言葉 (ルームID)</label>
-                    <input type="text" id="input-room" maxlength="15" placeholder="例: ひみつの部屋" 
-                           class="w-full px-4 py-3 border-2 border-slate-200 rounded-xl focus:border-indigo-500 outline-none transition-all font-bold">
-                </div>
-                <button id="btn-join" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-black py-4 rounded-xl shadow-lg shadow-indigo-200 transition-all active:scale-[0.98]">
-                    部屋に入る / 作る
-                </button>
-            </div>
-        </div>
-
-        <!-- ==================== 2. メインゲーム画面 ==================== -->
-        <div id="screen-game" class="hidden space-y-6">
-            
-            <!-- ルームステータスバー -->
-            <div class="bg-white rounded-xl shadow-sm p-4 flex flex-wrap items-center justify-between gap-3">
-                <div>
-                    <span class="text-xs bg-indigo-100 text-indigo-700 px-2 py-1 rounded-md font-bold mr-2">部屋</span>
-                    <span id="label-room-name" class="font-black text-slate-700">---</span>
-                </div>
-                <div class="flex items-center gap-4">
-                    <div class="text-right">
-                        <span class="text-xs text-slate-400 block">プレイヤー名</span>
-                        <span id="label-my-name" class="font-bold text-slate-600">---</span>
-                    </div>
-                    <button id="btn-show-qr" class="bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs font-bold px-3 py-2 rounded-lg transition-all">
-                        📱 招待QRを表示
-                    </button>
-                </div>
-            </div>
-
-            <!-- スコアボードと役割提示 -->
-            <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <!-- 左側：参加者リスト & スコア -->
-                <div class="bg-white rounded-2xl shadow-sm p-4 md:col-span-1">
-                    <h3 class="text-xs font-black text-slate-400 tracking-wider mb-2 uppercase">📊 スコアボード</h3>
-                    <div id="user-list" class="space-y-2 max-h-40 md:max-h-none overflow-y-auto font-bold text-sm"></div>
-                </div>
-
-                <!-- 右側：メインステージ -->
-                <div class="md:col-span-3 space-y-4">
-                    <!-- お題表示 / 回答エリア -->
-                    <div id="status-bar" class="bg-indigo-600 text-white rounded-2xl p-4 shadow-md flex items-center justify-between">
-                        <div id="role-container" class="flex items-center gap-2">
-                            <span id="role-badge" class="px-2 py-1 bg-white text-indigo-600 rounded-md font-black text-xs">判定中</span>
-                            <span id="role-text" class="font-bold text-sm">同期しています...</span>
-                        </div>
-                        <div id="secret-word-display" class="font-black text-lg hidden bg-indigo-700 px-4 py-1 rounded-xl">---</div>
-                    </div>
-
-                    <!-- キャンバスエリア -->
-                    <div class="bg-white rounded-2xl shadow-xl p-4 flex flex-col items-center">
-                        <div class="w-full max-w-[450px] aspect-square border-4 border-slate-200 rounded-xl overflow-hidden bg-white relative">
-                            <canvas id="canvas-main" class="w-full h-full bg-white"></canvas>
-                            <div id="playback-indicator" class="absolute top-2 left-2 bg-emerald-500 text-white text-xs font-bold px-2 py-1 rounded shadow hidden animate-pulse">
-                                🔄 リアルタイム再現中
-                            </div>
-                        </div>
-
-                        <!-- 🛠️ 描画コントロール（出題者専用：画面幅約8割の指定10色巨大パレット） -->
-                        <div id="drawer-controls" class="w-full mt-4 space-y-4 hidden">
-                            <div class="w-[85%] mx-auto">
-                                <label class="block text-center text-xs font-black text-slate-400 mb-2">🎨 特大10色カラーパレット</label>
-                                <div class="grid grid-cols-5 gap-3 justify-items-center">
-                                    <button class="color-picker w-12 h-12 rounded-full border-4 border-white shadow-md scale-110 ring-4 ring-indigo-500 bg-black" data-color="#000000"></button>
-                                    <button class="color-picker w-12 h-12 rounded-full border-4 border-white shadow-md bg-red-500" data-color="#ef4444"></button>
-                                    <button class="color-picker w-12 h-12 rounded-full border-4 border-white shadow-md bg-blue-500" data-color="#3b82f6"></button>
-                                    <button class="color-picker w-12 h-12 rounded-full border-4 border-white shadow-md bg-yellow-400" data-color="#facc15"></button>
-                                    <button class="color-picker w-12 h-12 rounded-full border-4 border-white shadow-md bg-green-500" data-color="#22c55e"></button>
-                                    <button class="color-picker w-12 h-12 rounded-full border-4 border-white shadow-md" style="background-color: #78350f;" data-color="#78350f"></button>
-                                    <button class="color-picker w-12 h-12 rounded-full border-4 border-white shadow-md bg-pink-400" data-color="#f472b6"></button>
-                                    <button class="color-picker w-12 h-12 rounded-full border-4 border-white shadow-md bg-orange-500" data-color="#f97316"></button>
-                                    <button class="color-picker w-12 h-12 rounded-full border-4 border-white shadow-md bg-sky-400" data-color="#38bdf8"></button>
-                                    <button class="color-picker w-12 h-12 rounded-full border-4 border-white shadow-md bg-slate-400" data-color="#94a3b8"></button>
-                                </div>
-                                <div class="flex justify-center mt-3">
-                                    <button class="color-picker px-4 py-2 rounded-xl border-2 border-slate-300 bg-white font-bold text-xs flex items-center gap-1 text-slate-600" data-color="#ffffff">
-                                        🧼 消しゴム
-                                    </button>
-                                </div>
-                            </div>
-
-                            <div class="flex flex-wrap items-center justify-between gap-2 border-t pt-3">
-                                <div class="flex items-center gap-1">
-                                    <button class="size-picker px-3 py-1.5 rounded-lg border text-xs font-bold bg-white" data-size="4">細</button>
-                                    <button class="size-picker px-3 py-1.5 rounded-lg border text-xs font-bold bg-indigo-600 text-white" data-size="10">中</button>
-                                    <button class="size-picker px-3 py-1.5 rounded-lg border text-xs font-bold bg-white" data-size="20">太</button>
-                                </div>
-                                <div class="flex items-center gap-2">
-                                    <button id="btn-undo" class="bg-amber-100 text-amber-800 text-xs font-bold px-3 py-2 rounded-lg演">↩ 1画消す</button>
-                                    <button id="btn-clear" class="bg-rose-100 text-rose-800 text-xs font-bold px-3 py-2 rounded-lg">🗑 クリア</button>
-                                </div>
-                            </div>
-                            
-                            <div class="bg-slate-50 p-3 rounded-xl border flex flex-col sm:flex-row items-center justify-between gap-2">
-                                <input type="text" id="input-new-word" placeholder="新しいお題を入力" class="w-full sm:w-auto flex-1 px-3 py-2 border rounded-lg text-sm font-bold">
-                                <button id="btn-set-word" class="w-full sm:w-auto bg-slate-700 text-white font-bold text-xs px-4 py-2.5 rounded-lg">お題を設定してスタート</button>
-                            </div>
-                        </div>
-
-                        <!-- 💬 回答者用フォーム -->
-                        <div id="guesser-controls" class="w-full mt-4 space-y-3 hidden">
-                            <div class="flex gap-2">
-                                <input type="text" id="input-guess" placeholder="お題の答えを入力！" class="flex-1 px-4 py-3 border-2 border-slate-200 rounded-xl outline-none focus:border-emerald-500 font-black text-center">
-                                <button id="btn-guess" class="bg-emerald-500 text-white font-black px-6 rounded-xl shadow-lg">回答</button>
-                            </div>
-                        </div>
-
-                        <!-- 💾 共通下部メニュー -->
-                        <div class="w-full mt-4 pt-3 border-t flex gap-2 justify-center">
-                            <button id="btn-download" class="bg-sky-500 text-white text-xs font-bold px-4 py-2.5 rounded-xl flex items-center gap-1 shadow">💾 この絵をケータイに保存する</button>
-                            <button id="btn-claim-drawer" class="bg-slate-600 text-white text-xs font-bold px-4 py-2.5 rounded-xl">🖌 次の出題者になる</button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- 招待用QRコードモーダル -->
-    <div id="modal-qr" class="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 hidden">
-        <div class="bg-white rounded-2xl max-w-sm w-full p-6 text-center space-y-4">
-            <h3 class="font-black text-lg text-slate-700">📱 友達をこの部屋に招待</h3>
-            <div id="qrcode-container" class="flex justify-center p-2 bg-white rounded-xl border"></div>
-            <div id="share-url" class="text-xs font-mono bg-slate-100 p-2 rounded border break-all text-slate-600 select-all">---</div>
-            <button id="btn-close-qr" class="w-full bg-slate-800 text-white font-bold py-2.5 rounded-xl text-sm">閉じる</button>
-        </div>
-    </div>
-
-    <!-- Firebase SDK v9 互換性ライブラリ -->
-    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
-
-    <script>
-        // 指定のFirebase Configで初期化
+        // TODO: あなたのFirebaseプロジェクトの設定値に置き換えてください
         const firebaseConfig = {
-            apiKey: "AIzaSyBC29jEB2svBZVJGfr0sPtgPylS4Gc1fBs",
-            authDomain: "pict-view.firebaseapp.com",
-            projectId: "pict-view",
-            storageBucket: "pict-view.firebasestorage.app",
-            messagingSenderId: "449019232957",
-            appId: "1:449019232957:web:0fc10da2920dc975282dd4",
-            measurementId: "G-DECQJ87XMK"
+            apiKey: "YOUR_API_KEY",
+            authDomain: "YOUR_AUTH_DOMAIN",
+            projectId: "YOUR_PROJECT_ID",
+            storageBucket: "YOUR_STORAGE_BUCKET",
+            messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
+            appId: "YOUR_APP_ID"
         };
-        firebase.initializeApp(firebaseConfig);
-        const db = firebase.database();
 
-        let myId = "user_" + Math.random().toString(36).substr(2, 9), myName = "", currentRoom = "", isDrawer = false, isDrawing = false, currentWord = "";
-        let currentColor = "#000000", currentSize = 10, lastX = 0, lastY = 0, localStroke = [], drawStartTime = null, remoteFullData = [], lastRenderedIndex = 0;
+        // Firebase初期化
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
 
-        const canvas = document.getElementById('canvas-main');
-        const ctx = canvas.getContext('2d');
-        canvas.width = 500; canvas.height = 500;
-
-        // URLパラメータからの部屋名読み込み
-        const urlParams = new URLSearchParams(window.location.search);
-        if (urlParams.get('room')) { document.getElementById('input-room').value = decodeURIComponent(urlParams.get('room')); }
-
-        function clearCanvas() { ctx.fillStyle = "#ffffff"; ctx.fillRect(0, 0, canvas.width, canvas.height); }
-
-        function getPos(e) {
-            const rect = canvas.getBoundingClientRect();
-            let clientX = e.touches ? (e.touches[0] || e.changedTouches[0]).clientX : e.clientX;
-            let clientY = e.touches ? (e.touches[0] || e.changedTouches[0]).clientY : e.clientY;
-            return { x: (clientX - rect.left) * (canvas.width / rect.width), y: (clientY - rect.top) * (canvas.height / rect.height) };
-        }
-
-        function startDraw(e) {
-            if (!isDrawer) return; if (e.cancelable) e.preventDefault();
-            isDrawing = true; const pos = getPos(e); lastX = pos.x; lastY = pos.y;
-            if (!localStroke.length) drawStartTime = Date.now();
-            const point = { type: 'start', x: pos.x, y: pos.y, color: currentColor, size: currentSize, time: Date.now() - drawStartTime };
-            localStroke.push(point);
-            ctx.beginPath(); ctx.arc(pos.x, pos.y, currentSize / 2, 0, Math.PI * 2); ctx.fillStyle = currentColor; ctx.fill();
-            db.ref(`rooms/${currentRoom}/canvas/points`).push(point);
-        }
-
-        function draw(e) {
-            if (!isDrawing || !isDrawer) return; if (e.cancelable) e.preventDefault();
-            const pos = getPos(e);
-            const point = { type: 'move', x: pos.x, y: pos.y, time: Date.now() - drawStartTime };
-            localStroke.push(point);
-            ctx.beginPath(); ctx.moveTo(lastX, lastY); ctx.lineTo(pos.x, pos.y);
-            ctx.strokeStyle = currentColor; ctx.lineWidth = currentSize; ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.stroke();
-            lastX = pos.x; lastY = pos.y;
-            db.ref(`rooms/${currentRoom}/canvas/points`).push(point);
-        }
-        function stopDraw() { isDrawing = false; }
-
-        canvas.addEventListener('mousedown', startDraw); canvas.addEventListener('mousemove', draw); window.addEventListener('mouseup', stopDraw);
-        canvas.addEventListener('touchstart', startDraw, { passive: false }); canvas.addEventListener('touchmove', draw, { passive: false }); window.addEventListener('touchend', stopDraw);
-
-        // カラー選択処理
-        document.querySelectorAll('.color-picker').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                document.querySelectorAll('.color-picker').forEach(b => b.classList.remove('scale-110', 'ring-4', 'ring-indigo-500'));
-                const activeBtn = e.currentTarget; activeBtn.classList.add('scale-110', 'ring-4', 'ring-indigo-500');
-                currentColor = activeBtn.getAttribute('data-color');
-            });
-        });
-
-        // 太さ選択処理
-        document.querySelectorAll('.size-picker').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                document.querySelectorAll('.size-picker').forEach(b => { b.classList.remove('bg-indigo-600', 'text-white'); b.classList.add('bg-white', 'text-slate-800'); });
-                e.target.classList.remove('bg-white', 'text-slate-800'); e.target.classList.add('bg-indigo-600', 'text-white');
-                currentSize = parseInt(e.target.getAttribute('data-size'));
-            });
-        });
-
-        document.getElementById('btn-undo').addEventListener('click', () => {
-            if(!isDrawer) return; let idx = -1;
-            for(let i = localStroke.length - 1; i >= 0; i--) { if(localStroke[i].type === 'start') { idx = i; break; } }
-            if(idx !== -1) { localStroke = localStroke.slice(0, idx); db.ref(`rooms/${currentRoom}/canvas`).set({ points: localStroke }); }
-        });
-        document.getElementById('btn-clear').addEventListener('click', () => { if(!isDrawer) return; localStroke = []; db.ref(`rooms/${currentRoom}/canvas`).set({ points: [] }); });
-
-        function joinRoom() {
-            myName = document.getElementById('input-name').value.trim() || "名無しプレイヤー";
-            currentRoom = document.getElementById('input-room').value.trim();
-            if(!currentRoom) { alert('部屋の合言葉を入力してください！'); return; }
-
-            document.getElementById('label-room-name').innerText = currentRoom;
-            document.getElementById('label-my-name').innerText = myName;
-
-            const myUserRef = db.ref(`rooms/${currentRoom}/users/${myId}`);
-            myUserRef.set({ name: myName, score: 0 }); myUserRef.onDisconnect().remove();
-
-            // スコア監視
-            db.ref(`rooms/${currentRoom}/users`).on('value', snapshot => {
-                const users = snapshot.val() || {}, userListDiv = document.getElementById('user-list');
-                userListDiv.innerHTML = "";
-                Object.keys(users).forEach(uid => {
-                    const u = users[uid], isMe = (uid === myId);
-                    userListDiv.innerHTML += `<div class="flex items-center justify-between p-2 rounded-xl ${isMe ? 'bg-indigo-50 border border-indigo-200' : 'bg-slate-50'}"><span class="truncate">${u.name}${isMe ? ' (お前)' : ''}</span><span class="bg-indigo-600 text-white px-2 py-0.5 rounded-full text-xs font-black">${u.score}点</span></div>`;
+        // グローバルに関数を公開して、下の通常スクリプトから呼べるようにする
+        window.getThemesFromFirebase = async function() {
+            try {
+                // 'themes' コレクションからドキュメントを全件取得
+                const querySnapshot = await getDocs(collection(db, "themes"));
+                const themes = [];
+                querySnapshot.forEach((doc) => {
+                    // ドキュメント内の 'word' フィールドを取得（例: { word: "リンゴ" }）
+                    const data = doc.data();
+                    if (data.word) {
+                        themes.push(data.word);
+                    }
                 });
-            });
-
-            // 状態監視
-            db.ref(`rooms/${currentRoom}/state`).on('value', snapshot => {
-                const state = snapshot.val() || {};
-                if (!state.drawerId) { db.ref(`rooms/${currentRoom}/state/drawerId`).set(myId); return; }
-                isDrawer = (state.drawerId === myId); currentWord = state.word || ""; updateRoleUI();
-            });
-
-            // キャンバス同期
-            db.ref(`rooms/${currentRoom}/canvas/points`).on('value', snapshot => {
-                const data = snapshot.val(), pointsList = data ? Object.keys(data).map(k => data[k]) : [];
-                remoteFullData = pointsList;
-                if (isDrawer) { localStroke = pointsList; } else { startStreamPlayback(); }
-            });
-            document.getElementById('screen-login').classList.add('hidden'); document.getElementById('screen-game').classList.remove('hidden');
-        }
-
-        function updateRoleUI() {
-            const rBadge = document.getElementById('role-badge'), rText = document.getElementById('role-text'), secretDisplay = document.getElementById('secret-word-display');
-            if (isDrawer) {
-                rBadge.className = "px-2 py-1 bg-amber-400 text-slate-900 rounded-md font-black text-xs"; rBadge.innerText = "🎨 出題者";
-                rText.innerText = "絵でお題を伝えよう！"; secretDisplay.innerText = currentWord ? `お題: ${currentWord}` : "お題未設定"; secretDisplay.classList.remove('hidden');
-                document.getElementById('drawer-controls').classList.remove('hidden'); document.getElementById('guesser-controls').classList.add('hidden');
-            } else {
-                rBadge.className = "px-2 py-1 bg-emerald-500 text-white rounded-md font-black text-xs"; rBadge.innerText = "👀 回答者";
-                rText.innerText = "何を描いてるか当てよう！"; secretDisplay.classList.add('hidden');
-                document.getElementById('drawer-controls').classList.add('hidden'); document.getElementById('guesser-controls').classList.remove('hidden');
+                return themes;
+            } catch (error) {
+                console.error("Firebaseからのデータ取得に失敗しました:", error);
+                return [];
             }
-        }
-
-        function startStreamPlayback() {
-            if (!remoteFullData.length) { clearCanvas(); lastRenderedIndex = 0; return; }
-            if (lastRenderedIndex >= remoteFullData.length) return;
-            clearCanvas();
-            let pX = 0, pY = 0, pColor = "#000000", pSize = 10;
-            for (let i = 0; i < remoteFullData.length; i++) {
-                let p = remoteFullData[i];
-                if (p.type === 'start') {
-                    pColor = p.color; pSize = p.size; pX = p.x; pY = p.y;
-                    ctx.beginPath(); ctx.arc(p.x, p.y, p.size / 2, 0, Math.PI * 2); ctx.fillStyle = p.color; ctx.fill();
-                } else if (p.type === 'move') {
-                    ctx.beginPath(); ctx.moveTo(pX, pY); ctx.lineTo(p.x, p.y);
-                    ctx.strokeStyle = pColor; ctx.lineWidth = pSize; ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.stroke();
-                    pX = p.x; pY = p.y;
-                }
-            }
-            lastRenderedIndex = remoteFullData.length;
-        }
-
-        document.getElementById('btn-set-word').addEventListener('click', () => {
-            const el = document.getElementById('input-new-word'), val = el.value.trim();
-            if(!val) return alert('お題を入れてね！');
-            db.ref(`rooms/${currentRoom}/state/word`).set(val); db.ref(`rooms/${currentRoom}/canvas`).set({ points: [] }); el.value = "";
-        });
-
-        function executeGuess() {
-            if(isDrawer) return; const el = document.getElementById('input-guess'), val = el.value.trim(); if(!val) return;
-            if(!currentWord) return alert('まだお題がないよ！');
-            if (val === currentWord) {
-                alert('🎉 正解！！ ＋10点！');
-                db.ref(`rooms/${currentRoom}/users/${myId}/score`).transaction(s => (s || 0) + 10); el.value = "";
-            } else { alert(`❌「${val}」はちがうよ！`); el.value = ""; }
-        }
-        document.getElementById('btn-guess').addEventListener('click', executeGuess);
-        document.getElementById('input-guess').addEventListener('keypress', (e) => { if(e.key === 'Enter') executeGuess(); });
-
-        document.getElementById('btn-claim-drawer').addEventListener('click', () => {
-            if(confirm('出題者に交代しますか？')) { db.ref(`rooms/${currentRoom}/state`).set({ drawerId: myId, word: "" }); db.ref(`rooms/${currentRoom}/canvas`).set({ points: [] }); }
-        });
-
-        document.getElementById('btn-download').addEventListener('click', () => {
-            const link = document.createElement('a'); link.download = `pict_${Date.now()}.png`; link.href = canvas.toDataURL("image/png");
-            document.body.appendChild(link); link.click(); document.body.removeChild(link);
-        });
-
-        // 招待QR生成処理
-        document.getElementById('btn-show-qr').addEventListener('click', () => {
-            const container = document.getElementById('qrcode-container'); container.innerHTML = "";
-            const url = `${window.location.origin}${window.location.pathname}?room=${encodeURIComponent(currentRoom)}`;
-            document.getElementById('share-url').innerText = url;
-            new QRCode(container, { text: url, width: 180, height: 180, colorDark : "#1e1b4b", colorLight : "#ffffff", correctLevel : QRCode.CorrectLevel.H });
-            document.getElementById('modal-qr').classList.remove('hidden');
-        });
-        document.getElementById('btn-close-qr').addEventListener('click', () => document.getElementById('modal-qr').classList.add('hidden'));
-        document.getElementById('btn-join').addEventListener('click', joinRoom);
+        };
     </script>
+</head>
+<body>
+
+<div class="container">
+    <!-- 入室ページ -->
+    <div id="login-page">
+        <h2>ルームに入室</h2>
+        <div class="form-group">
+            <label for="room-id">ルーム名 (Room ID)</label>
+            <input type="text" id="room-id" placeholder="例: room123" value="test-room">
+        </div>
+        <div class="form-group">
+            <label for="user-name">あなたの名前</label>
+            <input type="text" id="user-name" placeholder="例: 太郎">
+        </div>
+        <div class="form-group">
+            <label for="user-role-init">初期役割</label>
+            <select id="user-role-init">
+                <option value="answerer">回答者</option>
+                <option value="drawer">出題者（描く人）</option>
+                <option value="host">司会進行者</option>
+            </select>
+        </div>
+        <button id="join-btn">入室する</button>
+    </div>
+
+    <!-- メインの部屋・ゲーム画面 -->
+    <div id="room-page" class="hidden">
+        <div class="room-header">
+            <div>
+                <h2 id="display-room-id">ルーム: </h2>
+                <div>ユーザー: <span id="display-user-name"></span> <span id="my-status-badge" class="status-badge"></span></div>
+            </div>
+            <button id="leave-btn" class="danger">退室</button>
+        </div>
+
+        <!-- 共通のお題表示エリア -->
+        <div id="theme-display-panel" class="theme-panel">
+            <div id="theme-label">現在のお題</div>
+            <div id="theme-word" class="theme-word">？？？</div>
+        </div>
+
+        <div class="flex">
+            <!-- メインコンテンツ (キャンバス & クイズ回答) -->
+            <div class="flex-1">
+                <!-- 司会者用：コントロールパネル -->
+                <div id="host-panel" class="host-controls hidden">
+                    <h4>👑 司会者コントロールパネル</h4>
+                    <div class="form-group">
+                        <label>【回答モード設定】</label>
+                        <select id="game-mode-select">
+                            <option value="first-win">先勝ちモード (正解者が出たら即終了)</option>
+                            <option value="all-together">全員一斉回答モード (司会が終了するまで回答可能)</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="change-drawer-select">【出題者の指名】</label>
+                        <select id="change-drawer-select">
+                            <option value="">-- 出題者を選択 --</option>
+                        </select>
+                    </div>
+                    <div class="form-group" style="display: flex; gap: 10px; align-items: flex-end;">
+                        <div style="flex: 1;">
+                            <label>【お題の設定】</label>
+                            <button id="random-theme-btn" style="width: 100%; background: #28a745;">🔥 Firebaseからお題をランダム決定</button>
+                        </div>
+                    </div>
+                    <button id="clear-game-btn" class="secondary">正解ログとキャンバスを全クリア</button>
+                </div>
+
+                <!-- キャンバスエリア -->
+                <div class="canvas-area">
+                    <div id="current-mode-display" style="font-weight: bold; color: #333; margin-bottom: 5px;">現在のモード: 先勝ちモード</div>
+                    <canvas id="paint-canvas" width="600" height="400"></canvas>
+                    
+                    <!-- 出題者のみに見えるコントロール -->
+                    <div id="canvas-controls" class="controls hidden">
+                        <input type="color" id="color-picker" class="color-picker" value="#000000">
+                        <select id="brush-size">
+                            <option value="2">細い (2px)</option>
+                            <option value="5" selected>普通 (5px)</option>
+                            <option value="10">太い (10px)</option>
+                            <option value="20">極太 (20px)</option>
+                        </select>
+                        <button id="undo-btn" class="secondary">1画消す (Undo)</button>
+                        <button id="clear-btn" class="danger">全消去 (Clear)</button>
+                    </div>
+                </div>
+
+                <!-- 回答・クイズエリア -->
+                <div class="answer-zone">
+                    <div id="winner-banner" class="winner-announcement hidden"></div>
+                    
+                    <!-- 回答者専用の入力フォーム -->
+                    <div id="answer-form-area">
+                        <h3>クイズに回答する</h3>
+                        <div class="form-group" style="display: flex; gap: 10px;">
+                            <input type="text" id="answer-input" placeholder="回答を入力...">
+                            <button id="submit-answer-btn">送信</button>
+                        </div>
+                    </div>
+
+                    <h3>回答ログ</h3>
+                    <div id="answer-log" class="answer-log"></div>
+                </div>
+            </div>
+
+            <!-- サイドバー (参加者リスト) -->
+            <div class="sidebar">
+                <h3>参加者一覧</h3>
+                <div id="member-list"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Mock WebSocket (テスト・動作確認用の擬似通信クラス) -->
+<script>
+class MockSignalingServer {
+    constructor() {
+        this.rooms = new Map();
+        this.listeners = new Map();
+    }
+    join(roomId, user) {
+        if (!this.rooms.has(roomId)) {
+            this.rooms.set(roomId, { members: [], mode: 'first-win', lines: [], currentTheme: "" });
+        }
+        const room = this.rooms.get(roomId);
+        room.members = room.members.filter(m => m.name !== user.name);
+        
+        if (user.role === 'host') {
+            room.members.forEach(m => { if(m.role === 'host') m.role = 'answerer'; });
+        } else if (user.role === 'drawer') {
+            room.members.forEach(m => { if(m.role === 'drawer') m.role = 'answerer'; });
+        }
+
+        room.members.push(user);
+        this.broadcast(roomId, { 
+            type: 'room-update', 
+            members: room.members, 
+            mode: room.mode, 
+            lines: room.lines,
+            currentTheme: room.currentTheme
+        });
+    }
+    leave(roomId, userName) {
+        if (!this.rooms.has(roomId)) return;
+        const room = this.rooms.get(roomId);
+        room.members = room.members.filter(m => m.name !== userName);
+        this.broadcast(roomId, { type: 'room-update', members: room.members });
+    }
+    send(roomId, message) {
+        const room = this.rooms.get(roomId);
+        if (!room) return;
+
+        if (message.type === 'draw-stroke') {
+            room.lines.push(message.stroke);
+        } else if (message.type === 'clear-canvas') {
+            room.lines = [];
+        } else if (message.type === 'undo-canvas') {
+            room.lines.pop();
+            message.lines = room.lines;
+        } else if (message.type === 'change-mode') {
+            room.mode = message.mode;
+        } else if (message.type === 'change-drawer') {
+            room.members.forEach(m => {
+                if (m.name === message.targetName) m.role = 'drawer';
+                else if (m.role === 'drawer') m.role = 'answerer';
+            });
+            message.members = room.members;
+        } else if (message.type === 'set-theme') {
+            room.currentTheme = message.theme;
+        } else if (message.type === 'clear-game') {
+            room.lines = [];
+            room.currentTheme = "";
+        }
+
+        this.broadcast(roomId, message);
+    }
+    broadcast(roomId, message) {
+        const list = this.listeners.get(roomId) || [];
+        list.forEach(cb => cb(JSON.parse(JSON.stringify(message))));
+    }
+    onMessage(roomId, userId, callback) {
+        if (!this.listeners.has(roomId)) this.listeners.set(roomId, []);
+        this.listeners.get(roomId).push(callback);
+    }
+}
+const server = new MockSignalingServer();
+</script>
+
+<!-- メインのアプリケーションロジック -->
+<script>
+let myRoomId = "";
+let myName = "";
+let myRole = "answerer"; 
+let gameMode = "first-win"; 
+let hasWon = false; 
+let currentTheme = ""; 
+
+// 描画関連の変数 (B方式)
+const canvas = document.getElementById('paint-canvas');
+const ctx = canvas.getContext('2d');
+let isDrawing = false;
+let currentStroke = []; 
+let remoteLines = [];   
+
+// DOM要素
+const loginPage = document.getElementById('login-page');
+const roomPage = document.getElementById('room-page');
+const hostPanel = document.getElementById('host-panel');
+const canvasControls = document.getElementById('canvas-controls');
+const answerFormArea = document.getElementById('answer-form-area');
+const memberListDiv = document.getElementById('member-list');
+const answerLogDiv = document.getElementById('answer-log');
+const winnerBanner = document.getElementById('winner-banner');
+const changeDrawerSelect = document.getElementById('change-drawer-select');
+const gameModeSelect = document.getElementById('game-mode-select');
+const currentModeDisplay = document.getElementById('current-mode-display');
+const themeWordDisplay = document.getElementById('theme-word');
+const themeLabelDisplay = document.getElementById('theme-label');
+
+// --- 入室処理 ---
+document.getElementById('join-btn').addEventListener('click', () => {
+    myRoomId = document.getElementById('room-id').value.trim();
+    myName = document.getElementById('user-name').value.trim();
+    myRole = document.getElementById('user-role-init').value;
+
+    if (!myRoomId || !myName) {
+        alert('ルーム名と名前を入力してください。');
+        return;
+    }
+    initRoom();
+});
+
+function initRoom() {
+    loginPage.classList.add('hidden');
+    roomPage.classList.remove('hidden');
+    document.getElementById('display-room-id').innerText = `ルーム: ${myRoomId}`;
+    document.getElementById('display-user-name').innerText = myName;
+
+    server.onMessage(myRoomId, myName, (msg) => {
+        handleNetworkMessage(msg);
+    });
+
+    server.join(myRoomId, { name: myName, role: myRole });
+}
+
+// --- UI制御とお題見え方の切り替え ---
+function updateRoleUI() {
+    const badge = document.getElementById('my-status-badge');
+    badge.className = "status-badge";
+    if (myRole === 'host') { badge.innerText = "司会者"; badge.classList.add('status-host'); }
+    if (myRole === 'drawer') { badge.innerText = "出題者"; badge.classList.add('status-drawer'); }
+    if (myRole === 'answerer') { badge.innerText = "回答者"; badge.classList.add('status-answerer'); }
+
+    if (myRole === 'host') {
+        hostPanel.classList.remove('hidden');
+        canvasControls.classList.add('hidden');
+        answerFormArea.classList.add('hidden');
+    } else if (myRole === 'drawer') {
+        hostPanel.classList.add('hidden');
+        canvasControls.classList.remove('hidden');
+        answerFormArea.classList.add('hidden');
+    } else { 
+        hostPanel.classList.add('hidden');
+        canvasControls.classList.add('hidden');
+        answerFormArea.classList.remove('hidden');
+    }
+    refreshThemeDisplay();
+}
+
+function refreshThemeDisplay() {
+    if (!currentTheme) {
+        themeWordDisplay.innerText = "未設定 (司会者の指示待ち)";
+        themeLabelDisplay.innerText = "お題";
+        return;
+    }
+
+    if (myRole === 'host' || myRole === 'drawer') {
+        themeLabelDisplay.innerText = myRole === 'drawer' ? "🎨 あなたへのお題 (描いてください)" : "👑 設定中のお題 (正解)";
+        themeWordDisplay.innerText = currentTheme;
+        themeWordDisplay.style.color = "#24292f";
+    } else {
+        themeLabelDisplay.innerText = "💬 お題を当ててください！";
+        themeWordDisplay.innerText = "〇 ".repeat(currentTheme.length).trim() + ` (${currentTheme.length}文字)`;
+        themeWordDisplay.style.color = "#007bff";
+    }
+}
+
+// --- ネットワークメッセージ処理 ---
+function handleNetworkMessage(msg) {
+    switch (msg.type) {
+        case 'room-update':
+            displayMembers(msg.members);
+            if (msg.mode) {
+                gameMode = msg.mode;
+                gameModeSelect.value = gameMode;
+                updateModeDisplay();
+            }
+            if (msg.lines) {
+                remoteLines = msg.lines;
+                redrawCanvas();
+            }
+            if (msg.currentTheme !== undefined) {
+                currentTheme = msg.currentTheme;
+                refreshThemeDisplay();
+            }
+            break;
+
+        case 'role-changed':
+            const targetUser = msg.members.find(m => m.name === myName);
+            if (targetUser) {
+                myRole = targetUser.role;
+                updateRoleUI();
+            }
+            displayMembers(msg.members);
+            break;
+
+        case 'mode-changed':
+            gameMode = msg.mode;
+            gameModeSelect.value = gameMode;
+            updateModeDisplay();
+            break;
+
+        case 'set-theme':
+            currentTheme = msg.theme;
+            refreshThemeDisplay();
+            winnerBanner.classList.add('hidden');
+            hasWon = false;
+            break;
+
+        case 'draw-stroke':
+            remoteLines.push(msg.stroke);
+            redrawCanvas();
+            break;
+
+        case 'undo-canvas':
+            remoteLines = msg.lines;
+            redrawCanvas();
+            break;
+
+        case 'clear-canvas':
+            remoteLines = [];
+            redrawCanvas();
+            break;
+
+        case 'submit-answer':
+            logAnswer(msg.userName, msg.answer, msg.isCorrect);
+            break;
+
+        case 'clear-game':
+            remoteLines = [];
+            currentTheme = "";
+            redrawCanvas();
+            refreshThemeDisplay();
+            answerLogDiv.innerHTML = "";
+            winnerBanner.classList.add('hidden');
+            hasWon = false;
+            break;
+    }
+}
+
+function displayMembers(members) {
+    memberListDiv.innerHTML = "";
+    changeDrawerSelect.innerHTML = '<option value="">-- 出題者を選択 --</option>';
+
+    members.forEach(m => {
+        const div = document.createElement('div');
+        div.className = "member-item";
+        let roleStr = m.role === 'host' ? '👑' : (m.role === 'drawer' ? '✏️' : '💬');
+        div.innerText = `${roleStr} ${m.name}`;
+        memberListDiv.appendChild(div);
+
+        if (m.role !== 'drawer') {
+            const opt = document.createElement('option');
+            opt.value = m.name;
+            opt.innerText = m.name + (m.role === 'host' ? ' (司会)' : '');
+            changeDrawerSelect.appendChild(opt);
+        }
+    });
+}
+
+function updateModeDisplay() {
+    const modeText = gameMode === 'first-win' ? "先勝ちモード (最初の正解者で終了)" : "全員一斉回答モード (何度でも回答可)";
+    currentModeDisplay.innerText = `現在のモード: ${modeText}`;
+}
+
+// --- 司会者コントロールイベント ---
+gameModeSelect.addEventListener('change', (e) => {
+    server.send(myRoomId, { type: 'change-mode', mode: e.target.value });
+});
+
+changeDrawerSelect.addEventListener('change', (e) => {
+    const targetName = e.target.value;
+    if (!targetName) return;
+    server.send(myRoomId, { type: 'change-drawer', targetName: targetName });
+});
+
+// 【Firebase連携】ランダムお題決定ボタン
+document.getElementById('random-theme-btn').addEventListener('click', async () => {
+    const btn = document.getElementById('random-theme-btn');
+    btn.disabled = true;
+    btn.innerText = "⌛ Firebaseから読込中...";
+
+    // Firebaseモジュール側でグローバルに紐付けた関数を呼び出す
+    if (typeof window.getThemesFromFirebase === 'function') {
+        const firebaseThemes = await window.getThemesFromFirebase();
+        
+        if (firebaseThemes && firebaseThemes.length > 0) {
+            const randomIndex = Math.floor(Math.random() * firebaseThemes.length);
+            const selectedTheme = firebaseThemes[randomIndex];
+            
+            // ルーム全員に配信
+            server.send(myRoomId, { type: 'set-theme', theme: selectedTheme });
+        } else {
+            alert("Firebaseの 'themes' コレクションにお題が見つかりませんでした。データを確認してください。");
+        }
+    } else {
+        alert("Firebaseの初期化がまだ完了していないか、設定が正しくありません。");
+    }
+
+    btn.disabled = false;
+    btn.innerText = "🔥 Firebaseからお題をランダム決定";
+});
+
+document.getElementById('clear-game-btn').addEventListener('click', () => {
+    if(confirm("キャンバス、お題、正解ログをすべてリセットしますか？")) {
+        server.send(myRoomId, { type: 'clear-game' });
+    }
+});
+
+
+// --- お絵かきロジック (B方式) ---
+function getCanvasPos(e) {
+    const rect = canvas.getBoundingClientRect();
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+    return { x: clientX - rect.left, y: clientY - rect.top };
+}
+
+function startDrawing(e) {
+    if (myRole !== 'drawer') return;
+    isDrawing = true;
+    const pos = getCanvasPos(e);
+    
+    currentStroke = {
+        color: document.getElementById('color-picker').value,
+        size: parseInt(document.getElementById('brush-size').value),
+        points: [{ x: pos.x, y: pos.y }]
+    };
+
+    ctx.beginPath();
+    ctx.strokeStyle = currentStroke.color;
+    ctx.lineWidth = currentStroke.size;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.moveTo(pos.x, pos.y);
+}
+
+function draw(e) {
+    if (!isDrawing || myRole !== 'drawer') return;
+    e.preventDefault();
+    const pos = getCanvasPos(e);
+    currentStroke.points.push({ x: pos.x, y: pos.y });
+    ctx.lineTo(pos.x, pos.y);
+    ctx.stroke();
+}
+
+function stopDrawing() {
+    if (!isDrawing || myRole !== 'drawer') return;
+    isDrawing = false;
+    if (currentStroke && currentStroke.points.length > 0) {
+        remoteLines.push(currentStroke);
+        server.send(myRoomId, { type: 'draw-stroke', stroke: currentStroke });
+    }
+    currentStroke = null;
+}
+
+function redrawCanvas() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    remoteLines.forEach(stroke => {
+        if (!stroke.points || stroke.points.length === 0) return;
+        ctx.beginPath();
+        ctx.strokeStyle = stroke.color;
+        ctx.lineWidth = stroke.size;
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        ctx.moveTo(stroke.points[0].x, stroke.points[0].y);
+        for (let i = 1; i < stroke.points.length; i++) {
+            ctx.lineTo(stroke.points[i].x, stroke.points[i].y);
+        }
+        ctx.stroke();
+    });
+}
+
+canvas.addEventListener('mousedown', startDrawing);
+canvas.addEventListener('mousemove', draw);
+window.addEventListener('mouseup', stopDrawing);
+canvas.addEventListener('touchstart', startDrawing, { passive: false });
+canvas.addEventListener('touchmove', draw, { passive: false });
+window.addEventListener('touchend', stopDrawing);
+
+document.getElementById('clear-btn').addEventListener('click', () => {
+    server.send(myRoomId, { type: 'clear-canvas' });
+});
+document.getElementById('undo-btn').addEventListener('click', () => {
+    server.send(myRoomId, { type: 'undo-canvas' });
+});
+
+
+// --- クイズ回答ロジック ---
+document.getElementById('submit-answer-btn').addEventListener('click', submitAnswer);
+document.getElementById('answer-input').addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') submitAnswer();
+});
+
+function submitAnswer() {
+    if (myRole !== 'answerer') return;
+    if (!currentTheme) {
+        alert('お題がまだ設定されていません。');
+        return;
+    }
+    if (gameMode === 'first-win' && hasWon) {
+        alert('この問題はすでに終了しています。');
+        return;
+    }
+
+    const inputEl = document.getElementById('answer-input');
+    const answerText = inputEl.value.trim();
+    if (!answerText) return;
+
+    const isCorrect = (answerText === currentTheme);
+
+    server.send(myRoomId, {
+        type: 'submit-answer',
+        userName: myName,
+        answer: answerText,
+        isCorrect: isCorrect
+    });
+
+    inputEl.value = "";
+}
+
+function logAnswer(user, answer, isCorrect) {
+    const p = document.createElement('p');
+    p.style.margin = "4px 0";
+    
+    if (isCorrect) {
+        p.innerHTML = `<b style="color: green;">🎉 ${user}: ${answer} (正解！)</b>`;
+        if (gameMode === 'first-win') {
+            hasWon = true;
+            winnerBanner.innerText = `👑 正解者が出ました！勝者: ${user}さん (正解: ${currentTheme})`;
+            winnerBanner.classList.remove('hidden');
+        } else {
+            winnerBanner.innerText = `✨ ${user}さんが正解しました！`;
+            winnerBanner.classList.remove('hidden');
+        }
+    } else {
+        p.innerHTML = `❌ ${user}: ${answer}`;
+    }
+    
+    answerLogDiv.appendChild(p);
+    answerLogDiv.scrollTop = answerLogDiv.scrollHeight;
+}
+
+document.getElementById('leave-btn').addEventListener('click', () => {
+    server.leave(myRoomId, myName);
+    location.reload(); 
+});
+</script>
+
 </body>
 </html>
