@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>翻訳曲当てゲーム - 連動システム</title>
+<title>混合翻訳クイズシステム - 専用機</title>
 <script src="https://cdn.tailwindcss.com"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght=700;900&display=swap');
@@ -40,26 +40,27 @@
       <!-- ⚙️ 出題者画面 / 管理者コントロールパネル (初期状態hidden) -->
       <div id="adminPanel" class="hidden bg-gray-900 border-2 border-amber-500 rounded-3xl p-4 mb-6 shadow-2xl space-y-4">
         <h2 class="text-lg font-black text-amber-500 flex justify-between items-center">
-          <span>🛠️ 出題者・管理用パネル</span>
+          <span>🛠️ 出題者パネル（混合翻訳 専用）</span>
           <button onclick="resetRoomData()" class="text-xs bg-red-900 px-2 py-0.5 rounded text-red-200">出題クリア</button>
         </h2>
         
-        <!-- 1. お題入力とモード選択 -->
-        <div>
-          <label class="block text-xs font-bold text-gray-400 mb-1">1. クイズの原文を入力</label>
-          <input type="text" id="originalInput" placeholder="例: 完全感覚Dreamer" class="w-full bg-gray-800 text-white px-3 py-2 rounded-xl border border-gray-700 text-sm focus:outline-none mb-2">
+        <!-- お題入力と精度向上プロンプト -->
+        <div class="space-y-3">
+          <div>
+            <label class="block text-xs font-bold text-gray-400 mb-1">1. クイズの原文を入力</label>
+            <input type="text" id="originalInput" placeholder="例: 完全感覚Dreamer" class="w-full bg-gray-800 text-white px-3 py-2 rounded-xl border border-gray-700 text-sm focus:outline-none">
+          </div>
           
-          <label class="block text-xs font-bold text-gray-400 mb-1">2. 変換モード選択</label>
-          <select id="modeSelect" class="w-full bg-gray-800 text-white px-3 py-2 rounded-xl border border-gray-700 text-sm focus:outline-none">
-            <option value="mixed">混合翻訳（日英単語を入れ替え）</option>
-            <option value="full">全翻訳（文章全体の完全翻訳）</option>
-            <option value="paraphrase">AI意訳（難易度の高い格好いい表現）</option>
-          </select>
+          <div>
+            <label class="block text-xs font-bold text-gray-400 mb-1">2. AIへの追加注文（精度向上・難易度調整用オプション）</label>
+            <input type="text" id="aiHintInput" placeholder="例: 単語単位で直訳して / 文法は崩して / 難しめに" class="w-full bg-gray-800 text-gray-300 px-3 py-2 rounded-xl border border-gray-700 text-xs focus:outline-none">
+            <p class="text-[10px] text-gray-500 mt-1">※空欄でも自動で綺麗に混合翻訳されます。特定の単語の固定やニュアンスの指定に便利です。</p>
+          </div>
         </div>
 
         <!-- 出題ボタン -->
-        <button id="submitQuizBtn" class="w-full bg-amber-600 hover:bg-amber-700 text-white font-bold py-2.5 rounded-xl text-sm shadow transition-all active:scale-95">
-          🚀 翻訳して出題（Functionsへ送信）
+        <button id="submitQuizBtn" class="w-full bg-amber-600 hover:bg-amber-700 text-white font-black py-3 rounded-xl text-sm shadow transition-all active:scale-95">
+          🚀 混合翻訳して即時出題
         </button>
 
         <hr class="border-gray-800">
@@ -83,9 +84,9 @@
       <!-- 1. ログイン画面 -->
       <div id="loginScreen" class="w-full glass-box p-8 rounded-3xl shadow-2xl my-12">
         <div class="text-center mb-8">
-          <span class="text-5xl">🌐</span>
+          <span class="text-5xl">🔀</span>
           <h1 class="text-3xl font-black mt-4 tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-amber-500 to-yellow-400">
-            翻訳曲当てゲーム
+            混合翻訳クイズ
           </h1>
           <p class="text-sm text-gray-400 mt-1">チーム名と名前を入力して参加</p>
         </div>
@@ -119,18 +120,18 @@
           <div class="text-xs font-black text-gray-400 uppercase tracking-widest mb-1" id="syncStatusLabel">待機中</div>
           <div class="text-xs font-bold text-amber-500 mb-3" id="modeDisplay">問題を待機中...</div>
           
-          <!-- 変換後の問題テキスト (仕様書における converted) -->
+          <!-- 変換後の問題テキスト -->
           <div class="text-3xl font-black text-white tracking-wide min-h-[48px] flex items-center justify-center mb-4 px-2" id="convertedQuestion">
             ーーー
           </div>
           
-          <!-- 答えの原文テキスト (仕様書における original) -->
+          <!-- 答えの原文テキスト -->
           <div class="text-xl font-black text-emerald-400 min-h-[36px] flex items-center justify-center border-t border-white/10 pt-4" id="answerContainer">
             <span id="answer" class="score-hidden">？ ？ ？</span>
           </div>
         </div>
 
-        <!-- 回答結果の自己申告ボタン（第2ゲームの結果として保存） -->
+        <!-- 回答結果の自己申告ボタン -->
         <div class="bg-black/40 border border-white/10 p-4 rounded-2xl">
           <div class="text-xs font-bold text-center text-gray-400 mb-2">第2ゲームの結果（スコア）を送信</div>
           <div class="grid grid-cols-2 gap-3">
@@ -148,19 +149,19 @@
 
     <!-- フッター・戻る -->
     <div class="text-center mt-8">
-      <a href="index.html" class="inline-block text-sm font-bold text-gray-500 hover:text-gray-300 border border-gray-800 rounded-full px-6 py-2 transition-all bg-gray-900/50">
+      <a href="6gatu.html" class="inline-block text-sm font-bold text-gray-500 hover:text-gray-300 border border-gray-800 rounded-full px-6 py-2 transition-all bg-gray-900/50">
         メニューへ戻る
       </a>
     </div>
 
   </div>
 
-  <!-- Firebase v9 Compat SDKs (仕様に合わせFirestoreを使用) -->
+  <!-- Firebase v9 Compat SDKs -->
   <script src="https://www.gstatic.com/firebasejs/9.1.3/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.1.3/firebase-firestore-compat.js"></script>
 
   <script>
-    // --- 指定された Firebase Configuration ---
+    // --- Firebase Configuration ---
     const firebaseConfig = {
       apiKey: "AIzaSyC4DQhH_swesAD98Xyjg8d1lcWEkkrHrgw",
       authDomain: "gamehistory-m84.firebaseapp.com",
@@ -192,7 +193,7 @@
     const displayName = document.getElementById("displayName");
     
     const originalInput = document.getElementById("originalInput");
-    const modeSelect = document.getElementById("modeSelect");
+    const aiHintInput = document.getElementById("aiHintInput");
     const submitQuizBtn = document.getElementById("submitQuizBtn");
 
     const syncStatusLabel = document.getElementById("syncStatusLabel");
@@ -200,7 +201,7 @@
     const convertedQuestion = document.getElementById("convertedQuestion");
     const answerText = document.getElementById("answer");
 
-    // --- 1. 出題者認証トグル (キー: 0001) ---
+    // 出題者認証トグル (0001)
     authBtn.onclick = () => {
       if (adminKeyInput.value === "0001") {
         adminPanel.classList.toggle("hidden");
@@ -210,10 +211,10 @@
       }
     };
 
-    // --- 2. 出題者アクション（Firebase Functions呼び出しの擬似または直接処理部） ---
+    // --- 2. 出題者アクション（混合翻訳専用プロンプト引き渡し） ---
     submitQuizBtn.onclick = () => {
       const originalText = originalInput.value.trim();
-      const selectedMode = modeSelect.value;
+      const aiHint = aiHintInput.value.trim();
 
       if (!originalText) {
         alert("原文テキストを入力してください。");
@@ -221,50 +222,47 @@
       }
 
       submitQuizBtn.disabled = true;
-      submitQuizBtn.innerText = "⏳ 変換処理中...";
+      submitQuizBtn.innerText = "⏳ AI混合翻訳中...";
 
       /* 
-         【運用補足】
-         仕様書通りにバックエンド(Firebase Functions)にデプロイしたURLが確定したら、
-         以下のfetch呼び出しコードのコメントアウトを解除して連携させてください。
-         現在はフロントエンド単体でのテスト・動作検証ができるようダミー生成ロジックに流れるようにしています。
+         【Functions連携時のコード例】
+         仕様書通りにバックエンドに送る際、ボディーに「aiHint」を一緒に入れて飛ばします。
+         Functions側のプロンプト末尾に結合することで、指示を強力に上書き、精度をチューニングできます。
       */
-      
       /*
       fetch('https://YOUR_REGION-gamehistory-m84.cloudfunctions.net/translateQuiz', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ original: originalText, mode: selectedMode })
+        body: JSON.stringify({ 
+          original: originalText, 
+          mode: "mixed",
+          hint: aiHint // 出題者からの追加注文をFunctionsに渡す
+        })
       })
       .then(res => res.json())
       .then(data => {
-         // Functions側でFirestoreへの直接上書きを行う、もしくは戻り値をここでFirestoreに書き込む
-         originalInput.value = ""; // 送信完了後、フォームを自動クリア
+         originalInput.value = "";
+         aiHintInput.value = "";
          submitQuizBtn.disabled = false;
-         submitQuizBtn.innerText = "🚀 翻訳して出題（Functionsへ送信）";
+         submitQuizBtn.innerText = "🚀 混合翻訳して即時出題";
       });
       */
 
-      // --- テスト用代入ロジック（仕様書通りのFirestoreスキーマ構造をシミュレート） ---
-      let dummyConverted = "";
-      if (selectedMode === "mixed") dummyConverted = originalText + " (Mixed AI)";
-      else if (selectedMode === "full") dummyConverted = originalText + " (Full Translate)";
-      else dummyConverted = "Perfect Sense 夢想家 (AI意訳)";
-
+      // --- テスト用ダミーロジック（そのまま動作確認する場合） ---
       const timestampId = Date.now().toString();
       firestore.collection("rooms").doc("currentRoom").set({
         quizId: timestampId,
         original: originalText,
-        converted: dummyConverted,
-        mode: selectedMode,
+        converted: "Perfect Sense 夢想家", // 実際はFunctions経由でOpenAIの戻り値が入る
+        mode: "mixed",
         showAnswer: false,
         createdAt: firebase.firestore.FieldValue.serverTimestamp()
       }).then(() => {
-        originalInput.value = ""; // 仕様書通り自動でクリア（空欄）に
+        originalInput.value = ""; 
+        aiHintInput.value = ""; // 入力後は両方クリア
         submitQuizBtn.disabled = false;
-        submitQuizBtn.innerText = "🚀 翻訳して出題（Functionsへ送信）";
+        submitQuizBtn.innerText = "🚀 混合翻訳して即時出題";
       });
-      // --------------------------------------------------------------------------
     };
 
     // 答えの表示・隠すコントロール
@@ -285,7 +283,7 @@
       });
     };
 
-    // --- 3. 参加者：ログイン処理 ---
+    // 参加者：ログイン処理
     loginBtn.onclick = () => {
       currentRoom = roomInput.value.trim();
       currentPlayerName = nameInput.value.trim();
@@ -302,7 +300,7 @@
       gameScreen.classList.remove("hidden");
     };
 
-    // --- 4. 🚀 最重要：Firestore onSnapshotによる常時リッスン・同期処理 ---
+    // --- 4. Firestore リアルタイム同期（混合翻訳専用） ---
     firestore.collection("rooms").doc("currentRoom").onSnapshot((doc) => {
       if (!doc.exists || !doc.data().converted) {
         syncStatusLabel.textContent = "待機中";
@@ -318,16 +316,12 @@
       currentQuizId = data.quizId || "default";
       
       syncStatusLabel.textContent = "🔴 LIVE 同期中";
-      
-      // モード名変換表示
-      if(data.mode === "mixed") modeDisplay.textContent = "🔀 モード: 混合翻訳クイズ";
-      else if(data.mode === "full") modeDisplay.textContent = "🌐 モード: 完全翻訳クイズ";
-      else if(data.mode === "paraphrase") modeDisplay.textContent = "✨ モード: AI意訳クイズ";
+      modeDisplay.textContent = "🔀 混合翻訳（日英単語入れ替え）";
 
-      // 問題文章の即時切り替え
+      // 変換されたクイズ問題
       convertedQuestion.textContent = data.converted;
 
-      // 出題者が答えボタンを押したかどうかの判定同期
+      // 答えの表示フラグ
       if (data.showAnswer) {
         answerText.textContent = data.original;
         answerText.classList.remove("score-hidden");
@@ -337,14 +331,13 @@
       }
     });
 
-    // --- 5. 第二ゲームの結果としてスコア履歴コレクションに保存 ---
+    // --- 5. 第二ゲーム結果送信 ---
     window.submitResult = (isCorrect) => {
       if (!currentQuizId) {
         alert("現在クイズが配信されていません。");
         return;
       }
 
-      // 仕様書の要件に合わせ、第2ゲーム(translateGame)の結果として履歴へ保存
       const scoreValue = isCorrect ? 10 : 0;
       
       firestore.collection("gameResults").doc("translateGame")
