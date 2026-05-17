@@ -415,7 +415,7 @@
                 const el = document.createElement('div');
                 el.className = `jan-tile ${tile === roomState.dora ? 'special-tile':''} ${selectedTileIndex === index && selectedTileZone === 'hand' ? 'selected' : ''}`;
                 el.innerText = tile;
-                el.addEventListener('click', (() => selectTile(index, 'hand'));
+                el.addEventListener('click', () => selectTile(index, 'hand'));
                 handContainer.appendChild(el);
             });
 
