@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>翻訳曲当てゲーム - 連動システム</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght=700;900&display=swap');
+  body {
+    font-family: 'Noto+Sans+JP', sans-serif;
+    background: #0f0f15;
+    color: #fff;
+  }
+  .app-gradient {
+    background: linear-gradient(135deg, #ff9900, #ffcc00);
+  }
+  .glass-box {
+    background: rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+  }
+  .score-hidden {
+    filter: blur(12px);
+    user-select: none;
+  }
+</style>
+</head>
+<body class="p-4 min-h-screen flex flex-col items-center">
+
+  <div class="w-full max-w-md flex flex-col min-h-screen justify-between pb-6">
+    
+    <div>
+      <!-- 管理キー入力（トグル式） -->
+      <div class="mb-4 flex justify-end items-center gap-2">
+        <input type="password" id="adminKeyInput" placeholder="管理キー" class="w-24 bg-gray-800 text-white px-3 py-1 rounded-xl border border-gray-700 text-xs focus:outline-none">
+        <button id="authBtn" class="bg-gray-700 hover:bg-gray-600 px-3 py-1 rounded-xl text-xs font-bold transition-all">Panel</button>
+      </div>
+
+      <!-- ⚙️ 出題者画面 / 管理者コントロールパネル (初期状態hidden) -->
+      <div id="adminPanel" class="hidden bg-gray-900 border-2 border-amber-500 rounded-3xl p-4 mb-6 shadow-2xl space-y-4">
+        <h2 class="text-lg font-black text-amber-500 flex justify-between items-center">
+          <span>🛠️ 出題者・管理用パネル</span>
+          <button onclick="resetRoomData()" class="text-xs bg-red-900 px-2 py-0.5 rounded text-red-200">出題クリア</button>
+        </h2>
+        
+        <!-- 1. お題入力とモード選択 -->
+        <div>
+          <label class="block text-xs font-bold text-gray-400 mb-1">1. クイズの原文を入力</label>
+          <input type="text" id="originalInput" placeholder="例: 完全感覚Dreamer" class="w-full bg-gray-800 text-white px-3 py-2 rounded-xl border border-gray-700 text-sm focus:outline-none mb-2">
+          
+          <label class="block text-xs font-bold text-gray-400 mb-1">2. 変換モード選択</label>
+          <select id="modeSelect" class="w-full bg-gray-800 text-white px-3 py-2 rounded-xl border border-gray-700 text-sm focus:outline-none">
+            <option value="mixed">混合翻訳（日英単語を入れ替え）</option>
+            <option value="full">全翻訳（文章全体の完全翻訳）</option>
+            <option value="paraphrase">AI意訳（難易度の高い格好いい表現）</option>
+          </select>
+        </div>
+
+        <!-- 出題ボタン -->
+        <button id="submitQuizBtn" class="w-full bg-amber-600 hover:bg-amber-700 text-white font-bold py-2.5 rounded-xl text-sm shadow transition-all active:scale-95">
+          🚀 翻訳して出題（Functionsへ送信）
+        </button>
+
+        <hr class="border-gray-800">
+
+        <!-- 答え公開スイッチ -->
+        <div>
+          <label class="block text-xs font-bold text-gray-400 mb-1">3. 参加者への答え公開制御</label>
+          <div class="grid grid-cols-2 gap-2">
+            <button onclick="setAnswerVisibility(true)" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 rounded-xl text-xs shadow">
+              🔓 答えを全員に公開
+            </button>
+            <button onclick="setAnswerVisibility(false)" class="bg-gray-700 hover:bg-gray-600 text-white font-bold py-2 rounded-xl text-xs shadow">
+              🔒 答えを隠す
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ==================== 参加者/メイン画面 ==================== -->
+      
+      <!-- 1. ログイン画面 -->
+      <div id="loginScreen" class="w-full glass-box p-8 rounded-3xl shadow-2xl my-12">
+        <div class="text-center mb-8">
+          <span class="text-5xl">🌐</span>
+          <h1 class="text-3xl font-black mt-4 tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-amber-500 to-yellow-400">
+            翻訳曲当てゲーム
+          </h1>
+          <p class="text-sm text-gray-400 mt-1">チーム名と名前を入力して参加</p>
+        </div>
+
+        <div class="space-y-4">
+          <div>
+            <label class="block text-xs font-bold text-gray-400 mb-1 uppercase tracking-wider">部屋名 / チーム名</label>
+            <input type="text" id="roomInput" placeholder="例: Bチーム" class="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-3 text-lg font-bold focus:outline-none focus:border-amber-500 text-white">
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-gray-400 mb-1 uppercase tracking-wider">あなたの名前</label>
+            <input type="text" id="nameInput" placeholder="例: じろう" class="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-3 text-lg font-bold focus:outline-none focus:border-amber-500 text-white">
+          </div>
+          <button id="loginBtn" class="w-full app-gradient hover:opacity-90 text-gray-900 font-black py-4 rounded-xl text-xl shadow-lg transition-all active:scale-95 mt-4">
+            ゲーム画面に入る
+          </button>
+        </div>
+      </div>
+
+      <!-- 2. ゲームメイン画面（待機・受信状態） -->
+      <div id="gameScreen" class="hidden w-full flex flex-col">
+        
+        <!-- ステータスバー -->
+        <div class="flex justify-between items-center glass-box px-4 py-2.5 rounded-2xl mb-4 text-xs font-bold">
+          <div class="flex items-center gap-1 text-amber-400">🏠 <span id="displayRoom" class="text-white"></span></div>
+          <div class="flex items-center gap-1 text-yellow-400">👤 <span id="displayName" class="text-white"></span></div>
+        </div>
+
+        <!-- リアルタイム同期ボード -->
+        <div class="glass-box rounded-3xl p-6 text-center shadow-xl mb-6 min-h-[220px] flex flex-col justify-center border-2 border-white/10 relative">
+          <div class="text-xs font-black text-gray-400 uppercase tracking-widest mb-1" id="syncStatusLabel">待機中</div>
+          <div class="text-xs font-bold text-amber-500 mb-3" id="modeDisplay">問題を待機中...</div>
+          
+          <!-- 変換後の問題テキスト (仕様書における converted) -->
+          <div class="text-3xl font-black text-white tracking-wide min-h-[48px] flex items-center justify-center mb-4 px-2" id="convertedQuestion">
+            ーーー
+          </div>
+          
+          <!-- 答えの原文テキスト (仕様書における original) -->
+          <div class="text-xl font-black text-emerald-400 min-h-[36px] flex items-center justify-center border-t border-white/10 pt-4" id="answerContainer">
+            <span id="answer" class="score-hidden">？ ？ ？</span>
+          </div>
+        </div>
+
+        <!-- 回答結果の自己申告ボタン（第2ゲームの結果として保存） -->
+        <div class="bg-black/40 border border-white/10 p-4 rounded-2xl">
+          <div class="text-xs font-bold text-center text-gray-400 mb-2">第2ゲームの結果（スコア）を送信</div>
+          <div class="grid grid-cols-2 gap-3">
+            <button onclick="submitResult(true)" class="bg-emerald-600 hover:bg-emerald-700 text-white font-black py-3 rounded-xl flex items-center justify-center gap-2 text-md active:scale-95 transition-all shadow">
+              ⭕ 正解 (+10点)
+            </button>
+            <button onclick="submitResult(false)" class="bg-red-600 hover:bg-red-700 text-white font-black py-3 rounded-xl flex items-center justify-center gap-2 text-md active:scale-95 transition-all shadow">
+              ❌ 不正解
+            </button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- フッター・戻る -->
+    <div class="text-center mt-8">
+      <a href="index.html" class="inline-block text-sm font-bold text-gray-500 hover:text-gray-300 border border-gray-800 rounded-full px-6 py-2 transition-all bg-gray-900/50">
+        メニューへ戻る
+      </a>
+    </div>
+
+  </div>
+
+  <!-- Firebase v9 Compat SDKs (仕様に合わせFirestoreを使用) -->
+  <script src="https://www.gstatic.com/firebasejs/9.1.3/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.1.3/firebase-firestore-compat.js"></script>
+
+  <script>
+    // --- 指定された Firebase Configuration ---
+    const firebaseConfig = {
+      apiKey: "AIzaSyC4DQhH_swesAD98Xyjg8d1lcWEkkrHrgw",
+      authDomain: "gamehistory-m84.firebaseapp.com",
+      databaseURL: "https://gamehistory-m84-default-rtdb.firebaseio.com",
+      projectId: "gamehistory-m84",
+      storageBucket: "gamehistory-m84.firebasestorage.app",
+      messagingSenderId: "475761727837",
+      appId: "1:475761727837:web:06d07e1ab4120a7ccaf0b4",
+      measurementId: "G-3636W6LC4F"
+    };
+    
+    firebase.initializeApp(firebaseConfig);
+    const firestore = firebase.firestore();
+
+    let currentRoom = "";
+    let currentPlayerName = "";
+    let currentQuizId = ""; 
+
+    // DOM要素
+    const adminKeyInput = document.getElementById("adminKeyInput");
+    const authBtn = document.getElementById("authBtn");
+    const adminPanel = document.getElementById("adminPanel");
+    const loginScreen = document.getElementById("loginScreen");
+    const gameScreen = document.getElementById("gameScreen");
+    const roomInput = document.getElementById("roomInput");
+    const nameInput = document.getElementById("nameInput");
+    const loginBtn = document.getElementById("loginBtn");
+    const displayRoom = document.getElementById("displayRoom");
+    const displayName = document.getElementById("displayName");
+    
+    const originalInput = document.getElementById("originalInput");
+    const modeSelect = document.getElementById("modeSelect");
+    const submitQuizBtn = document.getElementById("submitQuizBtn");
+
+    const syncStatusLabel = document.getElementById("syncStatusLabel");
+    const modeDisplay = document.getElementById("modeDisplay");
+    const convertedQuestion = document.getElementById("convertedQuestion");
+    const answerText = document.getElementById("answer");
+
+    // --- 1. 出題者認証トグル (キー: 0001) ---
+    authBtn.onclick = () => {
+      if (adminKeyInput.value === "0001") {
+        adminPanel.classList.toggle("hidden");
+        adminKeyInput.value = "";
+      } else {
+        alert("管理キーが正しくありません。");
+      }
+    };
+
+    // --- 2. 出題者アクション（Firebase Functions呼び出しの擬似または直接処理部） ---
+    submitQuizBtn.onclick = () => {
+      const originalText = originalInput.value.trim();
+      const selectedMode = modeSelect.value;
+
+      if (!originalText) {
+        alert("原文テキストを入力してください。");
+        return;
+      }
+
+      submitQuizBtn.disabled = true;
+      submitQuizBtn.innerText = "⏳ 変換処理中...";
+
+      /* 
+         【運用補足】
+         仕様書通りにバックエンド(Firebase Functions)にデプロイしたURLが確定したら、
+         以下のfetch呼び出しコードのコメントアウトを解除して連携させてください。
+         現在はフロントエンド単体でのテスト・動作検証ができるようダミー生成ロジックに流れるようにしています。
+      */
+      
+      /*
+      fetch('https://YOUR_REGION-gamehistory-m84.cloudfunctions.net/translateQuiz', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ original: originalText, mode: selectedMode })
+      })
+      .then(res => res.json())
+      .then(data => {
+         // Functions側でFirestoreへの直接上書きを行う、もしくは戻り値をここでFirestoreに書き込む
+         originalInput.value = ""; // 送信完了後、フォームを自動クリア
+         submitQuizBtn.disabled = false;
+         submitQuizBtn.innerText = "🚀 翻訳して出題（Functionsへ送信）";
+      });
+      */
+
+      // --- テスト用代入ロジック（仕様書通りのFirestoreスキーマ構造をシミュレート） ---
+      let dummyConverted = "";
+      if (selectedMode === "mixed") dummyConverted = originalText + " (Mixed AI)";
+      else if (selectedMode === "full") dummyConverted = originalText + " (Full Translate)";
+      else dummyConverted = "Perfect Sense 夢想家 (AI意訳)";
+
+      const timestampId = Date.now().toString();
+      firestore.collection("rooms").doc("currentRoom").set({
+        quizId: timestampId,
+        original: originalText,
+        converted: dummyConverted,
+        mode: selectedMode,
+        showAnswer: false,
+        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+      }).then(() => {
+        originalInput.value = ""; // 仕様書通り自動でクリア（空欄）に
+        submitQuizBtn.disabled = false;
+        submitQuizBtn.innerText = "🚀 翻訳して出題（Functionsへ送信）";
+      });
+      // --------------------------------------------------------------------------
+    };
+
+    // 答えの表示・隠すコントロール
+    window.setAnswerVisibility = (visible) => {
+      firestore.collection("rooms").doc("currentRoom").update({
+        showAnswer: visible
+      });
+    };
+
+    // 部屋データのリセット
+    window.resetRoomData = () => {
+      firestore.collection("rooms").doc("currentRoom").set({
+        quizId: "",
+        original: "",
+        converted: "",
+        mode: "",
+        showAnswer: false
+      });
+    };
+
+    // --- 3. 参加者：ログイン処理 ---
+    loginBtn.onclick = () => {
+      currentRoom = roomInput.value.trim();
+      currentPlayerName = nameInput.value.trim();
+
+      if (!currentRoom || !currentPlayerName) {
+        alert("部屋名と名前を入力してください。");
+        return;
+      }
+
+      displayRoom.textContent = currentRoom;
+      displayName.textContent = currentPlayerName;
+
+      loginScreen.classList.add("hidden");
+      gameScreen.classList.remove("hidden");
+    };
+
+    // --- 4. 🚀 最重要：Firestore onSnapshotによる常時リッスン・同期処理 ---
+    firestore.collection("rooms").doc("currentRoom").onSnapshot((doc) => {
+      if (!doc.exists || !doc.data().converted) {
+        syncStatusLabel.textContent = "待機中";
+        modeDisplay.textContent = "問題を待機中...";
+        convertedQuestion.textContent = "ーーー";
+        answerText.textContent = "？ ？ ？";
+        answerText.className = "score-hidden";
+        currentQuizId = "";
+        return;
+      }
+
+      const data = doc.data();
+      currentQuizId = data.quizId || "default";
+      
+      syncStatusLabel.textContent = "🔴 LIVE 同期中";
+      
+      // モード名変換表示
+      if(data.mode === "mixed") modeDisplay.textContent = "🔀 モード: 混合翻訳クイズ";
+      else if(data.mode === "full") modeDisplay.textContent = "🌐 モード: 完全翻訳クイズ";
+      else if(data.mode === "paraphrase") modeDisplay.textContent = "✨ モード: AI意訳クイズ";
+
+      // 問題文章の即時切り替え
+      convertedQuestion.textContent = data.converted;
+
+      // 出題者が答えボタンを押したかどうかの判定同期
+      if (data.showAnswer) {
+        answerText.textContent = data.original;
+        answerText.classList.remove("score-hidden");
+      } else {
+        answerText.textContent = "？ ？ ？";
+        answerText.classList.add("score-hidden");
+      }
+    });
+
+    // --- 5. 第二ゲームの結果としてスコア履歴コレクションに保存 ---
+    window.submitResult = (isCorrect) => {
+      if (!currentQuizId) {
+        alert("現在クイズが配信されていません。");
+        return;
+      }
+
+      // 仕様書の要件に合わせ、第2ゲーム(translateGame)の結果として履歴へ保存
+      const scoreValue = isCorrect ? 10 : 0;
+      
+      firestore.collection("gameResults").doc("translateGame")
+        .collection(currentRoom).doc(currentPlayerName)
+        .collection("history").add({
+          quizId: currentQuizId,
+          isCorrect: isCorrect,
+          score: scoreValue,
+          timestamp: firebase.firestore.FieldValue.serverTimestamp()
+        })
+        .then(() => {
+          alert(`結果（${isCorrect ? "⭕ 正解" : "❌ 不正解"}）を第2ゲームのレコードにセーブしました！`);
+        })
+        .catch((error) => {
+          alert("送信失敗: " + error.message);
+        });
+    };
+  </script>
+
+</body>
+</html>
