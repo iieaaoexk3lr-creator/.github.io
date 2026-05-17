@@ -2,57 +2,69 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>クイズ＆お絵かきルーム</title>
     <style>
-        body { font-family: sans-serif; margin: 20px; background-color: #f0f2f5; }
-        .container { max-width: 900px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        /* 全体：スマホファースト＆レスポンシブ */
+        body { font-family: sans-serif; margin: 10px; background-color: #f0f2f5; font-size: 14px; }
+        .container { max-width: 900px; margin: 0 auto; background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
         .hidden { display: none !important; }
-        .flex { display: flex; gap: 20px; }
-        .flex-1 { flex: 1; }
+        
+        /* レイアウト：基本は縦並び、PCサイズ(768px以上)で横並び */
+        .flex { display: flex; flex-direction: column; gap: 15px; }
+        @media (min-width: 768px) {
+            .flex { flex-direction: row; }
+            .sidebar { width: 250px; border-left: 1px solid #eee; padding-left: 20px; border-top: none !important; padding-top: 0 !important; }
+        }
+        .flex-1 { flex: 1; min-width: 0; }
         
         /* フォーム類 */
         .form-group { margin-bottom: 15px; }
         .form-group label { display: block; margin-bottom: 5px; font-weight: bold; }
-        .form-group input, .form-group select { width: 100%; padding: 8px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px; }
-        button { padding: 10px 15px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; }
+        .form-group input, .form-group select { width: 100%; padding: 10px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 6px; font-size: 16px; }
+        button { padding: 12px 15px; background: #007bff; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 15px; font-weight: bold; width: 100%; box-sizing: border-box; }
+        @media (min-width: 768px) { button { width: auto; } }
         button:hover { background: #0056b3; }
         button.secondary { background: #6c757d; }
-        button.secondary:hover { background: #5a6268; }
         button.danger { background: #dc3545; }
-        button.danger:hover { background: #bd2130; }
 
         /* ヘッダー・ステータス表示 */
-        .room-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #eee; padding-bottom: 10px; margin-bottom: 20px; }
-        .status-badge { padding: 5px 10px; border-radius: 15px; font-size: 0.9em; font-weight: bold; }
+        .room-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #eee; padding-bottom: 10px; margin-bottom: 15px; gap: 10px; }
+        .room-header h2 { font-size: 1.2rem; margin: 0; }
+        .status-badge { padding: 3px 8px; border-radius: 12px; font-size: 0.8em; font-weight: bold; display: inline-block; margin-top: 4px; }
         .status-host { background: #e3f2fd; color: #0d47a1; }
         .status-drawer { background: #e8f5e9; color: #1b5e20; }
         .status-answerer { background: #fff3e0; color: #e65100; }
 
         /* リンク用ボタン */
-        .admin-link-box { text-align: right; margin-bottom: 10px; }
-        .admin-link-box a { color: #007bff; text-decoration: none; font-size: 0.9em; font-weight: bold; }
-        .admin-link-box a:hover { text-decoration: underline; }
+        .admin-link-box { text-align: right; margin-bottom: 15px; }
+        .admin-link-box a { color: #007bff; text-decoration: none; font-size: 0.9em; font-weight: bold; padding: 5px; display: inline-block; }
 
         /* お題表示エリア */
         .theme-panel { background: #eef2f7; padding: 12px; border-radius: 6px; margin-bottom: 15px; text-align: center; border: 1px solid #d0d7de; }
-        .theme-word { font-size: 1.4em; font-weight: bold; color: #24292f; }
+        .theme-word { font-size: 1.3em; font-weight: bold; color: #24292f; margin-top: 5px; }
 
         /* キャンバスエリア */
-        .canvas-area { text-align: center; }
-        canvas { border: 2px solid #333; background: #fff; cursor: crosshair; max-width: 100%; height: auto; }
-        .controls { margin-top: 10px; display: flex; gap: 10px; justify-content: center; }
-        .color-picker { width: 40px; height: 40px; padding: 0; border: none; border-radius: 50%; cursor: pointer; }
+        .canvas-area { text-align: center; margin-bottom: 15px; background: #ddd; padding: 5px; border-radius: 6px; }
+        .canvas-wrapper { width: 100%; aspect-ratio: 4 / 3; position: relative; background: #fff; border-radius: 4px; overflow: hidden; }
+        canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; cursor: crosshair; touch-action: none; }
+        
+        .controls { margin-top: 10px; display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
+        .controls button, .controls select { padding: 8px 12px; font-size: 14px; width: auto; flex: 1; min-width: 80px; }
+        .color-picker { width: 40px; height: 40px; padding: 0; border: none; border-radius: 50%; cursor: pointer; flex-shrink: 0; }
 
-        /* メンバーリスト・管理パネル */
-        .sidebar { width: 250px; border-left: 1px solid #eee; padding-left: 20px; }
-        .member-item { display: flex; justify-content: space-between; align-items: center; padding: 8px; border-bottom: 1px solid #eee; }
-        .host-controls { background: #fff9db; padding: 10px; border-radius: 6px; border: 1px solid #fab005; margin-bottom: 15px; }
+        /* 管理パネル */
+        .host-controls { background: #fff9db; padding: 15px; border-radius: 6px; border: 1px solid #fab005; margin-bottom: 15px; }
+        .host-controls button { margin-bottom: 8px; width: 100%; }
 
         /* 回答エリア */
-        .answer-zone { margin-top: 20px; padding: 15px; background: #f8f9fa; border-radius: 6px; }
-        .answer-log { max-height: 150px; overflow-y: auto; background: white; border: 1px solid #ddd; padding: 10px; margin-top: 10px; border-radius: 4px; }
-        .winner-announcement { background: #d4edda; color: #155724; padding: 10px; border-radius: 4px; margin-bottom: 10px; font-weight: bold; text-align: center; }
+        .answer-zone { margin-top: 15px; padding: 15px; background: #f8f9fa; border-radius: 6px; }
+        .answer-log { max-height: 150px; overflow-y: auto; background: white; border: 1px solid #ddd; padding: 10px; margin-top: 10px; border-radius: 4px; font-size: 0.9em; }
+        .winner-announcement { background: #d4edda; color: #155724; padding: 10px; border-radius: 4px; margin-bottom: 10px; font-weight: bold; text-align: center; font-size: 0.95em; }
+
+        /* サイドバー */
+        .sidebar { border-top: 2px solid #eee; padding-top: 15px; }
+        .member-item { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; border-bottom: 1px solid #eee; }
     </style>
 
     <!-- Firebase SDK の読み込み -->
@@ -60,7 +72,7 @@
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
         import { getFirestore, collection, getDocs } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-        // ⚠️ あなたのFirebaseプロジェクトの設定値に置き換えてください
+        // ⚠️ 設定値をご自身のプロジェクトのものに書き換えてください
         const firebaseConfig = {
             apiKey: "YOUR_API_KEY",
             authDomain: "YOUR_AUTH_DOMAIN",
@@ -73,18 +85,19 @@
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
 
-        // Firebaseからお題の一覧を取得する共通関数
         window.getThemesFromFirebase = async function() {
             try {
                 const querySnapshot = await getDocs(collection(db, "themes"));
                 const themes = [];
                 querySnapshot.forEach((doc) => {
                     const data = doc.data();
-                    if (data.word) themes.push(data.word);
+                    if (data.word) {
+                        themes.push(data.word);
+                    }
                 });
                 return themes;
             } catch (error) {
-                console.error("Firebaseからのデータ取得に失敗しました:", error);
+                console.error("Firebaseデータ取得失敗:", error);
                 return [];
             }
         };
@@ -95,15 +108,13 @@
 <div class="container">
     <!-- 入室ページ -->
     <div id="login-page">
-        <!-- お題登録ページへのリンク -->
         <div class="admin-link-box">
             <a href="pictodai.html" target="_blank">⚙️ お題の登録・管理はこちら</a>
         </div>
-
         <h2>ルームに入室</h2>
         <div class="form-group">
             <label for="room-id">ルーム名 (Room ID)</label>
-            <input type="text" id="room-id" placeholder="例: room123" value="test-room">
+            <input type="text" id="room-id" value="test-room">
         </div>
         <div class="form-group">
             <label for="user-name">あなたの名前</label>
@@ -117,7 +128,6 @@
                 <option value="host">司会進行者（お題コントロール権あり）</option>
             </select>
         </div>
-        <!-- 管理キー入力フォーム -->
         <div class="form-group">
             <label for="admin-key">管理キー（司会進行者になる場合のみ必須）</label>
             <input type="password" id="admin-key" placeholder="司会者以外は空欄でOK">
@@ -130,9 +140,9 @@
         <div class="room-header">
             <div>
                 <h2 id="display-room-id">ルーム: </h2>
-                <div>ユーザー: <span id="display-user-name"></span> <span id="my-status-badge" class="status-badge"></span></div>
+                <div>ユーザー: <span id="display-user-name" style="font-weight:bold;"></span> <span id="my-status-badge" class="status-badge"></span></div>
             </div>
-            <button id="leave-btn" class="danger">退室</button>
+            <button id="leave-btn" class="danger" style="width:auto; padding: 6px 12px; font-size:13px;">退室</button>
         </div>
 
         <!-- 共通のお題表示エリア -->
@@ -142,11 +152,11 @@
         </div>
 
         <div class="flex">
-            <!-- メインコンテンツ (キャンバス & クイズ回答) -->
+            <!-- メインコンテンツ -->
             <div class="flex-1">
                 <!-- 司会者用：コントロールパネル -->
                 <div id="host-panel" class="host-controls hidden">
-                    <h4>👑 司会進行者コントロールパネル</h4>
+                    <h4 style="margin: 0 0 10px 0;">👑 司会進行者コントロールパネル</h4>
                     <div class="form-group">
                         <label>【回答モード設定】</label>
                         <select id="game-mode-select">
@@ -155,41 +165,42 @@
                         </select>
                     </div>
                     <div class="form-group">
-                        <label for="change-drawer-select">【役割変更・指名】</label>
+                        <label>【役割変更・指名】</label>
                         <select id="change-drawer-select">
                             <option value="">-- 出題者(描く人)を指名 --</option>
                         </select>
                     </div>
-                    
                     <div class="form-group" style="border-top: 1px dashed #fab005; padding-top: 10px;">
                         <label>【お題を Firebase から選んで出題】</label>
-                        <div style="display: flex; gap: 10px; margin-bottom: 8px;">
-                            <select id="firebase-theme-select" style="flex: 1;">
+                        <div style="display: flex; gap: 5px; margin-bottom: 8px;">
+                            <select id="firebase-theme-select" style="flex: 1; min-width: 0;">
                                 <option value="">-- 登録済みのお題から選択 --</option>
                             </select>
-                            <button id="select-theme-btn" style="background: #17a2b8;">選択したお題を出題</button>
+                            <button id="select-theme-btn" style="background: #17a2b8; width: auto; font-size: 13px; white-space: nowrap;">選択出題</button>
                         </div>
-                        <button id="random-theme-btn" style="width: 100%; background: #28a745;">🎲 ランダムでお題を決定して出題</button>
+                        <button id="random-theme-btn" style="background: #28a745;">🎲 ランダムでお題を決定して出題</button>
                     </div>
-                    <button id="clear-game-btn" class="secondary" style="width: 100%;">正解ログとキャンバスを全クリア</button>
+                    <button id="clear-game-btn" class="secondary" style="font-size:13px; padding:8px;">正解ログとキャンバスを全クリア</button>
                 </div>
 
                 <!-- キャンバスエリア -->
                 <div class="canvas-area">
-                    <div id="current-mode-display" style="font-weight: bold; color: #333; margin-bottom: 5px;">現在のモード: 先勝ちモード</div>
-                    <canvas id="paint-canvas" width="600" height="400"></canvas>
+                    <div id="current-mode-display" style="font-weight: bold; font-size:0.9em; color: #555; margin-bottom: 5px;">現在のモード: 先勝ちモード</div>
+                    <div class="canvas-wrapper">
+                        <canvas id="paint-canvas" width="600" height="450"></canvas>
+                    </div>
                     
-                    <!-- お絵かきコントロール (出題者、またはお絵かき権限のある人に表示) -->
+                    <!-- お絵かきコントロール -->
                     <div id="canvas-controls" class="controls hidden">
                         <input type="color" id="color-picker" class="color-picker" value="#000000">
                         <select id="brush-size">
-                            <option value="2">細い (2px)</option>
-                            <option value="5" selected>普通 (5px)</option>
-                            <option value="10">太い (10px)</option>
-                            <option value="20">極太 (20px)</option>
+                            <option value="3">細い (3px)</option>
+                            <option value="6" selected>普通 (6px)</option>
+                            <option value="12">太い (12px)</option>
+                            <option value="24">極太 (24px)</option>
                         </select>
-                        <button id="undo-btn" class="secondary">1画消す (Undo)</button>
-                        <button id="clear-btn" class="danger">全消去 (Clear)</button>
+                        <button id="undo-btn" class="secondary">1画消す</button>
+                        <button id="clear-btn" class="danger">全消去</button>
                     </div>
                 </div>
 
@@ -197,30 +208,29 @@
                 <div class="answer-zone">
                     <div id="winner-banner" class="winner-announcement hidden"></div>
                     
-                    <!-- 回答入力フォーム (出題者以外、または司会者、全員共通で条件が合えば表示) -->
                     <div id="answer-form-area">
-                        <h3>クイズに回答する</h3>
-                        <div class="form-group" style="display: flex; gap: 10px;">
-                            <input type="text" id="answer-input" placeholder="回答を入力...">
-                            <button id="submit-answer-btn">送信</button>
+                        <h4 style="margin: 0 0 8px 0;">クイズに回答する</h4>
+                        <div style="display: flex; gap: 8px;">
+                            <input type="text" id="answer-input" placeholder="回答を入力..." style="flex: 1; min-width: 0; font-size:16px;">
+                            <button id="submit-answer-btn" style="width: auto; padding: 0 20px;">送信</button>
                         </div>
                     </div>
 
-                    <h3>回答ログ</h3>
+                    <h4 style="margin: 15px 0 5px 0;">回答ログ</h4>
                     <div id="answer-log" class="answer-log"></div>
                 </div>
             </div>
 
             <!-- サイドバー (参加者リスト) -->
             <div class="sidebar">
-                <h3>参加者一覧</h3>
+                <h4 style="margin: 0 0 10px 0;">参加者一覧</h4>
                 <div id="member-list"></div>
             </div>
         </div>
     </div>
 </div>
 
-<!-- Mock WebSocket (擬似通信クラス) -->
+<!-- Mock WebSocket (擬似通信クラス - 行を省略せず完全に展開) -->
 <script>
 class MockSignalingServer {
     constructor() {
@@ -229,14 +239,23 @@ class MockSignalingServer {
     }
     join(roomId, user) {
         if (!this.rooms.has(roomId)) {
-            this.rooms.set(roomId, { members: [], mode: 'first-win', lines: [], currentTheme: "", isThemeHiddenFromHost: false });
+            this.rooms.set(roomId, {
+                members: [],
+                mode: 'first-win',
+                lines: [],
+                currentTheme: "",
+                isThemeHiddenFromHost: false
+            });
         }
         const room = this.rooms.get(roomId);
         room.members = room.members.filter(m => m.name !== user.name);
         
-        // 司会者は重複を許す（他の人がなっても前任者を弾かないが、一応重複制御なし）
         if (user.role === 'drawer') {
-            room.members.forEach(m => { if(m.role === 'drawer') m.role = 'answerer'; });
+            room.members.forEach(m => {
+                if (m.role === 'drawer') {
+                    m.role = 'answerer';
+                }
+            });
         }
 
         room.members.push(user);
@@ -290,10 +309,14 @@ class MockSignalingServer {
     }
     broadcast(roomId, message) {
         const list = this.listeners.get(roomId) || [];
-        list.forEach(cb => cb(JSON.parse(JSON.stringify(message))));
+        list.forEach(cb => {
+            cb(JSON.parse(JSON.stringify(message)));
+        });
     }
     onMessage(roomId, userId, callback) {
-        if (!this.listeners.has(roomId)) this.listeners.set(roomId, []);
+        if (!this.listeners.has(roomId)) {
+            this.listeners.set(roomId, []);
+        }
         this.listeners.get(roomId).push(callback);
     }
 }
@@ -305,20 +328,20 @@ const server = new MockSignalingServer();
 let myRoomId = "";
 let myName = "";
 let myRole = "answerer"; 
-let isHostUser = false; // 司会者権限を持っているか
+let isHostUser = false; 
 let gameMode = "first-win"; 
 let hasWon = false; 
 let currentTheme = ""; 
-let isThemeHiddenFromHost = false; // 司会者自身もお題を知らないフラグ
+let isThemeHiddenFromHost = false; 
 
-// 描画
+// 描画関連
 const canvas = document.getElementById('paint-canvas');
 const ctx = canvas.getContext('2d');
 let isDrawing = false;
 let currentStroke = []; 
 let remoteLines = [];   
 
-// DOM
+// DOM要素の取得
 const loginPage = document.getElementById('login-page');
 const roomPage = document.getElementById('room-page');
 const hostPanel = document.getElementById('host-panel');
@@ -334,6 +357,22 @@ const themeWordDisplay = document.getElementById('theme-word');
 const themeLabelDisplay = document.getElementById('theme-label');
 const firebaseThemeSelect = document.getElementById('firebase-theme-select');
 
+// --- スマホ対応の位置計算修正ロジック ---
+function getCanvasPos(e) {
+    const rect = canvas.getBoundingClientRect();
+    const clientX = e.touches && e.touches.length > 0 ? e.touches[0].clientX : e.clientX;
+    const clientY = e.touches && e.touches.length > 0 ? e.touches[0].clientY : e.clientY;
+
+    // CSSで伸縮された比率を元に内部解像度（600x450）に正しく変換
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+
+    return {
+        x: (clientX - rect.left) * scaleX,
+        y: (clientY - rect.top) * scaleY
+    };
+}
+
 // --- 入室処理 ---
 document.getElementById('join-btn').addEventListener('click', () => {
     myRoomId = document.getElementById('room-id').value.trim();
@@ -346,14 +385,13 @@ document.getElementById('join-btn').addEventListener('click', () => {
         return;
     }
 
-    // 司会進行者を選んだ場合のみ、管理キーチェック
     if (selectedRole === 'host') {
         if (adminKey !== '0001') {
             alert('管理キーが正しくありません。司会進行者として入室できません。');
             return;
         }
         isHostUser = true;
-        myRole = 'host'; // 初期はホスト兼回答者ベース
+        myRole = 'host';
     } else {
         isHostUser = false;
         myRole = selectedRole;
@@ -374,13 +412,11 @@ function initRoom() {
 
     server.join(myRoomId, { name: myName, role: myRole, isHost: isHostUser });
 
-    // 司会者の場合は、Firebaseから選択用お題リストをロードする
     if (isHostUser) {
         loadFirebaseThemesForSelect();
     }
 }
 
-// 選択ボックスにお題を詰める
 async function loadFirebaseThemesForSelect() {
     if (typeof window.getThemesFromFirebase === 'function') {
         const themes = await window.getThemesFromFirebase();
@@ -394,12 +430,11 @@ async function loadFirebaseThemesForSelect() {
     }
 }
 
-// --- UI制御とお題見え方の切り替え ---
+// --- UI役割制御とお題の見え方制御 ---
 function updateRoleUI() {
     const badge = document.getElementById('my-status-badge');
     badge.className = "status-badge";
     
-    // バッジ表示
     if (isHostUser) {
         badge.innerText = `司会者兼 [${myRole === 'drawer' ? '出題者' : '回答者'}]`;
         badge.classList.add('status-host');
@@ -408,26 +443,9 @@ function updateRoleUI() {
         if (myRole === 'answerer') { badge.innerText = "回答者"; badge.classList.add('status-answerer'); }
     }
 
-    // コントロールパネルの表示（司会者なら常に出す）
-    if (isHostUser) {
-        hostPanel.classList.remove('hidden');
-    } else {
-        hostPanel.classList.add('hidden');
-    }
-
-    // お絵かきツールの表示（現在の役割がdrawerなら出す。司会者でも自分がdrawerなら描ける）
-    if (myRole === 'drawer') {
-        canvasControls.classList.remove('hidden');
-    } else {
-        canvasControls.classList.add('hidden');
-    }
-
-    // 回答フォームの表示（現在の役割がdrawer「以外」なら出す。司会者でも回答可能に）
-    if (myRole !== 'drawer') {
-        answerFormArea.classList.remove('hidden');
-    } else {
-        answerFormArea.classList.add('hidden');
-    }
+    if (isHostUser) hostPanel.classList.remove('hidden'); else hostPanel.classList.add('hidden');
+    if (myRole === 'drawer') canvasControls.classList.remove('hidden'); else canvasControls.classList.add('hidden');
+    if (myRole !== 'drawer') answerFormArea.classList.remove('hidden'); else answerFormArea.classList.add('hidden');
 
     refreshThemeDisplay();
 }
@@ -439,9 +457,7 @@ function refreshThemeDisplay() {
         return;
     }
 
-    // 自分が出題者(描く人)のとき
     if (myRole === 'drawer') {
-        // もし「ランダムで選ばれて、かつ自分が司会者」かつ「Host非表示フラグ」がONなら、出題者であっても見えない
         if (isHostUser && isThemeHiddenFromHost) {
             themeLabelDisplay.innerText = "🎨 あなたはお題を知らない出題者です！(神の悪戯)";
             themeWordDisplay.innerText = "〇 ".repeat(currentTheme.length).trim() + ` (${currentTheme.length}文字)`;
@@ -454,7 +470,6 @@ function refreshThemeDisplay() {
         return;
     }
 
-    // 自分が司会者（描く人ではない）のとき
     if (isHostUser) {
         if (isThemeHiddenFromHost) {
             themeLabelDisplay.innerText = "👑 設定中のお題 (あなたも知らない状態です)";
@@ -468,18 +483,16 @@ function refreshThemeDisplay() {
         return;
     }
 
-    // 一般の回答者のとき
     themeLabelDisplay.innerText = "💬 お題を当ててください！";
     themeWordDisplay.innerText = "〇 ".repeat(currentTheme.length).trim() + ` (${currentTheme.length}文字)`;
     themeWordDisplay.style.color = "#007bff";
 }
 
-// --- ネットワークメッセージ処理 ---
+// --- ネットワーク通信同期のハンドリング ---
 function handleNetworkMessage(msg) {
     switch (msg.type) {
         case 'room-update':
             displayMembers(msg.members);
-            // 自分の役割を最新サーバーデータから同期（Host属性を維持しつつroleを更新）
             const me = msg.members.find(m => m.name === myName);
             if (me) {
                 myRole = me.role;
@@ -521,7 +534,7 @@ function handleNetworkMessage(msg) {
             currentTheme = msg.theme;
             isThemeHiddenFromHost = msg.hideFromHost || false;
             refreshThemeDisplay();
-            winnerBanner.classList.add('hidden');
+            winnerBanner.classList.add('hidden'); // 新しいお題が出たらバナーを隠す
             hasWon = false;
             break;
 
@@ -550,7 +563,7 @@ function handleNetworkMessage(msg) {
             isThemeHiddenFromHost = false;
             redrawCanvas();
             refreshThemeDisplay();
-            answerLogDiv.innerHTML = "";
+            answerLogDiv.innerHTML = "";      // ログクリア機能を完全復帰
             winnerBanner.classList.add('hidden');
             hasWon = false;
             break;
@@ -569,7 +582,6 @@ function displayMembers(members) {
         div.innerText = `${roleStr} ${m.name}`;
         memberListDiv.appendChild(div);
 
-        // 指名用のプルダウンリスト（自分も含めて全員指名可能にする）
         const opt = document.createElement('option');
         opt.value = m.name;
         opt.innerText = m.name + (m.isHost ? ' (司会)' : '') + (m.role === 'drawer' ? ' [現出題者]' : '');
@@ -582,7 +594,7 @@ function updateModeDisplay() {
     currentModeDisplay.innerText = `現在のモード: ${modeText}`;
 }
 
-// --- 司会者コントロールイベント ---
+// 司会進行コントロール
 gameModeSelect.addEventListener('change', (e) => {
     server.send(myRoomId, { type: 'change-mode', mode: e.target.value });
 });
@@ -593,30 +605,24 @@ changeDrawerSelect.addEventListener('change', (e) => {
     server.send(myRoomId, { type: 'change-drawer', targetName: targetName });
 });
 
-// 【選択して出題】
 document.getElementById('select-theme-btn').addEventListener('click', () => {
     const selectedTheme = firebaseThemeSelect.value;
     if (!selectedTheme) {
         alert("お題を選択してください。");
         return;
     }
-    // 選択して出題する場合は、司会者にはお題が見える状態（hideFromHost: false）
     server.send(myRoomId, { type: 'set-theme', theme: selectedTheme, hideFromHost: false });
 });
 
-// 【ランダムに出題】★司会者自身も答えを知らない設定
 document.getElementById('random-theme-btn').addEventListener('click', async () => {
     const btn = document.getElementById('random-theme-btn');
     btn.disabled = true;
 
     if (typeof window.getThemesFromFirebase === 'function') {
         const firebaseThemes = await window.getThemesFromFirebase();
-        
         if (firebaseThemes && firebaseThemes.length > 0) {
             const randomIndex = Math.floor(Math.random() * firebaseThemes.length);
             const selectedTheme = firebaseThemes[randomIndex];
-            
-            // ランダム時は司会者（自分）も答えを知りたくないので、隠蔽フラグ(hideFromHost: true)を送信
             server.send(myRoomId, { type: 'set-theme', theme: selectedTheme, hideFromHost: true });
         } else {
             alert("Firebaseにお題が登録されていません。pictodai.html から登録してください。");
@@ -632,14 +638,7 @@ document.getElementById('clear-game-btn').addEventListener('click', () => {
 });
 
 
-// --- お絵かきロジック (B方式) ---
-function getCanvasPos(e) {
-    const rect = canvas.getBoundingClientRect();
-    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-    return { x: clientX - rect.left, y: clientY - rect.top };
-}
-
+// --- お絵かき描画ロジック ---
 function startDrawing(e) {
     if (myRole !== 'drawer') return;
     isDrawing = true;
@@ -661,7 +660,8 @@ function startDrawing(e) {
 
 function draw(e) {
     if (!isDrawing || myRole !== 'drawer') return;
-    e.preventDefault();
+    if (e.cancelable) e.preventDefault(); // スマホのスクロール暴発を防止
+    
     const pos = getCanvasPos(e);
     currentStroke.points.push({ x: pos.x, y: pos.y });
     ctx.lineTo(pos.x, pos.y);
@@ -695,9 +695,11 @@ function redrawCanvas() {
     });
 }
 
+// イベント設定
 canvas.addEventListener('mousedown', startDrawing);
 canvas.addEventListener('mousemove', draw);
 window.addEventListener('mouseup', stopDrawing);
+
 canvas.addEventListener('touchstart', startDrawing, { passive: false });
 canvas.addEventListener('touchmove', draw, { passive: false });
 window.addEventListener('touchend', stopDrawing);
@@ -717,7 +719,7 @@ document.getElementById('answer-input').addEventListener('keypress', (e) => {
 });
 
 function submitAnswer() {
-    if (myRole === 'drawer') return; // 描く担当の人は送信不可
+    if (myRole === 'drawer') return; 
     if (!currentTheme) return;
     if (gameMode === 'first-win' && hasWon) {
         alert('この問題は終了しています。');
