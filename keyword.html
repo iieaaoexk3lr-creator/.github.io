@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>キーワード曲名当てゲーム</title>
+    <style>
+        :root { --primary: #e63946; --bg: #f8f9fa; --panel: #ffffff; }
+        body { font-family: sans-serif; background: var(--bg); margin: 0; padding: 20px; color: #333; }
+        .container { max-width: 1000px; margin: 0 auto; display: grid; grid-template-columns: 1fr 350px; gap: 20px; }
+        header { grid-column: 1 / -1; background: var(--panel); padding: 15px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+        .header-left { display: flex; align-items: center; gap: 15px; }
+        .card { background: var(--panel); padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); margin-bottom: 20px; }
+        h2 { margin-top: 0; font-size: 1.2rem; border-bottom: 2px solid #eee; padding-bottom: 8px; }
+        
+        /* ボタン共通 */
+        .btn-menu { background: #6c757d; color: white; text-decoration: none; padding: 8px 12px; border-radius: 4px; font-weight: bold; font-size: 0.9rem; }
+        .btn-menu:hover { opacity: 0.9; }
+        
+        /* チーム選択セレクト */
+        select { padding: 8px; border-radius: 4px; border: 1px solid #ccc; font-weight: bold; background: #fff; cursor: pointer; }
+        
+        /* キャンバスエリア */
+        #canvas { display: flex; flex-wrap: wrap; gap: 10px; min-height: 200px; background: #eaeaea; padding: 15px; border-radius: 6px; align-content: flex-start; }
+        .song-badge { background: white; padding: 8px 12px; border-radius: 20px; display: flex; align-items: center; gap: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); font-weight: bold; animation: pop 0.3s ease; }
+        .song-badge.bonus { border: 2px solid #ffb703; background: #fffde7; }
+        .song-badge .admin-del { color: #aaa; cursor: pointer; font-size: 0.9rem; border: none; background: none; padding: 0 2px; }
+        .song-badge .admin-del:hover { color: var(--primary); }
+        
+        /* フォーム系 */
+        .flex-input { display: flex; gap: 5px; margin-bottom: 10px; }
+        input, button { padding: 8px; border: 1px solid #ccc; border-radius: 4px; }
+        input[type="text"] { flex: 1; }
+        button { background: #4a4e69; color: white; border: none; cursor: pointer; font-weight: bold; }
+        button:hover { opacity: 0.9; }
+        button.action-btn { background: var(--primary); width: 100%; padding: 12px; font-size: 1rem; margin-top: 10px; }
+        
+        #log { height: 150px; overflow-y: auto; background: #222; color: #fff; padding: 10px; font-family: monospace; font-size: 0.85rem; border-radius: 4px; }
+        .log-err { color: #ff85a1; } .log-war { color: #ffd166; } .log-ok { color: #06d6a0; }
+        
+        @keyframes pop { 0% { transform: scale(0.7); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
+    </style>
+</head>
+<body>
+
+<header>
+    <div class="header-left">
+        <!-- メニューに戻るボタンを追加 -->
+        <a href="6gatu.html" class="btn-menu">🏠 メニューへ戻る</a>
+        <div>
+            👥 チーム選択: 
+            <select id="team-select" onchange="switchTeam()">
+                <option value="team_A">チームA</option>
+                <option value="team_B">チームB</option>
+                <option value="team_C">チームC</option>
+                <option value="team_D">チームD</option>
+            </select>
+        </div>
+    </div>
+    <div>🔑 お題: <strong id="current-keyword">-</strong></div>
+    <div>🏆 現在のスコア: <strong id="score">0</strong> 点</div>
+</header>
+
+<div class="container" style="margin-top: 20px;">
+    <!-- 左側：メインキャンバス -->
+    <main>
+        <div class="card">
+            <h2>🎵 ピクト風ソングキャンバス (<span id="canvas-team-name">チームA</span>)</h2>
+            <div id="canvas"><!-- 曲名バッジがここに同期される --></div>
+        </div>
+        
+        <div class="card" id="result-box" style="display:none;">
+            <h2>📋 最終結果テキスト (代表者用送信データ)</h2>
+            <textarea id="result-text" style="width:100%; height:60px;" readonly></textarea>
+            <button class="action-btn" onclick="sendFinalResult()">👑 最終結果を公式送信</button>
+        </div>
+    </main>
+
+    <!-- 右側：操作パネル群 -->
+    <aside>
+        <!-- 1. メンバー入力パネル -->
+        <div class="card">
+            <h2>👤 メンバー入力欄</h2>
+            <div class="flex-input">
+                <input type="text" id="input-song" placeholder="曲名 (例: 赤いスイートピー)">
+            </div>
+            <div class="flex-input">
+                <input type="text" id="input-kana" placeholder="よみがな (例: あかいすいーとぴー)">
+                <button onclick="submitSong()">送信</button>
+            </div>
+            <div id="log"></div>
+        </div>
+
+        <!-- 2. 管理者コントロール（全チーム共通設定） -->
+        <div class="card" style="background: #f1f5f9;">
+            <h2>🛠 管理者コントロール（共通設定）</h2>
+            <label>お題キーワード:</label>
+            <input type="text" id="setup-keyword" value="赤" style="width:90%; margin-bottom:8px;">
+            <label>一致ボーナス曲 (1曲):</label>
+            <input type="text" id="setup-bonus" value="赤いスイートピー" style="width:90%; margin-bottom:8px;">
+            <button onclick="setupGame()" style="width:100%; background:#2a9d8f;">🎯 全チームのお題を一括セット</button>
+        </div>
+    </aside>
+</div>
+
+<!-- Firebase SDK JS -->
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-app.js";
+    import { getDatabase, ref, set, push, onValue, update, off } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-database.js";
+
+    const firebaseConfig = {
+        apiKey: "AIzaSyC4DQhH_swesAD98Xyjg8d1lcWEkkrHrgw",
+        authDomain: "gamehistory-m84.firebaseapp.com",
+        databaseURL: "https://gamehistory-m84-default-rtdb.firebaseio.com",
+        projectId: "gamehistory-m84",
+        storageBucket: "gamehistory-m84.firebasestorage.app",
+        messagingSenderId: "475761727837",
+        appId: "1:475761727837:web:06d07e1ab4120a7ccaf0b4",
+        measurementId: "G-3636W6LC4F"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+
+    let currentTeam = "team_A";
+    let currentKeyword = "";
+    let currentBonusSong = "";
+    let localSongsArray = []; 
+    let currentRoomListener = null; // リスナー解除用の保持変数
+
+    // --------------------------------------------------
+    // チーム切り替え処理（通信の購読先ノードを変更）
+    // --------------------------------------------------
+    window.switchTeam = function() {
+        const teamSelect = document.getElementById('team-select');
+        currentTeam = teamSelect.value;
+        
+        // 画面上のチーム名表示を変更
+        document.getElementById('canvas-team-name').innerText = teamSelect.options[teamSelect.selectedIndex].text;
+        
+        addLog(`チームを【${teamSelect.options[teamSelect.selectedIndex].text}】に切り替えました`, "ok");
+        
+        // 古いチームの同期イベントを解除して、新しいチームで再同期
+        startListening();
+    };
+
+    // --------------------------------------------------
+    // メイン同期リスナー設定（通信量を最適化しつつリアルタイム監視）
+    // --------------------------------------------------
+    function startListening() {
+        // すでに動いているリスナーがあれば一旦解除（重複して通信が走るのを防ぐ）
+        if (currentRoomListener) {
+            off(ref(db, `game_rooms/${currentTeam}`));
+        }
+
+        const roomRef = ref(db, `game_rooms/${currentTeam}`);
+
+        currentRoomListener = onValue(roomRef, (snapshot) => {
+            const data = snapshot.val();
+            
+            // まだお題がセットされていない初期状態などのケア
+            if (!data) {
+                document.getElementById('current-keyword').innerText = "-";
+                document.getElementById('canvas').innerHTML = "";
+                document.getElementById('score').innerText = "0";
+                document.getElementById('result-box').style.display = 'none';
+                localSongsArray = [];
+                currentKeyword = "";
+                currentBonusSong = "";
+                return;
+            }
+
+            currentKeyword = data.keyword || "";
+            currentBonusSong = data.bonus_song || "";
+            document.getElementById('current-keyword').innerText = currentKeyword;
+
+            const canvas = document.getElementById('canvas');
+            canvas.innerHTML = ""; 
+            localSongsArray = [];  
+
+            let validCount = 0;
+            let songNamesList = [];
+
+            if (data.submitted_songs) {
+                Object.entries(data.submitted_songs).forEach(([key, value]) => {
+                    localSongsArray.push(value);
+
+                    // 審査で弾かれていない（valid）曲のみ表示
+                    if (value.is_valid) {
+                        validCount++;
+                        songNamesList.push(value.song_name);
+
+                        const isBonus = (value.song_name === currentBonusSong || value.kana === currentBonusSong);
+                        
+                        const badge = document.createElement('div');
+                        badge.className = `song-badge ${isBonus ? 'bonus' : ''}`;
+                        badge.innerHTML = `
+                            <span>${isBonus ? '🎯 ' : ''}${value.song_name}</span>
+                            <button class="admin-del" onclick="deleteSong('${key}')" title="削除（無効化）">×</button>
+                        `;
+                        canvas.appendChild(badge);
+                    }
+                });
+            }
+
+            // 「、」繋ぎの最終テキスト生成
+            if(songNamesList.length > 0) {
+                document.getElementById('result-box').style.display = 'block';
+                document.getElementById('result-text').value = songNamesList.join('、');
+            } else {
+                document.getElementById('result-box').style.display = 'none';
+                document.getElementById('result-text').value = "";
+            }
+
+            document.getElementById('score').innerText = validCount;
+        });
+    }
+
+    // --------------------------------------------------
+    // 管理者：全チームにお題を一括セット
+    // --------------------------------------------------
+    window.setupGame = function() {
+        const kw = document.getElementById('setup-keyword').value.trim();
+        const bonus = document.getElementById('setup-bonus').value.trim();
+        if(!kw) return alert("キーワードを入力してください");
+
+        const teams = ["team_A", "team_B", "team_C", "team_D"];
+        
+        // 全チームのノードを同時に初期化
+        teams.forEach(teamId => {
+            set(ref(db, `game_rooms/${teamId}`), {
+                keyword: kw,
+                bonus_song: bonus,
+                submitted_songs: {} 
+            });
+        });
+        
+        addLog(`【管理者】全チームにお題「${kw}」、ボーナス「${bonus}」を一括セットしました！`, 'ok');
+    };
+
+    // --------------------------------------------------
+    // メンバー：曲名の入力と判定
+    // --------------------------------------------------
+    window.submitSong = function() {
+        const songInput = document.getElementById('input-song');
+        const kanaInput = document.getElementById('input-kana');
+        const song = songInput.value.trim();
+        const kana = kanaInput.value.trim();
+
+        if (!song || !kana) {
+            addLog("曲名とよみがなを入力してください", "err");
+            return;
+        }
+        if (!currentKeyword) {
+            addLog("お題がセットされるまでお待ちください", "err");
+            return;
+        }
+
+        // 1. ゆるい条件一致（漢字かよみがなにキーワードが含まれるか）
+        if (!song.includes(currentKeyword) && !kana.includes(currentKeyword)) {
+            addLog(`❌ 条件不一致: 「${currentKeyword}」が含まれていません [${song}]`, "err");
+            return;
+        }
+
+        // 2. チーム内重複チェック
+        const isDuplicate = localSongsArray.some(item => 
+            item.is_valid && (item.song_name === song || item.kana === kana)
+        );
+
+        if (isDuplicate) {
+            addLog(`⚠️ 重複しています: [${song}] は既にこのチームで送信済です`, "war");
+            return;
+        }
+
+        // 3. 現在選択中のチームのノードにのみ保存
+        const songsRef = ref(db, `game_rooms/${currentTeam}/submitted_songs`);
+        const newSongRef = push(songsRef);
+        set(newSongRef, {
+            song_name: song,
+            kana: kana,
+            is_valid: true,
+            timestamp: Date.now()
+        });
+
+        addLog(`送信成功(${currentTeam}): ${song}`, "ok");
+        songInput.value = "";
+        kanaInput.value = "";
+        songInput.focus();
+    };
+
+    // --------------------------------------------------
+    // 管理者：曲の削除（無効化フラグの書き換え）
+    // --------------------------------------------------
+    window.deleteSong = function(key) {
+        const targetRef = ref(db, `game_rooms/${currentTeam}/submitted_songs/${key}`);
+        update(targetRef, { is_valid: false });
+        addLog("選択された曲を審査により非表示にしました", "war");
+    };
+
+    // --------------------------------------------------
+    // 代表者：公式結果の集計・送信
+    // --------------------------------------------------
+    window.sendFinalResult = function() {
+        const textData = document.getElementById('result-text').value;
+        if(!textData) return alert("送信するデータがありません");
+
+        // 「、」の数 + 1 判定法
+        const songCount = textData.split('、').length;
+
+        alert(`【${currentTeam} 結果送信完了】\nデータ: ${textData}\n最終スコア: ${songCount}点`);
+    };
+
+    // ログ出力
+    function addLog(msg, type="") {
+        const log = document.getElementById('log');
+        const className = type === 'err' ? 'log-err' : type === 'war' ? 'log-war' : type === 'ok' ? 'log-ok' : '';
+        log.innerHTML = `<div class="${className}">${msg}</div>` + log.innerHTML;
+    }
+
+    // 起動時に初期チームの同期を開始
+    startListening();
+</script>
+</body>
+</html>
