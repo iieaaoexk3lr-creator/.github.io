@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>ピクトイメージ風 オンライン対戦クイズ</title>
+    <!-- スタイリングを爆速でスマホ最適化するTailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- QRコードを瞬時に自動生成するライブラリ -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <style>
+        *, *::before, *::after {
+            box-sizing: border-box;
+            -webkit-user-select: none;
+            user-select: none;
+        }
+        body {
+            touch-action: manipulation;
+            font-family: 'Helvetica Neue', Arial, 'Hiragino Kaku Gothic ProN', sans-serif;
+        }
+        canvas {
+            touch-action: none;
+            image-rendering: -webkit-optimize-contrast;
+            image-rendering: crisp-edges;
+        }
+        input, textarea {
+            -webkit-user-select: text !important;
+            user-select: text !important;
+        }
+    </style>
+</head>
+<body class="bg-slate-100 text-slate-800 antialiased min-h-screen pb-10">
+
+    <div class="max-w-4xl mx-auto px-4 py-6">
+        <header class="text-center mb-6">
+            <h1 class="text-2xl font-black text-indigo-600 tracking-wider">🎨 ピクトイメージ風 オンライン</h1>
+            <p class="text-xs text-slate-500 mt-1">スマホ対応版・リアルタイム描画クイズ</p>
+        </header>
+
+        <!-- ==================== 1. 入室・部屋作成画面 ==================== -->
+        <div id="screen-login" class="bg-white rounded-2xl shadow-xl p-6 max-w-md mx-auto">
+            <h2 class="text-lg font-bold text-slate-700 mb-4 border-b pb-2">🚪 ゲームに参加する</h2>
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 mb-1">あなたのなまえ</label>
+                    <input type="text" id="input-name" maxlength="10" placeholder="ニックネームを入力" 
+                           class="w-full px-4 py-3 border-2 border-slate-200 rounded-xl focus:border-indigo-500 outline-none transition-all font-bold">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 mb-1">部屋の合言葉 (ルームID)</label>
+                    <input type="text" id="input-room" maxlength="15" placeholder="例: ひみつの部屋" 
+                           class="w-full px-4 py-3 border-2 border-slate-200 rounded-xl focus:border-indigo-500 outline-none transition-all font-bold">
+                </div>
+                <button id="btn-join" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-black py-4 rounded-xl shadow-lg shadow-indigo-200 transition-all active:scale-[0.98]">
+                    部屋に入る / 作る
+                </button>
+            </div>
+        </div>
+
+        <!-- ==================== 2. メインゲーム画面 ==================== -->
+        <div id="screen-game" class="hidden space-y-6">
+            
+            <!-- ルームステータスバー -->
+            <div class="bg-white rounded-xl shadow-sm p-4 flex flex-wrap items-center justify-between gap-3">
+                <div>
+                    <span class="text-xs bg-indigo-100 text-indigo-700 px-2 py-1 rounded-md font-bold mr-2">部屋</span>
+                    <span id="label-room-name" class="font-black text-slate-700">---</span>
+                </div>
+                <div class="flex items-center gap-4">
+                    <div class="text-right">
+                        <span class="text-xs text-slate-400 block">プレイヤー名</span>
+                        <span id="label-my-name" class="font-bold text-slate-600">---</span>
+                    </div>
+                    <button id="btn-show-qr" class="bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs font-bold px-3 py-2 rounded-lg transition-all">
+                        📱 招待QRを表示
+                    </button>
+                </div>
+            </div>
+
+            <!-- スコアボードと役割提示 -->
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <!-- 左側：参加者リスト & スコア -->
+                <div class="bg-white rounded-2xl shadow-sm p-4 md:col-span-1">
+                    <h3 class="text-xs font-black text-slate-400 tracking-wider mb-2 uppercase">📊 スコアボード</h3>
+                    <div id="user-list" class="space-y-2 max-h-40 md:max-h-none overflow-y-auto font-bold text-sm"></div>
+                </div>
+
+                <!-- 右側：メインステージ -->
+                <div class="md:col-span-3 space-y-4">
+                    <!-- お題表示 / 回答エリア -->
+                    <div id="status-bar" class="bg-indigo-600 text-white rounded-2xl p-4 shadow-md flex items-center justify-between">
+                        <div id="role-container" class="flex items-center gap-2">
+                            <span id="role-badge" class="px-2 py-1 bg-white text-indigo-600 rounded-md font-black text-xs">判定中</span>
+                            <span id="role-text" class="font-bold text-sm">同期しています...</span>
+                        </div>
+                        <div id="secret-word-display" class="font-black text-lg hidden bg-indigo-700 px-4 py-1 rounded-xl">---</div>
+                    </div>
+
+                    <!-- キャンバスエリア -->
+                    <div class="bg-white rounded-2xl shadow-xl p-4 flex flex-col items-center">
+                        <div class="w-full max-w-[450px] aspect-square border-4 border-slate-200 rounded-xl overflow-hidden bg-white relative">
+                            <canvas id="canvas-main" class="w-full h-full bg-white"></canvas>
+                            <div id="playback-indicator" class="absolute top-2 left-2 bg-emerald-500 text-white text-xs font-bold px-2 py-1 rounded shadow hidden animate-pulse">
+                                🔄 リアルタイム再現中
+                            </div>
+                        </div>
+
+                        <!-- 🛠️ 描画コントロール（出題者専用：画面幅約8割の指定10色巨大パレット） -->
+                        <div id="drawer-controls" class="w-full mt-4 space-y-4 hidden">
+                            <div class="w-[85%] mx-auto">
+                                <label class="block text-center text-xs font-black text-slate-400 mb-2">🎨 特大10色カラーパレット</label>
+                                <div class="grid grid-cols-5 gap-3 justify-items-center">
+                                    <button class="color-picker w-12 h-12 rounded-full border-4 border-white shadow-md scale-110 ring-4 ring-indigo-500 bg-black" data-color="#000000"></button>
+                                    <button class="color-picker w-12 h-12 rounded-full border-4 border-white shadow-md bg-red-500" data-color="#ef4444"></button>
+                                    <button class="color-picker w-12 h-12 rounded-full border-4 border-white shadow-md bg-blue-500" data-color="#3b82f6"></button>
+                                    <button class="color-picker w-12 h-12 rounded-full border-4 border-white shadow-md bg-yellow-400" data-color="#facc15"></button>
+                                    <button class="color-picker w-12 h-12 rounded-full border-4 border-white shadow-md bg-green-500" data-color="#22c55e"></button>
+                                    <button class="color-picker w-12 h-12 rounded-full border-4 border-white shadow-md" style="background-color: #78350f;" data-color="#78350f"></button>
+                                    <button class="color-picker w-12 h-12 rounded-full border-4 border-white shadow-md bg-pink-400" data-color="#f472b6"></button>
+                                    <button class="color-picker w-12 h-12 rounded-full border-4 border-white shadow-md bg-orange-500" data-color="#f97316"></button>
+                                    <button class="color-picker w-12 h-12 rounded-full border-4 border-white shadow-md bg-sky-400" data-color="#38bdf8"></button>
+                                    <button class="color-picker w-12 h-12 rounded-full border-4 border-white shadow-md bg-slate-400" data-color="#94a3b8"></button>
+                                </div>
+                                <div class="flex justify-center mt-3">
+                                    <button class="color-picker px-4 py-2 rounded-xl border-2 border-slate-300 bg-white font-bold text-xs flex items-center gap-1 text-slate-600" data-color="#ffffff">
+                                        🧼 消しゴム
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div class="flex flex-wrap items-center justify-between gap-2 border-t pt-3">
+                                <div class="flex items-center gap-1">
+                                    <button class="size-picker px-3 py-1.5 rounded-lg border text-xs font-bold bg-white" data-size="4">細</button>
+                                    <button class="size-picker px-3 py-1.5 rounded-lg border text-xs font-bold bg-indigo-600 text-white" data-size="10">中</button>
+                                    <button class="size-picker px-3 py-1.5 rounded-lg border text-xs font-bold bg-white" data-size="20">太</button>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <button id="btn-undo" class="bg-amber-100 text-amber-800 text-xs font-bold px-3 py-2 rounded-lg演">↩ 1画消す</button>
+                                    <button id="btn-clear" class="bg-rose-100 text-rose-800 text-xs font-bold px-3 py-2 rounded-lg">🗑 クリア</button>
+                                </div>
+                            </div>
+                            
+                            <div class="bg-slate-50 p-3 rounded-xl border flex flex-col sm:flex-row items-center justify-between gap-2">
+                                <input type="text" id="input-new-word" placeholder="新しいお題を入力" class="w-full sm:w-auto flex-1 px-3 py-2 border rounded-lg text-sm font-bold">
+                                <button id="btn-set-word" class="w-full sm:w-auto bg-slate-700 text-white font-bold text-xs px-4 py-2.5 rounded-lg">お題を設定してスタート</button>
+                            </div>
+                        </div>
+
+                        <!-- 💬 回答者用フォーム -->
+                        <div id="guesser-controls" class="w-full mt-4 space-y-3 hidden">
+                            <div class="flex gap-2">
+                                <input type="text" id="input-guess" placeholder="お題の答えを入力！" class="flex-1 px-4 py-3 border-2 border-slate-200 rounded-xl outline-none focus:border-emerald-500 font-black text-center">
+                                <button id="btn-guess" class="bg-emerald-500 text-white font-black px-6 rounded-xl shadow-lg">回答</button>
+                            </div>
+                        </div>
+
+                        <!-- 💾 共通下部メニュー -->
+                        <div class="w-full mt-4 pt-3 border-t flex gap-2 justify-center">
+                            <button id="btn-download" class="bg-sky-500 text-white text-xs font-bold px-4 py-2.5 rounded-xl flex items-center gap-1 shadow">💾 この絵をケータイに保存する</button>
+                            <button id="btn-claim-drawer" class="bg-slate-600 text-white text-xs font-bold px-4 py-2.5 rounded-xl">🖌 次の出題者になる</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 招待用QRコードモーダル -->
+    <div id="modal-qr" class="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white rounded-2xl max-w-sm w-full p-6 text-center space-y-4">
+            <h3 class="font-black text-lg text-slate-700">📱 友達をこの部屋に招待</h3>
+            <div id="qrcode-container" class="flex justify-center p-2 bg-white rounded-xl border"></div>
+            <div id="share-url" class="text-xs font-mono bg-slate-100 p-2 rounded border break-all text-slate-600 select-all">---</div>
+            <button id="btn-close-qr" class="w-full bg-slate-800 text-white font-bold py-2.5 rounded-xl text-sm">閉じる</button>
+        </div>
+    </div>
+
+    <!-- Firebase SDK v9 互換性ライブラリ -->
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+
+    <script>
+        // 指定のFirebase Configで初期化
+        const firebaseConfig = {
+            apiKey: "AIzaSyBC29jEB2svBZVJGfr0sPtgPylS4Gc1fBs",
+            authDomain: "pict-view.firebaseapp.com",
+            projectId: "pict-view",
+            storageBucket: "pict-view.firebasestorage.app",
+            messagingSenderId: "449019232957",
+            appId: "1:449019232957:web:0fc10da2920dc975282dd4",
+            measurementId: "G-DECQJ87XMK"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+
+        let myId = "user_" + Math.random().toString(36).substr(2, 9), myName = "", currentRoom = "", isDrawer = false, isDrawing = false, currentWord = "";
+        let currentColor = "#000000", currentSize = 10, lastX = 0, lastY = 0, localStroke = [], drawStartTime = null, remoteFullData = [], lastRenderedIndex = 0;
+
+        const canvas = document.getElementById('canvas-main');
+        const ctx = canvas.getContext('2d');
+        canvas.width = 500; canvas.height = 500;
+
+        // URLパラメータからの部屋名読み込み
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.get('room')) { document.getElementById('input-room').value = decodeURIComponent(urlParams.get('room')); }
+
+        function clearCanvas() { ctx.fillStyle = "#ffffff"; ctx.fillRect(0, 0, canvas.width, canvas.height); }
+
+        function getPos(e) {
+            const rect = canvas.getBoundingClientRect();
+            let clientX = e.touches ? (e.touches[0] || e.changedTouches[0]).clientX : e.clientX;
+            let clientY = e.touches ? (e.touches[0] || e.changedTouches[0]).clientY : e.clientY;
+            return { x: (clientX - rect.left) * (canvas.width / rect.width), y: (clientY - rect.top) * (canvas.height / rect.height) };
+        }
+
+        function startDraw(e) {
+            if (!isDrawer) return; if (e.cancelable) e.preventDefault();
+            isDrawing = true; const pos = getPos(e); lastX = pos.x; lastY = pos.y;
+            if (!localStroke.length) drawStartTime = Date.now();
+            const point = { type: 'start', x: pos.x, y: pos.y, color: currentColor, size: currentSize, time: Date.now() - drawStartTime };
+            localStroke.push(point);
+            ctx.beginPath(); ctx.arc(pos.x, pos.y, currentSize / 2, 0, Math.PI * 2); ctx.fillStyle = currentColor; ctx.fill();
+            db.ref(`rooms/${currentRoom}/canvas/points`).push(point);
+        }
+
+        function draw(e) {
+            if (!isDrawing || !isDrawer) return; if (e.cancelable) e.preventDefault();
+            const pos = getPos(e);
+            const point = { type: 'move', x: pos.x, y: pos.y, time: Date.now() - drawStartTime };
+            localStroke.push(point);
+            ctx.beginPath(); ctx.moveTo(lastX, lastY); ctx.lineTo(pos.x, pos.y);
+            ctx.strokeStyle = currentColor; ctx.lineWidth = currentSize; ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.stroke();
+            lastX = pos.x; lastY = pos.y;
+            db.ref(`rooms/${currentRoom}/canvas/points`).push(point);
+        }
+        function stopDraw() { isDrawing = false; }
+
+        canvas.addEventListener('mousedown', startDraw); canvas.addEventListener('mousemove', draw); window.addEventListener('mouseup', stopDraw);
+        canvas.addEventListener('touchstart', startDraw, { passive: false }); canvas.addEventListener('touchmove', draw, { passive: false }); window.addEventListener('touchend', stopDraw);
+
+        // カラー選択処理
+        document.querySelectorAll('.color-picker').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                document.querySelectorAll('.color-picker').forEach(b => b.classList.remove('scale-110', 'ring-4', 'ring-indigo-500'));
+                const activeBtn = e.currentTarget; activeBtn.classList.add('scale-110', 'ring-4', 'ring-indigo-500');
+                currentColor = activeBtn.getAttribute('data-color');
+            });
+        });
+
+        // 太さ選択処理
+        document.querySelectorAll('.size-picker').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                document.querySelectorAll('.size-picker').forEach(b => { b.classList.remove('bg-indigo-600', 'text-white'); b.classList.add('bg-white', 'text-slate-800'); });
+                e.target.classList.remove('bg-white', 'text-slate-800'); e.target.classList.add('bg-indigo-600', 'text-white');
+                currentSize = parseInt(e.target.getAttribute('data-size'));
+            });
+        });
+
+        document.getElementById('btn-undo').addEventListener('click', () => {
+            if(!isDrawer) return; let idx = -1;
+            for(let i = localStroke.length - 1; i >= 0; i--) { if(localStroke[i].type === 'start') { idx = i; break; } }
+            if(idx !== -1) { localStroke = localStroke.slice(0, idx); db.ref(`rooms/${currentRoom}/canvas`).set({ points: localStroke }); }
+        });
+        document.getElementById('btn-clear').addEventListener('click', () => { if(!isDrawer) return; localStroke = []; db.ref(`rooms/${currentRoom}/canvas`).set({ points: [] }); });
+
+        function joinRoom() {
+            myName = document.getElementById('input-name').value.trim() || "名無しプレイヤー";
+            currentRoom = document.getElementById('input-room').value.trim();
+            if(!currentRoom) { alert('部屋の合言葉を入力してください！'); return; }
+
+            document.getElementById('label-room-name').innerText = currentRoom;
+            document.getElementById('label-my-name').innerText = myName;
+
+            const myUserRef = db.ref(`rooms/${currentRoom}/users/${myId}`);
+            myUserRef.set({ name: myName, score: 0 }); myUserRef.onDisconnect().remove();
+
+            // スコア監視
+            db.ref(`rooms/${currentRoom}/users`).on('value', snapshot => {
+                const users = snapshot.val() || {}, userListDiv = document.getElementById('user-list');
+                userListDiv.innerHTML = "";
+                Object.keys(users).forEach(uid => {
+                    const u = users[uid], isMe = (uid === myId);
+                    userListDiv.innerHTML += `<div class="flex items-center justify-between p-2 rounded-xl ${isMe ? 'bg-indigo-50 border border-indigo-200' : 'bg-slate-50'}"><span class="truncate">${u.name}${isMe ? ' (お前)' : ''}</span><span class="bg-indigo-600 text-white px-2 py-0.5 rounded-full text-xs font-black">${u.score}点</span></div>`;
+                });
+            });
+
+            // 状態監視
+            db.ref(`rooms/${currentRoom}/state`).on('value', snapshot => {
+                const state = snapshot.val() || {};
+                if (!state.drawerId) { db.ref(`rooms/${currentRoom}/state/drawerId`).set(myId); return; }
+                isDrawer = (state.drawerId === myId); currentWord = state.word || ""; updateRoleUI();
+            });
+
+            // キャンバス同期
+            db.ref(`rooms/${currentRoom}/canvas/points`).on('value', snapshot => {
+                const data = snapshot.val(), pointsList = data ? Object.keys(data).map(k => data[k]) : [];
+                remoteFullData = pointsList;
+                if (isDrawer) { localStroke = pointsList; } else { startStreamPlayback(); }
+            });
+            document.getElementById('screen-login').classList.add('hidden'); document.getElementById('screen-game').classList.remove('hidden');
+        }
+
+        function updateRoleUI() {
+            const rBadge = document.getElementById('role-badge'), rText = document.getElementById('role-text'), secretDisplay = document.getElementById('secret-word-display');
+            if (isDrawer) {
+                rBadge.className = "px-2 py-1 bg-amber-400 text-slate-900 rounded-md font-black text-xs"; rBadge.innerText = "🎨 出題者";
+                rText.innerText = "絵でお題を伝えよう！"; secretDisplay.innerText = currentWord ? `お題: ${currentWord}` : "お題未設定"; secretDisplay.classList.remove('hidden');
+                document.getElementById('drawer-controls').classList.remove('hidden'); document.getElementById('guesser-controls').classList.add('hidden');
+            } else {
+                rBadge.className = "px-2 py-1 bg-emerald-500 text-white rounded-md font-black text-xs"; rBadge.innerText = "👀 回答者";
+                rText.innerText = "何を描いてるか当てよう！"; secretDisplay.classList.add('hidden');
+                document.getElementById('drawer-controls').classList.add('hidden'); document.getElementById('guesser-controls').classList.remove('hidden');
+            }
+        }
+
+        function startStreamPlayback() {
+            if (!remoteFullData.length) { clearCanvas(); lastRenderedIndex = 0; return; }
+            if (lastRenderedIndex >= remoteFullData.length) return;
+            clearCanvas();
+            let pX = 0, pY = 0, pColor = "#000000", pSize = 10;
+            for (let i = 0; i < remoteFullData.length; i++) {
+                let p = remoteFullData[i];
+                if (p.type === 'start') {
+                    pColor = p.color; pSize = p.size; pX = p.x; pY = p.y;
+                    ctx.beginPath(); ctx.arc(p.x, p.y, p.size / 2, 0, Math.PI * 2); ctx.fillStyle = p.color; ctx.fill();
+                } else if (p.type === 'move') {
+                    ctx.beginPath(); ctx.moveTo(pX, pY); ctx.lineTo(p.x, p.y);
+                    ctx.strokeStyle = pColor; ctx.lineWidth = pSize; ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.stroke();
+                    pX = p.x; pY = p.y;
+                }
+            }
+            lastRenderedIndex = remoteFullData.length;
+        }
+
+        document.getElementById('btn-set-word').addEventListener('click', () => {
+            const el = document.getElementById('input-new-word'), val = el.value.trim();
+            if(!val) return alert('お題を入れてね！');
+            db.ref(`rooms/${currentRoom}/state/word`).set(val); db.ref(`rooms/${currentRoom}/canvas`).set({ points: [] }); el.value = "";
+        });
+
+        function executeGuess() {
+            if(isDrawer) return; const el = document.getElementById('input-guess'), val = el.value.trim(); if(!val) return;
+            if(!currentWord) return alert('まだお題がないよ！');
+            if (val === currentWord) {
+                alert('🎉 正解！！ ＋10点！');
+                db.ref(`rooms/${currentRoom}/users/${myId}/score`).transaction(s => (s || 0) + 10); el.value = "";
+            } else { alert(`❌「${val}」はちがうよ！`); el.value = ""; }
+        }
+        document.getElementById('btn-guess').addEventListener('click', executeGuess);
+        document.getElementById('input-guess').addEventListener('keypress', (e) => { if(e.key === 'Enter') executeGuess(); });
+
+        document.getElementById('btn-claim-drawer').addEventListener('click', () => {
+            if(confirm('出題者に交代しますか？')) { db.ref(`rooms/${currentRoom}/state`).set({ drawerId: myId, word: "" }); db.ref(`rooms/${currentRoom}/canvas`).set({ points: [] }); }
+        });
+
+        document.getElementById('btn-download').addEventListener('click', () => {
+            const link = document.createElement('a'); link.download = `pict_${Date.now()}.png`; link.href = canvas.toDataURL("image/png");
+            document.body.appendChild(link); link.click(); document.body.removeChild(link);
+        });
+
+        // 招待QR生成処理
+        document.getElementById('btn-show-qr').addEventListener('click', () => {
+            const container = document.getElementById('qrcode-container'); container.innerHTML = "";
+            const url = `${window.location.origin}${window.location.pathname}?room=${encodeURIComponent(currentRoom)}`;
+            document.getElementById('share-url').innerText = url;
+            new QRCode(container, { text: url, width: 180, height: 180, colorDark : "#1e1b4b", colorLight : "#ffffff", correctLevel : QRCode.CorrectLevel.H });
+            document.getElementById('modal-qr').classList.remove('hidden');
+        });
+        document.getElementById('btn-close-qr').addEventListener('click', () => document.getElementById('modal-qr').classList.add('hidden'));
+        document.getElementById('btn-join').addEventListener('click', joinRoom);
+    </script>
+</body>
+</html>
