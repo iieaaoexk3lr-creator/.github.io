@@ -2,49 +2,119 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>カラオケ企画メニュー</title>
 <style>
+  /* 全体のリセットと基本スタイル */
+  * {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+  }
+
   body {
-    font-family: sans-serif;
-    background: #111;
+    font-family: 'Helvetica Neue', Arial, 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', sans-serif;
+    background: #0f0f15;
     color: #fff;
     text-align: center;
-    padding: 20px;
+    padding: 20px 15px;
   }
 
   h1 {
-    font-size: 2rem;
-    margin-bottom: 20px;
+    font-size: 1.8rem;
+    margin-bottom: 25px;
+    letter-spacing: 1px;
+    text-shadow: 0 0 10px rgba(255,255,255,0.2);
   }
 
-  .menu {
+  h2 {
+    font-size: 1.2rem;
+    color: #aaa;
+    margin: 30px 0 15px;
+    text-align: left;
+    max-width: 500px;
+    margin-left: auto;
+    margin-right: auto;
+    padding-left: 5px;
+    border-left: 4px solid #ff007f;
+  }
+
+  /* 共通のボタン基盤 */
+  a {
     display: flex;
     flex-direction: column;
-    gap: 15px;
-    max-width: 400px;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    text-decoration: none;
+    font-weight: bold;
+    border-radius: 12px;
+    transition: transform 0.2s, opacity 0.2s;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+  }
+
+  a:active {
+    transform: scale(0.95);
+    opacity: 0.9;
+  }
+
+  /* ゲームエリア（1行2枠 / Gridレイアウト） */
+  .game-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+    max-width: 500px;
     margin: 0 auto;
   }
 
-  .menu a {
-    display: block;
-    background: #333;
-    padding: 15px;
-    border-radius: 10px;
-    font-size: 1.3rem;
-    color: #fff;
-    text-decoration: none;
-    transition: 0.2s;
+  .game-grid a {
+    height: 90px;
+    font-size: 0.95rem;
+    padding: 10px;
+    line-height: 1.4;
   }
 
-  .menu a:hover {
-    background: #555;
-    transform: scale(1.03);
+  /* ゲームごとのカラフルな背景（グラデーション） */
+  .btn-bom      { background: linear-gradient(135deg, #ff3366, #ff6633); }
+  .btn-quiz     { background: linear-gradient(135deg, #ff9900, #ffcc00); color: #111; }
+  .btn-talk     { background: linear-gradient(135deg, #00cc66, #00ffcc); color: #111; }
+  .btn-sugo     { background: linear-gradient(135deg, #0099ff, #33ccff); }
+  .btn-denshin  { background: linear-gradient(135deg, #9933ff, #cc66ff); }
+  .btn-50kara   { background: linear-gradient(135deg, #ff3399, #ff99cc); }
+  .btn-str      { background: linear-gradient(135deg, #0055ff, #00aaff); }
+  .btn-pict     { background: linear-gradient(135deg, #ff5500, #ffaa00); }
+  .btn-bingo    { background: linear-gradient(135deg, #e60067, #ff5e97); }
+  .btn-bowl     { background: linear-gradient(135deg, #2baf2b, #3be83b); color: #111; }
+
+  /* ツールエリア（別枠表示） */
+  .tool-box {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    max-width: 500px;
+    margin: 0 auto;
   }
 
-  /* スマホ対応 */
-  @media (max-width: 600px) {
-    h1 { font-size: 1.6rem; }
-    .menu a { font-size: 1.1rem; padding: 12px; }
+  .tool-box h2 {
+    border-left-color: #00e5ff;
+  }
+
+  .tool-box a {
+    flex-direction: row;
+    height: 65px;
+    font-size: 1.1rem;
+    gap: 10px;
+    background: #222530;
+    border: 2px solid #3a3f58;
+  }
+
+  /* PCやタブレットなど少し大きめの画面用の微調整 */
+  @media (min-width: 450px) {
+    .game-grid a {
+      font-size: 1.05rem;
+      height: 100px;
+    }
+    h1 { font-size: 2.2rem; }
   }
 </style>
 </head>
@@ -52,21 +122,24 @@
 
 <h1>カラオケ企画メニュー</h1>
 
-<div class="menu">
-  
-  <a href="Fivebom.html">🎮 カラフルボンバー 💣</a>
-  <a href="ikkaku.html">🏆 一画千点！曲名クイズ</a>
-  <a href="setumei.html">🎤 歌って話して説明クイズ</a>
-  <a href="sugoroku.html">🎲 カラオケすごろく 🎞️</a>
-  <a href="kaerematen.html">📈 意思電信ゲーム</a>
-  <a href="50karaoke.html">📺 50カラオケ 🗓️</a>
-  <a href="sutorakku.html">📘 ストラックアウト ⚾</a>
-  <a href="pictimage.html">📈 この絵は何？ 🗓️</a>
-　<a href="bingo.html">🎶 カラオケBINGO!</a>
-　<a href="bouringu.html">🎶 採点ボウリング</a>
-  <a href="hayaosi.html">⏱️ 早押しボタン ⏳</a> 
-  <a href="gamehistory.html">📈 スコアボード 🗓️</a>
-  
+<h2>🎮 GAMES (10)</h2>
+<div class="game-grid">
+  <a href="Fivebom.html" class="btn-bom"><span>🎮</span><span>カラフルボンバー 💣</span></a>
+  <a href="ikkaku.html" class="btn-quiz"><span>🏆</span><span>一画千点！曲名クイズ</span></a>
+  <a href="setumei.html" class="btn-talk"><span>🎤</span><span>歌って話して<br>説明クイズ</span></a>
+  <a href="sugoroku.html" class="btn-sugo"><span>🎲</span><span>カラオケすごろく 🎞️</span></a>
+  <a href="kaerematen.html" class="btn-denshin"><span>📈</span><span>意思電信ゲーム</span></a>
+  <a href="50karaoke.html" class="btn-50kara"><span>📺</span><span>50カラオケ 🗓️</span></a>
+  <a href="sutorakku.html" class="btn-str"><span>📘</span><span>ストラックアウト ⚾</span></a>
+  <a href="pictimage.html" class="btn-pict"><span>📈</span><span>この絵は何？ 🗓️</span></a>
+  <a href="bingo.html" class="btn-bingo"><span>🎶</span><span>カラオケBINGO!</span></a>
+  <a href="bouringu.html" class="btn-bowl"><span>🎶</span><span>採点ボウリング</span></a>
+</div>
+
+<div class="tool-box">
+  <h2>🛠️ TOOLS</h2>
+  <a href="hayaosi.html"><span>⏱️</span> 早押しボタン <span>⏳</span></a> 
+  <a href="gamehistory.html"><span>📈</span> スコアボード <span>🗓️</span></a>
 </div>
 
 </body>
