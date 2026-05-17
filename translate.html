@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>混合翻訳クイズシステム - 専用機</title>
+<title>万能・自動翻訳クイズシステム</title>
 <script src="https://cdn.tailwindcss.com"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght=700;900&display=swap');
@@ -13,7 +13,7 @@
     color: #fff;
   }
   .app-gradient {
-    background: linear-gradient(135deg, #ff9900, #ffcc00);
+    background: linear-gradient(135deg, #8a2be2, #4a00e0);
   }
   .glass-box {
     background: rgba(255, 255, 255, 0.05);
@@ -37,37 +37,69 @@
         <button id="authBtn" class="bg-gray-700 hover:bg-gray-600 px-3 py-1 rounded-xl text-xs font-bold transition-all">Panel</button>
       </div>
 
-      <!-- ⚙️ 出題者画面 / 管理者コントロールパネル (初期状態hidden) -->
-      <div id="adminPanel" class="hidden bg-gray-900 border-2 border-amber-500 rounded-3xl p-4 mb-6 shadow-2xl space-y-4">
-        <h2 class="text-lg font-black text-amber-500 flex justify-between items-center">
-          <span>🛠️ 出題者パネル（混合翻訳 専用）</span>
+      <!-- ⚙️ 出題者画面 / 管理者コントロールパネル -->
+      <div id="adminPanel" class="hidden bg-gray-900 border-2 border-purple-500 rounded-3xl p-4 mb-6 shadow-2xl space-y-4">
+        <h2 class="text-lg font-black text-purple-400 flex justify-between items-center">
+          <span>🛠️ 出題者マルチパネル</span>
           <button onclick="resetRoomData()" class="text-xs bg-red-900 px-2 py-0.5 rounded text-red-200">出題クリア</button>
         </h2>
         
-        <!-- お題入力と精度向上プロンプト -->
-        <div class="space-y-3">
-          <div>
-            <label class="block text-xs font-bold text-gray-400 mb-1">1. クイズの原文を入力</label>
-            <input type="text" id="originalInput" placeholder="例: 完全感覚Dreamer" class="w-full bg-gray-800 text-white px-3 py-2 rounded-xl border border-gray-700 text-sm focus:outline-none">
+        <!-- モード選択ラジオボタン -->
+        <div>
+          <label class="block text-xs font-bold text-gray-400 mb-2">🎯 出題モードを選択</label>
+          <div class="grid grid-cols-3 gap-1 bg-gray-800 p-1 rounded-xl text-xs font-bold text-center">
+            <label class="cursor-pointer py-1.5 rounded-lg transition-all" id="lblModeMix">
+              <input type="radio" name="quizMode" value="mix" class="hidden" checked onclick="switchInputs('mix')">
+              和英MIX
+            </label>
+            <label class="cursor-pointer py-1.5 rounded-lg transition-all text-gray-400" id="lblModeEn">
+              <input type="radio" name="quizMode" value="en" class="hidden" onclick="switchInputs('en')">
+              全英訳
+            </label>
+            <label class="cursor-pointer py-1.5 rounded-lg transition-all text-gray-400" id="lblModeJa">
+              <input type="radio" name="quizMode" value="ja" class="hidden" onclick="switchInputs('ja')">
+              全和訳
+            </label>
           </div>
-          
-          <div>
-            <label class="block text-xs font-bold text-gray-400 mb-1">2. AIへの追加注文（精度向上・難易度調整用オプション）</label>
-            <input type="text" id="aiHintInput" placeholder="例: 単語単位で直訳して / 文法は崩して / 難しめに" class="w-full bg-gray-800 text-gray-300 px-3 py-2 rounded-xl border border-gray-700 text-xs focus:outline-none">
-            <p class="text-[10px] text-gray-500 mt-1">※空欄でも自動で綺麗に混合翻訳されます。特定の単語の固定やニュアンスの指定に便利です。</p>
+        </div>
+
+        <!-- お題入力エリア（動的に変化） -->
+        <div class="space-y-3">
+          <!-- ① 和英MIX用の入力欄 -->
+          <div id="inputGroupMix" class="space-y-3">
+            <div>
+              <label class="block text-xs font-bold text-cyan-400 mb-1">前半部分：英語を入力（自動で日本語になります）</label>
+              <input type="text" id="mixFirstInput" placeholder="例: Perfect" class="w-full bg-gray-800 text-white px-3 py-2 rounded-xl border border-gray-700 text-sm focus:outline-none">
+            </div>
+            <div>
+              <label class="block text-xs font-bold text-amber-400 mb-1">後半部分：日本語を入力（自動で英語になります）</label>
+              <input type="text" id="mixSecondInput" placeholder="例: 夢想家" class="w-full bg-gray-800 text-white px-3 py-2 rounded-xl border border-gray-700 text-sm focus:outline-none">
+            </div>
+          </div>
+
+          <!-- ② 全英訳用の入力欄 -->
+          <div id="inputGroupEn" class="hidden">
+            <label class="block text-xs font-bold text-amber-400 mb-1">クイズの正解（日本語）を入力</label>
+            <input type="text" id="enSingleInput" placeholder="例: 赤いスイートピー" class="w-full bg-gray-800 text-white px-3 py-2 rounded-xl border border-gray-700 text-sm focus:outline-none">
+          </div>
+
+          <!-- ③ 全和訳用の入力欄 -->
+          <div id="inputGroupJa" class="hidden">
+            <label class="block text-xs font-bold text-cyan-400 mb-1">クイズの正解（英語）を入力</label>
+            <input type="text" id="jaSingleInput" placeholder="例: We Are The Champions" class="w-full bg-gray-800 text-white px-3 py-2 rounded-xl border border-gray-700 text-sm focus:outline-none">
           </div>
         </div>
 
         <!-- 出題ボタン -->
-        <button id="submitQuizBtn" class="w-full bg-amber-600 hover:bg-amber-700 text-white font-black py-3 rounded-xl text-sm shadow transition-all active:scale-95">
-          🚀 混合翻訳して即時出題
+        <button id="submitQuizBtn" class="w-full bg-purple-600 hover:bg-purple-700 text-white font-black py-3 rounded-xl text-sm shadow transition-all active:scale-95">
+          🚀 翻訳して即時出題
         </button>
 
         <hr class="border-gray-800">
 
         <!-- 答え公開スイッチ -->
         <div>
-          <label class="block text-xs font-bold text-gray-400 mb-1">3. 参加者への答え公開制御</label>
+          <label class="block text-xs font-bold text-gray-400 mb-1">答え公開制御</label>
           <div class="grid grid-cols-2 gap-2">
             <button onclick="setAnswerVisibility(true)" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 rounded-xl text-xs shadow">
               🔓 答えを全員に公開
@@ -84,9 +116,9 @@
       <!-- 1. ログイン画面 -->
       <div id="loginScreen" class="w-full glass-box p-8 rounded-3xl shadow-2xl my-12">
         <div class="text-center mb-8">
-          <span class="text-5xl">🔀</span>
-          <h1 class="text-3xl font-black mt-4 tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-amber-500 to-yellow-400">
-            混合翻訳クイズ
+          <span class="text-5xl">🤖</span>
+          <h1 class="text-3xl font-black mt-4 tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-purple-400 to-indigo-400">
+            翻訳マルチクイズ
           </h1>
           <p class="text-sm text-gray-400 mt-1">チーム名と名前を入力して参加</p>
         </div>
@@ -94,13 +126,13 @@
         <div class="space-y-4">
           <div>
             <label class="block text-xs font-bold text-gray-400 mb-1 uppercase tracking-wider">部屋名 / チーム名</label>
-            <input type="text" id="roomInput" placeholder="例: Bチーム" class="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-3 text-lg font-bold focus:outline-none focus:border-amber-500 text-white">
+            <input type="text" id="roomInput" placeholder="例: Bチーム" class="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-3 text-lg font-bold focus:outline-none focus:border-purple-500 text-white">
           </div>
           <div>
             <label class="block text-xs font-bold text-gray-400 mb-1 uppercase tracking-wider">あなたの名前</label>
-            <input type="text" id="nameInput" placeholder="例: じろう" class="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-3 text-lg font-bold focus:outline-none focus:border-amber-500 text-white">
+            <input type="text" id="nameInput" placeholder="例: じろう" class="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-3 text-lg font-bold focus:outline-none focus:border-purple-500 text-white">
           </div>
-          <button id="loginBtn" class="w-full app-gradient hover:opacity-90 text-gray-900 font-black py-4 rounded-xl text-xl shadow-lg transition-all active:scale-95 mt-4">
+          <button id="loginBtn" class="w-full app-gradient hover:opacity-90 text-white font-black py-4 rounded-xl text-xl shadow-lg transition-all active:scale-95 mt-4">
             ゲーム画面に入る
           </button>
         </div>
@@ -111,17 +143,17 @@
         
         <!-- ステータスバー -->
         <div class="flex justify-between items-center glass-box px-4 py-2.5 rounded-2xl mb-4 text-xs font-bold">
-          <div class="flex items-center gap-1 text-amber-400">🏠 <span id="displayRoom" class="text-white"></span></div>
-          <div class="flex items-center gap-1 text-yellow-400">👤 <span id="displayName" class="text-white"></span></div>
+          <div class="flex items-center gap-1 text-purple-400">🏠 <span id="displayRoom" class="text-white"></span></div>
+          <div class="flex items-center gap-1 text-indigo-400">👤 <span id="displayName" class="text-white"></span></div>
         </div>
 
         <!-- リアルタイム同期ボード -->
         <div class="glass-box rounded-3xl p-6 text-center shadow-xl mb-6 min-h-[220px] flex flex-col justify-center border-2 border-white/10 relative">
           <div class="text-xs font-black text-gray-400 uppercase tracking-widest mb-1" id="syncStatusLabel">待機中</div>
-          <div class="text-xs font-bold text-amber-500 mb-3" id="modeDisplay">問題を待機中...</div>
+          <div class="text-xs font-bold text-purple-400 mb-3" id="modeDisplay">問題を待機中...</div>
           
           <!-- 変換後の問題テキスト -->
-          <div class="text-3xl font-black text-white tracking-wide min-h-[48px] flex items-center justify-center mb-4 px-2" id="convertedQuestion">
+          <div class="text-2xl font-black text-white tracking-wide min-h-[48px] flex items-center justify-center mb-4 px-2 whitespace-pre-line" id="convertedQuestion">
             ーーー
           </div>
           
@@ -149,7 +181,7 @@
 
     <!-- フッター・戻る -->
     <div class="text-center mt-8">
-      <a href="6gatu.html" class="inline-block text-sm font-bold text-gray-500 hover:text-gray-300 border border-gray-800 rounded-full px-6 py-2 transition-all bg-gray-900/50">
+      <a href="index.html" class="inline-block text-sm font-bold text-gray-500 hover:text-gray-300 border border-gray-800 rounded-full px-6 py-2 transition-all bg-gray-900/50">
         メニューへ戻る
       </a>
     </div>
@@ -192,10 +224,7 @@
     const displayRoom = document.getElementById("displayRoom");
     const displayName = document.getElementById("displayName");
     
-    const originalInput = document.getElementById("originalInput");
-    const aiHintInput = document.getElementById("aiHintInput");
     const submitQuizBtn = document.getElementById("submitQuizBtn");
-
     const syncStatusLabel = document.getElementById("syncStatusLabel");
     const modeDisplay = document.getElementById("modeDisplay");
     const convertedQuestion = document.getElementById("convertedQuestion");
@@ -211,57 +240,125 @@
       }
     };
 
-    // --- 2. 出題者アクション（混合翻訳専用プロンプト引き渡し） ---
-    submitQuizBtn.onclick = () => {
-      const originalText = originalInput.value.trim();
-      const aiHint = aiHintInput.value.trim();
+    // 🔄 タブ（選択モード）の切り替えデザイン制御
+    window.switchInputs = (mode) => {
+      const gMix = document.getElementById("inputGroupMix");
+      const gEn = document.getElementById("inputGroupEn");
+      const gJa = document.getElementById("inputGroupJa");
+      const lblMix = document.getElementById("lblModeMix");
+      const lblEn = document.getElementById("lblModeEn");
+      const lblJa = document.getElementById("lblModeJa");
 
-      if (!originalText) {
-        alert("原文テキストを入力してください。");
-        return;
+      gMix.classList.add("hidden");
+      gEn.classList.add("hidden");
+      gJa.classList.add("hidden");
+      lblMix.className = "cursor-pointer py-1.5 rounded-lg transition-all text-gray-400";
+      lblEn.className = "cursor-pointer py-1.5 rounded-lg transition-all text-gray-400";
+      lblJa.className = "cursor-pointer py-1.5 rounded-lg transition-all text-gray-400";
+
+      if (mode === 'mix') {
+        gMix.classList.remove("hidden");
+        lblMix.className = "cursor-pointer py-1.5 rounded-lg transition-all bg-purple-600 text-white";
+      } else if (mode === 'en') {
+        gEn.classList.remove("hidden");
+        lblEn.className = "cursor-pointer py-1.5 rounded-lg transition-all bg-purple-600 text-white";
+      } else if (mode === 'ja') {
+        gJa.classList.remove("hidden");
+        lblJa.className = "cursor-pointer py-1.5 rounded-lg transition-all bg-purple-600 text-white";
       }
+    };
+    // 初期設定反映
+    switchInputs('mix');
+
+    // 🌐 Google翻訳関数（引数で「元言語」と「先言語」を自由に指定可能）
+    async function translateWithGoogle(text, fromLang, toLang) {
+      if (!text) return "";
+      try {
+        const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=${fromLang}&tl=${toLang}&dt=t&q=${encodeURIComponent(text)}`;
+        const response = await fetch(url);
+        const data = await response.json();
+        return data[0][0][0];
+      } catch (error) {
+        console.error("Google翻訳エラー:", error);
+        return "（翻訳エラー）";
+      }
+    }
+
+    // --- 🚀 クイズ送信ボタン押下時のメイン処理 ---
+    submitQuizBtn.onclick = async () => {
+      // 選択されているモードの取得
+      const mode = document.querySelector('input[name="quizMode"]:checked').value;
+      
+      let finalOriginal = "";   // 答え
+      let finalConverted = "";  // 問題（翻訳後）
+      let modeTextLabel = "";
 
       submitQuizBtn.disabled = true;
-      submitQuizBtn.innerText = "⏳ AI混合翻訳中...";
+      submitQuizBtn.innerText = "⏳ AI翻訳＆生成中...";
 
-      /* 
-         【Functions連携時のコード例】
-         仕様書通りにバックエンドに送る際、ボディーに「aiHint」を一緒に入れて飛ばします。
-         Functions側のプロンプト末尾に結合することで、指示を強力に上書き、精度をチューニングできます。
-      */
-      /*
-      fetch('https://YOUR_REGION-gamehistory-m84.cloudfunctions.net/translateQuiz', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          original: originalText, 
-          mode: "mixed",
-          hint: aiHint // 出題者からの追加注文をFunctionsに渡す
-        })
-      })
-      .then(res => res.json())
-      .then(data => {
-         originalInput.value = "";
-         aiHintInput.value = "";
-         submitQuizBtn.disabled = false;
-         submitQuizBtn.innerText = "🚀 混合翻訳して即時出題";
-      });
-      */
+      if (mode === "mix") {
+        // 【和英MIXモード】
+        const firstInput = document.getElementById("mixFirstInput").value.trim();  // 英語想定
+        const secondInput = document.getElementById("mixSecondInput").value.trim(); // 日本語想定
 
-      // --- テスト用ダミーロジック（そのまま動作確認する場合） ---
+        if (!firstInput || !secondInput) {
+          alert("前半（英語）と後半（日本語）の両方を入力してください。");
+          submitQuizBtn.disabled = false;
+          submitQuizBtn.innerText = "🚀 翻訳して即時出題";
+          return;
+        }
+
+        // 前半を「英語 ➡️ 日本語」に和訳
+        const translatedFirst = await translateWithGoogle(firstInput, "en", "ja");
+        // 後半を「日本語 ➡️ 英語」に英訳
+        const translatedSecond = await translateWithGoogle(secondInput, "ja", "en");
+
+        finalOriginal = `${firstInput} ＋ ${secondInput}`; // 答え：元テキスト同士の結合
+        finalConverted = `${translatedFirst} ＋ ${translatedSecond}`; // 問題：翻訳データ同士の結合
+        modeTextLabel = "mix";
+
+      } else if (mode === "en") {
+        // 【全英訳モード】
+        const originalText = document.getElementById("enSingleInput").value.trim();
+        if (!originalText) { alert("正解を入力してください。"); submitQuizBtn.disabled = false; submitQuizBtn.innerText = "🚀 翻訳して即時出題"; return; }
+        
+        finalOriginal = originalText;
+        finalConverted = await translateWithGoogle(originalText, "ja", "en"); // 日本語 ➡️ 英語
+        modeTextLabel = "en";
+
+      } else if (mode === "ja") {
+        // 【全和訳モード】
+        const originalText = document.getElementById("jaSingleInput").value.trim();
+        if (!originalText) { alert("正解を入力してください。"); submitQuizBtn.disabled = false; submitQuizBtn.innerText = "🚀 翻訳して即時出題"; return; }
+        
+        finalOriginal = originalText;
+        finalConverted = await translateWithGoogle(originalText, "en", "ja"); // 英語 ➡️ 日本語
+        modeTextLabel = "ja";
+      }
+
       const timestampId = Date.now().toString();
+      
+      // Firestoreへデータを一括送信
       firestore.collection("rooms").doc("currentRoom").set({
         quizId: timestampId,
-        original: originalText,
-        converted: "Perfect Sense 夢想家", // 実際はFunctions経由でOpenAIの戻り値が入る
-        mode: "mixed",
+        original: finalOriginal,
+        converted: finalConverted,
+        mode: modeTextLabel,
         showAnswer: false,
         createdAt: firebase.firestore.FieldValue.serverTimestamp()
       }).then(() => {
-        originalInput.value = ""; 
-        aiHintInput.value = ""; // 入力後は両方クリア
+        // 入力欄を一通りリセット
+        document.getElementById("mixFirstInput").value = "";
+        document.getElementById("mixSecondInput").value = "";
+        document.getElementById("enSingleInput").value = "";
+        document.getElementById("jaSingleInput").value = "";
+        
         submitQuizBtn.disabled = false;
-        submitQuizBtn.innerText = "🚀 混合翻訳して即時出題";
+        submitQuizBtn.innerText = "🚀 翻訳して即時出題";
+      }).catch((error) => {
+        alert("配信エラー: " + error.message);
+        submitQuizBtn.disabled = false;
+        submitQuizBtn.innerText = "🚀 翻訳して即時出題";
       });
     };
 
@@ -300,11 +397,11 @@
       gameScreen.classList.remove("hidden");
     };
 
-    // --- 4. Firestore リアルタイム同期（混合翻訳専用） ---
+    // --- 4. Firestore リアルタイム同期 ---
     firestore.collection("rooms").doc("currentRoom").onSnapshot((doc) => {
       if (!doc.exists || !doc.data().converted) {
         syncStatusLabel.textContent = "待機中";
-        modeDisplay.textContent = "問題を待機中...";
+        modeDisplay.textContent = "問題を待機中... ";
         convertedQuestion.textContent = "ーーー";
         answerText.textContent = "？ ？ ？";
         answerText.className = "score-hidden";
@@ -316,9 +413,17 @@
       currentQuizId = data.quizId || "default";
       
       syncStatusLabel.textContent = "🔴 LIVE 同期中";
-      modeDisplay.textContent = "🔀 混合翻訳（日英単語入れ替え）";
 
-      // 変換されたクイズ問題
+      // モードに応じたラベルの表示変更
+      if (data.mode === "mix") {
+        modeDisplay.textContent = "🔀 和英MIXクイズ（前半和訳 ＋ 後半英訳）";
+      } else if (data.mode === "en") {
+        modeDisplay.textContent = "🔤 自動英訳クイズ（日本語禁止！）";
+      } else if (data.mode === "ja") {
+        modeDisplay.textContent = "🇯🇵 自動和訳クイズ（元の英語を当てろ！）";
+      }
+
+      // 画面に自動翻訳された文章を表示
       convertedQuestion.textContent = data.converted;
 
       // 答えの表示フラグ
