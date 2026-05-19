@@ -2,39 +2,424 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<title>カラフルBOMBER</title>
+<title>カラオケビンゴ！</title>
 <style>
   :root {
-    --bg-color: #05070f;
-    --panel-bg: rgba(11, 14, 33, 0.9);
-    --border-glow: #00ffff;
-    --text-color: #ffffff;
-    --text-sub: #7a8ebf;
+    /* 白とグレー基調のメカニカルなスタジオテーマ */
+    --bg-color: #dbe2e9; 
+    --studio-wall-light: #f5f8fa;
+    --studio-wall-dark: #cbd4de;
+    --panel-bg: rgba(255, 255, 255, 0.85);
+    --metallic-frame: #788896;
+    --accent-gold: #d4af37;
+    --text-color: #1e2530;
+    --text-sub: #52627a;
   }
 
   body {
     font-family: 'Helvetica Neue', Arial, 'Hiragino Kaku Gothic ProN', sans-serif;
-    background: radial-gradient(circle at center, #101530 0%, var(--bg-color) 100%);
+    /* スタジオの壁面と奥行き感を表現するグラデーション */
+    background: linear-gradient(135deg, var(--studio-wall-light) 0%, var(--bg-color) 50%, var(--studio-wall-dark) 100%);
     color: var(--text-color);
     text-align: center;
     padding: 20px;
     margin: 0;
     overflow-x: hidden;
+    min-height: 100vh;
   }
 
+  /* --- タイトル（番組ロゴ風ゴールド＆メタリック） --- */
   h1 { 
     font-size: 3.2rem; 
     font-weight: 900;
     margin: 10px 0 20px 0; 
-    letter-spacing: 6px;
+    letter-spacing: 4px;
     text-transform: uppercase;
-    /* 鮮やかなグラデーションネオンタイトル */
-    background: linear-gradient(135deg, #00ffff 0%, #ff00ff 50%, #ffff00 100%);
+    background: linear-gradient(to bottom, #ffffff 0%, #ffd700 40%, #cc9900 60%, #664400 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
-    filter: drop-shadow(0 0 20px rgba(0, 255, 255, 0.6));
+    filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.2));
   }
 
+  /* --- 設定・操作コントロールエリア（制御盤風デザイン） --- */
+  .control-panel {
+    background: var(--panel-bg);
+    margin: 0 auto 20px auto;
+    max-width: 600px;
+    padding: 15px 20px;
+    border-radius: 12px;
+    border: 3px solid var(--metallic-frame);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  }
+
+  select, input { 
+    font-size: 1rem; 
+    padding: 6px 12px; 
+    margin: 4px; 
+    background: #ffffff;
+    color: #000000;
+    border: 2px solid var(--metallic-frame);
+    border-radius: 6px;
+    font-weight: bold;
+  }
+  
+  #scoreRangeBox {
+    font-weight: bold;
+    color: var(--text-sub);
+  }
+
+  /* --- ボタン（メカニカルフラット） --- */
+  button { 
+    font-size: 1rem;
+    font-weight: bold;
+    padding: 8px 18px;
+    margin: 5px;
+    border-radius: 6px;
+    border: none;
+    color: white;
+    cursor: pointer;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+    transition: transform 0.1s, background-color 0.2s;
+  }
+  button:active { transform: scale(0.96); }
+
+  #randomBtn { background: #4facfe; }
+  #startBtn { background: #009944; }
+  #resetBtn { background: #6c757d; }
+  .btn-menu { background: #475467; }
+  button:disabled { background: #bdc3c7 !important; cursor: not-allowed; box-shadow: none; }
+
+  /* --- ビンゴ看板（番組のクリア・合格テロップ風） --- */
+  #bingoBanner {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 80%;
+    max-width: 500px;
+    padding: 20px;
+    background: linear-gradient(to bottom, #ffffff 0%, #f7f9fb 100%);
+    border: 6px solid var(--accent-gold);
+    border-radius: 16px;
+    font-size: 3.5rem;
+    font-weight: 900;
+    color: #c01c1c;
+    text-shadow: 2px 2px 0px rgba(255,255,255,1);
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.4);
+    display: none;
+    z-index: 1000;
+    animation: popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+  }
+
+  @keyframes popIn {
+    0% { transform: translate(-50%, -50%) scale(0.5); opacity: 0; }
+    100% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+  }
+
+  /* --- ビンゴ盤（アクリルチューブ・クリアパネル風） --- */
+  #board {
+    margin: 20px auto;
+    display: grid;
+    gap: 8px;
+    max-width: 500px;
+    background: rgba(255,255,255,0.3);
+    padding: 12px;
+    border-radius: 16px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.08), inset 0 0 15px rgba(0,0,0,0.05);
+  }
+
+  .cell {
+    background: linear-gradient(135deg, #ffffff 0%, #eef2f5 100%);
+    color: #222;
+    border: 3px solid #ffffff;
+    border-radius: 10px;
+    min-height: 70px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.3rem;
+    font-weight: 900;
+    padding: 6px;
+    word-break: break-word;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.05);
+    transition: all 0.2s ease;
+    user-select: none;
+  }
+
+  /* 編集可能マスのホバー（ゴールドに光るターゲット枠） */
+  .editable { cursor: pointer; }
+  .editable:hover { 
+    border-color: var(--accent-gold);
+    box-shadow: 0 0 12px rgba(212, 175, 55, 0.6);
+    transform: translateY(-2px);
+  }
+
+  /* ヒット時（番組カラーのレッドロックオン状態） */
+  .hit {
+    background: linear-gradient(135deg, #ff3366 0%, #d7003a 100%);
+    color: #ffffff;
+    border-color: #ff99bb;
+    transform: scale(0.98);
+    box-shadow: inset 0 4px 10px rgba(0,0,0,0.2), 0 2px 4px rgba(0,0,0,0.1);
+  }
+
+  /* --- ルール説明文（番組テロップ風ベース） --- */
+  #rules {
+    margin: 30px auto 0;
+    max-width: 500px;
+    text-align: left;
+    background: linear-gradient(to bottom, #ffffff 0%, #f4f6f9 100%);
+    border: 3px solid var(--metallic-frame);
+    padding: 15px 20px;
+    border-radius: 12px;
+    font-size: 0.9rem;
+    color: var(--text-sub);
+    line-height: 1.6;
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.05);
+  }
+  #rules b {
+    color: #111;
+  }
+</style>
+</head>
+<body>
+
+<h1>カラオケビンゴ！</h1>
+
+<div class="control-panel">
+  <select id="mode">
+    <option value="score">点数ビンゴ</option>
+    <option value="word">漢字ビンゴ</option>
+  </select>
+
+  <select id="sizeSelect">
+    <option value="4">4×4（16マス）</option>
+    <option value="5" selected>5×5（25マス）</option>
+    <option value="6">6×6（36マス）</option>
+  </select>
+
+  <span id="scoreRangeBox">
+    最低点 <input id="minScore" type="number" value="70" style="width:65px;">
+    最高点 <input id="maxScore" type="number" value="100" style="width:65px;">
+  </span>
+
+  <div style="margin-top: 10px;">
+    <button id="randomBtn">ランダム生成</button>
+    <button id="startBtn">START</button>
+    <button id="resetBtn">リセット</button>
+    <button class="btn-menu" onclick="location.href='index.html'">メニューへ戻る</button>
+  </div>
+</div>
+
+<div id="bingoBanner">BINGO！！</div>
+
+<div id="board"></div>
+
+<div id="rules">
+  <b>【遊び方】</b><br>
+  ・点数ビンゴ or 漢字ビンゴを選びます。<br>
+  ・マス数（4×4 / 5×5 / 6×6）を選びます。<br>
+  ・ランダム生成でマスを埋めます。<br>
+  ・START前はマスをクリックして候補から選択できます。<br>
+  ・START後は編集できません。<br>
+  ・ゲーム中は一致したマスをタップして色を付けます（もう一度タップで戻る）。<br>
+  ・縦・横・斜めのどれかが揃うとBINGOです。<br>
+</div>
+
+<script>
+// 元のロジック・変数を完全維持
+const wordPool = [
+  "愛","夢","心","空","海","風","花","星","月","夜",
+  "光","音","歌","声","道","雨","雪","恋","涙","虹",
+  "春","夏","秋","冬","桜","陽","蒼","青","赤","白",
+  "黒","金","銀","時","瞬","永","未","今","明","暗",
+  "君","僕","私","人","友","家","旅","街","影","波",
+  "炎","雲","森","川","山","島","絆","願","祈","想",
+  "魂","詩","響","旋","舞","華","香","宙","天","地",
+  "幻","零","一","二","三","四","五","六","七","八",
+  "九","水","獣","好","電","千","万","怪","髪","桃"
+];
+
+let size = 5;
+let mode = "score";
+let boardValues = [];
+let hits = [];
+let started = false;
+
+const boardEl = document.getElementById("board");
+const modeEl = document.getElementById("mode");
+const sizeEl = document.getElementById("sizeSelect");
+const scoreRangeBox = document.getElementById("scoreRangeBox");
+const randomBtn = document.getElementById("randomBtn");
+const startBtn = document.getElementById("startBtn");
+const resetBtn = document.getElementById("resetBtn");
+const bingoBanner = document.getElementById("bingoBanner");
+
+function initBoard(){
+  boardEl.innerHTML = "";
+  boardEl.style.gridTemplateColumns = `repeat(${size}, 1fr)`;
+  const total = size*size;
+  boardValues = new Array(total).fill("");
+  hits = new Array(total).fill(false);
+
+  for(let i=0;i<total;i++){
+    const div = document.createElement("div");
+    div.className = "cell editable";
+    div.dataset.index = i;
+    div.onclick = () => onCellClick(i);
+    boardEl.appendChild(div);
+  }
+  bingoBanner.style.display = "none";
+}
+
+function onCellClick(i){
+  if(started){
+    hits[i] = !hits[i];
+    renderBoard();
+    checkBingo();
+    return;
+  }
+
+  if(mode === "score"){
+    const min = Number(document.getElementById("minScore").value);
+    const max = Number(document.getElementById("maxScore").value);
+    const count = size*size;
+    const candidates = generateScoreCandidates(min,max,count);
+    const choice = prompt("点数を選んでください：\n" + candidates.join(" / "));
+    if(choice) boardValues[i] = choice;
+  }else{
+    const count = size*size;
+    const candidates = generateKanjiCandidates(count);
+    const choice = prompt("漢字を選んでください：\n" + candidates.join(" / "));
+    if(choice) boardValues[i] = choice;
+  }
+  renderBoard();
+}
+
+function generateScoreCandidates(min,max,count){
+  const list=[];
+  for(let i=0;i<count;i++){
+    list.push(String(Math.floor(Math.random()*(max-min+1))+min));
+  }
+  return list;
+}
+
+function generateKanjiCandidates(count){
+  const pool=[...wordPool];
+  const result=[];
+  for(let i=0;i<count;i++){
+    if(pool.length===0) break;
+    const idx=Math.floor(Math.random()*pool.length);
+    result.push(pool[idx]);
+    pool.splice(idx,1);
+  }
+  return result;
+}
+
+function randomFill(){
+  if(started) return;
+  const total = size*size;
+
+  if(mode==="score"){
+    const min = Number(document.getElementById("minScore").value);
+    const max = Number(document.getElementById("maxScore").value);
+    boardValues = generateScoreCandidates(min,max,total);
+  }else{
+    boardValues = generateKanjiCandidates(total);
+  }
+  renderBoard();
+}
+
+function startGame(){
+  if(started) return;
+
+  if(boardValues.some(v => v === "")){
+    alert("空欄のマスがあります。すべて埋めてからSTARTしてください。");
+    return;
+  }
+
+  started = true;
+
+  randomBtn.disabled = true;
+  modeEl.disabled = true;
+  sizeEl.disabled = true;
+  document.getElementById("minScore").disabled = true;
+  document.getElementById("maxScore").disabled = true;
+
+  renderBoard();
+}
+
+function checkBingo(){
+  const lines = [];
+
+  for(let r=0;r<size;r++){
+    const row=[];
+    for(let c=0;c<size;c++) row.push(r*size+c);
+    lines.push(row);
+  }
+  for(let c=0;c<size;c++){
+    const col=[];
+    for(let r=0;r<size;r++) col.push(r*size+c);
+    lines.push(col);
+  }
+  const d1=[], d2=[];
+  for(let i=0;i<size;i++){
+    d1.push(i*size+i);
+    d2.push(i*size+(size-1-i));
+  }
+  lines.push(d1,d2);
+
+  let bingo=false;
+  for(const line of lines){
+    if(line.every(i=>hits[i])) bingo=true;
+  }
+
+  if(bingo){
+    bingoBanner.style.display="block";
+  } else {
+    bingoBanner.style.display="none";
+  }
+}
+
+function renderBoard(){
+  const cells = boardEl.querySelectorAll(".cell");
+  cells.forEach((c,idx)=>{
+    c.textContent = boardValues[idx];
+    c.classList.toggle("hit", hits[idx]);
+    c.classList.toggle("editable", !started);
+  });
+}
+
+function resetAll(){
+  started = false;
+  randomBtn.disabled = false;
+  modeEl.disabled = false;
+  sizeEl.disabled = false;
+  document.getElementById("minScore").disabled = false;
+  document.getElementById("maxScore").disabled = false;
+  bingoBanner.style.display="none";
+  initBoard();
+}
+
+modeEl.addEventListener("change",()=>{
+  mode = modeEl.value;
+  scoreRangeBox.style.display = mode==="score" ? "inline" : "none";
+});
+
+sizeEl.addEventListener("change",()=>{
+  size = Number(sizeEl.value);
+  initBoard();
+});
+
+randomBtn.addEventListener("click",randomFill);
+startBtn.addEventListener("click",startGame);
+resetBtn.addEventListener("click",resetAll);
+
+resetAll();
+</script>
+
+</body>
+</html>
   /* 設定エリア開閉ボタン */
   .btn-toggle-settings {
     background: #0d1126;
