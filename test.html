@@ -45,22 +45,56 @@
             text-shadow: 0px 4px 12px rgba(255, 0, 127, 0.2);
         }
 
-        /* お題ボックス */
+        /* お題ボックス全体（最初はコンパクトに） */
         #themeBox { 
             background: var(--card); 
-            padding: 20px 15px; 
+            padding: 15px; 
             border-radius: 20px; 
             box-shadow: 0 8px 24px rgba(0,0,0,0.3); 
             margin-bottom: 25px;
             border: 1px solid #2d2d35;
+            position: relative;
+        }
+
+        /* 常に表示されるお題ヘッダー部分 */
+        .theme-header-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
         }
 
         #themeText { 
-            font-size: 1.4rem; 
+            font-size: 1.3rem; 
             font-weight: bold; 
-            margin-bottom: 15px; 
             color: #ffdd55;
             text-shadow: 0 2px 8px rgba(255,221,85,0.2);
+            margin: 0;
+            text-align: left;
+        }
+
+        /* 開閉・設定トグルボタン */
+        .btn-toggle-panel {
+            font-size: 0.8rem;
+            padding: 8px 12px;
+            background: #2d2d35;
+            border: 1px solid #444;
+            border-radius: 10px;
+            color: var(--text-sub);
+            cursor: pointer;
+            transition: all 0.2s;
+            margin: 0;
+        }
+        .btn-toggle-panel:hover {
+            color: #fff;
+            background: #3d3d4a;
+        }
+
+        /* 格納される設定パネル（初期状態は非表示） */
+        #themeControlPanel {
+            display: none;
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid #333;
         }
 
         /* カテゴリ・セレクト */
@@ -106,34 +140,12 @@
         .btn-clear { background: var(--danger); }
         .btn-menu { background: #4a5568; }
 
-        /* お題ドロップダウン・トグルエリア */
-        #themeListWrapper {
-            margin-top: 15px;
-            display: none; /* 初期状態は非表示 */
-            background: #25252b;
-            padding: 10px;
-            border-radius: 14px;
-            border: 1px solid #333;
-        }
-
-        .toggle-btn-container {
-            display: flex;
-            justify-content: flex-end;
-            margin-bottom: 8px;
-        }
-
-        .btn-toggle {
-            font-size: 0.75rem;
-            padding: 6px 12px;
-            background: #4a5568;
-            border-radius: 8px;
-            margin: 0;
-        }
-
+        /* お題ドロップダウンリスト */
         #themeList { 
-            max-height: 200px;
+            margin-top: 15px; 
+            max-height: 180px;
             overflow-y: auto;
-            border-radius: 8px;
+            border-radius: 12px;
         }
 
         .themeItem { 
@@ -148,12 +160,6 @@
             text-align: left;
         }
         .themeItem:hover { background: #3d3d4a; }
-        
-        /* 選択中のお題ハイライト用スタイル */
-        .themeItem.active-theme {
-            border-left-color: #ff007f;
-            background: #3a2235;
-        }
 
         /* 五十音グリッド */
         #grid { 
@@ -199,7 +205,7 @@
             text-shadow: 0 0 10px rgba(0, 255, 204, 0.3);
         }
 
-        /* 入力エリア */
+        /* 入力エリア（2列×10行） */
         #inputs { 
             background: var(--card);
             padding: 15px;
@@ -241,7 +247,7 @@
             margin-bottom: 25px;
         }
 
-        /* ルール解説枠 */
+        /* ルール解説枠（一番下） */
         #rules { 
             background: var(--card); 
             border-left: 5px solid #ff007f;
@@ -263,32 +269,32 @@
 
     <h1>50カラオケ</h1>
 
-    <!-- お題ボックス -->
+    <!-- お題ボックス（コンパクト開閉式に改良） -->
     <div id="themeBox">
-        <div id="themeText">お題：なし</div>
-
-        <div class="category-wrapper">
-            <span>カテゴリ：</span>
-            <select id="categorySelect">
-                <option value="all">すべて</option>
-                <option value="normal" selected>通常</option>
-                <option value="keyword">キーワード</option>
-                <option value="joke">ネタ枠</option>
-            </select>
+        <div class="theme-header-row">
+            <div id="themeText">お題：なし</div>
+            <button class="btn-toggle-panel" id="togglePanelBtn" onclick="toggleThemePanel()">⚙️ お題を変更</button>
         </div>
 
-        <div style="display: flex; flex-wrap: wrap; justify-content: center; gap: 2px;">
-            <button class="btn-theme" onclick="setRandomTheme()">ランダムお題</button>
-            <button class="btn-theme" onclick="showThemeList()">お題を選ぶ</button>
-            <button class="btn-theme" onclick="setCustomTheme()">直接入力</button>
-            <button class="btn-theme" style="background:#555;" onclick="clearTheme()">お題なし</button>
-        </div>
-
-        <!-- トグル切り替え機能付きのお題表示エリア -->
-        <div id="themeListWrapper">
-            <div class="toggle-btn-container">
-                <button id="toggleDisplayBtn" class="btn-toggle" onclick="toggleThemeDisplay()">🔄 全表示に切替</button>
+        <!-- 折りたたまれる設定用エリア -->
+        <div id="themeControlPanel">
+            <div class="category-wrapper">
+                <span>カテゴリ：</span>
+                <select id="categorySelect">
+                    <option value="all">すべて</option>
+                    <option value="normal" selected>通常</option>
+                    <option value="keyword">キーワード</option>
+                    <option value="joke">ネタ枠</option>
+                </select>
             </div>
+
+            <div style="display: flex; flex-wrap: wrap; justify-content: center; gap: 2px;">
+                <button class="btn-theme" onclick="setRandomTheme()">ランダムお題</button>
+                <button class="btn-theme" onclick="showThemeList()">お題を選ぶ</button>
+                <button class="btn-theme" onclick="setCustomTheme()">直接入力</button>
+                <button class="btn-theme" style="background:#555;" onclick="clearTheme()">お題なし</button>
+            </div>
+
             <div id="themeList"></div>
         </div>
     </div>
@@ -299,7 +305,7 @@
     <!-- 進捗カウンター -->
     <div id="count">埋まっている数：0 / 81</div>
 
-    <!-- 入力欄コンテナ -->
+    <!-- 入力欄コンテナ（2列×10行） -->
     <div id="inputs"></div>
 
     <!-- コントロール -->
@@ -344,14 +350,11 @@ const chars = [
 ];
 
 let filled = {};
-let currentSelectedTheme = "なし"; // 現在選ばれているお題を追跡
-let isShowAllMode = false; // 現在「全表示」モードかどうかのフラグ
-
 const themeText = document.getElementById("themeText");
-const themeListWrapper = document.getElementById("themeListWrapper");
 const themeList = document.getElementById("themeList");
 const categorySelect = document.getElementById("categorySelect");
-const toggleDisplayBtn = document.getElementById("toggleDisplayBtn");
+const themeControlPanel = document.getElementById("themeControlPanel");
+const togglePanelBtn = document.getElementById("togglePanelBtn");
 
 // 五十音表生成
 const grid = document.getElementById("grid");
@@ -433,10 +436,22 @@ function getAllThemes() {
     ];
 }
 
-// お題をセットする共通処理
-function applyThemeSetting(themeName) {
-    currentSelectedTheme = themeName;
-    themeText.textContent = "お題：" + themeName;
+// パネル自体の開閉トグル制御（新設）
+function toggleThemePanel() {
+    if (themeControlPanel.style.display === "block") {
+        closeThemePanel();
+    } else {
+        themeControlPanel.style.display = "block";
+        togglePanelBtn.textContent = "✖ 閉じる";
+    }
+}
+
+// パネルを閉じる共通処理
+function closeThemePanel() {
+    themeControlPanel.style.display = "none";
+    themeList.innerHTML = "";
+    categorySelect.disabled = false;
+    togglePanelBtn.textContent = "⚙️ お題を変更";
 }
 
 // ランダムお題
@@ -444,94 +459,42 @@ function setRandomTheme() {
     const cat = categorySelect.value;
     let list = (cat === "all") ? getAllThemes() : themeCategories[cat];
     const t = list[Math.floor(Math.random() * list.length)];
-    applyThemeSetting(t);
-    
-    // ランダム決定時、リストが開いていれば「選択お題のみ」でリフレッシュ
-    if (themeListWrapper.style.display === "block") {
-        isShowAllMode = false;
-        renderThemeList();
-    }
+    themeText.textContent = "お題：" + t;
 }
 
-// お題一覧ボタンを押したときの初期動作
+// お題一覧表示
 function showThemeList() {
-    themeListWrapper.style.display = "block";
-    categorySelect.disabled = true;
-    isShowAllMode = false; // 最初は「選択中のみ」表示モード
-    renderThemeList();
-}
-
-// トグル切り替え関数（現在選ばれてるお題のみ ↔ 全表示）
-function toggleThemeDisplay() {
-    isShowAllMode = !isShowAllMode;
-    renderThemeList();
-}
-
-// お題エリアの描画ロジック
-function renderThemeList() {
     const cat = categorySelect.value;
     let list = (cat === "all") ? getAllThemes() : themeCategories[cat];
 
     themeList.innerHTML = "";
-
-    if (isShowAllMode) {
-        // 【全表示モード】
-        toggleDisplayBtn.textContent = "🔄 選択中のみ表示に切替";
-        list.forEach(t => {
-            const div = document.createElement("div");
-            div.className = "themeItem" + (t === currentSelectedTheme ? " active-theme" : "");
-            div.textContent = t;
-            div.onclick = () => {
-                applyThemeSetting(t);
-                isShowAllMode = false;
-                renderThemeList(); // 選んだら選択中のみモードに戻して更新
-            };
-            themeList.appendChild(div);
-        });
-    } else {
-        // 【現在選ばれてるお題のみ表示モード】
-        toggleDisplayBtn.textContent = "🔄 全表示に切替";
-        
-        // リスト内に現在選択中のお題が存在する場合だけそれを表示（なければ「なし」など）
-        const hasTheme = list.includes(currentSelectedTheme);
+    list.forEach(t => {
         const div = document.createElement("div");
-        div.className = "themeItem active-theme";
-        div.textContent = hasTheme ? currentSelectedTheme : `(現在のカテゴリ外) ${currentSelectedTheme}`;
-        
-        // 選択中お題を再度クリックしたら閉じる
+        div.className = "themeItem";
+        div.textContent = t;
         div.onclick = () => {
-            closeThemeList();
+            themeText.textContent = "お題：" + t;
+            closeThemePanel(); // お題を選んだら自動でコンパクトに閉じる
         };
         themeList.appendChild(div);
-    }
-}
+    });
 
-// リストを閉じる共通処理
-function closeThemeList() {
-    themeListWrapper.style.display = "none";
-    themeList.innerHTML = "";
-    categorySelect.disabled = false;
+    categorySelect.disabled = true;
 }
 
 // 直接入力
 function setCustomTheme() {
     const t = prompt("お題を入力してください");
     if (t) {
-        applyThemeSetting(t);
-        if (themeListWrapper.style.display === "block") {
-            isShowAllMode = false;
-            renderThemeList();
-        }
+        themeText.textContent = "お題：" + t;
+        closeThemePanel();
     }
 }
 
 // お題なし
 function clearTheme() {
-    applyThemeSetting("なし");
-    if (themeListWrapper.style.display === "block") {
-        isShowAllMode = false;
-        renderThemeList();
-    }
+    themeText.textContent = "お題：なし";
+    closeThemePanel();
 }
 
 // 入力一括消去
@@ -542,13 +505,12 @@ function clearAllInputs() {
 
 // 外側クリックで閉じる処理
 document.addEventListener("click", function(e) {
-    const wrapper = document.getElementById("themeListWrapper");
     const box = document.getElementById("themeBox");
 
-    if (wrapper.style.display !== "block") return;
+    if (themeControlPanel.style.display !== "block") return;
     if (box.contains(e.target)) return;
 
-    closeThemeList();
+    closeThemePanel();
 });
 </script>
 
