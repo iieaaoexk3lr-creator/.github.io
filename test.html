@@ -15,6 +15,10 @@
             --text-sub: #a0aec0;
             --accent: #00ffcc;
             --filled-bg: linear-gradient(135deg, #ff66cc, #ff007f);
+            
+            /* 五十音のデフォルトカラー指定 */
+            --cell-bg: #e2e8f0; /* 白に近い灰色 */
+            --cell-text: #1a202c; /* 黒 */
         }
 
         body { 
@@ -42,20 +46,6 @@
             -webkit-text-fill-color: transparent;
             text-shadow: 0px 4px 12px rgba(255, 0, 127, 0.2);
         }
-
-        /* ルール解説枠 */
-        #rules { 
-            background: var(--card); 
-            border-left: 5px solid #ff007f;
-            padding: 15px; 
-            border-radius: 14px; 
-            font-size: 0.85rem; 
-            line-height: 1.6; 
-            color: var(--text-sub);
-            margin-bottom: 20px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
-        }
-        #rules b { color: #ff66cc; font-size: 0.95rem; }
 
         /* お題ボックス */
         #themeBox { 
@@ -98,7 +88,7 @@
         }
         select:disabled { opacity: 0.4; cursor: not-allowed; }
 
-        /* ボタンデザインの共通化 */
+        /* ボタンデザイン */
         button { 
             font-size: 0.9rem; 
             font-weight: bold; 
@@ -152,23 +142,26 @@
             border: 1px solid #2d2d35;
         }
 
+        /* 指定：白に近い灰色、文字は黒、中央揃え */
         .cell { 
-            background: #25252b; 
+            background: var(--cell-bg); 
+            color: var(--cell-text);
             padding: 12px 0; 
             border-radius: 8px; 
             font-size: 1.1rem; 
-            font-weight: 600;
-            color: var(--text-sub);
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            justify-content: center; /* 上下左右真ん中配置 */
             transition: all 0.2s ease;
         }
 
         .empty { background: transparent; }
 
-        /* 埋まった文字のネオン風装飾 */
+        /* 埋まった文字のネオン風装飾（文字は黒を維持） */
         .filled { 
             background: var(--filled-bg); 
             color: #000; 
-            font-weight: bold; 
             box-shadow: 0 0 12px rgba(255, 102, 204, 0.6);
             transform: scale(1.03);
         }
@@ -182,43 +175,63 @@
             text-shadow: 0 0 10px rgba(0, 255, 204, 0.3);
         }
 
-        /* 入力エリア */
+        /* 指定：入力エリアを最大2列×10行（計20個）に設定 */
         #inputs { 
             background: var(--card);
-            padding: 15px 10px;
+            padding: 15px;
             border-radius: 20px;
             box-shadow: 0 8px 24px rgba(0,0,0,0.3);
             margin-bottom: 20px;
             display: grid;
-            grid-template-columns: 1fr;
-            gap: 8px;
+            grid-template-columns: repeat(2, 1fr); /* 2列化 */
+            gap: 10px;
             border: 1px solid #2d2d35;
         }
 
+        /* 指定：はみ出る場合は途中で消える(スクロールバーなし、1行固定) */
         input { 
             width: 100%; 
-            padding: 12px; 
-            font-size: 1.1rem; 
+            padding: 12px 10px; 
+            font-size: 1rem; 
             background: #121214;
             color: #fff;
             border: 2px solid #333;
             border-radius: 12px; 
             box-sizing: border-box;
             transition: border-color 0.2s, box-shadow 0.2s;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: clip; /* はみ出た文字は途中でぶつ切り消去 */
         }
         input:focus {
             border-color: #ff66cc;
             box-shadow: 0 0 8px rgba(255, 102, 204, 0.3);
             outline: none;
         }
-        input::placeholder { color: #555; font-size: 0.95rem; }
+        input::placeholder { color: #555; font-size: 0.85rem; }
 
         .footer-controls {
             margin-top: 25px;
             display: flex;
             flex-direction: column;
             gap: 10px;
+            margin-bottom: 25px;
         }
+
+        /* 指定：ルール解説枠を一番下に移動 */
+        #rules { 
+            background: var(--card); 
+            border-left: 5px solid #ff007f;
+            padding: 15px; 
+            border-radius: 14px; 
+            font-size: 0.85rem; 
+            line-height: 1.6; 
+            color: var(--text-sub);
+            margin-top: 20px;
+            text-align: left;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+        #rules b { color: #ff66cc; font-size: 0.95rem; }
     </style>
 </head>
 <body>
@@ -226,15 +239,6 @@
 <div class="container">
 
     <h1>50カラオケ</h1>
-
-    <!-- 説明文 -->
-    <div id="rules">
-        <b>【ルール】</b><br>
-        ・入力欄に曲名をひらがなで入力してください。<br>
-        ・曲名に含まれるすべての「ひらがな」が表に反映されます。<br>
-        ・清音・濁音・半濁音・各小文字（っ、ゃ、ゎ等）に対応。<br>
-        ・入力を消すと枠の色も元に戻ります。
-    </div>
 
     <!-- お題ボックス -->
     <div id="themeBox">
@@ -266,19 +270,28 @@
     <!-- 進捗カウンター -->
     <div id="count">埋まっている数：0 / 81</div>
 
-    <!-- 入力欄コンテナ -->
+    <!-- 入力欄コンテナ（JSで2列×10行＝20個生成されます） -->
     <div id="inputs"></div>
 
-    <!-- 最下部コントロール -->
+    <!-- コントロール -->
     <div class="footer-controls">
         <button class="btn-clear" onclick="clearAllInputs()">入力を全部消す</button>
         <button class="btn-menu" onclick="location.href='index.html'">メニューへ戻る</button>
     </div>
 
+    <!-- ルール解説（一番下に移動） -->
+    <div id="rules">
+        <b>【ルール】</b><br>
+        ・入力欄に曲名をひらがなで入力してください。<br>
+        ・曲名に含まれるすべての「ひらがな」が表に反映されます。<br>
+        ・清音・濁音・半濁音・各小文字（っ、ゃ、ゎ等）に対応。<br>
+        ・入力を消すと枠の色も元に戻ります。
+    </div>
+
 </div>
 
 <script>
-// 五十音表データ（既存の文字配列を完全維持）
+// 五十音表データ（完全維持）
 const chars = [
   "あ","い","う","え","お",
   "か","き","く","け","こ",
@@ -316,11 +329,11 @@ chars.forEach(c => {
     grid.appendChild(cell);
 });
 
-// 入力欄21個生成
+// 入力欄を2列×10行（計20個）に変更して生成
 const inputsContainer = document.getElementById("inputs");
-for (let i = 0; i < 21; i++) {
+for (let i = 0; i < 20; i++) {
     const inp = document.createElement("input");
-    inp.placeholder = "曲名 入力欄 " + (i + 1);
+    inp.placeholder = "曲名 " + (i + 1);
     inp.oninput = updateGrid;
     inputsContainer.appendChild(inp);
 }
@@ -394,7 +407,7 @@ function setRandomTheme() {
     themeText.textContent = "お題：" + t;
 }
 
-// お題一覧表示（セレクトボックス無効化ロジック含む）
+// お題一覧表示
 function showThemeList() {
     const cat = categorySelect.value;
     let list = (cat === "all") ? getAllThemes() : themeCategories[cat];
