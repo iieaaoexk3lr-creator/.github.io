@@ -1,1 +1,449 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>50カラオケ</title>
+    <style>
+        :root { 
+            --bg: #121214; 
+            --card: #1e1e24; 
+            --primary: linear-gradient(135deg, #ff007f, #7928ca);
+            --secondary: linear-gradient(135deg, #00f2fe, #4facfe);
+            --danger: linear-gradient(135deg, #ff416c, #ff4b2b);
+            --text-main: #ffffff;
+            --text-sub: #a0aec0;
+            --accent: #00ffcc;
+            --filled-bg: linear-gradient(135deg, #ff66cc, #ff007f);
+        }
 
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; 
+            background: var(--bg); 
+            color: var(--text-main); 
+            margin: 0; 
+            padding: 0; 
+            box-sizing: border-box;
+        }
+
+        .container { 
+            max-width: 600px; 
+            margin: 0 auto; 
+            padding: 20px 15px; 
+        }
+
+        h1 { 
+            font-size: 1.6rem; 
+            font-weight: 800; 
+            text-align: center; 
+            margin: 10px 0 20px; 
+            background: var(--primary);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-shadow: 0px 4px 12px rgba(255, 0, 127, 0.2);
+        }
+
+        /* ルール解説枠 */
+        #rules { 
+            background: var(--card); 
+            border-left: 5px solid #ff007f;
+            padding: 15px; 
+            border-radius: 14px; 
+            font-size: 0.85rem; 
+            line-height: 1.6; 
+            color: var(--text-sub);
+            margin-bottom: 20px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+        #rules b { color: #ff66cc; font-size: 0.95rem; }
+
+        /* お題ボックス */
+        #themeBox { 
+            background: var(--card); 
+            padding: 20px 15px; 
+            border-radius: 20px; 
+            box-shadow: 0 8px 24px rgba(0,0,0,0.3); 
+            margin-bottom: 25px;
+            border: 1px solid #2d2d35;
+        }
+
+        #themeText { 
+            font-size: 1.4rem; 
+            font-weight: bold; 
+            margin-bottom: 15px; 
+            color: #ffdd55;
+            text-shadow: 0 2px 8px rgba(255,221,85,0.2);
+        }
+
+        /* カテゴリ・セレクト */
+        .category-wrapper {
+            font-size: 0.9rem;
+            color: var(--text-sub);
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        select { 
+            background: #2d2d35; 
+            color: #fff; 
+            border: 2px solid #444; 
+            padding: 8px 12px; 
+            border-radius: 10px; 
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        select:disabled { opacity: 0.4; cursor: not-allowed; }
+
+        /* ボタンデザインの共通化 */
+        button { 
+            font-size: 0.9rem; 
+            font-weight: bold; 
+            padding: 10px 16px; 
+            margin: 5px; 
+            border-radius: 12px; 
+            border: none; 
+            color: white;
+            cursor: pointer; 
+            transition: transform 0.1s, opacity 0.2s;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        }
+        button:active { transform: scale(0.96); }
+        
+        .btn-theme { background: var(--secondary); }
+        .btn-action { background: var(--primary); }
+        .btn-clear { background: var(--danger); }
+        .btn-menu { background: #4a5568; }
+
+        /* お題ドロップダウンリスト */
+        #themeList { 
+            margin-top: 15px; 
+            max-height: 200px;
+            overflow-y: auto;
+            border-radius: 12px;
+        }
+
+        .themeItem { 
+            background: #2d2d35; 
+            padding: 12px; 
+            margin: 6px 0; 
+            border-radius: 10px; 
+            font-size: 0.95rem;
+            cursor: pointer; 
+            border-left: 4px solid #00f2fe;
+            transition: background 0.2s;
+            text-align: left;
+        }
+        .themeItem:hover { background: #3d3d4a; }
+
+        /* 五十音グリッド */
+        #grid { 
+            display: grid; 
+            grid-template-columns: repeat(10, 1fr); 
+            gap: 5px; 
+            margin: 0 auto 20px; 
+            background: var(--card);
+            padding: 12px;
+            border-radius: 20px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+            border: 1px solid #2d2d35;
+        }
+
+        .cell { 
+            background: #25252b; 
+            padding: 12px 0; 
+            border-radius: 8px; 
+            font-size: 1.1rem; 
+            font-weight: 600;
+            color: var(--text-sub);
+            transition: all 0.2s ease;
+        }
+
+        .empty { background: transparent; }
+
+        /* 埋まった文字のネオン風装飾 */
+        .filled { 
+            background: var(--filled-bg); 
+            color: #000; 
+            font-weight: bold; 
+            box-shadow: 0 0 12px rgba(255, 102, 204, 0.6);
+            transform: scale(1.03);
+        }
+
+        /* 進捗カウント */
+        #count { 
+            font-size: 1.3rem; 
+            font-weight: bold;
+            margin: 20px 0; 
+            color: var(--accent); 
+            text-shadow: 0 0 10px rgba(0, 255, 204, 0.3);
+        }
+
+        /* 入力エリア */
+        #inputs { 
+            background: var(--card);
+            padding: 15px 10px;
+            border-radius: 20px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+            margin-bottom: 20px;
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 8px;
+            border: 1px solid #2d2d35;
+        }
+
+        input { 
+            width: 100%; 
+            padding: 12px; 
+            font-size: 1.1rem; 
+            background: #121214;
+            color: #fff;
+            border: 2px solid #333;
+            border-radius: 12px; 
+            box-sizing: border-box;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+        input:focus {
+            border-color: #ff66cc;
+            box-shadow: 0 0 8px rgba(255, 102, 204, 0.3);
+            outline: none;
+        }
+        input::placeholder { color: #555; font-size: 0.95rem; }
+
+        .footer-controls {
+            margin-top: 25px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+
+    <h1>50カラオケ</h1>
+
+    <!-- 説明文 -->
+    <div id="rules">
+        <b>【ルール】</b><br>
+        ・入力欄に曲名をひらがなで入力してください。<br>
+        ・曲名に含まれるすべての「ひらがな」が表に反映されます。<br>
+        ・清音・濁音・半濁音・各小文字（っ、ゃ、ゎ等）に対応。<br>
+        ・入力を消すと枠の色も元に戻ります。
+    </div>
+
+    <!-- お題ボックス -->
+    <div id="themeBox">
+        <div id="themeText">お題：なし</div>
+
+        <div class="category-wrapper">
+            <span>カテゴリ：</span>
+            <select id="categorySelect">
+                <option value="all">すべて</option>
+                <option value="normal" selected>通常</option>
+                <option value="keyword">キーワード</option>
+                <option value="joke">ネタ枠</option>
+            </select>
+        </div>
+
+        <div style="display: flex; flex-wrap: wrap; justify-content: center; gap: 2px;">
+            <button class="btn-theme" onclick="setRandomTheme()">ランダムお題</button>
+            <button class="btn-theme" onclick="showThemeList()">お題を選ぶ</button>
+            <button class="btn-theme" onclick="setCustomTheme()">直接入力</button>
+            <button class="btn-theme" style="background:#555;" onclick="clearTheme()">お題なし</button>
+        </div>
+
+        <div id="themeList"></div>
+    </div>
+
+    <!-- 五十音表 -->
+    <div id="grid"></div>
+
+    <!-- 進捗カウンター -->
+    <div id="count">埋まっている数：0 / 81</div>
+
+    <!-- 入力欄コンテナ -->
+    <div id="inputs"></div>
+
+    <!-- 最下部コントロール -->
+    <div class="footer-controls">
+        <button class="btn-clear" onclick="clearAllInputs()">入力を全部消す</button>
+        <button class="btn-menu" onclick="location.href='index.html'">メニューへ戻る</button>
+    </div>
+
+</div>
+
+<script>
+// 五十音表データ（既存の文字配列を完全維持）
+const chars = [
+  "あ","い","う","え","お",
+  "か","き","く","け","こ",
+  "さ","し","す","せ","そ",
+  "た","ち","つ","て","と",
+  "な","に","ぬ","ね","の",
+  "は","ひ","ふ","へ","ほ",
+  "ま","み","む","め","も",
+  "や","", "ゆ","", "よ",
+  "ら","り","る","れ","ろ",
+  "わ","", "を","", "ん",
+  "が","ぎ","ぐ","げ","ご",
+  "ざ","じ","ず","ぜ","ぞ",
+  "だ","ぢ","づ","で","ど",
+  "ば","び","ぶ","べ","ぼ",
+  "ぱ","ぴ","ぷ","ぺ","ぽ",
+  "ぁ","ぃ","ぅ","ぇ","ぉ",
+  "ゃ","ゅ","ょ",
+  "っ",
+  "ゎ"
+];
+
+let filled = {};
+const themeText = document.getElementById("themeText");
+const themeList = document.getElementById("themeList");
+const categorySelect = document.getElementById("categorySelect");
+
+// 五十音表生成
+const grid = document.getElementById("grid");
+chars.forEach(c => {
+    const cell = document.createElement("div");
+    cell.className = c === "" ? "cell empty" : "cell";
+    cell.id = c === "" ? "" : "cell_" + c;
+    cell.textContent = c;
+    grid.appendChild(cell);
+});
+
+// 入力欄21個生成
+const inputsContainer = document.getElementById("inputs");
+for (let i = 0; i < 21; i++) {
+    const inp = document.createElement("input");
+    inp.placeholder = "曲名 入力欄 " + (i + 1);
+    inp.oninput = updateGrid;
+    inputsContainer.appendChild(inp);
+}
+
+// 五十音表更新ロジック
+function updateGrid() {
+    filled = {};
+
+    document.querySelectorAll("#inputs input").forEach(inp => {
+        const text = inp.value.trim();
+        for (let char of text) {
+            if (chars.includes(char)) filled[char] = true;
+        }
+    });
+
+    chars.forEach(c => {
+        if (c === "") return;
+        const cell = document.getElementById("cell_" + c);
+        if (filled[c]) {
+            cell.classList.add("filled");
+        } else {
+            cell.classList.remove("filled");
+        }
+    });
+
+    document.getElementById("count").textContent =
+        "埋まっている数：" + Object.keys(filled).length + " / 81";
+}
+
+// お題データ
+const themeCategories = {
+  normal: [
+    "夏の曲","冬の曲","春の曲","秋の曲",
+    "アニメ曲","色入りの曲","アイドル曲","数字がある曲",
+    "全てひらがなの曲","全てカタカナの曲",
+    "1980年代の曲","1990年代の曲",
+    "2000年代の曲","2010年代の曲",
+    "6文字以上の曲","7文字以上の曲","8文字以上の曲"
+  ],
+  keyword: [
+    "『愛』が入る曲","『恋』が入る曲",
+    "『夜』が入る曲","『日』が入る曲",
+    "『の』が入る曲","『な』が入る曲",
+    "『を』が入る曲","『赤』が入る曲",
+    "『青』が入る曲","『花』が入る曲"
+  ],
+  joke: [
+    "タイトルが15文字以上の曲",
+    "タイトルが1文字の曲",
+    "誰も知らなさそうな曲",
+    "喉が壊れる曲","泣ける曲",
+    "普段歌わないジャンルの曲",
+    "盛り上がる曲",
+    "最高に面白いネタ曲"
+  ]
+};
+
+function getAllThemes() {
+    return [
+        ...themeCategories.normal,
+        ...themeCategories.keyword,
+        ...themeCategories.joke
+    ];
+}
+
+// ランダムお題
+function setRandomTheme() {
+    const cat = categorySelect.value;
+    let list = (cat === "all") ? getAllThemes() : themeCategories[cat];
+    const t = list[Math.floor(Math.random() * list.length)];
+    themeText.textContent = "お題：" + t;
+}
+
+// お題一覧表示（セレクトボックス無効化ロジック含む）
+function showThemeList() {
+    const cat = categorySelect.value;
+    let list = (cat === "all") ? getAllThemes() : themeCategories[cat];
+
+    themeList.innerHTML = "";
+    list.forEach(t => {
+        const div = document.createElement("div");
+        div.className = "themeItem";
+        div.textContent = t;
+        div.onclick = () => {
+            themeText.textContent = "お題：" + t;
+            themeList.innerHTML = "";
+            categorySelect.disabled = false;
+        };
+        themeList.appendChild(div);
+    });
+
+    categorySelect.disabled = true;
+}
+
+// 直接入力
+function setCustomTheme() {
+    const t = prompt("お題を入力してください");
+    if (t) themeText.textContent = "お題：" + t;
+}
+
+// お題なし
+function clearTheme() {
+    themeText.textContent = "お題：なし";
+}
+
+// 入力一括消去
+function clearAllInputs() {
+    document.querySelectorAll("#inputs input").forEach(inp => inp.value = "");
+    updateGrid();
+}
+
+// 外側クリックで閉じる処理
+document.addEventListener("click", function(e) {
+    const list = document.getElementById("themeList");
+    const box = document.getElementById("themeBox");
+
+    if (list.innerHTML.trim() === "") return;
+    if (box.contains(e.target)) return;
+
+    list.innerHTML = "";
+    categorySelect.disabled = false;
+});
+</script>
+
+</body>
+</html>
