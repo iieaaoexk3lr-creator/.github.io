@@ -1,518 +1,611 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>50カラオケ</title>
-    <style>
-        :root { 
-            --bg: #121214; 
-            --card: #1e1e24; 
-            --primary: linear-gradient(135deg, #ff007f, #7928ca);
-            --secondary: linear-gradient(135deg, #00f2fe, #4facfe);
-            --danger: linear-gradient(135deg, #ff416c, #ff4b2b);
-            --text-main: #ffffff;
-            --text-sub: #a0aec0;
-            --accent: #00ffcc;
-            --filled-bg: linear-gradient(135deg, #ff66cc, #ff007f);
-            --cell-bg: #e2e8f0; 
-            --cell-text: #1a202c; 
-        }
+<meta charset="UTF-8">
+<title>カラフルボンバー総合版 - Bomber Edition</title>
+<style>
+  :root {
+    --bg-color: #0b0d19;
+    --panel-bg: rgba(20, 24, 46, 0.85);
+    --border-glow: #00f2fe;
+    --accent-glow: #ff007f;
+    --text-color: #ffffff;
+    --text-sub: #8fa0dd;
+  }
 
-        body { 
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; 
-            background: var(--bg); 
-            color: var(--text-main); 
-            margin: 0; 
-            padding: 0; 
-            box-sizing: border-box;
-        }
+  body {
+    font-family: 'Helvetica Neue', Arial, 'Hiragino Kaku Gothic ProN', sans-serif;
+    background: radial-gradient(circle at center, #1a1f3c 0%, var(--bg-color) 100%);
+    color: var(--text-color);
+    text-align: center;
+    padding: 20px;
+    margin: 0;
+    overflow-x: hidden;
+  }
 
-        .container { 
-            max-width: 600px; 
-            margin: 0 auto; 
-            padding: 20px 15px; 
-        }
+  h1 { 
+    font-size: 2.8rem; 
+    font-weight: 900;
+    margin: 10px 0 20px 0; 
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    background: linear-gradient(135deg, #00f2fe 0%, #4facfe 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    text-shadow: 0 0 30px rgba(0, 242, 254, 0.5);
+  }
 
-        h1 { 
-            font-size: 1.6rem; 
-            font-weight: 800; 
-            text-align: center; 
-            margin: 10px 0 20px; 
-            background: var(--primary);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            text-shadow: 0px 4px 12px rgba(255, 0, 127, 0.2);
-        }
+  /* 【新設】設定エリア開閉ボタン */
+  .btn-toggle-settings {
+    background: #161b33;
+    color: var(--text-sub);
+    border: 1px solid #2c3561;
+    padding: 6px 14px;
+    font-size: 0.85rem;
+    border-radius: 20px;
+    cursor: pointer;
+    margin-bottom: 15px;
+    transition: all 0.2s;
+  }
+  .btn-toggle-settings:hover {
+    color: #fff;
+    border-color: var(--border-glow);
+    box-shadow: 0 0 10px rgba(0, 242, 254, 0.3);
+  }
 
-        /* お題ボックス全体（最初はコンパクトに） */
-        #themeBox { 
-            background: var(--card); 
-            padding: 15px; 
-            border-radius: 20px; 
-            box-shadow: 0 8px 24px rgba(0,0,0,0.3); 
-            margin-bottom: 25px;
-            border: 1px solid #2d2d35;
-            position: relative;
-        }
+  /* 設定エリア（初期状態は非表示） */
+  #settings {
+    display: none;
+    margin: 0 auto 25px auto;
+    max-width: 650px;
+    background: var(--panel-bg);
+    padding: 15px;
+    border-radius: 16px;
+    border: 2px solid #202b5c;
+    box-shadow: inset 0 0 20px rgba(0,0,0,0.6);
+  }
 
-        /* 常に表示されるお題ヘッダー部分 */
-        .theme-header-row {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
+  label { font-size: 1.1rem; margin-right: 10px; color: var(--text-sub); }
+  input, select { 
+    font-size: 1.1rem; 
+    padding: 6px 10px; 
+    margin: 5px; 
+    background: #090b14;
+    color: #fff;
+    border: 1px solid #3d4b8a;
+    border-radius: 6px;
+  }
 
-        #themeText { 
-            font-size: 1.3rem; 
-            font-weight: bold; 
-            color: #ffdd55;
-            text-shadow: 0 2px 8px rgba(255,221,85,0.2);
-            margin: 0;
-            text-align: left;
-        }
+  /* お題表示：番組の特大テロップ風 */
+  #question { 
+    font-size: 2rem; 
+    font-weight: bold;
+    margin: 0 auto 25px auto; 
+    max-width: 800px;
+    padding: 18px;
+    background: linear-gradient(90deg, rgba(0,0,0,0) 0%, rgba(13, 21, 56, 0.9) 25%, rgba(13, 21, 56, 0.9) 75%, rgba(0,0,0,0) 100%);
+    border-top: 2px solid var(--border-glow);
+    border-bottom: 2px solid var(--border-glow);
+    text-shadow: 0 2px 8px rgba(0,0,0,0.8);
+    box-shadow: 0 0 15px rgba(0, 242, 254, 0.1);
+  }
 
-        /* 開閉・設定トグルボタン */
-        .btn-toggle-panel {
-            font-size: 0.8rem;
-            padding: 8px 12px;
-            background: #2d2d35;
-            border: 1px solid #444;
-            border-radius: 10px;
-            color: var(--text-sub);
-            cursor: pointer;
-            transition: all 0.2s;
-            margin: 0;
-        }
-        .btn-toggle-panel:hover {
-            color: #fff;
-            background: #3d3d4a;
-        }
+  /* スコア表示 */
+  #score {
+    font-size: 1.4rem;
+    margin: 10px 0 20px 0;
+    color: #ffd700;
+    font-weight: bold;
+    text-shadow: 0 0 10px rgba(255, 215, 0, 0.4);
+  }
 
-        /* 格納される設定パネル（初期状態は非表示） */
-        #themeControlPanel {
-            display: none;
-            margin-top: 15px;
-            padding-top: 15px;
-            border-top: 1px solid #333;
-        }
+  /* タイマー行 */
+  #timerRow {
+    display: flex;
+    justify-content: center;
+    gap: 20px;
+    margin-bottom: 5px;
+  }
 
-        /* カテゴリ・セレクト */
-        .category-wrapper {
-            font-size: 0.9rem;
-            color: var(--text-sub);
-            margin-bottom: 15px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 10px;
-        }
+  .timer-box {
+    font-size: 2.4rem;
+    font-weight: 800;
+    font-family: 'Impact', 'Arial Black', sans-serif;
+    color: #ff3333;
+    width: 80px;
+    text-align: center;
+    text-shadow: 0 0 12px rgba(255, 51, 51, 0.5);
+  }
 
-        select { 
-            background: #2d2d35; 
-            color: #fff; 
-            border: 2px solid #444; 
-            padding: 8px 12px; 
-            border-radius: 10px; 
-            font-size: 0.9rem;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-        select:disabled { opacity: 0.4; cursor: not-allowed; }
+  /* 回答パイプラインエリア */
+  #answers {
+    display: flex;
+    justify-content: center;
+    gap: 20px;
+    margin-bottom: 30px;
+  }
 
-        /* ボタンデザイン */
-        button { 
-            font-size: 0.9rem; 
-            font-weight: bold; 
-            padding: 10px 16px; 
-            margin: 5px; 
-            border-radius: 12px; 
-            border: none; 
-            color: white;
-            cursor: pointer; 
-            transition: transform 0.1s, opacity 0.2s;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-        }
-        button:active { transform: scale(0.96); }
-        
-        .btn-theme { background: var(--secondary); }
-        .btn-action { background: var(--primary); }
-        .btn-clear { background: var(--danger); }
-        .btn-menu { background: #4a5568; }
+  /* 指定：長さを従来の倍（500px）に変更＋ファイブボンバー風メカニカル枠 */
+  .answer-box {
+    width: 80px;
+    height: 500px; 
+    border-radius: 8px;
+    font-size: 2.2rem; 
+    font-weight: 900;
+    display: flex;
+    justify-content: center;
+    align-items: center; /* 中央に？や👍が浮かび上がるように配置 */
+    position: relative;
+    overflow: hidden;
+    transition: 0.3s;
+    z-index: 1;
+    border: 3px solid #1f274d;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.7), inset 0 0 15px rgba(0,0,0,0.6);
+  }
 
-        /* お題ドロップダウンリスト */
-        #themeList { 
-            margin-top: 15px; 
-            max-height: 180px;
-            overflow-y: auto;
-            border-radius: 12px;
-        }
+  .answer-box span {
+    position: relative;
+    z-index: 4;
+    text-shadow: 0 2px 10px rgba(0,0,0,0.9);
+  }
 
-        .themeItem { 
-            background: #2d2d35; 
-            padding: 12px; 
-            margin: 6px 0; 
-            border-radius: 10px; 
-            font-size: 0.95rem;
-            cursor: pointer; 
-            border-left: 4px solid #00f2fe;
-            transition: background 0.2s;
-            text-align: left;
-        }
-        .themeItem:hover { background: #3d3d4a; }
+  /* 危険水位のエネルギー充填表現（fill：赤からより劇的なグラデーションへ） */
+  .fill {
+    position: absolute;
+    bottom: 0; /* 下からせり上がる形式にすることでボンバーのゲージ感を強調 */
+    left: 0;
+    width: 100%;
+    height: 0%;
+    background: linear-gradient(to top, #ff0000 0%, #ff5500 100%);
+    box-shadow: 0 0 20px rgba(255, 0, 0, 0.8);
+    transition: height 0.2s linear;
+    z-index: 3;
+  }
 
-        /* 五十音グリッド */
-        #grid { 
-            display: grid; 
-            grid-template-columns: repeat(10, 1fr); 
-            gap: 5px; 
-            margin: 0 auto 20px; 
-            background: var(--card);
-            padding: 12px;
-            border-radius: 20px;
-            box-shadow: 0 8px 24px rgba(0,0,0,0.3);
-            border: 1px solid #2d2d35;
-        }
+  /* 不正解時の点滅 */
+  @keyframes wrongFlash {
+    0% { background: #ff0055; box-shadow: 0 0 30px #ff0055; }
+    50% { background: inherit; }
+    100% { background: #ff0055; box-shadow: 0 0 30px #ff0055; }
+  }
+  .wrongFlash { animation: wrongFlash 0.4s ease-out; }
 
-        .cell { 
-            background: var(--cell-bg); 
-            color: var(--cell-text);
-            padding: 12px 0; 
-            border-radius: 8px; 
-            font-size: 1.1rem; 
-            font-weight: bold;
-            display: flex;
-            align-items: center;
-            justify-content: center; 
-            transition: all 0.2s ease;
-        }
+  /* コントロールボタン群 */
+  .controls-row {
+    margin: 20px 0;
+  }
 
-        .empty { background: transparent; }
+  button.game-btn {
+    font-size: 1.1rem;
+    font-weight: bold;
+    padding: 12px 24px;
+    margin: 6px;
+    border-radius: 30px;
+    border: none;
+    color: white;
+    cursor: pointer;
+    transition: transform 0.1s, box-shadow 0.2s, filter 0.2s;
+    box-shadow: 0 6px 16px rgba(0,0,0,0.4);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+  button.game-btn:active { transform: scale(0.95); }
+  
+  #startBtn { background: linear-gradient(135deg, #00f2fe 0%, #4facfe 100%); color: #0b0d19; }
+  .btn-correct { background: linear-gradient(135deg, #00ff87 0%, #60efff 100%); color: #0b0d19; }
+  .btn-wrong { background: linear-gradient(135deg, #f5576c 0%, #f093fb 100%); }
+  .btn-reset { background: #3d4b8a; }
+  #nextBtn { background: linear-gradient(135deg, #ffd700 0%, #ff8800 100%); color: #000; }
+  .btn-menu { background: #202b5c; color: var(--text-sub); }
+  .btn-set { background: #4facfe; padding: 5px 15px !important; border-radius: 6px !important; }
 
-        .filled { 
-            background: var(--filled-bg); 
-            color: #000; 
-            box-shadow: 0 0 12px rgba(255, 102, 204, 0.6);
-            transform: scale(1.03);
-        }
+  /* エフェクトレイヤー */
+  #successEffect {
+    display: none;
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 5rem;
+    font-weight: 900;
+    color: #00ffcc;
+    text-shadow: 0 0 30px rgba(0, 255, 204, 0.8);
+    animation: sparkle 1s ease-out forwards;
+    pointer-events: none;
+    z-index: 999;
+  }
 
-        /* 進捗カウント */
-        #count { 
-            font-size: 1.3rem; 
-            font-weight: bold;
-            margin: 20px 0; 
-            color: var(--accent); 
-            text-shadow: 0 0 10px rgba(0, 255, 204, 0.3);
-        }
+  @keyframes sparkle {
+    0% { opacity: 0; transform: translate(-50%, -50%) scale(0.3) rotate(-10deg); }
+    50% { opacity: 1; transform: translate(-50%, -50%) scale(1.2) rotate(5deg); }
+    100% { opacity: 0; transform: translate(-50%, -50%) scale(1) rotate(0deg); }
+  }
 
-        /* 入力エリア（2列×10行） */
-        #inputs { 
-            background: var(--card);
-            padding: 15px;
-            border-radius: 20px;
-            box-shadow: 0 8px 24px rgba(0,0,0,0.3);
-            margin-bottom: 20px;
-            display: grid;
-            grid-template-columns: repeat(2, 1fr); 
-            gap: 10px;
-            border: 1px solid #2d2d35;
-        }
+  #explosion {
+    display: none;
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 10rem;
+    animation: explode 0.8s ease-out forwards;
+    pointer-events: none;
+    z-index: 999;
+  }
 
-        input { 
-            width: 100%; 
-            padding: 12px 10px; 
-            font-size: 1rem; 
-            background: #121214;
-            color: #fff;
-            border: 2px solid #333;
-            border-radius: 12px; 
-            box-sizing: border-box;
-            transition: border-color 0.2s, box-shadow 0.2s;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: clip; 
-        }
-        input:focus {
-            border-color: #ff66cc;
-            box-shadow: 0 0 8px rgba(255, 102, 204, 0.3);
-            outline: none;
-        }
-        input::placeholder { color: #555; font-size: 0.85rem; }
+  @keyframes explode {
+    0% { transform: translate(-50%, -50%) scale(0.2); opacity: 0; filter: hue-rotate(0deg); }
+    30% { opacity: 1; }
+    50% { transform: translate(-50%, -50%) scale(1.5); filter: hue-rotate(45deg); }
+    100% { transform: translate(-50%, -50%) scale(2.5); opacity: 0; }
+  }
 
-        .footer-controls {
-            margin-top: 25px;
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-            margin-bottom: 25px;
-        }
-
-        /* ルール解説枠（一番下） */
-        #rules { 
-            background: var(--card); 
-            border-left: 5px solid #ff007f;
-            padding: 15px; 
-            border-radius: 14px; 
-            font-size: 0.85rem; 
-            line-height: 1.6; 
-            color: var(--text-sub);
-            margin-top: 20px;
-            text-align: left;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
-        }
-        #rules b { color: #ff66cc; font-size: 0.95rem; }
-    </style>
+  #manual {
+    margin: 40px auto 10px auto;
+    max-width: 600px;
+    padding: 15px;
+    background: rgba(255,255,255,0.03);
+    border-radius: 10px;
+    font-size: 0.95rem;
+    color: var(--text-sub);
+    line-height: 1.6;
+    text-align: left;
+  }
+</style>
 </head>
 <body>
 
-<div class="container">
+<h1>Colorful Bomber</h1>
 
-    <h1>50カラオケ</h1>
+<!-- 設定表示非表示の切り替えスイッチ -->
+<button class="btn-toggle-settings" onclick="toggleSettingsPanel()">⚙️ ゲーム設定を開く/閉じる</button>
 
-    <!-- お題ボックス（コンパクト開閉式に改良） -->
-    <div id="themeBox">
-        <div class="theme-header-row">
-            <div id="themeText">お題：なし</div>
-            <button class="btn-toggle-panel" id="togglePanelBtn" onclick="toggleThemePanel()">⚙️ お題を変更</button>
-        </div>
+<div id="settings">
+  <label>制限時間：</label>
+  <input type="number" id="timeInput" value="50" min="1" max="200"> 秒
 
-        <!-- 折りたたまれる設定用エリア -->
-        <div id="themeControlPanel">
-            <div class="category-wrapper">
-                <span>カテゴリ：</span>
-                <select id="categorySelect">
-                    <option value="all">すべて</option>
-                    <option value="normal" selected>通常</option>
-                    <option value="keyword">キーワード</option>
-                    <option value="joke">ネタ枠</option>
-                </select>
-            </div>
+  <label style="margin-left: 15px;">バーの本数：</label>
+  <select id="barCount">
+    <option>4</option>
+    <option selected>5</option>
+    <option>6</option>
+    <option>7</option>
+    <option>8</option>
+    <option>9</option>
+    <option>10</option>
+  </select>
 
-            <div style="display: flex; flex-wrap: wrap; justify-content: center; gap: 2px;">
-                <button class="btn-theme" onclick="setRandomTheme()">ランダムお題</button>
-                <button class="btn-theme" onclick="showThemeList()">お題を選ぶ</button>
-                <button class="btn-theme" onclick="setCustomTheme()">直接入力</button>
-                <button class="btn-theme" style="background:#555;" onclick="clearTheme()">お題なし</button>
-            </div>
-
-            <div id="themeList"></div>
-        </div>
-    </div>
-
-    <!-- 五十音表 -->
-    <div id="grid"></div>
-
-    <!-- 進捗カウンター -->
-    <div id="count">埋まっている数：0 / 81</div>
-
-    <!-- 入力欄コンテナ（2列×10行） -->
-    <div id="inputs"></div>
-
-    <!-- コントロール -->
-    <div class="footer-controls">
-        <button class="btn-clear" onclick="clearAllInputs()">入力を全部消す</button>
-        <button class="btn-menu" onclick="location.href='index.html'">メニューへ戻る</button>
-    </div>
-
-    <!-- ルール解説 -->
-    <div id="rules">
-        <b>【ルール】</b><br>
-        ・入力欄に曲名をひらがなで入力してください。<br>
-        ・曲名に含まれるすべての「ひらがな」が表に反映されます。<br>
-        ・清音・濁音・半濁音・各小文字（っ、ゃ、ゎ等）に対応。<br>
-        ・入力を消すと枠の色も元に戻ります。
-    </div>
-
+  <button class="game-btn btn-set" onclick="applySettings()">SET</button>
 </div>
 
+<div id="question"></div>
+
+<div id="score">
+  SCORE：<span>0</span> STAGES CLEAR
+  <button class="game-btn btn-reset" onclick="resetScore()" style="font-size:0.8rem; padding: 4px 10px; margin-left:10px;">リセット</button>
+</div>
+
+<div id="timerRow"></div>
+<div id="answers"></div>
+
+<div class="controls-row">
+  <button id="startBtn" class="game-btn" onclick="startGame()">START</button>
+  <button class="game-btn btn-correct" onclick="markCorrect()">正解</button>
+  <button class="game-btn btn-wrong" onclick="markWrong()">不正解</button>
+  <button class="game-btn btn-reset" onclick="resetGame()">リセット</button>
+  <button id="nextBtn" class="game-btn" onclick="nextQuestion()" style="display:none;">次の問題へ</button>
+</div>
+
+<div class="controls-row">
+  <button class="game-btn btn-menu" onclick="location.href='index.html'">メニューへ戻る</button>
+</div>
+
+<div id="successEffect">STAGE CLEAR!! ✨</div>
+<div id="explosion">💥</div>
+
 <script>
-// 五十音表データ（完全維持）
-const chars = [
-  "あ","い","う","え","お",
-  "か","き","く","け","こ",
-  "さ","し","す","せ","そ",
-  "た","ち","つ","て","と",
-  "な","に","ぬ","ね","の",
-  "は","ひ","ふ","へ","ほ",
-  "ま","み","む","め","も",
-  "や","", "ゆ","", "よ",
-  "ら","り","る","れ","ろ",
-  "わ","", "を","", "ん",
-  "が","ぎ","ぐ","げ","ご",
-  "ざ","じ","ず","ぜ","ぞ",
-  "だ","ぢ","づ","で","ど",
-  "ば","び","ぶ","べ","ぼ",
-  "ぱ","ぴ","ぷ","ぺ","ぽ",
-  "ぁ","ぃ","ぅ","ぇ","ぉ",
-  "ゃ","ゅ","ょ",
-  "っ",
-  "ゎ"
+/* -------------------------
+    WebAudio：正解音 (完全維持)
+------------------------- */
+function playCorrect(){
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const o1 = ctx.createOscillator();
+    const g1 = ctx.createGain();
+    o1.type = "sine";
+    o1.frequency.setValueAtTime(784, ctx.currentTime);
+    g1.gain.setValueAtTime(0.25, ctx.currentTime);
+    o1.connect(g1);
+    g1.connect(ctx.destination);
+    o1.start();
+    o1.stop(ctx.currentTime + 0.18);
+
+    const o2 = ctx.createOscillator();
+    const g2 = ctx.createGain();
+    o2.type = "sine";
+    o2.frequency.setValueAtTime(1046, ctx.currentTime + 0.18);
+    g2.gain.setValueAtTime(0.25, ctx.currentTime + 0.18);
+    o2.connect(g2);
+    g2.connect(ctx.destination);
+    o2.start(ctx.currentTime + 0.18);
+    o2.stop(ctx.currentTime + 0.45);
+}
+
+/* -------------------------
+    WebAudio：不正解音 (完全維持)
+------------------------- */
+function playWrong(){
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = "square";
+    osc.frequency.setValueAtTime(120, ctx.currentTime);
+    gain.gain.setValueAtTime(0.3, ctx.currentTime);
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start();
+    osc.frequency.exponentialRampToValueAtTime(60, ctx.currentTime + 0.3);
+    osc.stop(ctx.currentTime + 0.3);
+}
+
+/* -------------------------
+    WebAudio：爆発音 (完全維持)
+------------------------- */
+function playExplosion(){
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const bufferSize = 2 * ctx.sampleRate;
+    const noiseBuffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+    const output = noiseBuffer.getChannelData(0);
+    for (let i = 0; i < bufferSize; i++) {
+        output[i] = (Math.random() * 2 - 1) * (1 - i / bufferSize);
+    }
+    const noise = ctx.createBufferSource();
+    noise.buffer = noiseBuffer;
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(1, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 1);
+    noise.connect(gain);
+    gain.connect(ctx.destination);
+    noise.start();
+    noise.stop(ctx.currentTime + 1);
+}
+
+/* -------------------------
+    ゲーム変数
+------------------------- */
+let barNum = 5;
+let timeLimit = 50;
+let timeLeft = 50;
+let found = 0;
+let timerId;
+let started = false;
+let timerStopped = [];
+let totalScore = 0;
+
+/* ★ バーの色（ファイブボンバーのメカニカルなサイバーカラーイメージ） */
+const barColors = [
+  "linear-gradient(to bottom, #112244, #1d3557)", // メタリックブルー
+  "linear-gradient(to bottom, #112d24, #14532d)", // 深みのあるグリーン
+  "linear-gradient(to bottom, #3a3010, #713f12)", // ブロンズゴールド
+  "linear-gradient(to bottom, #3b1e10, #7c2d12)", // オレンジコッパー
+  "linear-gradient(to bottom, #3b1111, #7f1d1d)"  // ダークレッド
 ];
 
-let filled = {};
-const themeText = document.getElementById("themeText");
-const themeList = document.getElementById("themeList");
-const categorySelect = document.getElementById("categorySelect");
-const themeControlPanel = document.getElementById("themeControlPanel");
-const togglePanelBtn = document.getElementById("togglePanelBtn");
+const questions = [
+    "色のつく曲を答えよ！",
+    "アニメの曲を答えよ！",
+    "動物の曲を答えよ！",
+    "三文字の曲を答えよ！",
+    "DAM人気TOP50に入っている曲を答えよ！",
+    "演歌を答えよ！",
+    "英語の曲を答えよ！",
+    "ラップの入った曲を答えよ！",
+    "Mrs.GREENAPPLEの曲を答えよ！",
+    "ーの入った曲を答えよ！"
+];
 
-// 五十音表生成
-const grid = document.getElementById("grid");
-chars.forEach(c => {
-    const cell = document.createElement("div");
-    cell.className = c === "" ? "cell empty" : "cell";
-    cell.id = c === "" ? "" : "cell_" + c;
-    cell.textContent = c;
-    grid.appendChild(cell);
-});
+let currentQuestion = 0;
 
-// 入力欄を2列×10行（計20個）生成
-const inputsContainer = document.getElementById("inputs");
-for (let i = 0; i < 20; i++) {
-    const inp = document.createElement("input");
-    inp.placeholder = "曲名 " + (i + 1);
-    inp.oninput = updateGrid;
-    inputsContainer.appendChild(inp);
+/* -------------------------
+    設定表示切り替え機能
+------------------------- */
+function toggleSettingsPanel() {
+  const panel = document.getElementById("settings");
+  if(panel.style.display === "block") {
+    panel.style.display = "none";
+  } else {
+    panel.style.display = "block";
+  }
 }
 
-// 五十音表更新ロジック
-function updateGrid() {
-    filled = {};
-
-    document.querySelectorAll("#inputs input").forEach(inp => {
-        const text = inp.value.trim();
-        for (let char of text) {
-            if (chars.includes(char)) filled[char] = true;
-        }
-    });
-
-    chars.forEach(c => {
-        if (c === "") return;
-        const cell = document.getElementById("cell_" + c);
-        if (filled[c]) {
-            cell.classList.add("filled");
-        } else {
-            cell.classList.remove("filled");
-        }
-    });
-
-    document.getElementById("count").textContent =
-        "埋まっている数：" + Object.keys(filled).length + " / 81";
+/* -------------------------
+    設定反映
+------------------------- */
+function applySettings() {
+  barNum = Number(document.getElementById("barCount").value);
+  timeLimit = Number(document.getElementById("timeInput").value);
+  resetGame();
 }
 
-// お題データ
-const themeCategories = {
-  normal: [
-    "夏の曲","冬の曲","春の曲","秋の曲",
-    "アニメ曲","色入りの曲","アイドル曲","数字がある曲",
-    "全てひらがなの曲","全てカタカナの曲",
-    "1980年代の曲","1990年代の曲",
-    "2000年代の曲","2010年代の曲",
-    "6文字以上の曲","7文字以上の曲","8文字以上の曲"
-  ],
-  keyword: [
-    "『愛』が入る曲","『恋』が入る曲",
-    "『夜』が入る曲","『日』が入る曲",
-    "『の』が入る曲","『な』が入る曲",
-    "『を』が入る曲","『赤』が入る曲",
-    "『青』が入る曲","『花』が入る曲"
-  ],
-  joke: [
-    "タイトルが15文字以上の曲",
-    "タイトルが1文字の曲",
-    "誰も知らなさそうな曲",
-    "喉が壊れる曲","泣ける曲",
-    "普段歌わないジャンルの曲",
-    "盛り上がる曲",
-    "最高に面白いネタ曲"
-  ]
-};
+/* -------------------------
+    初期化
+------------------------- */
+function init() {
+  timeLeft = timeLimit;
+  found = 0;
+  started = false;
+  timerStopped = Array(barNum).fill(false);
 
-function getAllThemes() {
-    return [
-        ...themeCategories.normal,
-        ...themeCategories.keyword,
-        ...themeCategories.joke
-    ];
+  document.getElementById("question").textContent = questions[currentQuestion];
+  document.getElementById("score").querySelector("span").textContent = totalScore;
+  document.getElementById("startBtn").style.display = "inline-block";
+  document.getElementById("nextBtn").style.display = "none";
+
+  document.getElementById("timerRow").innerHTML = "";
+  document.getElementById("answers").innerHTML = "";
+
+  for (let i = 0; i < barNum; i++) {
+    const t = document.createElement("div");
+    t.className = "timer-box";
+    t.id = "timer" + i;
+    t.textContent = timeLeft;
+    document.getElementById("timerRow").appendChild(t);
+
+    const box = document.createElement("div");
+    box.className = "answer-box";
+    box.id = "box" + i;
+
+    /* ★ バーの色をサイバーグラデーションに変更 */
+    box.style.background = barColors[i % barColors.length];
+
+    /* 赤い fill */
+    const fill = document.createElement("div");
+    fill.className = "fill";
+    fill.id = "fill" + i;
+
+    box.appendChild(fill);
+    box.innerHTML += "<span>？</span>";
+    document.getElementById("answers").appendChild(box);
+  }
 }
 
-// パネル自体の開閉トグル制御（新設）
-function toggleThemePanel() {
-    if (themeControlPanel.style.display === "block") {
-        closeThemePanel();
-    } else {
-        themeControlPanel.style.display = "block";
-        togglePanelBtn.textContent = "✖ 閉じる";
+/* -------------------------
+    START
+------------------------- */
+function startGame() {
+  if (started) return;
+  started = true;
+  document.getElementById("startBtn").style.display = "none";
+  startTimer();
+}
+
+/* -------------------------
+    タイマー（下から燃料がせり上がるように演出変更）
+------------------------- */
+function startTimer() {
+  clearInterval(timerId);
+  timerId = setInterval(() => {
+    timeLeft--;
+
+    for (let i = 0; i < barNum; i++) {
+      if (!timerStopped[i]) {
+        document.getElementById("timer" + i).textContent = timeLeft;
+
+        // 残り時間が減るほど、下の赤い液面(fill)が高くなる計算
+        const percent = ((timeLimit - timeLeft) / timeLimit) * 100;
+        document.getElementById("fill" + i).style.height = percent + "%";
+      }
     }
-}
 
-// パネルを閉じる共通処理
-function closeThemePanel() {
-    themeControlPanel.style.display = "none";
-    themeList.innerHTML = "";
-    categorySelect.disabled = false;
-    togglePanelBtn.textContent = "⚙️ お題を変更";
-}
-
-// ランダムお題
-function setRandomTheme() {
-    const cat = categorySelect.value;
-    let list = (cat === "all") ? getAllThemes() : themeCategories[cat];
-    const t = list[Math.floor(Math.random() * list.length)];
-    themeText.textContent = "お題：" + t;
-}
-
-// お題一覧表示
-function showThemeList() {
-    const cat = categorySelect.value;
-    let list = (cat === "all") ? getAllThemes() : themeCategories[cat];
-
-    themeList.innerHTML = "";
-    list.forEach(t => {
-        const div = document.createElement("div");
-        div.className = "themeItem";
-        div.textContent = t;
-        div.onclick = () => {
-            themeText.textContent = "お題：" + t;
-            closeThemePanel(); // お題を選んだら自動でコンパクトに閉じる
-        };
-        themeList.appendChild(div);
-    });
-
-    categorySelect.disabled = true;
-}
-
-// 直接入力
-function setCustomTheme() {
-    const t = prompt("お題を入力してください");
-    if (t) {
-        themeText.textContent = "お題：" + t;
-        closeThemePanel();
+    if (timeLeft <= 0) {
+      clearInterval(timerId);
+      triggerExplosion();
     }
+  }, 1000);
 }
 
-// お題なし
-function clearTheme() {
-    themeText.textContent = "お題：なし";
-    closeThemePanel();
+/* -------------------------
+    正解
+------------------------- */
+function markCorrect() {
+  if (!started) return;
+
+  playCorrect();
+
+  const box = document.getElementById("box" + found);
+
+  /* 背景色は変えずに 👍 だけ表示 (ネオン風に少し光らせる) */
+  box.innerHTML = "<span style='color:#00ff87; text-shadow:0 0 15px #00ff87;'>👍</span>";
+
+  timerStopped[found] = true;
+  found++;
+
+  totalScore++;
+  document.getElementById("score").querySelector("span").textContent = totalScore;
+
+  if (found === barNum) {
+    clearInterval(timerId);
+    showSuccess();
+    started = false;
+    document.getElementById("nextBtn").style.display = "inline-block";
+  }
 }
 
-// 入力一括消去
-function clearAllInputs() {
-    document.querySelectorAll("#inputs input").forEach(inp => inp.value = "");
-    updateGrid();
+/* -------------------------
+    不正解
+------------------------- */
+function markWrong() {
+  if (!started) return;
+
+  playWrong();
+
+  const box = document.getElementById("box" + found);
+  box.classList.add("wrongFlash");
+  setTimeout(() => box.classList.remove("wrongFlash"), 400);
 }
 
-// 外側クリックで閉じる処理
-document.addEventListener("click", function(e) {
-    const box = document.getElementById("themeBox");
+/* -------------------------
+    爆発（失敗）
+------------------------- */
+function triggerExplosion() {
+  document.getElementById("explosion").style.display = "block";
 
-    if (themeControlPanel.style.display !== "block") return;
-    if (box.contains(e.target)) return;
+  playExplosion();
 
-    closeThemePanel();
-});
+  started = false;
+
+  setTimeout(() => {
+    document.getElementById("explosion").style.display = "none";
+  }, 900);
+
+  document.getElementById("nextBtn").style.display = "inline-block";
+}
+
+/* -------------------------
+    成功
+------------------------- */
+function showSuccess() {
+  document.getElementById("successEffect").style.display = "block";
+
+  setTimeout(() => {
+    document.getElementById("successEffect").style.display = "none";
+  }, 1200);
+}
+
+/* -------------------------
+    次の問題
+------------------------- */
+function nextQuestion() {
+  currentQuestion++;
+  if (currentQuestion >= questions.length) currentQuestion = 0;
+  init();
+}
+
+/* -------------------------
+    点数リセット
+------------------------- */
+function resetScore() {
+  totalScore = 0;
+  document.getElementById("score").querySelector("span").textContent = totalScore;
+}
+
+/* -------------------------
+    リセット
+------------------------- */
+function resetGame() {
+  clearInterval(timerId);
+  init();
+}
+
+init();
 </script>
+
+<div id="manual">
+  <b>【操作方法】</b><br>
+  ・<b>START</b>：カウントダウンを開始し、爆弾ゲームをスタートします。<br>
+  ・<b>正解</b>：現在アクティブなアタッチメントバーをロックし、「👍」を点灯させます。<br>
+  ・<b>不正解</b>：回答中のパイプラインが赤く警告点滅します。<br>
+  ・<b>ゲーム設定</b>：上部のボタンで開閉可能。制限時間やリンク数を変更して「SET」で即時同期します。
+</div>
 
 </body>
 </html>
