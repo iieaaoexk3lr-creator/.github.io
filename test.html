@@ -2,20 +2,19 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<title>カラフルボンバー総合版 - Bomber Edition</title>
+<title>カラフルBOMBER</title>
 <style>
   :root {
-    --bg-color: #0b0d19;
-    --panel-bg: rgba(20, 24, 46, 0.85);
-    --border-glow: #00f2fe;
-    --accent-glow: #ff007f;
+    --bg-color: #05070f;
+    --panel-bg: rgba(11, 14, 33, 0.9);
+    --border-glow: #00ffff;
     --text-color: #ffffff;
-    --text-sub: #8fa0dd;
+    --text-sub: #7a8ebf;
   }
 
   body {
     font-family: 'Helvetica Neue', Arial, 'Hiragino Kaku Gothic ProN', sans-serif;
-    background: radial-gradient(circle at center, #1a1f3c 0%, var(--bg-color) 100%);
+    background: radial-gradient(circle at center, #101530 0%, var(--bg-color) 100%);
     color: var(--text-color);
     text-align: center;
     padding: 20px;
@@ -24,22 +23,23 @@
   }
 
   h1 { 
-    font-size: 2.8rem; 
+    font-size: 3.2rem; 
     font-weight: 900;
     margin: 10px 0 20px 0; 
-    letter-spacing: 4px;
+    letter-spacing: 6px;
     text-transform: uppercase;
-    background: linear-gradient(135deg, #00f2fe 0%, #4facfe 100%);
+    /* 鮮やかなグラデーションネオンタイトル */
+    background: linear-gradient(135deg, #00ffff 0%, #ff00ff 50%, #ffff00 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
-    text-shadow: 0 0 30px rgba(0, 242, 254, 0.5);
+    filter: drop-shadow(0 0 20px rgba(0, 255, 255, 0.6));
   }
 
-  /* 【新設】設定エリア開閉ボタン */
+  /* 設定エリア開閉ボタン */
   .btn-toggle-settings {
-    background: #161b33;
+    background: #0d1126;
     color: var(--text-sub);
-    border: 1px solid #2c3561;
+    border: 1px solid #1f274d;
     padding: 6px 14px;
     font-size: 0.85rem;
     border-radius: 20px;
@@ -50,10 +50,10 @@
   .btn-toggle-settings:hover {
     color: #fff;
     border-color: var(--border-glow);
-    box-shadow: 0 0 10px rgba(0, 242, 254, 0.3);
+    box-shadow: 0 0 10px rgba(0, 255, 255, 0.4);
   }
 
-  /* 設定エリア（初期状態は非表示） */
+  /* 設定エリア */
   #settings {
     display: none;
     margin: 0 auto 25px auto;
@@ -61,8 +61,8 @@
     background: var(--panel-bg);
     padding: 15px;
     border-radius: 16px;
-    border: 2px solid #202b5c;
-    box-shadow: inset 0 0 20px rgba(0,0,0,0.6);
+    border: 2px solid #1f274d;
+    box-shadow: 0 0 25px rgba(0, 255, 255, 0.1);
   }
 
   label { font-size: 1.1rem; margin-right: 10px; color: var(--text-sub); }
@@ -70,33 +70,32 @@
     font-size: 1.1rem; 
     padding: 6px 10px; 
     margin: 5px; 
-    background: #090b14;
+    background: #02040a;
     color: #fff;
-    border: 1px solid #3d4b8a;
+    border: 1px solid #2e3b75;
     border-radius: 6px;
   }
 
-  /* お題表示：番組の特大テロップ風 */
+  /* お題表示 */
   #question { 
-    font-size: 2rem; 
+    font-size: 2.2rem; 
     font-weight: bold;
     margin: 0 auto 25px auto; 
     max-width: 800px;
     padding: 18px;
-    background: linear-gradient(90deg, rgba(0,0,0,0) 0%, rgba(13, 21, 56, 0.9) 25%, rgba(13, 21, 56, 0.9) 75%, rgba(0,0,0,0) 100%);
-    border-top: 2px solid var(--border-glow);
-    border-bottom: 2px solid var(--border-glow);
-    text-shadow: 0 2px 8px rgba(0,0,0,0.8);
-    box-shadow: 0 0 15px rgba(0, 242, 254, 0.1);
+    background: linear-gradient(90deg, rgba(0,0,0,0) 0%, rgba(5, 9, 28, 0.95) 25%, rgba(5, 9, 28, 0.95) 75%, rgba(0,0,0,0) 100%);
+    border-top: 3px solid var(--border-glow);
+    border-bottom: 3px solid var(--border-glow);
+    text-shadow: 0 0 12px rgba(0, 255, 255, 0.6);
   }
 
-  /* スコア表示 */
+  /* スコア表示（ご指定の表記へ変更） */
   #score {
-    font-size: 1.4rem;
+    font-size: 1.6rem;
     margin: 10px 0 20px 0;
-    color: #ffd700;
+    color: #ffff00;
     font-weight: bold;
-    text-shadow: 0 0 10px rgba(255, 215, 0, 0.4);
+    text-shadow: 0 0 15px rgba(255, 255, 0, 0.5);
   }
 
   /* タイマー行 */
@@ -108,13 +107,13 @@
   }
 
   .timer-box {
-    font-size: 2.4rem;
+    font-size: 2.6rem;
     font-weight: 800;
     font-family: 'Impact', 'Arial Black', sans-serif;
-    color: #ff3333;
+    color: #ff0055;
     width: 80px;
     text-align: center;
-    text-shadow: 0 0 12px rgba(255, 51, 51, 0.5);
+    text-shadow: 0 0 15px rgba(255, 0, 85, 0.6);
   }
 
   /* 回答パイプラインエリア */
@@ -125,50 +124,51 @@
     margin-bottom: 30px;
   }
 
-  /* 指定：長さを従来の倍（500px）に変更＋ファイブボンバー風メカニカル枠 */
+  /* 長さ500pxのネオンデザインバー */
   .answer-box {
     width: 80px;
     height: 500px; 
-    border-radius: 8px;
-    font-size: 2.2rem; 
+    border-radius: 10px;
+    font-size: 2.4rem; 
     font-weight: 900;
     display: flex;
     justify-content: center;
-    align-items: center; /* 中央に？や👍が浮かび上がるように配置 */
+    align-items: center;
     position: relative;
     overflow: hidden;
     transition: 0.3s;
     z-index: 1;
-    border: 3px solid #1f274d;
-    box-shadow: 0 10px 25px rgba(0,0,0,0.7), inset 0 0 15px rgba(0,0,0,0.6);
+    border: 3px solid #ffffff22;
+    box-shadow: 0 0 20px rgba(0,0,0,0.8), inset 0 0 10px rgba(0,0,0,0.8);
   }
 
+  /* 文字の前面表示用 */
   .answer-box span {
     position: relative;
     z-index: 4;
-    text-shadow: 0 2px 10px rgba(0,0,0,0.9);
+    text-shadow: 0 2px 12px rgba(0,0,0,1), 0 0 8px rgba(255,255,255,0.8);
   }
 
-  /* 危険水位のエネルギー充填表現（fill：赤からより劇的なグラデーションへ） */
+  /* 【新規】上から下へせり下りてくる侵食ネオンレッド */
   .fill {
     position: absolute;
-    bottom: 0; /* 下からせり上がる形式にすることでボンバーのゲージ感を強調 */
+    top: 0; /* 上を固定起点にする */
     left: 0;
     width: 100%;
-    height: 0%;
-    background: linear-gradient(to top, #ff0000 0%, #ff5500 100%);
-    box-shadow: 0 0 20px rgba(255, 0, 0, 0.8);
-    transition: height 0.2s linear;
+    height: 0%; /* 初期は0% */
+    background: linear-gradient(to bottom, #ff0055 0%, #ff0000 80%, #ffcc00 100%);
+    box-shadow: 0 5px 15px rgba(255, 0, 0, 0.9);
     z-index: 3;
+    /* transitionを削除してタイマーとの同期をより正確＆なめらかに */
   }
 
-  /* 不正解時の点滅 */
+  /* 不正解時の激しいネオン点滅 */
   @keyframes wrongFlash {
-    0% { background: #ff0055; box-shadow: 0 0 30px #ff0055; }
+    0% { background: #ff0055; box-shadow: 0 0 40px #ff0055; }
     50% { background: inherit; }
-    100% { background: #ff0055; box-shadow: 0 0 30px #ff0055; }
+    100% { background: #ff0055; box-shadow: 0 0 40px #ff0055; }
   }
-  .wrongFlash { animation: wrongFlash 0.4s ease-out; }
+  .wrongFlash { animation: wrongFlash 0.3s ease-out 2; }
 
   /* コントロールボタン群 */
   .controls-row {
@@ -178,26 +178,26 @@
   button.game-btn {
     font-size: 1.1rem;
     font-weight: bold;
-    padding: 12px 24px;
+    padding: 12px 26px;
     margin: 6px;
     border-radius: 30px;
     border: none;
     color: white;
     cursor: pointer;
     transition: transform 0.1s, box-shadow 0.2s, filter 0.2s;
-    box-shadow: 0 6px 16px rgba(0,0,0,0.4);
+    box-shadow: 0 6px 16px rgba(0,0,0,0.5);
     text-transform: uppercase;
     letter-spacing: 1px;
   }
   button.game-btn:active { transform: scale(0.95); }
   
-  #startBtn { background: linear-gradient(135deg, #00f2fe 0%, #4facfe 100%); color: #0b0d19; }
-  .btn-correct { background: linear-gradient(135deg, #00ff87 0%, #60efff 100%); color: #0b0d19; }
-  .btn-wrong { background: linear-gradient(135deg, #f5576c 0%, #f093fb 100%); }
-  .btn-reset { background: #3d4b8a; }
-  #nextBtn { background: linear-gradient(135deg, #ffd700 0%, #ff8800 100%); color: #000; }
-  .btn-menu { background: #202b5c; color: var(--text-sub); }
-  .btn-set { background: #4facfe; padding: 5px 15px !important; border-radius: 6px !important; }
+  #startBtn { background: linear-gradient(135deg, #00ffff 0%, #00aaff 100%); color: #05070f; font-weight: 900; }
+  .btn-correct { background: linear-gradient(135deg, #00ff66 0%, #00ffff 100%); color: #05070f; font-weight: 900; }
+  .btn-wrong { background: linear-gradient(135deg, #ff0055 0%, #ff5500 100%); }
+  .btn-reset { background: #25336e; border: 1px solid #3d53b0; }
+  #nextBtn { background: linear-gradient(135deg, #ffff00 0%, #ff6600 100%); color: #000; font-weight: 900; }
+  .btn-menu { background: #131936; color: var(--text-sub); }
+  .btn-set { background: #00ffff; color: #000; padding: 5px 15px !important; border-radius: 6px !important; }
 
   /* エフェクトレイヤー */
   #successEffect {
@@ -209,7 +209,7 @@
     font-size: 5rem;
     font-weight: 900;
     color: #00ffcc;
-    text-shadow: 0 0 30px rgba(0, 255, 204, 0.8);
+    text-shadow: 0 0 30px rgba(0, 255, 204, 1), 0 0 50px rgba(0, 255, 204, 0.6);
     animation: sparkle 1s ease-out forwards;
     pointer-events: none;
     z-index: 999;
@@ -227,35 +227,36 @@
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    font-size: 10rem;
+    font-size: 12rem;
     animation: explode 0.8s ease-out forwards;
     pointer-events: none;
     z-index: 999;
   }
 
   @keyframes explode {
-    0% { transform: translate(-50%, -50%) scale(0.2); opacity: 0; filter: hue-rotate(0deg); }
+    0% { transform: translate(-50%, -50%) scale(0.2); opacity: 0; }
     30% { opacity: 1; }
-    50% { transform: translate(-50%, -50%) scale(1.5); filter: hue-rotate(45deg); }
-    100% { transform: translate(-50%, -50%) scale(2.5); opacity: 0; }
+    50% { transform: translate(-50%, -50%) scale(1.6); filter: brightness(1.5); }
+    100% { transform: translate(-50%, -50%) scale(2.8); opacity: 0; }
   }
 
   #manual {
     margin: 40px auto 10px auto;
     max-width: 600px;
     padding: 15px;
-    background: rgba(255,255,255,0.03);
+    background: rgba(255,255,255,0.02);
     border-radius: 10px;
     font-size: 0.95rem;
     color: var(--text-sub);
     line-height: 1.6;
     text-align: left;
+    border: 1px solid #151b3d;
   }
 </style>
 </head>
 <body>
 
-<h1>Colorful Bomber</h1>
+<h1>カラフルBOMBER</h1>
 
 <!-- 設定表示非表示の切り替えスイッチ -->
 <button class="btn-toggle-settings" onclick="toggleSettingsPanel()">⚙️ ゲーム設定を開く/閉じる</button>
@@ -280,9 +281,10 @@
 
 <div id="question"></div>
 
+<!-- スコア表記をご指定の形式に変更 -->
 <div id="score">
-  SCORE：<span>0</span> STAGES CLEAR
-  <button class="game-btn btn-reset" onclick="resetScore()" style="font-size:0.8rem; padding: 4px 10px; margin-left:10px;">リセット</button>
+  正解数：<span>0</span>
+  <button class="game-btn btn-reset" onclick="resetScore()" style="font-size:0.8rem; padding: 4px 10px; margin-left:15px;">リセット</button>
 </div>
 
 <div id="timerRow"></div>
@@ -381,13 +383,13 @@ let started = false;
 let timerStopped = [];
 let totalScore = 0;
 
-/* ★ バーの色（ファイブボンバーのメカニカルなサイバーカラーイメージ） */
+/* ★ 鮮烈なサイバーネオンカラー（背景ベース色） */
 const barColors = [
-  "linear-gradient(to bottom, #112244, #1d3557)", // メタリックブルー
-  "linear-gradient(to bottom, #112d24, #14532d)", // 深みのあるグリーン
-  "linear-gradient(to bottom, #3a3010, #713f12)", // ブロンズゴールド
-  "linear-gradient(to bottom, #3b1e10, #7c2d12)", // オレンジコッパー
-  "linear-gradient(to bottom, #3b1111, #7f1d1d)"  // ダークレッド
+  "linear-gradient(to bottom, #00f2fe, #4facfe)", // ネオンシアン
+  "linear-gradient(to bottom, #ff007f, #ff00ff)", // ネオンマゼンタ
+  "linear-gradient(to bottom, #00ff66, #00aa50)", // ネオングリーン
+  "linear-gradient(to bottom, #ffd700, #ff8800)", // ネオンゴールド
+  "linear-gradient(to bottom, #7f00ff, #ff00ff)"  // ネオンパープル
 ];
 
 const questions = [
@@ -406,15 +408,11 @@ const questions = [
 let currentQuestion = 0;
 
 /* -------------------------
-    設定表示切り替え機能
+    設定表示切り替え
 ------------------------- */
 function toggleSettingsPanel() {
   const panel = document.getElementById("settings");
-  if(panel.style.display === "block") {
-    panel.style.display = "none";
-  } else {
-    panel.style.display = "block";
-  }
+  panel.style.display = (panel.style.display === "block") ? "none" : "block";
 }
 
 /* -------------------------
@@ -453,11 +451,11 @@ function init() {
     const box = document.createElement("div");
     box.className = "answer-box";
     box.id = "box" + i;
-
-    /* ★ バーの色をサイバーグラデーションに変更 */
     box.style.background = barColors[i % barColors.length];
+    // ネオンカラーの枠線グロー効果を追加
+    box.style.boxShadow = `0 0 15px rgba(255,255,255,0.1), inset 0 0 15px rgba(0,0,0,0.6)`;
 
-    /* 赤い fill */
+    /* 【変更】上から下へ向かって伸びる赤レイヤー */
     const fill = document.createElement("div");
     fill.className = "fill";
     fill.id = "fill" + i;
@@ -479,7 +477,7 @@ function startGame() {
 }
 
 /* -------------------------
-    タイマー（下から燃料がせり上がるように演出変更）
+    タイマー（上から下へ赤色が侵食する動きを制御）
 ------------------------- */
 function startTimer() {
   clearInterval(timerId);
@@ -490,7 +488,7 @@ function startTimer() {
       if (!timerStopped[i]) {
         document.getElementById("timer" + i).textContent = timeLeft;
 
-        // 残り時間が減るほど、下の赤い液面(fill)が高くなる計算
+        // 時間の経過度(%)に合わせて、上から赤色を下に伸ばす(heightを増やす)
         const percent = ((timeLimit - timeLeft) / timeLimit) * 100;
         document.getElementById("fill" + i).style.height = percent + "%";
       }
@@ -511,14 +509,14 @@ function markCorrect() {
 
   playCorrect();
 
-  const box = document.getElementById("box" + found);
-
-  /* 背景色は変えずに 👍 だけ表示 (ネオン風に少し光らせる) */
-  box.innerHTML = "<span style='color:#00ff87; text-shadow:0 0 15px #00ff87;'>👍</span>";
-
+  // 現在回答中のバーのタイマー判定のみをストップ（変化した赤色の高さをそのまま維持）
   timerStopped[found] = true;
-  found++;
 
+  const box = document.getElementById("box" + found);
+  // 文字を「👍」に変え、ネオンを強調
+  box.querySelector("span").innerHTML = "<span style='color:#ffff00; font-size:3rem; text-shadow:0 0 15px #ffff00;'>👍</span>";
+
+  found++;
   totalScore++;
   document.getElementById("score").querySelector("span").textContent = totalScore;
 
@@ -540,7 +538,7 @@ function markWrong() {
 
   const box = document.getElementById("box" + found);
   box.classList.add("wrongFlash");
-  setTimeout(() => box.classList.remove("wrongFlash"), 400);
+  setTimeout(() => box.classList.remove("wrongFlash"), 600);
 }
 
 /* -------------------------
@@ -548,9 +546,7 @@ function markWrong() {
 ------------------------- */
 function triggerExplosion() {
   document.getElementById("explosion").style.display = "block";
-
   playExplosion();
-
   started = false;
 
   setTimeout(() => {
@@ -565,7 +561,6 @@ function triggerExplosion() {
 ------------------------- */
 function showSuccess() {
   document.getElementById("successEffect").style.display = "block";
-
   setTimeout(() => {
     document.getElementById("successEffect").style.display = "none";
   }, 1200);
@@ -600,11 +595,11 @@ init();
 </script>
 
 <div id="manual">
-  <b>【操作方法】</b><br>
-  ・<b>START</b>：カウントダウンを開始し、爆弾ゲームをスタートします。<br>
-  ・<b>正解</b>：現在アクティブなアタッチメントバーをロックし、「👍」を点灯させます。<br>
-  ・<b>不正解</b>：回答中のパイプラインが赤く警告点滅します。<br>
-  ・<b>ゲーム設定</b>：上部のボタンで開閉可能。制限時間やリンク数を変更して「SET」で即時同期します。
+  <b>【ルールと操作】</b><br>
+  ・<b>START</b>でタイムリミットのカウントが始まります。<br>
+  ・時間が経つにつれ、ネオンバーが<b>上から下へ向かって鮮烈な赤色に染まっていきます</b>。<br>
+  ・<b>正解</b>を押すと、そのバーは<b>赤色の侵食がその段階でピタッと停止してキープ</b>され、次のバーへ移動します。<br>
+  ・すべてのバーを赤で完全に染まる前にロックできればステージクリアです！
 </div>
 
 </body>
