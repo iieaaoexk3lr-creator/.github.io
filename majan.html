@@ -3,13 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ひらがじゃんカラオケ - 操作性改善版</title>
+    <title>ひらがじゃんカラオケ - 次局遷移バグ修正版</title>
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     <style>
         .jan-tile {
-            width: 60px;
-            height: 84px;
-            font-size: 24pt;
+            width: 58px;
+            height: 80px;
+            font-size: 22pt;
             font-weight: bold;
             display: inline-flex;
             align-items: center;
@@ -17,36 +17,45 @@
             background: #ffffff;
             color: #1e293b;
             border-radius: 8px;
-            box-shadow: 0 5px 0 #cbd5e1, inset 0 -3px 0 #e2e8f0, 0 8px 12px -3px rgba(0, 0, 0, 0.3);
+            box-shadow: 0 4px 0 #cbd5e1, inset 0 -3px 0 #e2e8f0, 0 6px 10px -3px rgba(0, 0, 0, 0.3);
             border: 2px solid #94a3b8;
             cursor: pointer;
             user-select: none;
             transition: transform 0.1s, box-shadow 0.1s;
-            touch-action: none;
+            flex-shrink: 0;
         }
         .jan-tile:active {
-            transform: translateY(3px);
+            transform: translateY(2px);
             box-shadow: 0 2px 0 #cbd5e1, inset 0 -3px 0 #e2e8f0;
         }
         .jan-tile.selected {
             border-color: #3b82f6;
             background-color: #eff6ff;
             transform: translateY(-8px);
-            box-shadow: 0 13px 0 #3b82f6, 0 14px 18px -3px rgba(59, 130, 246, 0.4);
-        }
-        .jan-tile.dragging {
-            opacity: 0.5;
-            transform: scale(1.05);
+            box-shadow: 0 10px 0 #3b82f6, 0 12px 16px -3px rgba(59, 130, 246, 0.4);
         }
         .special-tile {
             background: #fffbeb;
             border-color: #f59e0b;
             color: #b45309;
-            box-shadow: 0 5px 0 #f59e0b, inset 0 -3px 0 #fef3c7;
+            box-shadow: 0 4px 0 #f59e0b, inset 0 -3px 0 #fef3c7;
         }
-        .drop-zone-active {
-            border-color: #3b82f6 !important;
-            background-color: rgba(59, 130, 246, 0.1) !important;
+        .scroller-zone {
+            display: flex;
+            flex-wrap: nowrap;
+            overflow-x: auto;
+            overflow-y: hidden;
+            gap: 8px;
+            padding: 12px 8px;
+            -webkit-overflow-scrolling: touch;
+            min-height: 110px;
+        }
+        .scroller-zone::-webkit-scrollbar {
+            height: 5px;
+        }
+        .scroller-zone::-webkit-scrollbar-thumb {
+            background: #475569;
+            border-radius: 4px;
         }
         .meld-set {
             display: inline-flex;
@@ -58,13 +67,12 @@
         }
     </style>
 </head>
-<body class="bg-slate-900 text-slate-100 min-h-screen font-sans">
+<body class="bg-slate-900 text-slate-100 min-h-screen font-sans select-none">
 
-    <!-- 1. 前画面 -->
     <div id="screen-lobby" class="flex flex-col items-center justify-center min-h-screen p-4">
         <div class="bg-slate-800 p-8 rounded-2xl shadow-2xl max-w-md w-full border border-slate-700 text-center">
             <h1 class="text-3xl font-black text-emerald-400 mb-2 tracking-wider">ひらがじゃんカラオケ</h1>
-            <p class="text-xs text-slate-400 mb-8">〜バグ修正完了・完全安定版〜</p>
+            <p class="text-xs text-slate-400 mb-8">〜次局のカード初期化バグ修正版〜</p>
             
             <div class="space-y-4 text-left">
                 <div>
@@ -82,7 +90,7 @@
                         <div class="flex-grow border-t border-slate-700"></div>
                     </div>
                     <div class="flex gap-2">
-                        <input text="text" id="input-room-id" inputmode="numeric" placeholder="数字の部屋番号" class="w-2/3 px-4 py-3 bg-slate-950 border border-slate-700 rounded-xl text-slate-100 focus:outline-none focus:border-blue-400 font-mono tracking-widest text-center">
+                        <input type="text" id="input-room-id" inputmode="numeric" placeholder="部屋番号" class="w-2/3 px-4 py-3 bg-slate-950 border border-slate-700 rounded-xl text-slate-100 focus:outline-none focus:border-blue-400 font-mono tracking-widest text-center">
                         <button id="btn-join-room" class="w-1/3 bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 rounded-xl transition">
                             参加
                         </button>
@@ -92,7 +100,6 @@
         </div>
     </div>
 
-    <!-- 2. 待機画面 -->
     <div id="screen-wait" class="hidden flex flex-col items-center justify-center min-h-screen p-4">
         <div class="bg-slate-800 p-8 rounded-2xl shadow-2xl max-w-md w-full border border-slate-700 text-center">
             <h2 class="text-xl font-bold text-slate-300 mb-2">待機ロビー</h2>
@@ -113,9 +120,7 @@
         </div>
     </div>
 
-    <!-- 3. メインゲーム画面 -->
     <div id="screen-game" class="hidden flex flex-col min-h-screen">
-        <!-- 上部バー -->
         <div class="bg-slate-950 p-4 border-b border-slate-800 flex justify-between items-center shadow-md">
             <div>
                 <span class="text-xs text-slate-500 block">ステータス</span>
@@ -133,50 +138,41 @@
             </div>
         </div>
 
-        <!-- メイン対戦エリア -->
         <div class="flex-grow p-4 space-y-4 max-w-5xl mx-auto w-full">
-            
-            <!-- スコアボード -->
             <div class="bg-slate-950 p-3 rounded-xl border border-slate-800">
                 <h3 class="text-xs font-bold text-slate-500 mb-2 tracking-wider">プレイヤー全員のスコア</h3>
                 <div class="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 gap-2 text-xs" id="game-scoreboard"></div>
             </div>
 
-            <!-- ホスト用次ゲーム案内 -->
             <div id="host-next-action-zone" class="bg-emerald-950/40 border border-emerald-800/60 p-4 rounded-xl hidden text-center space-y-3">
-                <p class="text-sm font-bold text-emerald-400">全員の点数確定が完了しました！次のアクションを選択してください。</p>
+                <p class="text-sm font-bold text-emerald-400">全員の点数確定が完了しました！</p>
                 <div class="flex gap-4 justify-center">
                     <button id="btn-next-round" class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-6 py-2 rounded-xl text-sm">点数を引き継いで次の一局へ</button>
                     <button id="btn-end-room" class="bg-slate-700 hover:bg-slate-600 text-white font-bold px-6 py-2 rounded-xl text-sm">ゲームを終了（解散）</button>
                 </div>
             </div>
 
-            <!-- 河 -->
             <div class="bg-slate-950 p-4 rounded-xl border border-slate-800 min-h-[110px]">
-                <h3 id="board-title" class="text-xs font-bold text-slate-500 mb-2 tracking-wider">直近の捨て牌（自分起点で1周前まで表示）</h3>
+                <h3 id="board-title" class="text-xs font-bold text-slate-500 mb-2 tracking-wider">直近の捨て牌</h3>
                 <div id="river-tiles" class="flex flex-wrap gap-2 items-center"></div>
                 <div id="agari-result-board" class="hidden space-y-2"></div>
             </div>
 
-            <!-- 鳴きアクションエリア -->
             <div id="meld-selector-zone" class="bg-amber-950/40 border border-amber-800/60 p-4 rounded-xl hidden">
-                <h3 class="text-xs font-bold text-amber-400 mb-2">💡 他のプレイヤーの捨て牌から「ポン」または「カン」が可能です！</h3>
+                <h3 class="text-xs font-bold text-amber-400 mb-2">💡 他のプレイヤーの捨て牌に対してアクション可能です！</h3>
                 <div id="meld-candidates" class="flex flex-wrap gap-4 items-center"></div>
             </div>
         </div>
 
-        <!-- 下部：手札・操作パネル -->
         <div class="bg-slate-950 p-4 border-t border-slate-800 sticky bottom-0 z-50">
             <div class="max-w-4xl mx-auto space-y-4">
-                
-                <!-- 鳴いたセット -->
                 <div id="my-melds-area" class="hidden flex flex-wrap gap-3 p-2 bg-slate-900/50 rounded-lg border border-slate-800/80">
                     <span class="text-xs font-bold text-slate-500 flex items-center">鳴いたセット:</span>
                     <div id="my-melds-container" class="flex flex-wrap gap-2"></div>
                 </div>
 
                 <div>
-                    <div class="flex justify-between items-center mb-2">
+                    <div class="flex justify-between items-center mb-1">
                         <span id="hand-title" class="text-xs font-bold text-slate-400 tracking-wider">自分の手札（選択して左右矢印で並び替え）</span>
                         <div id="sort-controls" class="flex gap-2">
                             <button id="btn-move-left" class="bg-slate-800 hover:bg-slate-700 text-slate-200 px-3 py-1 rounded text-xs font-bold">← 左へ</button>
@@ -184,17 +180,14 @@
                         </div>
                     </div>
 
-                    <!-- メイン手札エリア -->
-                    <div id="player-hand" class="flex flex-wrap gap-2 p-3 bg-slate-900 rounded-xl min-h-[105px] items-center justify-center border border-slate-800 transition-colors"></div>
+                    <div id="player-hand" class="scroller-zone bg-slate-900 rounded-xl border border-slate-800 items-center"></div>
                     
-                    <!-- 予備牌エリア -->
-                    <div id="reserve-zone" class="mt-4 hidden">
-                        <span id="reserve-title" class="text-xs font-bold text-red-400 block mb-2">⚠️ 使わなかった予備牌（※和了時、1枚につき -300点ペナルティ）</span>
-                        <div id="player-reserve-hand" class="flex flex-wrap gap-2 p-3 bg-red-950/30 border border-red-900/40 rounded-xl min-h-[105px] items-center justify-center transition-colors"></div>
+                    <div id="reserve-zone" class="mt-2 hidden">
+                        <span id="reserve-title" class="text-xs font-bold text-red-400 block mb-1">⚠️ あまり牌（※1枚につき -300点ペナルティ）</span>
+                        <div id="player-reserve-hand" class="scroller-zone bg-red-950/20 border border-red-900/40 rounded-xl items-center"></div>
                     </div>
                 </div>
 
-                <!-- アクションボタンエリア -->
                 <div class="flex gap-2 justify-end" id="action-panel">
                     <button id="btn-draw" class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-6 py-3 rounded-xl transition hidden">ツモ</button>
                     <button id="btn-discard" class="bg-rose-600 hover:bg-rose-500 text-white font-bold px-6 py-3 rounded-xl transition opacity-50 cursor-not-allowed" disabled>1枚捨てる</button>
@@ -204,7 +197,7 @@
             </div>
         </div>
     </div>
-    <!-- Firebase SDK Modules -->
+
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
         import { getFirestore, doc, setDoc, updateDoc, onSnapshot, arrayUnion, getDoc, collection, getDocs, deleteDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
@@ -233,9 +226,11 @@
         let myName = "";
         let currentRoomId = "";
         let roomState = {};
+        
         let myHand = [];
         let myReserve = [];
         let myMelds = []; 
+        
         let selectedTileIndex = null;
         let selectedTileZone = 'hand'; 
         
@@ -243,9 +238,6 @@
         let hasSubmittedScore = false;
         let hasJustMelded = false;      
         let hasDrawnThisTurn = false;   
-
-        let dragSourceIndex = null;
-        let dragSourceZone = null;
 
         const sLobby = document.getElementById('screen-lobby');
         const sWait = document.getElementById('screen-wait');
@@ -258,13 +250,10 @@
         document.getElementById('btn-draw').addEventListener('click', () => drawTile());
         document.getElementById('btn-move-left').addEventListener('click', () => moveTile(-1));
         document.getElementById('btn-move-right').addEventListener('click', () => moveTile(1));
-        document.getElementById('btn-trigger-agari').addEventListener('click', () => requestGlobalAgari());
+        document.getElementById('btn-trigger-agari').addEventListener('click', () => requestGlobalAgari(false)); 
         document.getElementById('btn-confirm-score').addEventListener('click', () => submitMyAgariStructure());
         document.getElementById('btn-next-round').addEventListener('click', () => startNextRound());
         document.getElementById('btn-end-room').addEventListener('click', () => terminateRoom());
-
-        setupDropZone(document.getElementById('player-hand'), 'hand');
-        setupDropZone(document.getElementById('player-reserve-hand'), 'reserve');
 
         function generateDeck() {
             let deck = [];
@@ -289,7 +278,9 @@
                 turnIndex: 0,
                 turnOrder: [],
                 hostId: myId,
-                agariTriggered: false
+                agariTriggered: false,
+                ronTriggered: false,
+                ronTargetCard: ""
             };
 
             await setDoc(doc(db, "rooms", currentRoomId), roomState);
@@ -299,7 +290,7 @@
         async function joinRoom() {
             setProfile();
             const rId = document.getElementById('input-room-id').value.trim();
-            if(!rId || isNaN(rId)) return alert("数字のルームIDを入力してください");
+            if(!rId || isNaN(rId)) return alert("ルームIDを入力してください");
             await joinRoomProcess(rId, false);
         }
 
@@ -332,6 +323,7 @@
                     sWait.classList.add('hidden');
                     sGame.classList.remove('hidden');
                     
+                    // 【最重要】和了状態が解除（falseにリセット）されたらローカル側も完全に通常モードに戻す
                     if(oldAgariTriggered === true && roomState.agariTriggered === false) {
                         resetLocalGameStateForNextRound();
                     }
@@ -346,17 +338,16 @@
             onSnapshot(collection(db, `rooms/${roomId}/players`), (snapshot) => {
                 const players = [];
                 let allSubmitted = true;
-                let html = "";
                 
                 snapshot.forEach(pDoc => {
                     const p = pDoc.data();
                     players.push(p);
-                    html += `<li class="p-2 bg-slate-950 rounded-lg border border-slate-800 text-sm flex justify-between">
-                        <span>👤 ${p.name} ${p.id === myId ? '(あなた)':''}</span>
-                    </li>`;
                     
                     if(p.id === myId) {
-                        if(!isLocalAgariPhase) myHand = p.hand || [];
+                        // アガリ処理中、および和了モード中以外のみ、DBのhand配列を同期する
+                        if(!isLocalAgariPhase && !roomState.agariTriggered) {
+                            myHand = p.hand || [];
+                        }
                         myMelds = p.melds || [];
                     }
                     if(p.status !== "submitted") {
@@ -364,9 +355,6 @@
                     }
                 });
 
-                document.getElementById('player-list').innerHTML = html;
-                document.getElementById('player-count').innerText = players.length;
-                
                 if(roomState.status === "playing") {
                     renderScoreboard(players);
                     if(roomState.agariTriggered) {
@@ -405,11 +393,13 @@
             for(const uid of uids) {
                 let hand = [];
                 for(let i=0; i<10; i++) { hand.push(currentDeck.pop()); }
-                await updateDoc(doc(db, `rooms/${currentRoomId}/players`, uid), { hand: hand, melds: [], status: "playing", activeSongCards: [], reserveCards: [] });
+                await updateDoc(doc(db, `rooms/${currentRoomId}/players`, uid), { 
+                    hand: hand, melds: [], status: "playing", activeSongCards: [], reserveCards: [] 
+                });
             }
 
             await updateDoc(doc(db, "rooms", currentRoomId), {
-                status: "playing", deck: currentDeck, turnOrder: uids, turnIndex: 0, turnOwner: uids[0], agariTriggered: false, discardPile: []
+                status: "playing", deck: currentDeck, turnOrder: uids, turnIndex: 0, turnOwner: uids[0], agariTriggered: false, ronTriggered: false, discardPile: []
             });
         }
 
@@ -418,7 +408,6 @@
             document.getElementById('game-dora').innerText = roomState.dora;
             
             const isMyTurn = roomState.turnOwner === myId;
-            
             if (!isMyTurn) {
                 hasDrawnThisTurn = false;
             }
@@ -430,7 +419,7 @@
                 document.getElementById('agari-result-board').classList.remove('hidden');
             } else {
                 document.getElementById('current-turn-player').innerText = isMyTurn ? (hasJustMelded ? "鳴き後：1枚捨ててください" : "あなたの番です！") : "他プレイヤーの手番待ち";
-                document.getElementById('board-title').innerText = "直近の捨て牌（自分起点で1周前まで表示）";
+                document.getElementById('board-title').innerText = "直近の捨て牌";
                 document.getElementById('river-tiles').classList.remove('hidden');
                 document.getElementById('agari-result-board').classList.add('hidden');
                 document.getElementById('host-next-action-zone').classList.add('hidden');
@@ -441,7 +430,7 @@
                 
                 river.innerHTML = recentDiscards.map(p => {
                     const isSp = KANJI_SPECIAL.includes(p.card) || p.card === roomState.dora;
-                    return `<div class="text-center"><span class="jan-tile transform scale-75 m-1 ${isSp?'special-tile':''}">${p.card}</span><span class="block text-[9px] text-slate-500 truncate max-w-[60px]">${p.senderName}</span></div>`;
+                    return `<div class="text-center"><span class="jan-tile transform scale-75 m-0.5 ${isSp?'special-tile':''}">${p.card}</span><span class="block text-[9px] text-slate-500 truncate max-w-[55px] mx-auto">${p.senderName}</span></div>`;
                 }).join('');
             }
 
@@ -478,14 +467,14 @@
                     } else {
                         btnDraw.classList.add('hidden');
                         btnDiscard.classList.remove('hidden');
-                        btnAgari.classList.remove('hidden');
+                        btnAgari.classList.remove('hidden'); 
                     }
                     document.getElementById('meld-selector-zone').classList.add('hidden');
                 } else {
                     btnDraw.classList.add('hidden');
                     btnDiscard.classList.add('hidden');
                     btnAgari.classList.add('hidden');
-                    renderMeldActionZone();
+                    renderMeldActionZone(); 
                 }
             } else {
                 btnDraw.classList.add('hidden');
@@ -509,27 +498,35 @@
 
             const matchCount = myHand.filter(c => c === lastDiscard.card).length;
 
+            zone.classList.remove('hidden');
+            const wrapper = document.createElement('div');
+            wrapper.className = "flex items-center bg-slate-900 p-3 rounded-xl border border-slate-700 gap-4 w-full justify-between";
+            
+            let html = `<div class="text-xs">対象牌: <b class="text-amber-400 text-lg">${lastDiscard.card}</b> (${lastDiscard.senderName}の捨て札)</div><div class="flex gap-2">`;
+            html += `<button id="btn-action-ron" class="bg-gradient-to-r from-amber-500 to-red-600 hover:from-amber-400 hover:to-red-500 text-slate-950 font-black px-5 py-2 rounded-lg text-xs shadow-md">ロン（他人の牌で和了！）</button>`;
+            
             if(matchCount >= 2) {
-                zone.classList.remove('hidden');
-                const wrapper = document.createElement('div');
-                wrapper.className = "flex items-center bg-slate-900 p-3 rounded-xl border border-slate-700 gap-4";
-                
-                let html = `<div class="text-xs">対象牌: <b class="text-amber-400 text-lg">${lastDiscard.card}</b> (${lastDiscard.senderName}の捨て札)</div><div class="flex gap-2">`;
-                html += `<button id="btn-action-pon" class="bg-amber-600 hover:bg-amber-500 text-slate-950 font-black px-4 py-2 rounded-lg text-xs">ポン (3点に変える)</button>`;
-                if(matchCount === 3) {
-                    html += `<button id="btn-action-kan" class="bg-red-600 hover:bg-red-500 text-white font-black px-4 py-2 rounded-lg text-xs">カン (4点に変える)</button>`;
-                }
-                html += `</div>`;
-                wrapper.innerHTML = html;
-                container.appendChild(wrapper);
-
-                document.getElementById('btn-action-pon').addEventListener('click', () => executeMeld('ポン', lastDiscard.card));
-                if(matchCount === 3) {
-                    document.getElementById('btn-action-kan').addEventListener('click', () => executeMeld('カン', lastDiscard.card));
-                }
-            } else {
-                zone.classList.add('hidden');
+                html += `<button id="btn-action-pon" class="bg-amber-600 hover:bg-amber-500 text-slate-950 font-black px-4 py-2 rounded-lg text-xs">ポン</button>`;
             }
+            if(matchCount === 3) {
+                html += `<button id="btn-action-kan" class="bg-red-600 hover:bg-red-500 text-white font-black px-4 py-2 rounded-lg text-xs">カン</button>`;
+            }
+            html += `</div>`;
+            wrapper.innerHTML = html;
+            container.appendChild(wrapper);
+
+            document.getElementById('btn-action-ron').addEventListener('click', () => executeRon(lastDiscard.card));
+            if(matchCount >= 2) {
+                document.getElementById('btn-action-pon').addEventListener('click', () => executeMeld('ポン', lastDiscard.card));
+            }
+            if(matchCount === 3) {
+                document.getElementById('btn-action-kan').addEventListener('click', () => executeMeld('カン', lastDiscard.card));
+            }
+        }
+
+        async function executeRon(targetCard) {
+            myHand.push(targetCard);
+            await requestGlobalAgari(true, targetCard);
         }
 
         async function executeMeld(type, card) {
@@ -585,95 +582,15 @@
                 el.innerText = tile;
                 
                 if(!hasSubmittedScore) {
-                    // 和了モード（上下振り分けフェーズ）の時だけドラッグを許可
-                    if(isLocalAgariPhase) {
-                        el.setAttribute('draggable', 'true');
-                        setupTileDragEvents(el, index, zoneName);
-                    }
                     el.addEventListener('click', () => selectTile(index, zoneName));
                 }
                 container.appendChild(el);
             });
         }
 
-        function setupTileDragEvents(el, index, zone) {
-            el.addEventListener('dragstart', (e) => {
-                if(hasSubmittedScore || !isLocalAgariPhase) return;
-                dragSourceIndex = index;
-                dragSourceZone = zone;
-                el.classList.add('dragging');
-                e.dataTransfer.setData('text/plain', index);
-            });
-
-            el.addEventListener('dragend', () => {
-                el.classList.remove('dragging');
-            });
-
-            el.addEventListener('touchstart', (e) => {
-                if(hasSubmittedScore || !isLocalAgariPhase) return;
-                dragSourceIndex = index;
-                dragSourceZone = zone;
-                selectTile(index, zone);
-            }, { passive: true });
-
-            el.addEventListener('touchend', (e) => {
-                if(hasSubmittedScore || !isLocalAgariPhase || dragSourceIndex === null) return;
-                const touch = e.changedTouches[0];
-                const targetEl = document.elementFromPoint(touch.clientX, touch.clientY);
-                if(!targetEl) return;
-
-                const handZone = document.getElementById('player-hand');
-                const reserveZone = document.getElementById('player-reserve-hand');
-
-                if (handZone.contains(targetEl)) {
-                    handleDropAction(dragSourceIndex, dragSourceZone, 'hand');
-                } else if (reserveZone && reserveZone.contains(targetEl)) {
-                    handleDropAction(dragSourceIndex, dragSourceZone, 'reserve');
-                }
-                dragSourceIndex = null;
-                dragSourceZone = null;
-            });
-        }
-
-        function setupDropZone(zoneEl, zoneName) {
-            zoneEl.addEventListener('dragover', (e) => {
-                if(!isLocalAgariPhase) return;
-                e.preventDefault();
-                zoneEl.classList.add('drop-zone-active');
-            });
-            zoneEl.addEventListener('dragleave', () => zoneEl.classList.remove('drop-zone-active'));
-            zoneEl.addEventListener('drop', (e) => {
-                e.preventDefault();
-                zoneEl.classList.remove('drop-zone-active');
-                if(dragSourceIndex === null || hasSubmittedScore || !isLocalAgariPhase) return;
-                handleDropAction(dragSourceIndex, dragSourceZone, zoneName);
-                dragSourceIndex = null;
-                dragSourceZone = null;
-            });
-        }
-
-        function handleDropAction(srcIndex, srcZone, targetZone) {
-            // 同じゾーン内でのドラッグ（左右並び替え目的）は無視する（直感に合わない挙動の防止）
-            if(srcZone === targetZone) return;
-
-            if(srcZone === 'hand' && targetZone === 'reserve') {
-                const card = myHand.splice(srcIndex, 1)[0];
-                myReserve.push(card);
-                selectedTileIndex = myReserve.length - 1;
-                selectedTileZone = 'reserve';
-            } else if(srcZone === 'reserve' && targetZone === 'hand') {
-                const card = myReserve.splice(srcIndex, 1)[0];
-                myHand.push(card);
-                selectedTileIndex = myHand.length - 1;
-                selectedTileZone = 'hand';
-            }
-            renderHand();
-        }
-
         function selectTile(index, zone) {
             if(hasSubmittedScore) return;
             
-            // 和了モード（上下振り分け）の時は、タップでも上下に移動できるようにする（超快適操作）
             if (isLocalAgariPhase) {
                 if (zone === 'hand') {
                     const card = myHand.splice(index, 1)[0];
@@ -687,7 +604,6 @@
                     selectedTileZone = 'hand';
                 }
             } else {
-                // 通常モード時は単純な選択切り替え
                 selectedTileIndex = index;
                 selectedTileZone = zone;
                 
@@ -774,8 +690,18 @@
             });
         }
         
-        async function requestGlobalAgari() {
-            await updateDoc(doc(db, "rooms", currentRoomId), { agariTriggered: true });
+        async function requestGlobalAgari(isRon = false, ronCard = "") {
+            if(isRon) {
+                await updateDoc(doc(db, "rooms", currentRoomId), { 
+                    agariTriggered: true, 
+                    ronTriggered: true, 
+                    ronTargetCard: ronCard 
+                });
+            } else {
+                await updateDoc(doc(db, "rooms", currentRoomId), { 
+                    agariTriggered: true 
+                });
+            }
         }
 
         function enterLocalAgariPhase() {
@@ -784,7 +710,7 @@
             myReserve = [];
             selectedTileIndex = null;
             
-            document.getElementById('hand-title').innerHTML = "✨ <b>【和了モード】</b> 牌を<b>タップ</b>、または上下にドラッグして「曲名（上）」と「あまり牌（下）」に振り分けてください！";
+            document.getElementById('hand-title').innerHTML = "✨ <b>【和了モード】</b> 牌を<b>タップ</b>して上の「完成曲名」と下の「あまり牌」に仕分けてください（横スクロール可能）";
             document.getElementById('reserve-zone').classList.remove('hidden');
             document.getElementById('reserve-title').innerText = "⚠️ あまり牌（※1枚につき -300点ペナルティ）";
             document.getElementById('btn-discard').classList.add('hidden');
@@ -807,13 +733,19 @@
             if(roomState.hostId === myId) {
                 setTimeout(() => finalizeTotalScores(), 2000);
             }
-            alert("あなたの構成を送信しました！全員が確定するまでお待ちください。");
+            alert("あなたの構成を送信しました！他のプレイヤーが確定するまでお待ちください。");
         }
 
         async function finalizeTotalScores() {
             const playersSnapshot = await getDocs(collection(db, `rooms/${currentRoomId}/players`));
             let playersData = [];
             playersSnapshot.forEach(doc => playersData.push(doc.data()));
+
+            if(roomState.ronTriggered && roomState.discardPile.length > 0) {
+                let currentRiver = [...roomState.discardPile];
+                currentRiver.pop();
+                await updateDoc(doc(db, "rooms", currentRoomId), { discardPile: currentRiver });
+            }
 
             for(const p of playersData) {
                 let roundScore = p.score || 0;
@@ -823,9 +755,7 @@
                 }
                 
                 if(p.melds && p.melds.length > 0) {
-                    p.melds.forEach(m => {
-                        roundScore += m.score; 
-                    });
+                    p.melds.forEach(m => { roundScore += m.score; });
                 }
 
                 if(p.reserveCards && p.reserveCards.length > 0) {
@@ -848,8 +778,13 @@
             for(const uid of uids) {
                 let hand = [];
                 for(let i=0; i<10; i++) { hand.push(deck.pop()); }
+                // 【バグ修正】ここで新しいhand分配と同時に、前局のアガリ仕分けデータ(activeSongCards, reserveCards)を完全に「空」へ初期化
                 await updateDoc(doc(db, `rooms/${currentRoomId}/players`, uid), {
-                    hand: hand, melds: [], status: "playing", activeSongCards: [], reserveCards: []
+                    hand: hand, 
+                    melds: [], 
+                    status: "playing", 
+                    activeSongCards: [], 
+                    reserveCards: []
                 });
             }
 
@@ -859,7 +794,9 @@
                 discardPile: [],
                 turnIndex: 0,
                 turnOwner: uids[0],
-                agariTriggered: false
+                agariTriggered: false,
+                ronTriggered: false,
+                ronTargetCard: ""
             });
         }
 
