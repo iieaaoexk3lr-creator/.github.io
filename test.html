@@ -2,15 +2,17 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0"> <title>カラオケビンゴ！</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>カラオケビンゴ！</title>
 <style>
   :root {
-    --bg-color: #0b0c10; /* さらに暗く */
+    --bg-color: #0b0c10;
     --card-bg: #1f2833;
     --text-color: #c5c6c7;
-    --accent-blue: #66fcf1; /* 目に優しいネオンブルー */
-    --hit-border: #45a29e; /* ヒット時の枠色 */
-    --title-color: #a8dadc; /* 目に優しいタイトル色 */
+    --accent-blue: #66fcf1;   /* 通常ヒット枠（ネオンブルー） */
+    --accent-yellow: #ffea00; /* リーチ枠（ネオンイエロー） */
+    --accent-red: #ff0055;    /* ビンゴ成立枠（ネオンレッド） */
+    --title-color: #a8dadc;
     --border-radius: 8px;
     --font-family: 'Helvetica Neue', Arial, sans-serif;
   }
@@ -20,11 +22,10 @@
     color: var(--text-color);
     font-family: var(--font-family);
     text-align: center;
-    padding: 10px; /* スマホ向けに余白縮小 */
+    padding: 10px;
     margin: 0;
   }
 
-  /* タイトルを目に優しく見やすい水色系ネオンへ */
   h1 { 
     font-size: 2rem; 
     margin: 15px 0 10px 0; 
@@ -32,7 +33,6 @@
     text-shadow: 0 0 10px rgba(168, 218, 220, 0.6); 
   }
 
-  /* コントロールエリア全体のレイアウト調整 */
   .controls-group {
     background: var(--card-bg);
     padding: 15px;
@@ -42,7 +42,6 @@
     box-sizing: border-box;
   }
 
-  /* セレクトボックスを行に固定 */
   .select-row {
     margin-bottom: 10px;
   }
@@ -58,16 +57,14 @@
     box-sizing: border-box;
   }
 
-  /* 最低点・最高点の項目を中段に配置 */
   #scoreRangeBox {
-    display: block; /* 改行 */
+    display: block;
     margin: 10px 0;
     font-size: 0.95rem;
     color: #aaa;
   }
   #scoreRangeBox input { width: 70px; }
 
-  /* ボタン群のレイアウト */
   .button-row {
     display: flex;
     flex-wrap: wrap;
@@ -83,7 +80,7 @@
     border: none;
     cursor: pointer;
     transition: background 0.2s;
-    min-width: 90px; /* スマホで押しやすい最低幅 */
+    min-width: 90px;
   }
   button:active { transform: scale(0.98); }
 
@@ -93,54 +90,71 @@
   .btn-menu { background: #343a40; color: var(--text-color); min-width: 120px;}
   button:disabled { background: #333 !important; color: #555 !important; cursor: not-allowed; }
 
-  /* ビンゴ盤：スマホ幅約8cmに収まり、マスが大きく見やすいサイズ */
   #board {
     margin: 15px auto;
     display: grid;
-    gap: 6px; /* 隙間を広げて見やすく */
-    max-width: 100%; /* スマホ幅いっぱいまで許可 */
-    width: 310px; /* 幅8cm≒320px前後に収まるように固定 */
+    gap: 6px;
+    max-width: 100%;
+    width: 310px;
     box-sizing: border-box;
   }
 
   .cell {
     background: #121212;
     border-radius: var(--border-radius);
-    min-height: 60px; /* 文字を大きく見せるため高さを維持 */
+    min-height: 60px;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 1.3rem; /* 文字を大きく */
+    font-size: 1.3rem;
     font-weight: bold;
     padding: 6px;
     word-break: break-word;
     box-shadow: 0 2px 5px rgba(0,0,0,0.2);
     box-sizing: border-box;
     transition: all 0.25s ease;
-    border: 2px solid transparent; /* 初期は枠線なし */
+    border: 2px solid transparent;
   }
 
   .editable:hover { 
-    outline: none; /* デフォルトを消す */
+    outline: none;
     border-color: #666; 
   }
 
   /* ヒット時：ネオンブルー枠、薄い緑で塗りつぶし、文字は黒 */
   .hit {
-    background: #d4edda; /* 薄い緑で塗りつぶし */
-    color: #000; /* 文字は黒 */
-    border-color: var(--accent-blue); /* 枠がネオンブルー (そのまま) */
+    background: #d4edda;
+    color: #000;
+    border-color: var(--accent-blue);
     transform: scale(1.02);
     box-shadow: 0 0 10px rgba(102, 252, 241, 0.6); 
   }
 
-  /* ビンゴバナーも水色系へ */
+  /* 【新規追加】リーチ状態の枠：ネオンイエロー、中身と文字はヒット状態を維持 */
+  .cell.reach {
+    border-color: var(--accent-yellow);
+    box-shadow: 0 0 12px rgba(255, 234, 0, 0.8);
+  }
+
+  /* 【新規追加】ビンゴ達成ラインの枠：ネオンレッド、中身と文字はヒット状態を維持 */
+  .cell.bingo-line {
+    border-color: var(--accent-red);
+    box-shadow: 0 0 14px rgba(255, 0, 85, 0.9);
+    animation: pulseRed 1.5s infinite alternate;
+  }
+
+  @keyframes pulseRed {
+    0% { box-shadow: 0 0 8px rgba(255, 0, 85, 0.6); }
+    100% { box-shadow: 0 0 18px rgba(255, 0, 85, 1); }
+  }
+
+  /* ビンゴ情報バナー（マルチビンゴ対応） */
   #bingoBanner {
     margin: 10px 0 15px 0;
-    font-size: 2.5rem;
+    font-size: 2.3rem;
     font-weight: 900;
-    color: var(--accent-blue);
-    text-shadow: 0 0 15px rgba(102, 252, 241, 0.8);
+    color: var(--accent-red);
+    text-shadow: 0 0 15px rgba(255, 0, 85, 0.8);
     display: none;
     animation: bingoPop 0.3s ease-out;
   }
@@ -203,11 +217,11 @@
   ・START前はマスをクリックして候補から選択できます。<br>
   ・START後は編集できません。<br>
   ・ゲーム中は一致したマスをタップしてロックします（もう一度タップで解除）。<br>
-  ・縦・横・斜めのどれかが揃うとBINGOです。<br>
+  ・<b>あと1マスで揃う列は枠が黄色（リーチ）</b>になります。<br>
+  ・<b>揃った列は枠が赤色（ビンゴ）</b>になり、2つ、3つと増えるごとにダブル、トリプルとカウントアップします！
 </div>
 
 <script>
-// JavaScriptロジックは完全維持
 const wordPool = [
   "愛","夢","心","空","海","風","花","星","月","夜",
   "光","音","歌","声","道","雨","雪","恋","涙","虹",
@@ -256,7 +270,7 @@ function onCellClick(i){
   if(started){
     hits[i] = !hits[i];
     renderBoard();
-    checkBingo();
+    checkBingo(); // ここでリーチ・複数ビンゴのスタイルを更新
     return;
   }
 
@@ -329,33 +343,79 @@ function startGame(){
   renderBoard();
 }
 
+/* --------------------------------------------------
+    リーチおよび複数ラインビンゴ判定（スタイル連動）
+-------------------------------------------------- */
 function checkBingo(){
+  const cells = boardEl.querySelectorAll(".cell");
+  
+  // スタイルの初期化（ビンゴとリーチのクラスを一度クリア）
+  cells.forEach(c => {
+    c.classList.remove("reach", "bingo-line");
+  });
+
   const lines = [];
 
-  for(let r=0;r<size;r++){
+  // 横一列 (rows)
+  for(let r=0; r<size; r++){
     const row=[];
-    for(let c=0;c<size;c++) row.push(r*size+c);
+    for(let c=0; c<size; c++) row.push(r*size+c);
     lines.push(row);
   }
-  for(let c=0;c<size;c++){
+  // 縦一列 (cols)
+  for(let c=0; c<size; c++){
     const col=[];
-    for(let r=0;r<size;r++) col.push(r*size+c);
+    for(let r=0; r<size; r++) col.push(r*size+c);
     lines.push(col);
   }
+  // 斜め (diagonals)
   const d1=[], d2=[];
-  for(let i=0;i<size;i++){
+  for(let i=0; i<size; i++){
     d1.push(i*size+i);
     d2.push(i*size+(size-1-i));
   }
-  lines.push(d1,d2);
+  lines.push(d1, d2);
 
-  let bingo=false;
+  let bingoCount = 0;
+  let bingoIndices = new Set();
+  let reachIndices = new Set();
+
+  // 全ラインの状態を網羅チェック
   for(const line of lines){
-    if(line.every(i=>hits[i])) bingo=true;
+    const hitCount = line.filter(i => hits[i]).length;
+    
+    if (hitCount === size) {
+      // ビンゴ達成した列のインデックスを保存
+      bingoCount++;
+      line.forEach(i => bingoIndices.add(i));
+    } else if (hitCount === size - 1) {
+      // リーチ（あと1マスで揃う）の列のインデックスを保存
+      line.forEach(i => reachIndices.add(i));
+    }
   }
 
-  if(bingo){
-    bingoBanner.style.display="block";
+  // 1：リーチの枠に黄色クラスを適用
+  reachIndices.forEach(i => {
+    cells[i].classList.add("reach");
+  });
+
+  // 2：ビンゴが揃っている枠にネオンレッド（bingo-line）を最優先適用
+  bingoIndices.forEach(i => {
+    cells[i].classList.remove("reach"); // リーチと重複した場合はビンゴを優先
+    cells[i].classList.add("bingo-line");
+  });
+
+  // 3：バナーのテキストをビンゴ数に応じて分岐
+  if(bingoCount > 0){
+    let text = "BINGO！！";
+    if (bingoCount === 2) text = "ダブル BINGO！！";
+    if (bingoCount === 3) text = "トリプル BINGO！！";
+    if (bingoCount >= 4) text = `${bingoCount}重 BINGO！！！`;
+    
+    bingoBanner.textContent = text;
+    bingoBanner.style.display = "block";
+  } else {
+    bingoBanner.style.display = "none";
   }
 }
 
