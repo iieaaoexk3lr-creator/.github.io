@@ -40,6 +40,7 @@
     max-width: 420px;
     margin: 0 auto 15px auto;
     box-sizing: border-box;
+    transition: all 0.3s ease;
   }
 
   .select-row {
@@ -87,7 +88,15 @@
   #randomBtn { background: #4a4e69; color: #fff; }
   #startBtn { background: #198754; color: #fff; }
   #resetBtn { background: #6c757d; color: #fff; }
-  .btn-menu { background: #343a40; color: var(--text-color); min-width: 120px;}
+  
+  /* 独立したメニューへ戻るボタン用スタイル */
+  .btn-menu { 
+    background: #343a40; 
+    color: var(--text-color); 
+    min-width: 140px;
+    margin-top: 15px;
+    display: inline-block;
+  }
   button:disabled { background: #333 !important; color: #555 !important; cursor: not-allowed; }
 
   #board {
@@ -121,24 +130,26 @@
     border-color: #666; 
   }
 
-  /* ヒット時：ネオンブルー枠、薄い緑で塗りつぶし、文字は黒 */
+  /* ヒット時（通常）：ネオンブルー枠、薄い緑で塗りつぶし、文字は黒 */
   .hit {
-    background: #d4edda;
+    background: #d4edda; /* 薄い緑 */
     color: #000;
     border-color: var(--accent-blue);
     transform: scale(1.02);
     box-shadow: 0 0 10px rgba(102, 252, 241, 0.6); 
   }
 
-  /* 【新規追加】リーチ状態の枠：ネオンイエロー、中身と文字はヒット状態を維持 */
+  /* リーチ状態の枠：ネオンイエロー、中身と文字はヒット状態を維持 */
   .cell.reach {
     border-color: var(--accent-yellow);
     box-shadow: 0 0 12px rgba(255, 234, 0, 0.8);
   }
 
-  /* 【新規追加】ビンゴ達成ラインの枠：ネオンレッド、中身と文字はヒット状態を維持 */
+  /* ビンゴ達成ラインの枠：ネオンレッド、中身は少し濃いめの緑、文字は黒 */
   .cell.bingo-line {
-    border-color: var(--accent-red);
+    background: #a3cfbb !important; /* ヒット時よりも少し濃いめの緑に変更 */
+    color: #000 !important;
+    border-color: var(--accent-red) !important;
     box-shadow: 0 0 14px rgba(255, 0, 85, 0.9);
     animation: pulseRed 1.5s infinite alternate;
   }
@@ -148,7 +159,7 @@
     100% { box-shadow: 0 0 18px rgba(255, 0, 85, 1); }
   }
 
-  /* ビンゴ情報バナー（マルチビンゴ対応） */
+  /* ビンゴ情報バナー */
   #bingoBanner {
     margin: 10px 0 15px 0;
     font-size: 2.3rem;
@@ -180,29 +191,30 @@
 <h1>カラオケBINGO！</h1>
 
 <div class="controls-group">
-  <div class="select-row">
-    <select id="mode">
-      <option value="score">点数ビンゴ</option>
-      <option value="word">漢字ビンゴ</option>
-    </select>
+  <div id="hideSetupContainer">
+    <div class="select-row">
+      <select id="mode">
+        <option value="score">点数ビンゴ</option>
+        <option value="word">漢字ビンゴ</option>
+      </select>
 
-    <select id="sizeSelect">
-      <option value="4">4×4（16マス）</option>
-      <option value="5" selected>5×5（25マス）</option>
-      <option value="6">6×6（36マス）</option>
-    </select>
+      <select id="sizeSelect">
+        <option value="4">4×4（16マス）</option>
+        <option value="5" selected>5×5（25マス）</option>
+        <option value="6">6×6（36マス）</option>
+      </select>
+    </div>
+
+    <span id="scoreRangeBox">
+      最低点 <input id="minScore" type="number" value="70">
+      最高点 <input id="maxScore" type="number" value="100">
+    </span>
   </div>
-
-  <span id="scoreRangeBox">
-    最低点 <input id="minScore" type="number" value="70">
-    最高点 <input id="maxScore" type="number" value="100">
-  </span>
 
   <div class="button-row">
     <button id="randomBtn">ランダム生成</button>
     <button id="startBtn">START</button>
     <button id="resetBtn">リセット</button>
-    <button class="btn-menu" onclick="location.href='index.html'">メニューへ戻る</button>
   </div>
 </div>
 
@@ -218,8 +230,10 @@
   ・START後は編集できません。<br>
   ・ゲーム中は一致したマスをタップしてロックします（もう一度タップで解除）。<br>
   ・<b>あと1マスで揃う列は枠が黄色（リーチ）</b>になります。<br>
-  ・<b>揃った列は枠が赤色（ビンゴ）</b>になり、2つ、3つと増えるごとにダブル、トリプルとカウントアップします！
+  ・<b>揃った列は枠が赤色（ビンゴ）</b>になり、枠の中が少し濃い緑色に変化します！
 </div>
+
+<button class="btn-menu" onclick="location.href='index.html'">メニューへ戻る</button>
 
 <script>
 const wordPool = [
@@ -248,6 +262,7 @@ const randomBtn = document.getElementById("randomBtn");
 const startBtn = document.getElementById("startBtn");
 const resetBtn = document.getElementById("resetBtn");
 const bingoBanner = document.getElementById("bingoBanner");
+const hideSetupContainer = document.getElementById("hideSetupContainer");
 
 function initBoard(){
   boardEl.innerHTML = "";
@@ -270,7 +285,7 @@ function onCellClick(i){
   if(started){
     hits[i] = !hits[i];
     renderBoard();
-    checkBingo(); // ここでリーチ・複数ビンゴのスタイルを更新
+    checkBingo(); 
     return;
   }
 
@@ -334,41 +349,33 @@ function startGame(){
 
   started = true;
 
-  randomBtn.disabled = true;
-  modeEl.disabled = true;
-  sizeEl.disabled = true;
-  document.getElementById("minScore").disabled = true;
-  document.getElementById("maxScore").disabled = true;
+  // 設定項目と特定ボタンの非表示（最小化）
+  hideSetupContainer.style.display = "none";
+  randomBtn.style.display = "none";
+  startBtn.style.display = "none";
 
   renderBoard();
 }
 
-/* --------------------------------------------------
-    リーチおよび複数ラインビンゴ判定（スタイル連動）
--------------------------------------------------- */
 function checkBingo(){
   const cells = boardEl.querySelectorAll(".cell");
   
-  // スタイルの初期化（ビンゴとリーチのクラスを一度クリア）
   cells.forEach(c => {
     c.classList.remove("reach", "bingo-line");
   });
 
   const lines = [];
 
-  // 横一列 (rows)
   for(let r=0; r<size; r++){
     const row=[];
     for(let c=0; c<size; c++) row.push(r*size+c);
     lines.push(row);
   }
-  // 縦一列 (cols)
   for(let c=0; c<size; c++){
     const col=[];
     for(let r=0; r<size; r++) col.push(r*size+c);
     lines.push(col);
   }
-  // 斜め (diagonals)
   const d1=[], d2=[];
   for(let i=0; i<size; i++){
     d1.push(i*size+i);
@@ -380,32 +387,27 @@ function checkBingo(){
   let bingoIndices = new Set();
   let reachIndices = new Set();
 
-  // 全ラインの状態を網羅チェック
   for(const line of lines){
     const hitCount = line.filter(i => hits[i]).length;
     
     if (hitCount === size) {
-      // ビンゴ達成した列のインデックスを保存
       bingoCount++;
       line.forEach(i => bingoIndices.add(i));
     } else if (hitCount === size - 1) {
-      // リーチ（あと1マスで揃う）の列のインデックスを保存
+      reachIndices.add(i);
       line.forEach(i => reachIndices.add(i));
     }
   }
 
-  // 1：リーチの枠に黄色クラスを適用
   reachIndices.forEach(i => {
     cells[i].classList.add("reach");
   });
 
-  // 2：ビンゴが揃っている枠にネオンレッド（bingo-line）を最優先適用
   bingoIndices.forEach(i => {
-    cells[i].classList.remove("reach"); // リーチと重複した場合はビンゴを優先
+    cells[i].classList.remove("reach"); 
     cells[i].classList.add("bingo-line");
   });
 
-  // 3：バナーのテキストをビンゴ数に応じて分岐
   if(bingoCount > 0){
     let text = "BINGO！！";
     if (bingoCount >= 2) text = `${bingoCount} BINGO！！！`;
@@ -428,7 +430,12 @@ function renderBoard(){
 
 function resetAll(){
   started = false;
-  randomBtn.disabled = false;
+  
+  // 設定項目とボタンをすべて再表示
+  hideSetupContainer.style.display = "block";
+  randomBtn.style.display = "inline-block";
+  startBtn.style.display = "inline-block";
+
   modeEl.disabled = false;
   sizeEl.disabled = false;
   document.getElementById("minScore").disabled = false;
