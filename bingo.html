@@ -89,7 +89,6 @@
   #startBtn { background: #198754; color: #fff; }
   #resetBtn { background: #6c757d; color: #fff; }
   
-  /* 独立したメニューへ戻るボタン用スタイル */
   .btn-menu { 
     background: #343a40; 
     color: var(--text-color); 
@@ -132,25 +131,25 @@
 
   /* ヒット時（通常）：ネオンブルー枠、薄い緑で塗りつぶし、文字は黒 */
   .hit {
-    background: #d4edda; /* 薄い緑 */
+    background: #d4edda; 
     color: #000;
     border-color: var(--accent-blue);
     transform: scale(1.02);
     box-shadow: 0 0 10px rgba(102, 252, 241, 0.6); 
   }
 
-  /* リーチ状態の枠：ネオンイエロー、中身と文字はヒット状態を維持 */
+  /* リーチ状態の枠：ネオンイエロー（中身の薄い緑と文字の黒は維持） */
   .cell.reach {
-    border-color: var(--accent-yellow);
-    box-shadow: 0 0 12px rgba(255, 234, 0, 0.8);
+    border-color: var(--accent-yellow) !important;
+    box-shadow: 0 0 12px rgba(255, 234, 0, 0.8) !important;
   }
 
   /* ビンゴ達成ラインの枠：ネオンレッド、中身は少し濃いめの緑、文字は黒 */
   .cell.bingo-line {
-    background: #a3cfbb !important; /* ヒット時よりも少し濃いめの緑に変更 */
+    background: #a3cfbb !important; 
     color: #000 !important;
     border-color: var(--accent-red) !important;
-    box-shadow: 0 0 14px rgba(255, 0, 85, 0.9);
+    box-shadow: 0 0 14px rgba(255, 0, 85, 0.9) !important;
     animation: pulseRed 1.5s infinite alternate;
   }
 
@@ -349,7 +348,6 @@ function startGame(){
 
   started = true;
 
-  // 設定項目と特定ボタンの非表示（最小化）
   hideSetupContainer.style.display = "none";
   randomBtn.style.display = "none";
   startBtn.style.display = "none";
@@ -357,9 +355,13 @@ function startGame(){
   renderBoard();
 }
 
+/* --------------------------------------------------
+    リーチおよび複数ラインビンゴ判定（バグ修正版）
+-------------------------------------------------- */
 function checkBingo(){
   const cells = boardEl.querySelectorAll(".cell");
   
+  // クラスを一度すべてクリアして状態変化に備える
   cells.forEach(c => {
     c.classList.remove("reach", "bingo-line");
   });
@@ -394,20 +396,22 @@ function checkBingo(){
       bingoCount++;
       line.forEach(i => bingoIndices.add(i));
     } else if (hitCount === size - 1) {
-      reachIndices.add(i);
       line.forEach(i => reachIndices.add(i));
     }
   }
 
+  // 1. リーチ対象マス（黄色枠）を反映
   reachIndices.forEach(i => {
     cells[i].classList.add("reach");
   });
 
+  // 2. ビンゴ成立マス（赤枠＋少し濃い緑）を最優先で上書き反映
   bingoIndices.forEach(i => {
     cells[i].classList.remove("reach"); 
     cells[i].classList.add("bingo-line");
   });
 
+  // 3. バナーテキスト更新
   if(bingoCount > 0){
     let text = "BINGO！！";
     if (bingoCount >= 2) text = `${bingoCount} BINGO！！！`;
@@ -431,7 +435,6 @@ function renderBoard(){
 function resetAll(){
   started = false;
   
-  // 設定項目とボタンをすべて再表示
   hideSetupContainer.style.display = "block";
   randomBtn.style.display = "inline-block";
   startBtn.style.display = "inline-block";
