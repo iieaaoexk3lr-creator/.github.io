@@ -3,457 +3,373 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>カラオケビンゴ！</title>
+<title>一画千点！曲名クイズ</title>
+
 <style>
-  :root {
-    --bg-color: #0b0c10;
-    --card-bg: #1f2833;
-    --text-color: #c5c6c7;
-    --accent-blue: #66fcf1;   /* 通常ヒット枠（ネオンブルー） */
-    --accent-yellow: #ffea00; /* リーチ枠（ネオンイエロー） */
-    --accent-red: #ff0055;    /* ビンゴ成立枠（ネオンレッド） */
-    --title-color: #a8dadc;
-    --border-radius: 8px;
-    --font-family: 'Helvetica Neue', Arial, sans-serif;
-  }
+:root {
+  --bg-color: #0b0c10;
+  --card-bg: #1f2833;
+  --text-color: #c5c6c7;
+  --accent-blue: #66fcf1;
+  --title-color: #a8dadc;
+  --border-radius: 8px;
+  --font-family: 'Helvetica Neue', Arial, "Hiragino Kaku Gothic ProN", sans-serif;
+}
 
-  body {
-    background-color: var(--bg-color);
-    color: var(--text-color);
-    font-family: var(--font-family);
-    text-align: center;
-    padding: 10px;
-    margin: 0;
-  }
+body {
+  background-color: var(--bg-color);
+  color: var(--text-color);
+  font-family: var(--font-family);
+  text-align: center;
+  padding: 10px;
+  margin: 0;
+}
 
-  h1 { 
-    font-size: 2rem; 
-    margin: 15px 0 10px 0; 
-    color: var(--title-color);
-    text-shadow: 0 0 10px rgba(168, 218, 220, 0.6); 
-  }
+h1 {
+  font-size: 1.8rem;
+  margin: 15px 0 10px 0;
+  color: var(--title-color);
+  text-shadow: 0 0 10px rgba(168, 218, 220, 0.6);
+}
 
-  .controls-group {
-    background: var(--card-bg);
-    padding: 15px;
-    border-radius: var(--border-radius);
-    max-width: 420px;
-    margin: 0 auto 15px auto;
-    box-sizing: border-box;
-  }
+hr {
+  border: 0;
+  height: 1px;
+  background: #333;
+  margin: 15px 0;
+}
 
-  .select-row {
-    margin-bottom: 10px;
-  }
+/* アプリ風のメインコンテナ */
+.app-card {
+  background: var(--card-bg);
+  padding: 15px;
+  border-radius: var(--border-radius);
+  max-width: 420px;
+  margin: 0 auto 15px auto;
+  box-sizing: border-box;
+}
 
-  select, input {
-    font-size: 1rem;
-    padding: 8px;
-    margin: 4px;
-    border-radius: 6px;
-    border: 1px solid #444;
-    background: #000;
-    color: #fff;
-    box-sizing: border-box;
-  }
+/* 漢字表示エリア：スマホ幅からはみ出さないよう横スクロール可能に */
+#container {
+  display: flex;
+  justify-content: flex-start;
+  align-items: center;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  overflow-y: hidden;
+  margin: 15px auto;
+  padding: 10px;
+  background: #121212;
+  border-radius: var(--border-radius);
+  min-height: 85px;
+  max-width: 100%;
+  box-sizing: border-box;
+  -webkit-overflow-scrolling: touch; /* スムーズスクロール */
+}
 
-  #scoreRangeBox {
-    display: block;
-    margin: 10px 0;
-    font-size: 0.95rem;
-    color: #aaa;
-  }
-  #scoreRangeBox input { width: 70px; }
+/* スクロールバーのカスタム（スマホで見やすく） */
+#container::-webkit-scrollbar {
+  height: 6px;
+}
+#container::-webkit-scrollbar-thumb {
+  background: #444;
+  border-radius: 3px;
+}
 
-  .button-row {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: center;
-    gap: 6px;
-  }
+svg {
+  width: 65px;
+  height: 65px;
+  margin: 0 4px;
+  flex-shrink: 0;
+}
 
-  button {
-    font-size: 1rem;
-    font-weight: bold;
-    padding: 10px 16px;
-    border-radius: 6px;
-    border: none;
-    cursor: pointer;
-    transition: background 0.2s;
-    min-width: 90px;
-  }
-  button:active { transform: scale(0.98); }
+/* ボタン群の共通スマホ最適化 */
+.button-row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px;
+  margin-bottom: 10px;
+}
 
-  #randomBtn { background: #4a4e69; color: #fff; }
-  #startBtn { background: #198754; color: #fff; }
-  #resetBtn { background: #6c757d; color: #fff; }
-  .btn-menu { background: #343a40; color: var(--text-color); min-width: 120px;}
-  button:disabled { background: #333 !important; color: #555 !important; cursor: not-allowed; }
+button {
+  font-size: 0.95rem;
+  font-weight: bold;
+  padding: 10px 14px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+  min-width: 90px;
+}
+button:active {
+  transform: scale(0.95);
+}
 
-  #board {
-    margin: 15px auto;
-    display: grid;
-    gap: 6px;
-    max-width: 100%;
-    width: 310px;
-    box-sizing: border-box;
-  }
+/* ボタンごとの色分け */
+.btn-nav { background: #4a4e69; color: #fff; }       /* 前・次問題 */
+.btn-action { background: #343a40; color: #fff; }    /* 画数の操作 */
+.btn-reveal { background: #e63946; color: #fff; }    /* 答え全表示 */
+.btn-submit { background: #198754; color: #fff; width: 100%; max-width: 260px; margin: 8px auto; display: block;} /* 回答 */
+.btn-reset { background: #6c757d; color: #fff; }     /* リセット */
+.btn-menu { background: #2b2d42; color: var(--text-color); min-width: 120px; text-decoration: none; display: inline-block; padding: 10px 14px; border-radius: 6px; font-weight: bold; font-size: 0.95rem;}
 
-  .cell {
-    background: #121212;
-    border-radius: var(--border-radius);
-    min-height: 60px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 1.3rem;
-    font-weight: bold;
-    padding: 6px;
-    word-break: break-word;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
-    box-sizing: border-box;
-    transition: all 0.25s ease;
-    border: 2px solid transparent;
-  }
+input {
+  font-size: 1.1rem;
+  padding: 10px;
+  margin-top: 5px;
+  width: 100%;
+  max-width: 260px;
+  border-radius: 6px;
+  border: 1px solid #444;
+  background: #000;
+  color: #fff;
+  box-sizing: border-box;
+  text-align: center;
+}
 
-  .editable:hover { 
-    outline: none;
-    border-color: #666; 
-  }
+#result {
+  margin-top: 10px;
+  font-size: 1.1rem;
+  font-weight: bold;
+  min-height: 24px;
+}
 
-  /* ヒット時：ネオンブルー枠、薄い緑で塗りつぶし、文字は黒 */
-  .hit {
-    background: #d4edda;
-    color: #000;
-    border-color: var(--accent-blue);
-    transform: scale(1.02);
-    box-shadow: 0 0 10px rgba(102, 252, 241, 0.6); 
-  }
+#scoreBox {
+  margin: 10px 0;
+  font-size: 1.4rem;
+  font-weight: bold;
+  color: var(--accent-blue);
+  text-shadow: 0 0 10px rgba(102, 252, 241, 0.5);
+}
 
-  /* 【新規追加】リーチ状態の枠：ネオンイエロー、中身と文字はヒット状態を維持 */
-  .cell.reach {
-    border-color: var(--accent-yellow);
-    box-shadow: 0 0 12px rgba(255, 234, 0, 0.8);
-  }
-
-  /* 【新規追加】ビンゴ達成ラインの枠：ネオンレッド、中身と文字はヒット状態を維持 */
-  .cell.bingo-line {
-    border-color: var(--accent-red);
-    box-shadow: 0 0 14px rgba(255, 0, 85, 0.9);
-    animation: pulseRed 1.5s infinite alternate;
-  }
-
-  @keyframes pulseRed {
-    0% { box-shadow: 0 0 8px rgba(255, 0, 85, 0.6); }
-    100% { box-shadow: 0 0 18px rgba(255, 0, 85, 1); }
-  }
-
-  /* ビンゴ情報バナー（マルチビンゴ対応） */
-  #bingoBanner {
-    margin: 10px 0 15px 0;
-    font-size: 2.3rem;
-    font-weight: 900;
-    color: var(--accent-red);
-    text-shadow: 0 0 15px rgba(255, 0, 85, 0.8);
-    display: none;
-    animation: bingoPop 0.3s ease-out;
-  }
-  @keyframes bingoPop { from { transform: scale(0.5); opacity: 0; } to { transform: scale(1); opacity: 1; } }
-
-  #rules {
-    margin: 20px auto 10px auto;
-    max-width: 420px;
-    text-align: left;
-    background: var(--card-bg);
-    padding: 15px;
-    border-radius: var(--border-radius);
-    font-size: 0.9rem;
-    line-height: 1.6;
-    color: #aaa;
-    box-sizing: border-box;
-  }
-  #rules b { color: #fff; }
+/* 説明文エリア */
+.rules-container {
+  font-size: 0.9rem;
+  color: #aaa;
+  line-height: 1.6;
+  padding: 15px;
+  text-align: left;
+  max-width: 420px;
+  margin: 15px auto 10px auto;
+  background: var(--card-bg);
+  border-radius: var(--border-radius);
+  box-sizing: border-box;
+}
+.rules-container b {
+  color: #fff;
+}
 </style>
 </head>
 <body>
 
-<h1>カラオケビンゴ！</h1>
+<hr style="margin-top:10px;">
 
-<div class="controls-group">
-  <div class="select-row">
-    <select id="mode">
-      <option value="score">点数ビンゴ</option>
-      <option value="word">漢字ビンゴ</option>
-    </select>
+<h1>一画千点！曲名クイズ</h1>
 
-    <select id="sizeSelect">
-      <option value="4">4×4（16マス）</option>
-      <option value="5" selected>5×5（25マス）</option>
-      <option value="6">6×6（36マス）</option>
-    </select>
+<div class="app-card">
+  <div class="button-row">
+    <button class="btn-nav" onclick="prevQuestion()">前の問題</button>
+    <button class="btn-nav" onclick="nextQuestion()">次の問題</button>
   </div>
 
-  <span id="scoreRangeBox">
-    最低点 <input id="minScore" type="number" value="70">
-    最高点 <input id="maxScore" type="number" value="100">
-  </span>
+  <div id="container"></div>
 
   <div class="button-row">
-    <button id="randomBtn">ランダム生成</button>
-    <button id="startBtn">START</button>
-    <button id="resetBtn">リセット</button>
-    <button class="btn-menu" onclick="location.href='index.html'">メニューへ戻る</button>
+    <button class="btn-action" onclick="prevStep()">1画戻る</button>
+    <button class="btn-action" onclick="nextStep()">次の一画</button>
   </div>
+  
+  <div class="button-row">
+    <button class="btn-reveal" onclick="revealAll()">答え（全表示）</button>
+  </div>
+
+  <input id="answerInput" placeholder="曲名を入力">
+  <button class="btn-submit" onclick="checkAnswer()">回答</button>
+
+  <div id="result"></div>
+  <div id="scoreBox">得点：0</div>
 </div>
 
-<div id="bingoBanner">BINGO！！</div>
+<div class="rules-container">
+  <b>■遊び方</b><br>
+  画面に表示される“一画ずつの漢字”から曲名を当てるゲームです。<br>
+  分かったら曲名を入力して回答してください。
+  <br><br>
+  <b>■ボタン説明</b><br>
+  <b>▶ 次の問題 / 前の問題</b><br>
+  クイズの曲を切り替えます。<br>
+  <b>▶ 次の一画</b><br>
+  漢字の“次の筆”が表示されます（ヒントが増えます）。<br>
+  <b>▶ 1画戻る</b><br>
+  表示されている一画を1つ消します。<br>
+  <b>▶ 答え（全表示）</b><br>
+  すべての筆を一気に表示して答えを確認できます。<br>
+  <b>▶ 回答</b><br>
+  入力した曲名を判定します（Enterキーでも可）。
+  <br><br>
+  <b>■補足</b><br>
+  ・Enterキー：回答<br>
+  ・スペースキー：次の一画
+</div>
 
-<div id="board"></div>
-
-<div id="rules">
-  <b>【遊び方】</b><br>
-  ・点数ビンゴ or 漢字ビンゴを選びます。<br>
-  ・マス数（4×4 / 5×5 / 6×6）を選びます。<br>
-  ・START前はマスをクリックして候補から選択できます。<br>
-  ・START後は編集できません。<br>
-  ・ゲーム中は一致したマスをタップしてロックします（もう一度タップで解除）。<br>
-  ・<b>あと1マスで揃う列は枠が黄色（リーチ）</b>になります。<br>
-  ・<b>揃った列は枠が赤色（ビンゴ）</b>になり、2つ、3つと増えるごとにダブル、トリプルとカウントアップします！
+<div class="button-row" style="margin-top: 15px;">
+  <button class="btn-reset" onclick="resetScore()">リセット</button>
+  <a href="index.html" class="btn-menu">📘 メニュー</a>
 </div>
 
 <script>
-const wordPool = [
-  "愛","夢","心","空","海","風","花","星","月","夜",
-  "光","音","歌","声","道","雨","雪","恋","涙","虹",
-  "春","夏","秋","冬","桜","陽","蒼","青","赤","白",
-  "黒","金","銀","時","瞬","永","未","今","明","暗",
-  "君","僕","私","人","友","家","旅","街","影","波",
-  "炎","雲","森","川","山","島","絆","願","祈","想",
-  "魂","詩","響","旋","舞","華","香","宙","天","地",
-  "幻","零","一","二","三","四","五","六","七","八",
-  "九","水","獣","好","電","千","万","怪","髪","桃"
+const questions = [
+  "残酷な天使のテーゼ",
+  "世界に一つだけの花",
+  "愛をこめて花束を",
+  "君の知らない物語",
+  "空も飛べるはず",
+  "栄光の架橋",
+  "天体観測",
+  "小さな恋のうた",
+  "夜に駆ける",
+  "燦然",
+  "雪の華",
+  "前前前世",
+  "紅蓮華",
+  "残響散歌",
+  "恋音と雨空",
+  "全力少年",
+  "革命道中",
+  "道化師のソネット",
+  "常緑",
+  "健康祈願",
 ];
 
-let size = 5;
-let mode = "score";
-let boardValues = [];
-let hits = [];
-let started = false;
+let currentIndex = 0;
+let currentAnswer = "";
+let strokeGroups = [];
+let step = 0;
+let score = 0;
 
-const boardEl = document.getElementById("board");
-const modeEl = document.getElementById("mode");
-const sizeEl = document.getElementById("sizeSelect");
-const scoreRangeBox = document.getElementById("scoreRangeBox");
-const randomBtn = document.getElementById("randomBtn");
-const startBtn = document.getElementById("startBtn");
-const resetBtn = document.getElementById("resetBtn");
-const bingoBanner = document.getElementById("bingoBanner");
-
-function initBoard(){
-  boardEl.innerHTML = "";
-  boardEl.style.gridTemplateColumns = `repeat(${size}, 1fr)`;
-  const total = size*size;
-  boardValues = new Array(total).fill("");
-  hits = new Array(total).fill(false);
-
-  for(let i=0;i<total;i++){
-    const div = document.createElement("div");
-    div.className = "cell editable";
-    div.dataset.index = i;
-    div.onclick = () => onCellClick(i);
-    boardEl.appendChild(div);
-  }
-  bingoBanner.style.display = "none";
+function normalize(str) {
+  return str.replace(/\s/g,"").toLowerCase();
 }
 
-function onCellClick(i){
-  if(started){
-    hits[i] = !hits[i];
-    renderBoard();
-    checkBingo(); // ここでリーチ・複数ビンゴのスタイルを更新
-    return;
-  }
-
-  if(mode === "score"){
-    const min = Number(document.getElementById("minScore").value);
-    const max = Number(document.getElementById("maxScore").value);
-    const count = size*size;
-    const candidates = generateScoreCandidates(min,max,count);
-    const choice = prompt("点数を選んでください：\n" + candidates.join(" / "));
-    if(choice) boardValues[i] = choice;
-  }else{
-    const count = size*size;
-    const candidates = generateKanjiCandidates(count);
-    const choice = prompt("漢字を選んでください：\n" + candidates.join(" / "));
-    if(choice) boardValues[i] = choice;
-  }
-  renderBoard();
+function calculateScore() {
+  if (step <= 1) return 5;
+  if (step === 2) return 4;
+  if (step === 3) return 3;
+  if (step === 4) return 2;
+  return 1;
 }
 
-function generateScoreCandidates(min,max,count){
-  const list=[];
-  for(let i=0;i<count;i++){
-    list.push(String(Math.floor(Math.random()*(max-min+1))+min));
-  }
-  return list;
-}
+function checkAnswer() {
+  const input = document.getElementById("answerInput").value;
 
-function generateKanjiCandidates(count){
-  const pool=[...wordPool];
-  const result=[];
-  for(let i=0;i<count;i++){
-    if(pool.length===0) break;
-    const idx=Math.floor(Math.random()*pool.length);
-    result.push(pool[idx]);
-    pool.splice(idx,1);
-  }
-  return result;
-}
-
-function randomFill(){
-  if(started) return;
-  const total = size*size;
-
-  if(mode==="score"){
-    const min = Number(document.getElementById("minScore").value);
-    const max = Number(document.getElementById("maxScore").value);
-    boardValues = generateScoreCandidates(min,max,total);
-  }else{
-    boardValues = generateKanjiCandidates(total);
-  }
-  renderBoard();
-}
-
-function startGame(){
-  if(started) return;
-
-  if(boardValues.some(v => v === "")){
-    alert("空欄のマスがあります。すべて埋めてからSTARTしてください。");
-    return;
-  }
-
-  started = true;
-
-  randomBtn.disabled = true;
-  modeEl.disabled = true;
-  sizeEl.disabled = true;
-  document.getElementById("minScore").disabled = true;
-  document.getElementById("maxScore").disabled = true;
-
-  renderBoard();
-}
-
-/* --------------------------------------------------
-    リーチおよび複数ラインビンゴ判定（スタイル連動）
--------------------------------------------------- */
-function checkBingo(){
-  const cells = boardEl.querySelectorAll(".cell");
-  
-  // スタイルの初期化（ビンゴとリーチのクラスを一度クリア）
-  cells.forEach(c => {
-    c.classList.remove("reach", "bingo-line");
-  });
-
-  const lines = [];
-
-  // 横一列 (rows)
-  for(let r=0; r<size; r++){
-    const row=[];
-    for(let c=0; c<size; c++) row.push(r*size+c);
-    lines.push(row);
-  }
-  // 縦一列 (cols)
-  for(let c=0; c<size; c++){
-    const col=[];
-    for(let r=0; r<size; r++) col.push(r*size+c);
-    lines.push(col);
-  }
-  // 斜め (diagonals)
-  const d1=[], d2=[];
-  for(let i=0; i<size; i++){
-    d1.push(i*size+i);
-    d2.push(i*size+(size-1-i));
-  }
-  lines.push(d1, d2);
-
-  let bingoCount = 0;
-  let bingoIndices = new Set();
-  let reachIndices = new Set();
-
-  // 全ラインの状態を網羅チェック
-  for(const line of lines){
-    const hitCount = line.filter(i => hits[i]).length;
-    
-    if (hitCount === size) {
-      // ビンゴ達成した列のインデックスを保存
-      bingoCount++;
-      line.forEach(i => bingoIndices.add(i));
-    } else if (hitCount === size - 1) {
-      // リーチ（あと1マスで揃う）の列のインデックスを保存
-      line.forEach(i => reachIndices.add(i));
-    }
-  }
-
-  // 1：リーチの枠に黄色クラスを適用
-  reachIndices.forEach(i => {
-    cells[i].classList.add("reach");
-  });
-
-  // 2：ビンゴが揃っている枠にネオンレッド（bingo-line）を最優先適用
-  bingoIndices.forEach(i => {
-    cells[i].classList.remove("reach"); // リーチと重複した場合はビンゴを優先
-    cells[i].classList.add("bingo-line");
-  });
-
-  // 3：バナーのテキストをビンゴ数に応じて分岐
-  if(bingoCount > 0){
-    let text = "BINGO！！";
-    if (bingoCount === 2) text = "ダブル BINGO！！";
-    if (bingoCount === 3) text = "トリプル BINGO！！";
-    if (bingoCount >= 4) text = `${bingoCount}重 BINGO！！！`;
-    
-    bingoBanner.textContent = text;
-    bingoBanner.style.display = "block";
+  if (normalize(input) === normalize(currentAnswer)) {
+    let point = calculateScore();
+    score += point;
+    updateScore();
+    document.getElementById("result").innerHTML = "<span style='color:#198754;'>正解！ +" + point + "点</span>";
   } else {
-    bingoBanner.style.display = "none";
+    document.getElementById("result").innerHTML = "<span style='color:#e63946;'>不正解…</span>";
   }
 }
 
-function renderBoard(){
-  const cells = boardEl.querySelectorAll(".cell");
-  cells.forEach((c,idx)=>{
-    c.textContent = boardValues[idx];
-    c.classList.toggle("hit", hits[idx]);
-    c.classList.toggle("editable", !started);
+function updateScore() {
+  document.getElementById("scoreBox").innerText = "得点：" + score;
+}
+
+function resetScore() {
+  score = 0;
+  updateScore();
+  document.getElementById("result").innerText = "";
+}
+
+async function nextQuestion() {
+  if (currentIndex >= questions.length) return;
+  loadQuestion(currentIndex);
+  currentIndex++;
+}
+
+function prevQuestion() {
+  if (currentIndex <= 1) return;
+  currentIndex -= 2;
+  loadQuestion(currentIndex);
+  currentIndex++;
+}
+
+async function loadQuestion(index) {
+  const container = document.getElementById("container");
+  container.innerHTML = "";
+  strokeGroups = [];
+  step = 0;
+
+  currentAnswer = questions[index];
+  document.getElementById("answerInput").value = "";
+  document.getElementById("result").innerText = "";
+
+  for (let char of currentAnswer) {
+    const code = char.charCodeAt(0).toString(16);
+    const url = "https://raw.githubusercontent.com/KanjiVG/kanjivg/master/kanji/" + code.padStart(5, "0") + ".svg";
+
+    try {
+      const res = await fetch(url);
+      const text = await res.text();
+
+      const wrapper = document.createElement("div");
+      wrapper.innerHTML = text;
+      const svg = wrapper.querySelector("svg");
+
+      if (!svg) continue;
+
+      const paths = svg.querySelectorAll("path");
+      let group = [];
+
+      paths.forEach(p=>{
+        p.style.display="none";
+        p.style.stroke="#ffffff"; /* ダークモードで見やすいように黒から【白】に変更 */
+        p.style.fill="none";
+        p.style.strokeWidth=4;     /* 線を少し太くして視認性向上 */
+        group.push(p);
+      });
+
+      strokeGroups.push(group);
+      container.appendChild(svg);
+    } catch {}
+  }
+}
+
+function nextStep() {
+  strokeGroups.forEach(g=>{
+    if(step<g.length) g[step].style.display="block";
+  });
+  step++;
+}
+
+function prevStep() {
+  if(step<=0)return;
+  step--;
+  strokeGroups.forEach(g=>{
+    if(step<g.length) g[step].style.display="none";
   });
 }
 
-function resetAll(){
-  started = false;
-  randomBtn.disabled = false;
-  modeEl.disabled = false;
-  sizeEl.disabled = false;
-  document.getElementById("minScore").disabled = false;
-  document.getElementById("maxScore").disabled = false;
-  bingoBanner.style.display="none";
-  initBoard();
+function revealAll() {
+  strokeGroups.forEach(g=>{
+    g.forEach(p=>p.style.display="block");
+  });
 }
 
-modeEl.addEventListener("change",()=>{
-  mode = modeEl.value;
-  scoreRangeBox.style.display = mode==="score" ? "inline" : "none";
+document.addEventListener("keydown", e=>{
+  if(e.key === "Enter"){
+    checkAnswer();
+  }
+  if(e.code==="Space"){
+    e.preventDefault();
+    nextStep();
+  }
 });
 
-sizeEl.addEventListener("change",()=>{
-  size = Number(sizeEl.value);
-  initBoard();
-});
-
-randomBtn.addEventListener("click",randomFill);
-startBtn.addEventListener("click",startGame);
-resetBtn.addEventListener("click",resetAll);
-
-resetAll();
+// 初回起動時に1問目を自動ロード
+nextQuestion();
 </script>
 
 </body>
