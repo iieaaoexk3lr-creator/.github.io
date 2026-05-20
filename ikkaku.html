@@ -2,308 +2,596 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>一画千点！曲名クイズ</title>
 
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+
 <style>
+:root {
+  --bg-color: #121214;
+  --card-bg: #2a2a30; /* 少し明るく */
+  --svg-bg: #1e1e21;  /* 少し明るく */
+  --text-color: #e0e0e6;
+  
+  /* ボタン用カラフルグラデーション */
+  --btn-cyan: linear-gradient(135deg, #00f2fe, #4facfe);
+  --btn-pink: linear-gradient(135deg, #ff007f, #7928ca);
+  --btn-green: linear-gradient(135deg, #00ff87, #00e0ff);
+  --btn-red: linear-gradient(135deg, #f5576c, #f093fb);
+  --btn-gray: linear-gradient(135deg, #485563, #29323c);
+  --btn-submit: linear-gradient(135deg, #1d976c, #93f9b9);
+
+  --title-color: #ffffff;
+  --border-radius: 12px;
+  --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Hiragino Kaku Gothic ProN", sans-serif;
+}
+
 body {
-  text-align:center;
-  font-family:"Hiragino Kaku Gothic ProN", sans-serif;
-  background:#eeeeee;
-  color:#222;
+  background-color: var(--bg-color);
+  color: var(--text-color);
+  font-family: var(--font-family);
+  text-align: center;
+  padding: 10px;
+  margin: 0;
 }
 
 h1 {
-  font-size:28px;
-  margin-top:20px;
+  font-size: 1.8rem;
+  margin: 15px 0 10px 0;
+  color: var(--title-color);
+  background: var(--btn-pink);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  text-shadow: 0 0 15px rgba(255, 0, 127, 0.4);
+}
+
+hr {
+  border: 0;
+  height: 1px;
+  background: #333;
+  margin: 15px 0;
+}
+
+.app-card {
+  background: var(--card-bg);
+  padding: 15px;
+  border-radius: var(--border-radius);
+  max-width: 420px;
+  margin: 0 auto 15px auto;
+  box-sizing: border-box;
+  border: 1px solid #333;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.3);
 }
 
 #container {
-  display:flex;
-  justify-content:center;
-  flex-wrap:nowrap;
-  overflow:hidden;
-  margin-top:25px;
+  display: flex;
+  justify-content: flex-start;
+  align-items: center;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  overflow-y: hidden;
+  margin: 15px auto;
+  padding: 10px;
+  background: var(--svg-bg);
+  border-radius: var(--border-radius);
+  min-height: 85px;
+  max-width: 100%;
+  box-sizing: border-box;
+  -webkit-overflow-scrolling: touch;
+}
+
+#container::-webkit-scrollbar {
+  height: 6px;
+}
+#container::-webkit-scrollbar-thumb {
+  background: #444;
+  border-radius: 3px;
 }
 
 svg {
-  width:75px;
-  height:75px;
-  margin:2px;
+  width: 65px;
+  height: 65px;
+  margin: 0 4px;
+  flex-shrink: 0;
+}
+
+.button-row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  margin-bottom: 10px;
 }
 
 button {
-  font-size:14px;
-  margin:5px;
-  padding:6px 12px;
-  border:none;
-  border-radius:6px;
-  background:#ddd;
+  font-size: 0.95rem;
+  font-weight: bold;
+  padding: 12px 16px;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.2s;
+  min-width: 95px;
+  color: #fff;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+}
+button:active {
+  transform: scale(0.96);
+  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
 }
 
-button:hover {
-  background:#bbb;
-}
+/* ボタン色分け定義 */
+.btn-nav { background: var(--btn-cyan); }         /* 問題切り替え */
+.btn-action { background: var(--btn-green); color: #121214; } /* 一画操作 */
+.btn-reveal { background: var(--btn-red); }          /* 全表示 */
+.btn-submit { background: var(--btn-submit); color: #121214; width: 100%; max-width: 260px; margin: 8px auto; display: block;} /* 回答 */
+.btn-reset { background: var(--btn-gray); }           /* リセット */
+.btn-menu { background: #333; color: #fff; min-width: 120px; text-decoration: none; display: inline-block; padding: 12px 16px; border-radius: 10px; font-weight: bold; font-size: 0.95rem;}
+.btn-toggle { background: #444; color: #fff; font-size: 0.85rem; padding: 8px 14px; border-radius: 8px;}
 
 input {
-  font-size:16px;
-  padding:6px;
-  margin-top:10px;
-  width:250px;
+  font-size: 1.1rem;
+  padding: 12px;
+  margin-top: 5px;
+  width: 100%;
+  max-width: 260px;
+  border-radius: 10px;
+  border: 2px solid #444;
+  background: #000;
+  color: #fff;
+  box-sizing: border-box;
+  text-align: center;
+  transition: border-color 0.2s;
+}
+input:focus {
+  border-color: #4facfe;
+  outline: none;
+}
+
+/* ルーム名を削除し、お名前入力を幅広に調整 */
+.db-input {
+  width: 90%; 
+  max-width: 320px;
+  font-size: 1rem;
+  padding: 10px;
+  margin: 8px auto;
 }
 
 #result {
-  margin-top:10px;
-  font-size:18px;
-  font-weight:bold;
+  margin-top: 10px;
+  font-size: 1.1rem;
+  font-weight: bold;
+  min-height: 24px;
 }
 
 #scoreBox {
-  margin-top:15px;
-  font-size:22px;
-  font-weight:bold;
+  margin: 10px 0;
+  font-size: 1.5rem;
+  font-weight: bold;
+  background: var(--btn-cyan);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  text-shadow: 0 0 10px rgba(0, 242, 254, 0.3);
 }
 
+#questionCounter {
+  font-size: 0.95rem;
+  color: #aaa;
+  margin-bottom: 5px;
+}
+
+.rules-container, .history-container {
+  font-size: 0.9rem;
+  color: #aaa;
+  line-height: 1.7;
+  padding: 15px;
+  text-align: left;
+  max-width: 420px;
+  margin: 15px auto 10px auto;
+  background: var(--card-bg);
+  border-radius: var(--border-radius);
+  box-sizing: border-box;
+  border: 1px solid #333;
+}
+.rules-container b, .history-container b {
+  color: #fff;
+}
+
+.history-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 10px;
+  font-size: 0.9rem;
+  color: var(--text-color);
+}
+.history-table th, .history-table td {
+  border: 1px solid #444;
+  padding: 8px;
+  text-align: center;
+}
+.history-table th { background: #1a1a1c; }
+
+.hidden-element {
+  display: none !important;
+}
+.admin-section {
+  margin-top: 30px;
+  padding: 10px;
+  border: 1px dashed #555;
+  border-radius: var(--border-radius);
+  max-width: 420px;
+  margin-left: auto;
+  margin-right: auto;
+}
 </style>
 </head>
+<body>
 
-<hr style="margin-top:30px;">
+<hr style="margin-top:10px;">
 
 <h1>一画千点！曲名クイズ</h1>
 
-<button onclick="nextQuestion()">次の問題</button>
-<button onclick="prevQuestion()">前の問題</button>
+<div class="app-card">
+  <div id="questionCounter">第 1 / 20 問</div>
 
-<div id="container"></div>
+  <div class="button-row">
+    <button id="nextQuestionBtn" class="btn-nav hidden-element" onclick="nextQuestion()">次の問題へ</button>
+  </div>
 
-<br>
-<button onclick="nextStep()">次の一画</button>
-<button onclick="prevStep()">1画戻る</button>
-<button onclick="revealAll()">答え（全表示）</button>
+  <div id="container"></div>
 
-<br>
+  <div class="button-row">
+    <button class="btn-action" onclick="nextStep()">次の一画</button>
+  </div>
+  
+  <div id="quizFormArea">
+    <input id="answerInput" placeholder="曲名を入力">
+    <button class="btn-submit" onclick="checkAnswer()">回答</button>
+  </div>
 
-<input id="answerInput" placeholder="曲名を入力">
-<br>
-<button onclick="checkAnswer()">回答</button>
+  <div id="finalResultArea" class="hidden-element" style="border: 2px dashed #00f2fe; padding: 15px; border-radius: 10px; margin-top: 10px; background: rgba(0,0,0,0.3);">
+    <h3 style="background: var(--btn-pink); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin:0 0 10px 0;">🎉 全問題終了！ 🎉</h3>
+    <div id="evaluationText" style="font-size:1.2rem; font-weight:bold; margin-bottom:12px;"></div>
+    
+    <input id="playerNameInput" class="db-input" placeholder="お名前を入力して保存">
+    <button class="btn-submit" style="background:var(--btn-green); color:#121214; margin:10px auto 0 auto;" onclick="saveToFirebase()">結果をオンライン保存</button>
+  </div>
 
-<div id="result"></div>
-
-
-<div id="scoreBox">得点：0</div>
-<div style="font-size:14px; color:#555; line-height:1.6; padding:10px; text-align:left; max-width:600px; margin:0 auto;">
-
-<b>■遊び方</b><br>
-画面に表示される“一画ずつの漢字”から曲名を当てるゲームです。<br>
-分かったら曲名を入力して回答してください。
-
-<br><br>
-
-<b>■ボタン説明</b><br><br>
-
-<b>▶ 次の問題</b><br>
-次の曲に進みます（新しい問題が表示されます）
-
-<br><br>
-
-<b>▶ 前の問題</b><br>
-1つ前の問題に戻ります
-
-<br><br>
-
-<b>▶ 次の一画</b><br>
-漢字の“次の筆”が表示されます（ヒントが増えます）
-
-<br><br>
-
-<b>▶ 1画戻る</b><br>
-表示されている一画を1つ消します
-
-<br><br>
-
-<b>▶ 答え（全表示）</b><br>
-すべての筆を一気に表示して答えを確認できます
-
-<br><br>
-
-<b>▶ 回答</b><br>
-入力した曲名を判定します（Enterキーでも可）
-
-<br><br>
-
-<b>▶ リセット</b><br>
-得点を0に戻します
-
-<br><br>
-
-<b>■補足</b><br>
-・Enterキー：回答<br>
-・スペースキー：次の一画
-
+  <div id="result"></div>
+  <div id="scoreBox">得点：0</div>
 </div>
-<button onclick="resetScore()">リセット</button>
-<a href="index.html">📘 メニュー</a>
-  
-<body>
-<script>
-  
-const questions = [
-  "残酷な天使のテーゼ",
-  "世界に一つだけの花",
-  "愛をこめて花束を",
-  "君の知らない物語",
-  "空も飛べるはず",
-  "栄光の架橋",
-  "天体観測",
-  "小さな恋のうた",
-  "夜に駆ける",
-  "燦然",
-  "雪の華",
-  "前前前世",
-  "紅蓮華",
-  "残響散歌",
-  "恋音と雨空",
-  "全力少年",
-  "革命道中",
-  "道化師のソネット",
-  "常緑",
-  "健康祈願",
-  ];
 
-let currentIndex = 0;
+<button class="btn-toggle" onclick="toggleHistory()">前回結果（履歴）を表示/非表示</button>
+<div id="historySection" class="history-container hidden-element">
+  <b>📊 前回結果（最新5件）</b>
+  <table class="history-table">
+    <thead>
+      <tr>
+        <th>名前</th>
+        <th>得点</th>
+        <th>評価</th>
+      </tr>
+    </thead>
+    <tbody id="historyTableBody">
+      <tr><td colspan="3">データを読み込み中...</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<br>
+
+<button class="btn-toggle" onclick="toggleRules()">遊び方を表示/非表示</button>
+<div id="rulesSection" class="rules-container hidden-element">
+  <b>■遊び方</b><br>
+  画面に表示される“一画ずつの漢字”から曲名を当てるゲームです。<br>
+  分かったら曲名を入力して回答してください。
+  <br><br>
+  <b>■点数配分</b><br>
+  ・1画目で正解：<b>1000点</b><br>
+  ・2画目で正解：<b>500点</b><br>
+  ・3画目で正解：<b>250点</b><br>
+  ・4画目で正解：<b>100点</b><br>
+  ・それ以降：<b>0点</b>
+  <br><br>
+  <b>■補足</b><br>
+  ・Enterキー：回答<br>
+  ・スペースキー：次の一画
+</div>
+
+<div class="button-row" style="margin-top: 15px;">
+  <button class="btn-reset" onclick="resetScore()">リセット</button>
+  <a href="index.html" class="btn-menu">📘 メニュー</a>
+</div>
+
+<div class="admin-section">
+  <button class="btn-toggle" style="background:#222;" onclick="toggleAdmin()">⚙️ 管理者機能を表示/非表示</button>
+  <div id="adminCommands" class="hidden-element" style="margin-top:10px;">
+    <div class="button-row">
+      <button class="btn-nav" onclick="prevQuestion()">前の問題</button>
+      <button class="btn-action" onclick="prevStep()">1画戻る</button>
+      <button class="btn-reveal" onclick="revealAll()">答え（全表示）</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ■ Firebaseの設定と初期化
+const firebaseConfig = {
+  apiKey: "AIzaSyC4DQhH_swesAD98Xyjg8d1lcWEkkrHrgw",
+  authDomain: "gamehistory-m84.firebaseapp.com",
+  databaseURL: "https://gamehistory-m84-default-rtdb.firebaseio.com",
+  projectId: "gamehistory-m84",
+  storageBucket: "gamehistory-m84.firebasestorage.app",
+  messagingSenderId: "475761727837",
+  appId: "1:475761727837:web:06d07e1ab4120a7ccaf0b4",
+  measurementId: "G-3636W6LC4F"
+};
+
+const app = firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+const DB_PREFIX = "KAKU_"; 
+
+const questions = [
+  "怪獣の花唄", "最後の雨", "蕾", "居酒屋",
+  "夏色", "栄光の架橋", "天体観測", "月光花",
+  "踊", "燦然", "雪の華", "前前前世",
+  "紅蓮華", "残響散歌", "恋音と雨空", "流星",
+  "革命道中", "睡蓮花", "常緑", "情熱の薔薇"
+];
+
+let questionOrder = []; 
+let gameProgressIndex = 0; 
 let currentAnswer = "";
 let strokeGroups = [];
 let step = 0;
 let score = 0;
+let hasAnsweredCurrent = false;
 
-// ■正規化（空白・大文字小文字対策）
+function shuffleQuestions() {
+  questionOrder = [];
+  for (let i = 0; i < questions.length; i++) {
+    questionOrder.push(i);
+  }
+  for (let i = questionOrder.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [questionOrder[i], questionOrder[j]] = [questionOrder[j], questionOrder[i]];
+  }
+}
+
 function normalize(str) {
-  return str.replace(/\s/g,"").toLowerCase();
+  return str.replace(/\s/g,"").toLowerCase();
 }
 
-// ■得点
 function calculateScore() {
-  if (step <= 1) return 5;
-  if (step === 2) return 4;
-  if (step === 3) return 3;
-  if (step === 4) return 2;
-  return 1;
+  if (step <= 1) return 1000;
+  if (step === 2) return 500;
+  if (step === 3) return 250;
+  if (step === 4) return 100;
+  return 0;
 }
 
-// ■回答チェック
+function getEvaluation(totalScore) {
+  if (totalScore >= 15000) return "神レベル（SSS）";
+  if (totalScore >= 10000) return "達人（S）";
+  if (totalScore >= 6000) return "玄人（A）";
+  if (totalScore >= 3000) return "普通（B）";
+  return "見習い（C）";
+}
+
 function checkAnswer() {
-  const input = document.getElementById("answerInput").value;
+  const input = document.getElementById("answerInput").value;
+  
+  if (normalize(input) === normalize(currentAnswer)) {
+    let point = calculateScore();
+    score += point;
+    updateScore();
+    document.getElementById("result").innerHTML = "<span style='color:#00ff87;'>正解！ +" + point + "点</span>";
+  } else {
+    document.getElementById("result").innerHTML = "<span style='color:#f5576c;'>不正解…（正解: " + currentAnswer + "）</span>";
+  }
 
-  if (normalize(input) === normalize(currentAnswer)) {
-    let point = calculateScore();
-    score += point;
-    updateScore();
-    document.getElementById("result").innerText = "正解！ +" + point + "点";
-  } else {
-    document.getElementById("result").innerText = "不正解…";
-  }
+  hasAnsweredCurrent = true;
+
+  if (gameProgressIndex >= questions.length) {
+    showFinalResult();
+  } else {
+    document.getElementById("nextQuestionBtn").classList.remove("hidden-element");
+  }
 }
 
-// ■表示更新
 function updateScore() {
-  document.getElementById("scoreBox").innerText = "得点：" + score;
+  document.getElementById("scoreBox").innerText = "得点：" + score;
 }
 
-// ■リセット
 function resetScore() {
-  score = 0;
-  updateScore();
+  score = 0;
+  gameProgressIndex = 0;
+  updateScore();
+  document.getElementById("result").innerText = "";
+  document.getElementById("quizFormArea").classList.remove("hidden-element");
+  document.getElementById("finalResultArea").classList.add("hidden-element");
+  shuffleQuestions(); 
+  nextQuestion();
 }
 
-// ■問題
 async function nextQuestion() {
-  if (currentIndex >= questions.length) return;
-  loadQuestion(currentIndex);
-  currentIndex++;
+  if (gameProgressIndex >= questions.length) return;
+  
+  hasAnsweredCurrent = false;
+  document.getElementById("nextQuestionBtn").classList.add("hidden-element");
+  
+  document.getElementById("questionCounter").innerText = "第 " + (gameProgressIndex + 1) + " / " + questions.length + " 問";
+  
+  const actualQuestionIndex = questionOrder[gameProgressIndex];
+  loadQuestion(actualQuestionIndex);
+  
+  gameProgressIndex++;
 }
 
 function prevQuestion() {
-  if (currentIndex <= 1) return;
-  currentIndex -= 2;
-  loadQuestion(currentIndex);
-  currentIndex++;
+  if (gameProgressIndex <= 1) return;
+  gameProgressIndex -= 2;
+  nextQuestion();
 }
 
 async function loadQuestion(index) {
-  const container = document.getElementById("container");
-  container.innerHTML = "";
-  strokeGroups = [];
-  step = 0;
+  const container = document.getElementById("container");
+  container.innerHTML = "";
+  strokeGroups = [];
+  step = 0;
 
-  currentAnswer = questions[index];
-  document.getElementById("answerInput").value = "";
-  document.getElementById("result").innerText = "";
+  currentAnswer = questions[index];
+  document.getElementById("answerInput").value = "";
+  document.getElementById("result").innerText = "";
 
-  for (let char of currentAnswer) {
-    const code = char.charCodeAt(0).toString(16);
-    const url = "https://raw.githubusercontent.com/KanjiVG/kanjivg/master/kanji/" + code.padStart(5, "0") + ".svg";
+  for (let char of currentAnswer) {
+    const code = char.charCodeAt(0).toString(16);
+    const url = "https://raw.githubusercontent.com/KanjiVG/kanjivg/master/kanji/" + code.padStart(5, "0") + ".svg";
 
-    try {
-      const res = await fetch(url);
-      const text = await res.text();
+    try {
+      const res = await fetch(url);
+      const text = await res.text();
 
-      const wrapper = document.createElement("div");
-      wrapper.innerHTML = text;
-      const svg = wrapper.querySelector("svg");
+      const wrapper = document.createElement("div");
+      wrapper.innerHTML = text;
+      const svg = wrapper.querySelector("svg");
 
-      if (!svg) continue;
+      if (!svg) continue;
 
-      const paths = svg.querySelectorAll("path");
-      let group = [];
+      const paths = svg.querySelectorAll("path");
+      let group = [];
 
-      paths.forEach(p=>{
-        p.style.display="none";
-        p.style.stroke="#222";
-        p.style.fill="none";
-        p.style.strokeWidth=3;
-        group.push(p);
-      });
+      paths.forEach(p=>{
+        p.style.display="none";
+        p.style.stroke="#ffffff";
+        p.style.fill="none";
+        p.style.strokeWidth=4;
+        group.push(p);
+      });
 
-      strokeGroups.push(group);
-      container.appendChild(svg);
-    } catch {}
-  }
+      strokeGroups.push(group);
+      container.appendChild(svg);
+    } catch {}
+  }
 }
 
-// ■描写
 function nextStep() {
-  strokeGroups.forEach(g=>{
-    if(step<g.length) g[step].style.display="block";
-  });
-  step++;
+  strokeGroups.forEach(g=>{
+    if(step<g.length) g[step].style.display="block";
+  });
+  step++;
 }
 
 function prevStep() {
-  if(step<=0)return;
-  step--;
-  strokeGroups.forEach(g=>{
-    if(step<g.length) g[step].style.display="none";
-  });
+  if(step<=0)return;
+  step--;
+  strokeGroups.forEach(g=>{
+    if(step<g.length) g[step].style.display="none";
+  });
 }
 
-// ■答え表示
 function revealAll() {
-  strokeGroups.forEach(g=>{
-    g.forEach(p=>p.style.display="block");
-  });
+  strokeGroups.forEach(g=>{
+    g.forEach(p=>p.style.display="block");
+  });
 }
 
-// ■Enterキーで回答
+function showFinalResult() {
+  document.getElementById("quizFormArea").classList.add("hidden-element");
+  document.getElementById("nextQuestionBtn").classList.add("hidden-element");
+  
+  const evalStr = getEvaluation(score);
+  document.getElementById("evaluationText").innerHTML = "合計スコア: <span style='color:#00f2fe;'>" + score + "点</span><br>評価: " + evalStr;
+  document.getElementById("finalResultArea").classList.remove("hidden-element");
+}
+
+function saveToFirebase() {
+  // ルーム名取得を削除
+  const name = document.getElementById("playerNameInput").value.trim();
+  
+  if(!name) {
+    alert("お名前を入力してください。");
+    return;
+  }
+
+  const evalStr = getEvaluation(score);
+  
+  // 保存データからroomNameを削除
+  db.ref(DB_PREFIX + "results").push({
+    playerName: name,
+    finalScore: score,
+    evaluation: evalStr,
+    timestamp: firebase.database.ServerValue.TIMESTAMP
+  }).then(() => {
+    alert("結果をオンラインに保存しました！");
+    loadHistory(); 
+  }).catch((error) => {
+    alert("保存に失敗しました: " + error.message);
+  });
+}
+
+function loadHistory() {
+  const tbody = document.getElementById("historyTableBody");
+  
+  db.ref(DB_PREFIX + "results").orderByChild("timestamp").limitToLast(5).once("value", (snapshot) => {
+    tbody.innerHTML = "";
+    if(!snapshot.exists()) {
+      // colspanを3に変更
+      tbody.innerHTML = "<tr><td colspan='3'>履歴データはありません。</td></tr>";
+      return;
+    }
+    
+    let rows = [];
+    snapshot.forEach((child) => {
+      const data = child.val();
+      rows.unshift(`
+        <tr>
+          <td>${escapeHtml(data.playerName)}</td>
+          <td style="color:#00f2fe; font-weight:bold;">${data.finalScore}</td>
+          <td>${escapeHtml(data.evaluation)}</td>
+        </tr>
+      `);
+    });
+    tbody.innerHTML = rows.join("");
+  });
+}
+
+function escapeHtml(str) {
+  if(!str) return "";
+  return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+function toggleRules() {
+  document.getElementById("rulesSection").classList.toggle("hidden-element");
+}
+function toggleHistory() {
+  const sec = document.getElementById("historySection");
+  sec.classList.toggle("hidden-element");
+  if(!sec.classList.contains("hidden-element")) {
+    loadHistory();
+  }
+}
+function toggleAdmin() {
+  document.getElementById("adminCommands").classList.toggle("hidden-element");
+}
+
 document.addEventListener("keydown", e=>{
-  if(e.key === "Enter"){
-    checkAnswer();
-  }
-  if(e.code==="Space"){
-    e.preventDefault();
-    nextStep();
-  }
+  if(e.key === "Enter"){
+    if(!hasAnsweredCurrent && gameProgressIndex <= questions.length) {
+      checkAnswer();
+    }
+  }
+  if(e.code==="Space"){
+    e.preventDefault();
+    nextStep();
+  }
 });
 
-
+shuffleQuestions(); 
+loadHistory();
+nextQuestion();
 </script>
 
 </body>
