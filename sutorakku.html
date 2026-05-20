@@ -2,146 +2,321 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<title>カラオケストラックアウト </title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>カラオケストラックアウト</title>
 <style>
-  body {
-    background: #111;
-    color: #fff;
-    font-family: sans-serif;
-    text-align: center;
-    padding: 20px;
-  }
+:root {
+  --bg-color: #121214;
+  --card-bg: #2a2a30;
+  
+  /* 刷新：薄い灰色と白のグラデーション的 ＋ 銀フレーム */
+  --target-bg: linear-gradient(135deg, #ffffff, #dcdcdc);
+  --target-border: linear-gradient(135deg, #bcc6cc, #eee, #7f8c8d);
+  
+  /* 刷新：黒く破けたような表現 */
+  --target-broken: radial-gradient(circle, #050505 40%, #1e1e1e 80%, #000000 100%);
+  
+  --text-color: #e0e0e6;
+  
+  /* カラフルグラデーションボタン */
+  --btn-pink: linear-gradient(135deg, #ff007f, #7928ca);
+  --btn-gray: linear-gradient(135deg, #485563, #29323c);
+  --btn-submit: linear-gradient(135deg, #00ff87, #60efff);
 
-  h1 {
-    font-size: 2rem;
-    margin-bottom: 20px;
-  }
+  --title-color: #ffffff;
+  --border-radius: 12px;
+  --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Hiragino Kaku Gothic ProN", sans-serif;
+}
 
-  /* 3×3 盤面 */
-  #board {
-    display: grid;
-    grid-template-columns: repeat(3, 110px);
-    gap: 12px;
-    justify-content: center;
-    margin: 20px auto;
-  }
+body {
+  background-color: var(--bg-color);
+  color: var(--text-color);
+  font-family: var(--font-family);
+  text-align: center;
+  padding: 10px;
+  margin: 0;
+}
 
-  .cell {
-    width: 110px;
-    height: 110px;
-    background: #333;
-    border-radius: 12px;
-    font-size: 2.5rem;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    transition: 0.4s;
-    position: relative;
-    overflow: hidden;
-  }
+h1 {
+  font-size: 1.8rem;
+  margin: 15px 0 10px 0;
+  color: var(--title-color);
+  background: var(--btn-pink);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  text-shadow: 0 0 15px rgba(255, 0, 127, 0.4);
+}
 
-  /* 派手エフェクト */
-  .broken {
-    background: radial-gradient(circle, #ff0066, #660022);
-    transform: scale(2) rotate(180deg);
-    opacity: 0;
-  }
+hr {
+  border: 0;
+  height: 1px;
+  background: #333;
+  margin: 15px 0;
+}
 
-  input, select {
-    font-size: 1.2rem;
-    padding: 10px;
-    margin: 8px;
-    border-radius: 8px;
-    border: none;
-    width: 80%;
-    max-width: 300px;
-  }
+.app-card {
+  background: var(--card-bg);
+  padding: 15px;
+  border-radius: var(--border-radius);
+  max-width: 420px;
+  margin: 0 auto 15px auto;
+  box-sizing: border-box;
+  border: 1px solid #333;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+}
 
-  button {
-    font-size: 1.2rem;
-    padding: 10px 20px;
-    margin: 10px;
-    border-radius: 10px;
-    border: none;
-    cursor: pointer;
-  }
+/* 3×3 盤面スマホ最適化 */
+#board {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  max-width: 320px;
+  margin: 15px auto;
+  justify-content: center;
+  box-sizing: border-box;
+}
 
-  #info {
-    font-size: 1.3rem;
-    margin-top: 10px;
-    color: #00ffcc;
-  }
+/* 銀フレームと白・灰グラデーションの的 */
+.cell-wrapper {
+  aspect-ratio: 1 / 1;
+  background: var(--target-border);
+  padding: 4px; /* 銀枠の太さ */
+  border-radius: 14px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.4), inset 0 1px 2px rgba(255,255,255,0.8);
+  box-sizing: border-box;
+  transition: all 0.4s ease;
+}
 
-  #history {
-    margin-top: 20px;
-    font-size: 1.1rem;
-    text-align: left;
-    max-width: 400px;
-    margin-left: auto;
-    margin-right: auto;
-    background: #222;
-    padding: 15px;
-    border-radius: 10px;
-  }
+.cell {
+  width: 100%;
+  height: 100%;
+  background: var(--target-bg);
+  color: #2c3e50;
+  border-radius: 10px;
+  font-size: 2.3rem;
+  font-weight: 900;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  transition: all 0.4s cubic-bezier(0.15, 0.85, 0.35, 1.2);
+  box-shadow: inset 0 2px 5px rgba(255,255,255,0.7), 0 2px 4px rgba(0,0,0,0.1);
+  text-shadow: 1px 1px 0px rgba(255,255,255,0.8);
+  user-select: none;
+  box-sizing: border-box;
+}
+
+/* 射抜かれた状態：黒く破けたような質感に変貌 */
+.broken-wrapper {
+  background: #111 !important; /* 外枠も黒焦げに */
+  box-shadow: none;
+}
+.broken {
+  background: var(--target-broken) !important;
+  color: transparent !important; /* 数字を完全に消す */
+  transform: scale(0.92); /* やや収縮して破けた穴を表現 */
+  border: 1px solid #222;
+  box-shadow: inset 0 4px 12px rgba(0,0,0,0.9);
+  text-shadow: none;
+  pointer-events: none;
+  position: relative;
+}
+/* 破けた裂け目を疑似要素で再現 */
+.broken::after {
+  content: "";
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(45deg, transparent 48%, #222 50%, transparent 52%),
+              linear-gradient(-45deg, transparent 48%, #222 50%, transparent 52%);
+  opacity: 0.4;
+}
+
+/* 入力欄 & セレクトボックス */
+select, input {
+  font-size: 1rem;
+  font-weight: bold;
+  padding: 10px;
+  margin: 5px;
+  border-radius: 8px;
+  border: 2px solid #444;
+  background: #000;
+  color: #fff;
+  width: 45%;
+  box-sizing: border-box;
+  text-align: center;
+}
+select:disabled {
+  background: #1a1a1c;
+  color: #666;
+  border-color: #333;
+  cursor: not-allowed;
+}
+input {
+  width: 60%;
+  font-size: 1.2rem;
+  max-width: 200px;
+  border-color: #555;
+}
+input:focus {
+  border-color: #00f2fe;
+  outline: none;
+}
+
+.button-row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+button {
+  font-size: 0.95rem;
+  font-weight: bold;
+  padding: 12px 16px;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.2s;
+  min-width: 95px;
+  color: #fff;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+}
+button:active {
+  transform: scale(0.96);
+}
+
+.btn-start { background: var(--btn-pink); }
+.btn-shoot { background: var(--btn-submit); color: #121214; font-size: 1.1rem; padding: 11px 20px;}
+.btn-reset { background: var(--btn-gray); }
+.btn-menu { background: #333; color: #fff; min-width: 120px; text-decoration: none; display: inline-block; padding: 12px 16px; border-radius: 10px; font-weight: bold; font-size: 0.95rem;}
+.btn-toggle { background: #444; color: #fff; font-size: 0.85rem; padding: 8px 14px; border-radius: 8px; margin-top: 5px;}
+
+#info {
+  font-size: 1.3rem;
+  font-weight: bold;
+  margin: 12px 0;
+  color: #00ffcc;
+  text-shadow: 0 0 10px rgba(0, 255, 204, 0.4);
+}
+
+.info-container {
+  font-size: 0.95rem;
+  color: #aaa;
+  line-height: 1.7;
+  padding: 15px;
+  text-align: left;
+  max-width: 420px;
+  margin: 15px auto 10px auto;
+  background: var(--card-bg);
+  border-radius: var(--border-radius);
+  box-sizing: border-box;
+  border: 1px solid #333;
+}
+.info-container b {
+  color: #fff;
+}
+
+#historyList {
+  margin-top: 10px;
+  font-size: 1.15rem;
+  color: #fff;
+  max-height: 150px;
+  overflow-y: auto;
+  line-height: 1.8;
+}
+
+.hidden-element {
+  display: none !important;
+}
 </style>
 </head>
 <body>
 
+<hr style="margin-top:10px;">
+
 <h1>カラオケストラックアウト</h1>
 
-<!-- ▼ 設定欄 ▼ -->
-<select id="mode">
-  <option value="score">点数</option>
-  <option value="cal">消費カロリー</option>
-  <option value="vib">ビブラート回数</option>
-  <option value="shake">しゃくり回数</option>
-  <option value="kobushi">こぶし回数</option>
-</select>
+<div class="app-card">
+  <div class="button-row">
+    <select id="mode">
+      <option value="score">点数</option>
+      <option value="cal">消費カロリー</option>
+      <option value="vib">ビブラート回数</option>
+      <option value="shake">しゃくり回数</option>
+      <option value="kobushi">こぶし回数</option>
+    </select>
 
-<select id="triesSelect">
-  <option value="9">挑戦回数：9</option>
-  <option value="10">挑戦回数：10</option>
-  <option value="11">挑戦回数：11</option>
-  <option value="12">挑戦回数：12</option>
-  <option value="13">挑戦回数：13</option>
-  <option value="14">挑戦回数：14</option>
-  <option value="15">挑戦回数：15</option>
-</select>
+    <select id="triesSelect">
+      <option value="9">挑戦回数：9</option>
+      <option value="10">挑戦回数：10</option>
+      <option value="11">挑戦回数：11</option>
+      <option value="12">挑戦回数：12</option>
+      <option value="13">挑戦回数：13</option>
+      <option value="14">挑戦回数：14</option>
+      <option value="15">挑戦回数：15</option>
+    </select>
+  </div>
+
+  <button id="startBtn" class="btn-start" onclick="startGame()">ゲーム開始 (START)</button>
+
+  <div id="info">ゲームを開始してください</div>
+
+  <div style="margin: 15px 0;">
+    <input id="numInput" type="text" placeholder="数字を入力">
+    <button class="btn-shoot" onclick="shoot()">決定</button>
+  </div>
+
+  <div id="board"></div>
+</div>
+
+<button class="btn-toggle" onclick="toggleHistory()">挑戦履歴を表示/非表示</button>
+<div id="historySection" class="info-container hidden-element">
+  <b>📊 挑戦履歴</b>
+  <div id="historyList"></div>
+</div>
 
 <br>
-<button onclick="startGame()">START</button>
 
-<div id="info">ゲームを開始してください</div>
+<button class="btn-toggle" onclick="toggleRules()">遊び方を表示/非表示</button>
+<div id="rulesSection" class="info-container hidden-element">
+  <b>■ 遊び方</b><br>
+  ・カラオケのリザルト画面の数値を使って的を射抜くゲームです。<br>
+  ・モードと挑戦回数を選んでスタートします。（開始すると設定はロックされます）<br>
+  ・入力した数値の<b>「一の位」</b>と<b>「十の位」</b>の的が同時に撃ち抜かれます！
+  <br><br>
+  <b>🎁 ボーナス特典</b><br>
+  ・入力した数値の<b>下1桁が「0」</b>だった場合、残り挑戦回数が<b>「+1回」ボーナス</b>されます！
+  <br><br>
+  <b>🔑 ロック解除キー</b><br>
+  ・数字入力欄に「0001」を入力して決定すると、ゲームの途中でも設定ロックを強制解除できます。
+</div>
 
-<!-- ▼ 数字入力 ▼ -->
-<input id="numInput" type="number" placeholder="数字を入力">
-<button onclick="shoot()">決定</button>
-
-<!-- ▼ 盤面 ▼ -->
-<div id="board"></div>
-
-<button onclick="resetGame()">挑戦リセット</button>
-<button onclick="location.href='index.html'">indexへ戻る</button>
-
-<!-- ▼ 履歴 ▼ -->
-<div id="history">
-  <b>挑戦履歴</b><br>
-  <div id="historyList"></div>
+<div class="button-row" style="margin-top: 20px;">
+  <button class="btn-reset" onclick="resetGame()">挑戦リセット</button>
+  <a href="index.html" class="btn-menu">📘 メニューへ戻る</a>
 </div>
 
 <script>
 let tries = 0;
 let turn = 0;
 let started = false;
+let isCleared = false; // クリア判定用フラグ
 
-// 盤面作成
+// 盤面自動生成（銀フレームのラッパー付き構造）
 const board = document.getElementById("board");
 for (let i = 1; i <= 9; i++) {
+  const wrapper = document.createElement("div");
+  wrapper.className = "cell-wrapper";
+  wrapper.id = "wrapper" + i;
+  
   const div = document.createElement("div");
   div.className = "cell";
   div.id = "cell" + i;
   div.textContent = i;
-  board.appendChild(div);
+  
+  wrapper.appendChild(div);
+  board.appendChild(wrapper);
 }
 
 // STARTボタン
@@ -149,67 +324,139 @@ function startGame() {
   tries = Number(document.getElementById("triesSelect").value);
   turn = 0;
   started = true;
+  isCleared = false;
 
-  document.getElementById("info").textContent =
-    "残り挑戦回数：" + tries;
-
+  document.getElementById("info").textContent = "残り挑戦回数：" + tries + " 回";
   document.getElementById("historyList").innerHTML = "";
 
-  // 盤面リセット
+  // 新機能：開始ボタンを隠し、セレクトボックスをロック
+  document.getElementById("startBtn").classList.add("hidden-element");
+  document.getElementById("mode").disabled = true;
+  document.getElementById("triesSelect").disabled = true;
+
+  // 盤面全修復リセット
   for (let i = 1; i <= 9; i++) {
-    const c = document.getElementById("cell" + i);
-    c.classList.remove("broken");
-    c.style.opacity = "1";
-    c.style.transform = "scale(1)";
+    document.getElementById("cell" + i).classList.remove("broken");
+    document.getElementById("wrapper" + i).classList.remove("broken-wrapper");
   }
 }
 
-// 数字入力処理
-function shoot() {
-  if (!started || tries <= 0) return;
+// ロック強制解除処理
+function unlockControls() {
+  started = false;
+  document.getElementById("startBtn").classList.remove("hidden-element");
+  document.getElementById("mode").disabled = false;
+  document.getElementById("triesSelect").disabled = false;
+  document.getElementById("info").textContent = "設定ロックを解除しました。再開始できます。";
+}
 
-  const num = Number(document.getElementById("numInput").value);
-  if (!num) return;
+// 数字入力・決定処理
+function shoot() {
+  const inputEl = document.getElementById("numInput");
+  const inputValue = inputEl.value.trim();
+
+  // 新機能：隠しコード「0001」でロック解除
+  if (inputValue === "0001") {
+    unlockControls();
+    inputEl.value = "";
+    return;
+  }
+
+  if (!started) {
+    alert("STARTボタンを押してゲームを開始してください！");
+    return;
+  }
+  if (isCleared) return; // クリア後は操作不可
+  if (tries <= 0) {
+    document.getElementById("info").textContent = "挑戦回数が終了しています！";
+    return;
+  }
+
+  const num = Number(inputValue);
+  if (inputValue === "" || isNaN(num)) return;
 
   turn++;
 
-  // 履歴追加
-  const history = document.getElementById("historyList");
-  history.innerHTML += turn + "回目：" + num + "<br>";
-
-  // 下1桁が0 → 挑戦回数 +1
+  // 下1桁が0 → 挑戦回数ボーナス +1
+  let bonusText = "";
   if (num % 10 === 0) {
     tries++;
+    bonusText = " <span style='color:#00ff87; font-size:0.9rem;'>[下1桁0: 回数+1!]</span>";
   }
 
-  // 十の位と一の位を抜く
+  const historyList = document.getElementById("historyList");
+  historyList.innerHTML = `<div><b>${turn}回目:</b> <span style="color:#00f2fe;">${num}</span>${bonusText}</div>` + historyList.innerHTML;
+
+  // 十の位と一の位を抽出
   const ones = num % 10;
   const tens = Math.floor(num / 10) % 10;
 
   hitCell(ones);
   hitCell(tens);
 
-  tries--;
-  document.getElementById("info").textContent =
-    "残り挑戦回数：" + tries;
+  // 的がすべて射抜かれたかどうかの「クリアチェック」
+  checkGameClear();
 
-  document.getElementById("numInput").value = "";
+  if (!isCleared) {
+    tries--;
+    document.getElementById("info").textContent = "残り挑戦回数：" + tries + " 回";
+
+    if (tries <= 0) {
+      document.getElementById("info").innerHTML = "<span style='color:#ff0055;'>GAME OVER (終了)</span>";
+    }
+  }
+
+  inputEl.value = "";
+  inputEl.focus();
 }
 
-// マスを抜く処理
+// マスを破壊するアニメーション処理（黒焦げ・破け表現に変更）
 function hitCell(n) {
   if (n >= 1 && n <= 9) {
     const cell = document.getElementById("cell" + n);
+    const wrapper = document.getElementById("wrapper" + n);
     if (!cell.classList.contains("broken")) {
       cell.classList.add("broken");
+      wrapper.classList.add("broken-wrapper"); // 外枠も連動して破け変化
     }
   }
 }
 
-// リセット
+// 新機能：全面抜きクリア判定
+function checkGameClear() {
+  let brokenCount = 0;
+  for (let i = 1; i <= 9; i++) {
+    if (document.getElementById("cell" + i).classList.contains("broken")) {
+      brokenCount++;
+    }
+  }
+  if (brokenCount === 9) {
+    isCleared = true;
+    document.getElementById("info").innerHTML = "<span style='color:#00ff87; font-size:1.6rem; text-shadow:0 0 10px #00ff87;'>🎉 GAME CLEAR!! 🎉</span>";
+  }
+}
+
+// 挑戦リセットボタン（すべてのロックを完全解除して初期化）
 function resetGame() {
+  document.getElementById("startBtn").classList.remove("hidden-element");
+  document.getElementById("mode").disabled = false;
+  document.getElementById("triesSelect").disabled = false;
   startGame();
 }
+
+function toggleRules() {
+  document.getElementById("rulesSection").classList.toggle("hidden-element");
+}
+
+function toggleHistory() {
+  document.getElementById("historySection").classList.toggle("hidden-element");
+}
+
+document.getElementById("numInput").addEventListener("keydown", (e) => {
+  if (e.key === "Enter") {
+    shoot();
+  }
+});
 </script>
 
 </body>
