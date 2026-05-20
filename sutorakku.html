@@ -220,10 +220,31 @@ button:active {
   margin-top: 10px;
   font-size: 1.15rem;
   color: #fff;
-  max-height: 150px;
+  max-height: 200px;
   overflow-y: auto;
   line-height: 1.8;
 }
+
+/* 履歴のアクション用ミニボタン */
+.history-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid #333;
+  padding: 4px 0;
+}
+.history-btns {
+  display: flex;
+  gap: 5px;
+}
+.btn-mini {
+  min-width: auto;
+  padding: 4px 8px;
+  font-size: 0.75rem;
+  border-radius: 4px;
+}
+.btn-edit { background: #3498db; }
+.btn-del { background: #e74c3c; }
 
 .hidden-element {
   display: none !important;
@@ -282,13 +303,15 @@ button:active {
   <b>■ 遊び方</b><br>
   ・カラオケのリザルト画面の数値を使って的を射抜くゲームです。<br>
   ・モードと挑戦回数を選んでスタートします。（開始すると設定はロックされます）<br>
-  ・入力した数値の<b>「一の位」</b>と<b>「十の位」</b>の的が同時に撃ち抜かれます！
+  ・入力した数値の<b>「一の位」</b>と<b>「十の位」</b>の的が同時に撃ち抜かれます！<br>
+  ・履歴内の「変更」「削除」から、入力ミスした数字の修正や消去がいつでも可能です。
   <br><br>
   <b>🎁 ボーナス特典</b><br>
-  ・入力した数値の<b>下1桁が「0」</b>だった場合、残り挑戦回数が<b>「+1回」ボーナス</b>されます！
+  ・入力した数値の<b>下1桁が「0」</b>だった場合、残り挑戦回数が<b>「+1回」ボーナス</b>されます！<br>
+  ・ただし、このボーナスは1ゲームにつき<b>最大3回まで</b>獲得可能です。
   <br><br>
-  <b>🔑 ロック解除キー</b><br>
-  ・数字入力欄に「0001」を入力して決定すると、ゲームの途中でも設定ロックを強制解除できます。
+  <b>🔄 強制リセット</b><br>
+  ・「挑戦リセット」ボタンを押すと、ゲームの途中やクリア後でも即座に設定変更ができる開始前の状態に戻せます。
 </div>
 
 <div class="button-row" style="margin-top: 20px;">
@@ -297,8 +320,8 @@ button:active {
 </div>
 
 <script>
-let tries = 0;
-let turn = 0;
+let initialTries = 9; // ゲーム開始時に選択された初期回数
+let historyArray = []; // 入力された数字を保持する配列
 let started = false;
 let isCleared = false; 
 
@@ -320,89 +343,132 @@ for (let i = 1; i <= 9; i++) {
 
 // STARTボタン
 function startGame() {
-  tries = Number(document.getElementById("triesSelect").value);
-  turn = 0;
+  initialTries = Number(document.getElementById("triesSelect").value);
+  historyArray = [];
   started = true;
   isCleared = false;
-
-  document.getElementById("info").textContent = "残り挑戦回数：" + tries + " 回";
-  document.getElementById("historyList").innerHTML = "";
 
   document.getElementById("startBtn").classList.add("hidden-element");
   document.getElementById("mode").disabled = true;
   document.getElementById("triesSelect").disabled = true;
 
+  updateGameState();
+}
+
+// ロック解除（ゲーム開始前の状態に戻す）
+function unlockControls() {
+  started = false;
+  isCleared = false;
+  document.getElementById("startBtn").classList.remove("hidden-element");
+  document.getElementById("mode").disabled = false;
+  document.getElementById("triesSelect").disabled = false;
+  document.getElementById("info").textContent = "ゲームを開始してください";
+  document.getElementById("numInput").value = "";
+  document.getElementById("historyList").innerHTML = "";
+  historyArray = [];
+  
   for (let i = 1; i <= 9; i++) {
     document.getElementById("cell" + i).classList.remove("broken");
     document.getElementById("wrapper" + i).classList.remove("broken-wrapper");
   }
 }
 
-// ロック解除処理
-function unlockControls() {
-  started = false;
-  document.getElementById("startBtn").classList.remove("hidden-element");
-  document.getElementById("mode").disabled = false;
-  document.getElementById("triesSelect").disabled = false;
-}
-
 // 数字入力・決定処理
 function shoot() {
-  const inputEl = document.getElementById("numInput");
-  const inputValue = inputEl.value.trim();
-
-  // 隠しコード「0001」で任意でのロック解除
-  if (inputValue === "0001") {
-    unlockControls();
-    document.getElementById("info").textContent = "設定ロックを解除しました。再開始できます。";
-    inputEl.value = "";
-    return;
-  }
-
   if (!started) {
     alert("STARTボタンを押してゲームを開始してください！");
     return;
   }
   if (isCleared) return; 
-  if (tries <= 0) {
-    document.getElementById("info").textContent = "挑戦回数が終了しています！";
+
+  const inputEl = document.getElementById("numInput");
+  const inputValue = inputEl.value.trim();
+  const num = Number(inputValue);
+
+  if (inputValue === "" || isNaN(num)) return;
+
+  // 履歴に追加して状態を更新
+  historyArray.push(num);
+  updateGameState();
+
+  inputEl.value = "";
+  inputEl.focus();
+}
+
+// 履歴の配列をベースに、盤面・残り回数・履歴表示を「すべて再計算」するコア関数
+function updateGameState() {
+  // 1. 盤面のリセット
+  for (let i = 1; i <= 9; i++) {
+    document.getElementById("cell" + i).classList.remove("broken");
+    document.getElementById("wrapper" + i).classList.remove("broken-wrapper");
+  }
+
+  // 2. データの処理と盤面への反映
+  let currentTries = initialTries;
+  let bonusCount = 0;
+  let historyHTML = "";
+
+  historyArray.forEach((num, index) => {
+    let bonusText = "";
+    
+    // 下1桁が0、かつボーナス獲得が3回未満の場合のみ回数追加
+    if (num % 10 === 0) {
+      if (bonusCount < 3) {
+        currentTries++;
+        bonusCount++;
+        bonusText = " <span style='color:#00ff87; font-size:0.75rem;'>[下1桁0: 回数+1]</span>";
+      } else {
+        bonusText = " <span style='color:#ffaa00; font-size:0.75rem;'>[ボーナス上限到達]</span>";
+      }
+    }
+
+    // 射撃による消費
+    currentTries--;
+
+    // 的を射抜く処理
+    const ones = num % 10;
+    const tens = Math.floor(num / 10) % 10;
+    hitCell(ones);
+    hitCell(tens);
+
+    // 履歴行の生成（最新が上に来るように結合）
+    historyHTML = `
+      <div class="history-item">
+        <div>
+          <b>${index + 1}回目:</b> <span style="color:#00f2fe; font-weight:bold;">${num}</span>${bonusText}
+        </div>
+        <div class="history-btns">
+          <button class="btn-mini btn-edit" onclick="editHistory(${index})">変更</button>
+          <button class="btn-mini btn-del" onclick="deleteHistory(${index})">削除</button>
+        </div>
+      </div>
+    ` + historyHTML;
+  });
+
+  // 履歴画面への描画
+  document.getElementById("historyList").innerHTML = historyHTML;
+
+  // 3. クリア判定チェック
+  let brokenCount = 0;
+  for (let i = 1; i <= 9; i++) {
+    if (document.getElementById("cell" + i).classList.contains("broken")) {
+      brokenCount++;
+    }
+  }
+
+  if (brokenCount === 9) {
+    isCleared = true;
+    document.getElementById("info").innerHTML = "<span style='color:#00ff87; font-size:1.6rem; text-shadow:0 0 10px #00ff87;'>🎉 GAME CLEAR!! 🎉</span>";
+    unlockControls(); // クリア時に開始前のロック解除状態に戻す
     return;
   }
 
-  const num = Number(inputValue);
-  if (inputValue === "" || isNaN(num)) return;
-
-  turn++;
-
-  let bonusText = "";
-  if (num % 10 === 0) {
-    tries++;
-    bonusText = " <span style='color:#00ff87; font-size:0.9rem;'>[下1桁0: 回数+1!]</span>";
+  // 4. ゲームオーバー判定と残り回数表示
+  if (currentTries <= 0 && historyArray.length > 0) {
+    document.getElementById("info").innerHTML = "<span style='color:#ff0055;'>GAME OVER (終了)</span>";
+  } else {
+    document.getElementById("info").textContent = "残り挑戦回数：" + currentTries + " 回";
   }
-
-  const historyList = document.getElementById("historyList");
-  historyList.innerHTML = `<div><b>${turn}回目:</b> <span style="color:#00f2fe;">${num}</span>${bonusText}</div>` + historyList.innerHTML;
-
-  const ones = num % 10;
-  const tens = Math.floor(num / 10) % 10;
-
-  hitCell(ones);
-  hitCell(tens);
-
-  // 全面抜きクリア判定チェック
-  checkGameClear();
-
-  if (!isCleared) {
-    tries--;
-    document.getElementById("info").textContent = "残り挑戦回数：" + tries + " 回";
-
-    if (tries <= 0) {
-      document.getElementById("info").innerHTML = "<span style='color:#ff0055;'>GAME OVER (終了)</span>";
-    }
-    inputEl.value = "";
-  }
-  
-  inputEl.focus();
 }
 
 function hitCell(n) {
@@ -416,31 +482,58 @@ function hitCell(n) {
   }
 }
 
-// 全面抜きクリア判定（クリア時に自動で0001を入力＆色々選択状態に戻す）
-function checkGameClear() {
-  let brokenCount = 0;
-  for (let i = 1; i <= 9; i++) {
-    if (document.getElementById("cell" + i).classList.contains("broken")) {
-      brokenCount++;
-    }
+// 履歴変更処理
+function editHistory(index) {
+  const currentNum = historyArray[index];
+  const newNumStr = prompt(`${index + 1}回目の数字を変更しますか？`, currentNum);
+  
+  if (newNumStr === null) return; // キャンセル
+  
+  const newNum = Number(newNumStr.trim());
+  if (newNumStr.trim() === "" || isNaN(newNum)) {
+    alert("有効な数字を入力してください。");
+    return;
   }
-  if (brokenCount === 9) {
-    isCleared = true;
-    document.getElementById("info").innerHTML = "<span style='color:#00ff87; font-size:1.6rem; text-shadow:0 0 10px #00ff87;'>🎉 GAME CLEAR!! 🎉</span>";
-    
-    // ご要望：クリア時に自動で「0001」を入力欄にセットしロックを解除
-    const inputEl = document.getElementById("numInput");
-    inputEl.value = "0001";
-    unlockControls(); 
+
+  historyArray[index] = newNum;
+  isCleared = false; // 編集によって未クリア状態に戻る可能性を考慮
+  
+  // 変更ボタンを押した時にゲームが終了状態(ロック解除)なら再ロック
+  if (!started) {
+    started = true;
+    document.getElementById("startBtn").classList.add("hidden-element");
+    document.getElementById("mode").disabled = true;
+    document.getElementById("triesSelect").disabled = true;
+  }
+  
+  updateGameState();
+}
+
+// 履歴削除処理
+function deleteHistory(index) {
+  if (!confirm(`${index + 1}回目の履歴（${historyArray[index]}）を削除しますか？`)) return;
+  
+  historyArray.splice(index, 1);
+  isCleared = false; 
+
+  if (!started && historyArray.length > 0) {
+    started = true;
+    document.getElementById("startBtn").classList.add("hidden-element");
+    document.getElementById("mode").disabled = true;
+    document.getElementById("triesSelect").disabled = true;
+  }
+
+  updateGameState();
+  
+  // 履歴がゼロになった場合は完全に初期状態に戻す
+  if (historyArray.length === 0) {
+    unlockControls();
   }
 }
 
+// 挑戦リセットボタン（管理キーを廃止し、このボタンで一発初期化）
 function resetGame() {
-  document.getElementById("startBtn").classList.remove("hidden-element");
-  document.getElementById("mode").disabled = false;
-  document.getElementById("triesSelect").disabled = false;
-  document.getElementById("numInput").value = "";
-  startGame();
+  unlockControls();
 }
 
 function toggleRules() {
