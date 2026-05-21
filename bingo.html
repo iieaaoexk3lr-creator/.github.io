@@ -9,7 +9,7 @@
     --bg-color: #0b0c10;
     --card-bg: #1f2833;
     --text-color: #c5c6c7;
-    --accent-blue: #66fcf1;   /* 通常ヒット枠（ネオンブルー） */
+    --accent-blue: #66fcf1;    /* 通常ヒット枠（ネオンブルー） */
     --accent-yellow: #ffea00; /* リーチ枠（ネオンイエロー） */
     --accent-red: #ff0055;    /* ビンゴ成立枠（ネオンレッド） */
     --title-color: #a8dadc;
@@ -129,16 +129,16 @@
     border-color: #666; 
   }
 
-  /* ヒット時（通常）：ネオンブルー枠、薄い緑で塗りつぶし、文字は黒 */
+  /* アップデート：ヒット時（通常）は枠内が白、文字が黒 */
   .hit {
-    background: #d4edda; 
-    color: #000;
+    background: #ffffff; 
+    color: #000000;
     border-color: var(--accent-blue);
     transform: scale(1.02);
     box-shadow: 0 0 10px rgba(102, 252, 241, 0.6); 
   }
 
-  /* リーチ状態の枠：ネオンイエロー（中身の薄い緑と文字の黒は維持） */
+  /* リーチ状態の枠：ネオンイエロー（中身の白と文字の黒は維持） */
   .cell.reach {
     border-color: var(--accent-yellow) !important;
     box-shadow: 0 0 12px rgba(255, 234, 0, 0.8) !important;
@@ -355,13 +355,9 @@ function startGame(){
   renderBoard();
 }
 
-/* --------------------------------------------------
-    リーチおよび複数ラインビンゴ判定（バグ修正版）
--------------------------------------------------- */
 function checkBingo(){
   const cells = boardEl.querySelectorAll(".cell");
   
-  // クラスを一度すべてクリアして状態変化に備える
   cells.forEach(c => {
     c.classList.remove("reach", "bingo-line");
   });
@@ -400,18 +396,15 @@ function checkBingo(){
     }
   }
 
-  // 1. リーチ対象マス（黄色枠）を反映
   reachIndices.forEach(i => {
     cells[i].classList.add("reach");
   });
 
-  // 2. ビンゴ成立マス（赤枠＋少し濃い緑）を最優先で上書き反映
   bingoIndices.forEach(i => {
     cells[i].classList.remove("reach"); 
     cells[i].classList.add("bingo-line");
   });
 
-  // 3. バナーテキスト更新
   if(bingoCount > 0){
     let text = "BINGO！！";
     if (bingoCount >= 2) text = `${bingoCount} BINGO！！！`;
