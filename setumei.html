@@ -2,94 +2,242 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>歌って話して説明クイズ</title>
 <style>
-  body {
-    font-family: sans-serif;
-    background: #111;
-    color: #fff;
-    text-align: center;
-    padding: 20px;
-  }
+:root {
+  --bg-color: #121214;
+  --card-bg: #2a2a30; /* 少し明るく */
+  --text-color: #e0e0e6;
+  
+  /* カラフルグラデーションボタン */
+  --btn-pink: linear-gradient(135deg, #ff007f, #7928ca);
+  --btn-green: linear-gradient(135deg, #00ff87, #00e0ff);
+  --btn-red: linear-gradient(135deg, #f5576c, #f093fb);
+  --btn-cyan: linear-gradient(135deg, #00f2fe, #4facfe);
+  --btn-gray: linear-gradient(135deg, #485563, #29323c);
 
-  h1 {
-    font-size: 2.2rem;
-    margin-bottom: 20px;
-  }
+  --title-color: #ffffff;
+  --border-radius: 12px;
+  --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Hiragino Kaku Gothic ProN", sans-serif;
+}
 
-  #question {
-    font-size: 2.5rem;
-    margin: 30px 0;
-    font-weight: bold;
-  }
+body {
+  background-color: var(--bg-color);
+  color: var(--text-color);
+  font-family: var(--font-family);
+  text-align: center;
+  padding: 10px;
+  margin: 0;
+}
 
-  #score {
-    font-size: 2rem;
-    margin-bottom: 20px;
-    color: #00ffcc;
-  }
+h1 {
+  font-size: 1.8rem;
+  margin: 15px 0 10px 0;
+  color: var(--title-color);
+  background: var(--btn-pink);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  text-shadow: 0 0 15px rgba(255, 0, 127, 0.4);
+}
 
-  button {
-    font-size: 1.3rem;
-    padding: 12px 25px;
-    margin: 8px;
-    border-radius: 10px;
-    border: none;
-    cursor: pointer;
-  }
+hr {
+  border: 0;
+  height: 1px;
+  background: #333;
+  margin: 15px 0;
+}
 
-  .correctEffect {
-    display: none;
-    font-size: 3rem;
-    color: #00ffcc;
-    animation: sparkle 0.8s ease-out forwards;
-  }
+/* スマホ最適化メインカード */
+.app-card {
+  background: var(--card-bg);
+  padding: 20px 15px;
+  border-radius: var(--border-radius);
+  max-width: 420px;
+  margin: 0 auto 15px auto;
+  box-sizing: border-box;
+  border: 1px solid #333;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+}
 
-  .wrongEffect {
-    display: none;
-    font-size: 3rem;
-    color: #ff4444;
-    animation: wrongflash 0.6s ease-out forwards;
-  }
+#score {
+  font-size: 1.8rem;
+  font-weight: bold;
+  background: var(--btn-cyan);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  text-shadow: 0 0 10px rgba(0, 242, 254, 0.3);
+  margin-bottom: 10px;
+}
 
-  @keyframes sparkle {
-    0% { opacity: 0; transform: scale(0.5); }
-    50% { opacity: 1; transform: scale(1.3); }
-    100% { opacity: 0; transform: scale(1); }
-  }
+#question {
+  font-size: 2.2rem;
+  margin: 25px 0;
+  font-weight: bold;
+  min-height: 70px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  color: #fff;
+  text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+  padding: 0 10px;
+  word-break: break-all;
+}
 
-  @keyframes wrongflash {
-    0% { opacity: 0; transform: scale(0.5); }
-    50% { opacity: 1; transform: scale(1.2); }
-    100% { opacity: 0; transform: scale(1); }
-  }
+/* エフェクト表示位置の調整 */
+.effect-container {
+  position: relative;
+  height: 0;
+  overflow: visible;
+}
 
-  @media (max-width: 600px) {
-    #question { font-size: 2rem; }
-    button { font-size: 1.1rem; padding: 10px 18px; }
-  }
+.correctEffect {
+  display: none;
+  font-size: 3.5rem;
+  color: #00ff87;
+  font-weight: bold;
+  position: absolute;
+  width: 100%;
+  top: -60px;
+  z-index: 10;
+  text-shadow: 0 0 15px rgba(0, 255, 135, 0.6);
+  animation: sparkle 0.8s ease-out forwards;
+}
+
+.wrongEffect {
+  display: none;
+  font-size: 4rem;
+  color: #f5576c;
+  font-weight: bold;
+  position: absolute;
+  width: 100%;
+  top: -65px;
+  z-index: 10;
+  text-shadow: 0 0 15px rgba(245, 87, 108, 0.6);
+  animation: wrongflash 0.6s ease-out forwards;
+}
+
+@keyframes sparkle {
+  0% { opacity: 0; transform: scale(0.5); }
+  50% { opacity: 1; transform: scale(1.2); }
+  100% { opacity: 0; transform: scale(1); }
+}
+
+@keyframes wrongflash {
+  0% { opacity: 0; transform: scale(0.5); }
+  50% { opacity: 1; transform: scale(1.1); }
+  100% { opacity: 0; transform: scale(1); }
+}
+
+/* ボタンレイアウト */
+.button-row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+  margin-bottom: 15px;
+}
+
+.main-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  width: 100%;
+}
+
+button {
+  font-size: 1.1rem;
+  font-weight: bold;
+  padding: 14px 20px;
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+  color: #fff;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+}
+button:active {
+  transform: scale(0.96);
+}
+
+/* 各ボタンのグラデーション */
+.btn-correct { background: var(--btn-green); color: #121214; grid-column: 1;}
+.btn-wrong { background: var(--btn-red); grid-column: 2;}
+.btn-next { background: var(--btn-cyan); width: 100%; margin-top: 5px; font-size: 1.2rem; padding: 15px;}
+.btn-reset { background: var(--btn-gray); }
+.btn-menu { background: #333; color: #fff; min-width: 120px; text-decoration: none; display: inline-block; padding: 12px 16px; border-radius: 12px; font-weight: bold; font-size: 1.1rem;}
+.btn-toggle { background: #444; color: #fff; font-size: 0.85rem; padding: 8px 14px; border-radius: 8px; margin-top: 5px;}
+
+/* 説明・管理用コンテナ */
+.info-container {
+  font-size: 0.95rem;
+  color: #aaa;
+  line-height: 1.7;
+  padding: 15px;
+  text-align: left;
+  max-width: 420px;
+  margin: 12px auto;
+  background: var(--card-bg);
+  border-radius: var(--border-radius);
+  box-sizing: border-box;
+  border: 1px solid #333;
+}
+.info-container b {
+  color: #fff;
+}
+
+.hidden-element {
+  display: none !important;
+}
 </style>
 </head>
 <body>
 
+<hr style="margin-top:10px;">
+
 <h1>説明クイズ企画</h1>
 
-<div id="score">ポイント：0</div>
+<div class="app-card">
+  <div id="score">ポイント：0</div>
 
-<div id="question"></div>
+  <div class="effect-container">
+    <div id="correctEffect" class="correctEffect">✨正解✨</div>
+    <div id="wrongEffect" class="wrongEffect">❌</div>
+  </div>
 
-<!-- エフェクト -->
-<div id="correctEffect" class="correctEffect">✨正解✨</div>
-<div id="wrongEffect" class="wrongEffect">❌</div>
+  <div id="question"></div>
 
-<!-- ボタン -->
-<button onclick="markCorrect()">正解</button>
-<button onclick="markWrong()">不正解</button>
-<button onclick="nextQuestion()">次の問題</button>
-<button onclick="resetScore()">ポイントリセット</button>
-<button onclick="location.href='index.html'">メニュー</button>
+  <div class="button-row">
+    <div class="main-actions">
+      <button class="btn-correct" onclick="markCorrect()">正解</button>
+      <button class="btn-wrong" onclick="markWrong()">不正解</button>
+    </div>
+    <button class="btn-next" onclick="nextQuestion()">次の問題へ ➔</button>
+  </div>
+</div>
+
+<button class="btn-toggle" onclick="toggleControls()">管理・リセットボタンを表示/非表示</button>
+<div id="controlSection" class="info-container hidden-element" style="text-align:center;">
+  <b>⚙️ システム管理</b>
+  <div class="button-row" style="margin-top: 12px;">
+    <button class="btn-reset" onclick="resetScore()">ポイントリセット</button>
+    <a href="index.html" class="btn-menu">📘 メニュー</a>
+  </div>
+</div>
+
+<br>
+
+<button class="btn-toggle" onclick="toggleRules()">遊び方を表示/非表示</button>
+<div id="rulesSection" class="info-container hidden-element">
+  <b>■ 歌って話して説明クイズの遊び方</b><br>
+  ・お題となる言葉（曲名やモノの名称）が画面に大きく表示されます。<br>
+  ・出題者は、その言葉を直接使わずに「歌ったり」「特徴を話したり」して周りの人に説明してください。<br>
+  ・回答者が制限時間内にお題を見事当てることができたら<b>「正解」</b>ボタンをプッシュ！見事10ポイントが加算されます。<br>
+  ・パスする場合や、間違えてしまった場合は<b>「不正解」</b>を押して、次の問題へ進んでください。
+</div>
 
 <script>
+  // クイズの問題リスト
   const questions = [
     "りんごのうた",
     "飛行機",
@@ -107,38 +255,51 @@
   const correctEffect = document.getElementById("correctEffect");
   const wrongEffect = document.getElementById("wrongEffect");
 
+  // 問題表示
   function showQuestion() {
+    if (current >= questions.length) {
+      questionDiv.innerHTML = "<span style='color:#00ff87; font-size:1.8rem;'>🎉 全問終了！ 🎉<br><span style='font-size:1.2rem; color:#aaa;'>お疲れさまでした！</span></span>";
+      return;
+    }
     questionDiv.textContent = questions[current];
   }
 
+  // 正解ボタン
   function markCorrect() {
+    if (current >= questions.length) return;
     score += 10;
     scoreDiv.textContent = "ポイント：" + score;
     showEffect(correctEffect);
   }
 
+  // 不正解ボタン
   function markWrong() {
+    if (current >= questions.length) return;
     showEffect(wrongEffect);
   }
 
+  // 元のロジックに存在したpassQuestion関数も維持
   function passQuestion() {
+    if (current >= questions.length) return;
     showEffect(wrongEffect);
   }
 
+  // 次の問題ボタン
   function nextQuestion() {
+    if (current >= questions.length) return;
     current++;
-    if (current >= questions.length) {
-      questionDiv.textContent = "全問終了！お疲れさま！";
-      return;
-    }
     showQuestion();
   }
 
+  // ポイントリセット
   function resetScore() {
     score = 0;
+    current = 0; // 最初からやり直せるようにcurrentもリセット
     scoreDiv.textContent = "ポイント：0";
+    showQuestion();
   }
 
+  // エフェクト演出処理
   function showEffect(effect) {
     effect.style.display = "block";
     setTimeout(() => {
@@ -146,6 +307,17 @@
     }, 800);
   }
 
+  // トグル：コントロールボタンの表示切り替え
+  function toggleControls() {
+    document.getElementById("controlSection").classList.toggle("hidden-element");
+  }
+
+  // トグル：遊び方の表示切り替え
+  function toggleRules() {
+    document.getElementById("rulesSection").classList.toggle("hidden-element");
+  }
+
+  // 初回起動
   showQuestion();
 </script>
 
