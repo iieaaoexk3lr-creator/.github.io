@@ -147,7 +147,7 @@
   }
   button:disabled { background: #333 !important; color: #555 !important; cursor: not-allowed; }
 
-  /* ── ビンゴカード全体の背景枠（※斜め感を廃止して正面フラットに変更） ── */
+  /* ── ビンゴカード全体の背景枠 ── */
   #board {
     margin: 25px auto;
     display: grid;
@@ -175,7 +175,7 @@
       0 20px 40px rgba(0,0,0,0.7);
   }
 
-  /* ── 各マスの基本スタイル（※文字のネオン発光 text-shadow を廃止） ── */
+  /* ── 各マスの基本スタイル ── */
   .cell {
     border-radius: var(--border-radius);
     min-height: 60px;
@@ -193,7 +193,7 @@
     
     /* 立体的に沈み込んで見える内側シャドウ */
     box-shadow: inset 0 2px 4px rgba(0,0,0,0.4), 0 2px 4px rgba(0,0,0,0.2);
-    text-shadow: none; /* 文字のネオン化廃止 */
+    text-shadow: none; 
   }
 
   /* ── 行（横ライン）ごとのネオン管デザイン ── */
@@ -221,18 +221,18 @@
     box-shadow: 0 0 8px #fff;
   }
 
-  /* ── ヒット時（選択）は「漆黒背景×白文字×ネオンブルー枠」（※文字のネオン発光は廃止） ── */
+  /* ── [アップデート] ヒット時（選択）は「全体背景と同じ深紫×白文字×ネオンブルー枠」 ── */
   .hit {
-    background: #000000 !important; 
-    color: #ffffff !important;
+    background: #120826 !important; /* 全体背景（深紫）と同じ色に変更 */
+    color: #ffffff !important;      /* 白文字 */
     border: 2.5px solid var(--accent-blue) !important;
     transform: scale(1.03) !important;
     box-shadow: 0 0 15px var(--accent-blue), inset 0 0 8px rgba(255,255,255,0.2) !important;
-    text-shadow: none !important; /* 文字発光廃止 */
+    text-shadow: none !important;
     z-index: 2;
   }
 
-  /* ── [新規追加] リーチ時にマスを囲むように表示される赤マル（〇） ── */
+  /* ── リーチ時に「最後に空ければいい1マス」を囲む赤マル（〇） ── */
   .cell.reach::before {
     content: "";
     position: absolute;
@@ -240,9 +240,9 @@
     left: 3px;
     right: 3px;
     bottom: 3px;
-    border: 4px solid #ff0055; /* クッキリとした赤マル */
-    border-radius: 50%; /* 正円にする */
-    pointer-events: none; /* クリックの邪魔をしない */
+    border: 4px solid #ff0055; 
+    border-radius: 50%; 
+    pointer-events: none; 
     box-shadow: 0 0 8px #ff0055, inset 0 0 8px #ff0055;
     animation: pulseCircle 1s infinite alternate;
     z-index: 5;
@@ -262,7 +262,6 @@
     text-shadow: none !important;
     animation: pulseRed 1.5s infinite alternate;
   }
-  /* ビンゴになったら赤マルは消す */
   .cell.bingo-line::before { display: none; }
 
   @keyframes pulseRed {
@@ -344,7 +343,7 @@
   ・【5×5マス限定】フリー切替ボタンを有効にすると、中央が自動でFREEマスになり、START時に自動解放されます！<br>
   ・START前はマスをクリックして個別編集も可能です。<br>
   ・ゲーム中は一致したマスをタップしてロックします（もう一度タップで解除）。<br>
-  ・<b>あと1マスで揃う列は、対象マスの中に「赤マル〇」が表示（リーチ）</b>されます。<br>
+  ・<b>あと1マスで揃う列がある場合、その「最後の空きマス」に赤マル〇が表示（リーチ）</b>されます。<br>
   ・<b>揃った列は枠が赤色（ビンゴ）</b>になり、枠の中が少し濃い緑色に変化します！
 </div>
 
@@ -544,7 +543,7 @@ function checkBingo(){
 
   let bingoCount = 0;
   let bingoIndices = new Set();
-  let reachIndices = new Set();
+  let lastEmptyIndices = new Set(); // ── [アップデート] 最後の空きマスだけを保持するセット ──
 
   for(const line of lines){
     const hitCount = line.filter(i => hits[i]).length;
@@ -553,12 +552,16 @@ function checkBingo(){
       bingoCount++;
       line.forEach(i => bingoIndices.add(i));
     } else if (hitCount === size - 1) {
-      line.forEach(i => reachIndices.add(i));
+      // ── [アップデート] あと1マスで揃う列の、まだ空いていない(ヒットしていない)マスを探す ──
+      const emptyCellIndex = line.find(i => !hits[i]);
+      if (emptyCellIndex !== undefined) {
+        lastEmptyIndices.add(emptyCellIndex);
+      }
     }
   }
 
-  // ── [アップデート] リーチマスに .reach クラスを付与（CSS側で赤マルを表示） ──
-  reachIndices.forEach(i => {
+  // ── [アップデート] 最後の1マスだけに .reach クラス（赤マル）を適用 ──
+  lastEmptyIndices.forEach(i => {
     cells[i].classList.add("reach");
   });
 
