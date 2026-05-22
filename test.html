@@ -6,7 +6,7 @@
 <title>カラオケビンゴ！</title>
 <style>
   :root {
-    /* ── [アップデート] 画面全体の背景を薄い灰色に変更 ── */
+    /* ── 画面全体の背景を薄い灰色に変更 ── */
     --bg-color: #e9ecef;
     --card-bg: #1f2833;
     --text-color: #212529; /* 文字の基本色をグレー背景に合わせて濃い色に変更 */
@@ -33,7 +33,6 @@
 
   body {
     background-color: var(--bg-color);
-    /* 薄い灰色ベースの、滑らかなグラデーションに変更 */
     background-image: radial-gradient(circle at 50% 50%, #f8f9fa 0%, #e9ecef 70%);
     color: var(--text-color);
     font-family: var(--font-family);
@@ -51,7 +50,7 @@
   }
 
   .controls-group {
-    background: rgba(255, 255, 255, 0.85); /* コントロールエリアも明るい背景に馴染むように調整 */
+    background: rgba(255, 255, 255, 0.85); 
     backdrop-filter: blur(10px);
     -webkit-backdrop-filter: blur(10px);
     border: 1px solid rgba(0, 0, 0, 0.1);
@@ -160,7 +159,7 @@
     box-sizing: border-box;
     padding: 12px;
     border-radius: 16px;
-    background: #090514; /* 例の画像通り、カード内側は重厚な漆黒を維持 */
+    background: #090514; 
 
     /* 立体的な太い空色ネオン外枠 */
     border: 5px solid var(--neon-edge-sky);
@@ -169,7 +168,7 @@
     box-shadow: 
       0 0 20px rgba(0, 180, 216, 0.8), 
       inset 0 0 15px rgba(0, 180, 216, 0.6),
-      0 15px 35px rgba(0,0,0,0.3); /* 背景が明るいので、影の不透明度を調整 */
+      0 15px 35px rgba(0,0,0,0.3); 
   }
 
   /* ── 各マスの基本スタイル ── */
@@ -206,7 +205,7 @@
   .r2 { border: 1.5px solid var(--row2-border); color: var(--row2-border); background: transparent; }
   .r3 { border: 1.5px solid var(--row3-border); color: var(--row3-border); background: transparent; }
   .r4 { border: 1.5px solid var(--row4-border); color: var(--row4-border); background: transparent; }
-  .r5 { border: 2.5px solid var(--row5-border); color: var(--row5-border); background: transparent; }
+  .r5 { border: 1.5px solid var(--row5-border); color: var(--row5-border); background: transparent; }
   .r-default { border: 1.5px solid var(--row5-border); color: var(--row5-border); background: transparent; }
 
   /* FREEマスの特別デザイン ── */
@@ -226,14 +225,14 @@
     box-shadow: 0 0 8px #fff;
   }
 
-  /* ── ヒット時（選択）は「元の深紫ベース×白文字×ネオンブルー枠」で鮮やかに目立たせる ── */
+  /* ── [アップデート] ヒット時（選択）は全体背景と同じ「薄い灰色」×「黒文字」に変更 ── */
   .hit {
-    background: #120826 !important; 
-    color: #ffffff !important;      
+    background: var(--bg-color) !important; /* 全体背景と同じ薄い灰色 (#e9ecef) */
+    color: #000000 !important;              /* 文字色は黒 */
     border: 2.5px solid var(--accent-blue) !important;
     transform: scale(1.02) !important;
-    box-shadow: 0 0 12px var(--accent-blue), inset 0 0 6px rgba(255,255,255,0.2) !important;
-    text-shadow: none !important;  
+    box-shadow: 0 0 12px var(--accent-blue), inset 0 0 6px rgba(255,255,255,0.6) !important;
+    text-shadow: none !important;            /* 白背景で見やすいため黒縁は解除 */
     z-index: 2;
   }
 
