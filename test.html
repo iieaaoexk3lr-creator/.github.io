@@ -6,8 +6,8 @@
 <title>カラオケビンゴ！</title>
 <style>
   :root {
-    /* ── [アップデート] 画面全体の背景（明るめアメジストパープル） ── */
-    --bg-color: #281a47;
+    /* ── 画面全体の背景（サイバー空間をイメージした深紫） ── */
+    --bg-color: #120826;
     --card-bg: #1f2833;
     --text-color: #c5c6c7;
     --title-color: #a8dadc;
@@ -17,24 +17,23 @@
     --accent-yellow: #ffea00; /* リーチ枠（ネオンイエロー） */
     --accent-red: #ff0055;    /* ビンゴ成立枠（ネオンレッド） */
     
-    /* ── [新規] カードの縁：極細の超高輝度ミントグリーンネオン ── */
+    /* ── カードの縁：極細の超高輝度ミントグリーンネオン ── */
     --neon-edge: #00f5d4; 
 
-    /* ── [新規] 各行の【枠線】と【マス内側のパステル色】定義 ── */
-    --row1-border: #ff4d6d; --row1-bg: #2d161b; /* 1行目：レッド */
-    --row2-border: #4cc9f0; --row2-bg: #142430; /* 2行目：ブルー */
-    --row3-border: #ffee32; --row3-bg: #2d2a15; /* 3行目：イエロー */
-    --row4-border: #00f5d4; --row4-bg: #102b26; /* 4行目：グリーン */
-    --row5-border: #f77f00; --row5-bg: #2e1e12; /* 5行目：オレンジ */
+    /* ── 各行の【ネオン枠線・文字】と【マス内側のパステル色】 ── */
+    --row1-border: #ff2a5f; --row1-bg: #2d1219; /* 1行目：レッド */
+    --row2-border: #00b4d8; --row2-bg: #0b2230; /* 2行目：ブルー */
+    --row3-border: #ffdf00; --row3-bg: #2d2a0b; /* 3行目：イエロー */
+    --row4-border: #00f5d4; --row4-bg: #092b25; /* 4行目：グリーン */
+    --row5-border: #ff7000; --row5-bg: #30190b; /* 5行目：オレンジ */
 
     --border-radius: 10px;
-    --font-family: 'Helvetica Neue', Arial, sans-serif;
+    --font-family: 'Arial Black', 'Helvetica Neue', Arial, sans-serif;
   }
 
   body {
     background-color: var(--bg-color);
-    /* 背後のグルグルしたネオンの光の余韻をほんのり再現 */
-    background-image: radial-gradient(circle at 50% 50%, #3e2b69 0%, #281a47 70%);
+    background-image: radial-gradient(circle at 50% 50%, #251245 0%, #120826 70%);
     color: var(--text-color);
     font-family: var(--font-family);
     text-align: center;
@@ -118,18 +117,18 @@
   }
   button:disabled { background: #333 !important; color: #555 !important; cursor: not-allowed; }
 
-  /* ── [アップデート] ビンゴカード全体の背景枠（白グラデーション×極細緑ネオン） ── */
+  /* ── ビンゴカード全体の背景枠 ── */
   #board {
     margin: 25px auto;
     display: grid;
-    gap: 8px;
+    gap: 10px;
     max-width: 100%;
     width: 330px;
     box-sizing: border-box;
     padding: 16px;
     border-radius: 20px;
 
-    /* 白ベースに各行の色を縦にうっすらグラデーション */
+    /* 白ベースに各行の色を縦にうっすらとグラデーション */
     background: linear-gradient(to bottom, 
       #fff2f4 0%,   
       #f2f8ff 25%,  
@@ -138,44 +137,57 @@
       #fff6f0 100%  
     ); 
 
-    /* 極細の緑ネオン枠と、クッキリとした発光シャドウ */
+    /* 極細（1px）の緑ネオン枠と、クッキリとした発光シャドウ */
     border: 1px solid var(--neon-edge);
     box-shadow: 
-      0 0 15px rgba(0, 245, 212, 0.5), 
-      inset 0 0 10px rgba(0, 245, 212, 0.1),
-      0 20px 40px rgba(0,0,0,0.6);
+      0 0 15px rgba(0, 245, 212, 0.6), 
+      inset 0 0 10px rgba(0, 245, 212, 0.2),
+      0 20px 40px rgba(0,0,0,0.7);
     
-    /* 3D的な傾きエフェクト */
+    /* 3D傾きエフェクト */
     transform: perspective(800px) rotateX(4deg) rotateY(-2deg);
   }
 
-  /* ── [アップデート] マスの基本スタイル ── */
+  /* ── 各マスの基本スタイル ── */
   .cell {
     border-radius: var(--border-radius);
     min-height: 60px;
     display: flex;
+    flex-direction: column;
     align-items: center;
     justify-content: center;
-    font-size: 1.4rem;
+    font-size: 1.5rem;
     font-weight: 900;
     padding: 6px;
     word-break: break-word;
     box-sizing: border-box;
+    position: relative;
     transition: all 0.25s ease;
-    border: 2px solid transparent;
-
-    /* ボタンのような立体感を出すインナーシャドウ */
-    box-shadow: inset 0 2px 4px rgba(0,0,0,0.3), 0 2px 4px rgba(0,0,0,0.1);
+    
+    /* 立体的に沈み込んで見える内側シャドウ */
+    box-shadow: inset 0 2px 4px rgba(0,0,0,0.4), 0 2px 4px rgba(0,0,0,0.2);
+    text-shadow: 0 0 6px currentColor;
   }
 
-  /* ── [新規] JSから自動で割り振られる行ごとのネオン管スタイル ── */
-  .r1 { border: 2.5px solid var(--row1-border); color: var(--row1-border); background: var(--row1-bg); text-shadow: 0 0 5px var(--row1-border); }
-  .r2 { border: 2px solid var(--row2-border); color: var(--row2-border); background: var(--row2-bg); text-shadow: 0 0 5px var(--row2-border); }
-  .r3 { border: 2.5px solid var(--row3-border); color: var(--row3-border); background: var(--row3-bg); text-shadow: 0 0 5px var(--row3-border); }
-  .r4 { border: 2px solid var(--row4-border); color: var(--row4-border); background: var(--row4-bg); text-shadow: 0 0 5px var(--row4-border); }
-  .r5 { border: 2.5px solid var(--row5-border); color: var(--row5-border); background: var(--row5-bg); text-shadow: 0 0 5px var(--row5-border); }
-  /* 4x4や6x6の端数行用フォールバック */
-  .r-default { border: 2px solid var(--row5-border); color: var(--row5-border); background: var(--row5-bg); }
+  /* ── 行（横ライン）ごとのネオン管デザイン ── */
+  .r1 { border: 2.5px solid var(--row1-border); color: var(--row1-border); background: var(--row1-bg); box-shadow: inset 0 0 8px rgba(255,42,95,0.3), 0 0 8px rgba(255,42,95,0.4); }
+  .r2 { border: 2px solid var(--row2-border); color: var(--row2-border); background: var(--row2-bg); box-shadow: inset 0 0 8px rgba(0,180,216,0.3), 0 0 8px rgba(0,180,216,0.4); }
+  .r3 { border: 2.5px solid var(--row3-border); color: var(--row3-border); background: var(--row3-bg); box-shadow: inset 0 0 8px rgba(255,223,0,0.3), 0 0 8px rgba(255,223,0,0.4); }
+  .r4 { border: 2px solid var(--row4-border); color: var(--row4-border); background: var(--row4-bg); box-shadow: inset 0 0 8px rgba(0,245,148,0.3), 0 0 8px rgba(0,245,148,0.4); }
+  .r5 { border: 2.5px solid var(--row5-border); color: var(--row5-border); background: var(--row5-bg); box-shadow: inset 0 0 8px rgba(255,112,0,0.3), 0 0 8px rgba(255,112,0,0.4); }
+  /* 6x6などで5行目以降になった場合のフォールバック */
+  .r-default { border: 2.5px solid var(--row5-border); color: var(--row5-border); background: var(--row5-bg); box-shadow: inset 0 0 8px rgba(255,112,0,0.3), 0 0 8px rgba(255,112,0,0.4); }
+
+  /* FREEマスの特別デザイン ── */
+  .free-cell {
+    font-size: 0.8rem !important;
+    line-height: 1.2;
+  }
+  .free-cell span {
+    font-size: 1.4rem;
+    display: block;
+    margin-bottom: -2px;
+  }
 
   .editable:hover { 
     outline: none;
@@ -183,25 +195,25 @@
     box-shadow: 0 0 8px #fff;
   }
 
-  /* ── [アップデート] ヒット時（選択）は「漆黒背景×白文字×ネオンブルー枠」で圧倒的視認性 ── */
+  /* ── ヒット時（選択）は「漆黒背景×白文字×ネオンブルー枠」 ── */
   .hit {
     background: #000000 !important; 
     color: #ffffff !important;
     border: 2.5px solid var(--accent-blue) !important;
     transform: scale(1.03) !important;
-    text-shadow: 0 0 5px #ffffff, 0 0 10px var(--accent-blue) !important;
+    text-shadow: 0 0 8px #ffffff, 0 0 15px var(--accent-blue) !important;
     box-shadow: 0 0 15px var(--accent-blue), inset 0 0 8px rgba(255,255,255,0.2) !important;
     z-index: 2;
   }
 
-  /* リーチ状態の枠：ネオンイエロー（中身の黒と文字の白は維持） */
+  /* リーチ状態の枠：ネオンイエロー */
   .cell.reach {
     border-color: var(--accent-yellow) !important;
     box-shadow: 0 0 15px rgba(255, 234, 0, 0.9), inset 0 0 8px rgba(255, 234, 0, 0.4) !important;
-    text-shadow: 0 0 5px #ffffff, 0 0 10px var(--accent-yellow) !important;
+    text-shadow: 0 0 8px #ffffff, 0 0 15px var(--accent-yellow) !important;
   }
 
-  /* ビンゴ達成ラインの枠：ネオンレッド、中身は少し濃いめの緑、文字は黒 */
+  /* ビンゴ達成ラインの枠：ネオンレッド */
   .cell.bingo-line {
     background: #a3cfbb !important; 
     color: #000000 !important;
@@ -284,7 +296,7 @@
   <b>【遊び方】</b><br>
   ・点数ビンゴ or 漢字ビンゴを選びます。<br>
   ・マス数（4×4 / 5×5 / 6×6）を選びます。<br>
-  ・START前はマスをクリックして候補から選択できます。<br>
+  ・START前はマスをクリックして<b>FREEへの切り替え</b>や個別編集ができます。<br>
   ・START後は編集できません。<br>
   ・ゲーム中は一致したマスをタップしてロックします（もう一度タップで解除）。<br>
   ・<b>あと1マスで揃う列は枠が黄色（リーチ）</b>になります。<br>
@@ -322,7 +334,6 @@ const resetBtn = document.getElementById("resetBtn");
 const bingoBanner = document.getElementById("bingoBanner");
 const hideSetupContainer = document.getElementById("hideSetupContainer");
 
-// ── [アップデート] マス生成時にインデックスから「行番号」を計算し、r1〜r5クラスを動的付与 ──
 function initBoard(){
   boardEl.innerHTML = "";
   boardEl.style.gridTemplateColumns = `repeat(${size}, 1fr)`;
@@ -333,11 +344,10 @@ function initBoard(){
   for(let i=0;i<total;i++){
     const div = document.createElement("div");
     
-    // 行番号（0〜size-1）を算出
     const rowIndex = Math.floor(i / size);
     let rowClass = "r-default";
     if (rowIndex < 5) {
-      rowClass = `r${rowIndex + 1}`; // r1, r2, r3, r4, r5 を割り当て
+      rowClass = `r${rowIndex + 1}`;
     }
     
     div.className = `cell editable ${rowClass}`;
@@ -348,6 +358,7 @@ function initBoard(){
   bingoBanner.style.display = "none";
 }
 
+// ── [アップデート] マスクリック時に通常マスとFREEマスを交互、または選択して切り替え ──
 function onCellClick(i){
   if(started){
     hits[i] = !hits[i];
@@ -356,6 +367,28 @@ function onCellClick(i){
     return;
   }
 
+  // すでにFREEマスの場合は、クリックで通常マス（手動入力）に戻せるようにする
+  if (boardValues[i] === "FREE") {
+    if (confirm("このマスを通常の入力マスに戻しますか？")) {
+      boardValues[i] = "";
+      inputManualValue(i);
+    }
+    return;
+  }
+
+  // 新規または値があるマスをクリックした際、FREEにするか通常入力にするか尋ねる
+  const isFree = confirm("このマスを【FREEマス】にしますか？\n（[キャンセル]を押すと値の手動入力に進みます）");
+  
+  if (isFree) {
+    boardValues[i] = "FREE";
+    renderBoard();
+  } else {
+    inputManualValue(i);
+  }
+}
+
+// 従来の手動選択・入力処理を関数として独立化
+function inputManualValue(i){
   if(mode === "score"){
     const min = Number(document.getElementById("minScore").value);
     const max = Number(document.getElementById("maxScore").value);
@@ -487,7 +520,16 @@ function checkBingo(){
 function renderBoard(){
   const cells = boardEl.querySelectorAll(".cell");
   cells.forEach((c,idx)=>{
-    c.textContent = boardValues[idx];
+    const val = boardValues[idx];
+    
+    if (val === "FREE") {
+      c.classList.add("free-cell");
+      c.innerHTML = "<span>🎤</span>FREE";
+    } else {
+      c.classList.remove("free-cell");
+      c.textContent = val;
+    }
+    
     c.classList.toggle("hit", hits[idx]);
     c.classList.toggle("editable", !started);
   });
