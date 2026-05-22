@@ -56,7 +56,7 @@
     border: 1px solid rgba(255, 255, 255, 0.1);
     padding: 15px;
     border-radius: 8px;
-    max-width: 420px;
+    max-width: 480px;
     margin: 0 auto 15px auto;
     box-sizing: border-box;
     transition: all 0.3s ease;
@@ -77,19 +77,51 @@
     box-sizing: border-box;
   }
 
-  #scoreRangeBox {
-    display: block;
+  .score-config-area {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 8px;
     margin: 10px 0;
+  }
+
+  #scoreRangeBox {
     font-size: 0.95rem;
     color: #aaa;
   }
-  #scoreRangeBox input { width: 70px; }
+  #scoreRangeBox input { width: 65px; }
+
+  /* ── 新設：フリー切替ボタンのデザイン ── */
+  #freeToggleBtn {
+    font-size: 0.85rem;
+    padding: 6px 12px;
+    min-width: auto;
+    border-radius: 20px;
+    background: #212529;
+    color: #ff0055;
+    border: 1px solid #ff0055;
+    box-shadow: 0 0 8px rgba(255, 0, 85, 0.2);
+  }
+  #freeToggleBtn.active {
+    background: #ff0055;
+    color: #fff;
+    box-shadow: 0 0 12px rgba(255, 0, 85, 0.6);
+  }
+  #freeToggleBtn:disabled {
+    background: #333 !important;
+    color: #666 !important;
+    border-color: #444 !important;
+    box-shadow: none !important;
+    cursor: not-allowed;
+  }
 
   .button-row {
     display: flex;
     flex-wrap: wrap;
     justify-content: center;
     gap: 6px;
+    margin-top: 5px;
   }
 
   button {
@@ -99,7 +131,7 @@
     border-radius: 6px;
     border: none;
     cursor: pointer;
-    transition: background 0.2s;
+    transition: background 0.2s, transform 0.1s;
     min-width: 90px;
   }
   button:active { transform: scale(0.98); }
@@ -175,7 +207,6 @@
   .r3 { border: 2.5px solid var(--row3-border); color: var(--row3-border); background: var(--row3-bg); box-shadow: inset 0 0 8px rgba(255,223,0,0.3), 0 0 8px rgba(255,223,0,0.4); }
   .r4 { border: 2px solid var(--row4-border); color: var(--row4-border); background: var(--row4-bg); box-shadow: inset 0 0 8px rgba(0,245,148,0.3), 0 0 8px rgba(0,245,148,0.4); }
   .r5 { border: 2.5px solid var(--row5-border); color: var(--row5-border); background: var(--row5-bg); box-shadow: inset 0 0 8px rgba(255,112,0,0.3), 0 0 8px rgba(255,112,0,0.4); }
-  /* 6x6などで5行目以降になった場合のフォールバック */
   .r-default { border: 2.5px solid var(--row5-border); color: var(--row5-border); background: var(--row5-bg); box-shadow: inset 0 0 8px rgba(255,112,0,0.3), 0 0 8px rgba(255,112,0,0.4); }
 
   /* FREEマスの特別デザイン ── */
@@ -275,10 +306,11 @@
       </select>
     </div>
 
-    <span id="scoreRangeBox">
-      最低点 <input id="minScore" type="number" value="70">
-      最高点 <input id="maxScore" type="number" value="100">
-    </span>
+    <div class="score-config-area">
+      <span id="scoreRangeBox">
+        最低点 <input id="minScore" type="number" value="80"> 最高点 <input id="maxScore" type="number" value="99"> </span>
+      <button id="freeToggleBtn" type="button">FREE中央マス：無効</button>
+    </div>
   </div>
 
   <div class="button-row">
@@ -296,8 +328,8 @@
   <b>【遊び方】</b><br>
   ・点数ビンゴ or 漢字ビンゴを選びます。<br>
   ・マス数（4×4 / 5×5 / 6×6）を選びます。<br>
-  ・START前はマスをクリックして<b>FREEへの切り替え</b>や個別編集ができます。<br>
-  ・START後は編集できません。<br>
+  ・<b>【5×5マス限定】フリー切替ボタンを有効にすると、中央が自動でFREEマスになり、START時に自動解放されます！</b><br>
+  ・START前はマスをクリックして個別編集も可能です。<br>
   ・ゲーム中は一致したマスをタップしてロックします（もう一度タップで解除）。<br>
   ・<b>あと1マスで揃う列は枠が黄色（リーチ）</b>になります。<br>
   ・<b>揃った列は枠が赤色（ビンゴ）</b>になり、枠の中が少し濃い緑色に変化します！
@@ -323,11 +355,13 @@ let mode = "score";
 let boardValues = [];
 let hits = [];
 let started = false;
+let isFreeEnabled = false; // FREE中央機能の有効/無効フラグ
 
 const boardEl = document.getElementById("board");
 const modeEl = document.getElementById("mode");
 const sizeEl = document.getElementById("sizeSelect");
 const scoreRangeBox = document.getElementById("scoreRangeBox");
+const freeToggleBtn = document.getElementById("freeToggleBtn");
 const randomBtn = document.getElementById("randomBtn");
 const startBtn = document.getElementById("startBtn");
 const resetBtn = document.getElementById("resetBtn");
@@ -340,6 +374,16 @@ function initBoard(){
   const total = size*size;
   boardValues = new Array(total).fill("");
   hits = new Array(total).fill(false);
+
+  // 5x5マス以外ならフリー状態を強制解除してボタンを無効化
+  if (size !== 5) {
+    isFreeEnabled = false;
+    freeToggleBtn.classList.remove("active");
+    freeToggleBtn.textContent = "FREE中央マス：無効";
+    freeToggleBtn.disabled = true;
+  } else {
+    freeToggleBtn.disabled = false;
+  }
 
   for(let i=0;i<total;i++){
     const div = document.createElement("div");
@@ -355,10 +399,16 @@ function initBoard(){
     div.onclick = () => onCellClick(i);
     boardEl.appendChild(div);
   }
+
+  // 5x5でフリー機能が有効な場合、最初から中央をFREE状態にしておく
+  if (size === 5 && isFreeEnabled) {
+    boardValues[12] = "FREE";
+  }
+
   bingoBanner.style.display = "none";
+  renderBoard();
 }
 
-// ── [アップデート] マスクリック時に通常マスとFREEマスを交互、または選択して切り替え ──
 function onCellClick(i){
   if(started){
     hits[i] = !hits[i];
@@ -367,27 +417,17 @@ function onCellClick(i){
     return;
   }
 
-  // すでにFREEマスの場合は、クリックで通常マス（手動入力）に戻せるようにする
-  if (boardValues[i] === "FREE") {
-    if (confirm("このマスを通常の入力マスに戻しますか？")) {
-      boardValues[i] = "";
-      inputManualValue(i);
-    }
+  const centerIndex = Math.floor((size * size) / 2);
+
+  // フリー有効時の5x5中央マスはロック（編集不可）
+  if (size === 5 && isFreeEnabled && i === centerIndex) {
+    alert("現在FREE中央機能が有効なため、このマスはFREE固定です。");
     return;
   }
 
-  // 新規または値があるマスをクリックした際、FREEにするか通常入力にするか尋ねる
-  const isFree = confirm("このマスを【FREEマス】にしますか？\n（[キャンセル]を押すと値の手動入力に進みます）");
-  
-  if (isFree) {
-    boardValues[i] = "FREE";
-    renderBoard();
-  } else {
-    inputManualValue(i);
-  }
+  inputManualValue(i);
 }
 
-// 従来の手動選択・入力処理を関数として独立化
 function inputManualValue(i){
   if(mode === "score"){
     const min = Number(document.getElementById("minScore").value);
@@ -436,6 +476,12 @@ function randomFill(){
   }else{
     boardValues = generateKanjiCandidates(total);
   }
+
+  // ランダム生成時も、5x5でフリー機能が有効なら真ん中を上書き
+  if(size === 5 && isFreeEnabled){
+    boardValues[12] = "FREE";
+  }
+
   renderBoard();
 }
 
@@ -449,11 +495,17 @@ function startGame(){
 
   started = true;
 
+  // ── [アップデート] FREEが有効な場合、START時に自動で真ん中(12)をヒット状態にする ──
+  if (size === 5 && isFreeEnabled && boardValues[12] === "FREE") {
+    hits[12] = true;
+  }
+
   hideSetupContainer.style.display = "none";
   randomBtn.style.display = "none";
   startBtn.style.display = "none";
 
   renderBoard();
+  checkBingo(); // 初回判定を実行して、最初からリーチ等の色を反映させる
 }
 
 function checkBingo(){
@@ -519,6 +571,8 @@ function checkBingo(){
 
 function renderBoard(){
   const cells = boardEl.querySelectorAll(".cell");
+  if(cells.length === 0) return;
+  
   cells.forEach((c,idx)=>{
     const val = boardValues[idx];
     
@@ -550,6 +604,23 @@ function resetAll(){
   initBoard();
 }
 
+// ── [アップデート] フリー切替ボタンのクリックイベント ──
+freeToggleBtn.addEventListener("click", () => {
+  if (started || size !== 5) return;
+
+  isFreeEnabled = !isFreeEnabled;
+  if (isFreeEnabled) {
+    freeToggleBtn.classList.add("active");
+    freeToggleBtn.textContent = "FREE中央マス：有効";
+    boardValues[12] = "FREE"; // 真ん中をFREEに
+  } else {
+    freeToggleBtn.classList.remove("active");
+    freeToggleBtn.textContent = "FREE中央マス：無効";
+    boardValues[12] = ""; // 解除時は空文字に戻す
+  }
+  renderBoard();
+});
+
 modeEl.addEventListener("change",()=>{
   mode = modeEl.value;
   scoreRangeBox.style.display = mode==="score" ? "inline" : "none";
@@ -557,7 +628,7 @@ modeEl.addEventListener("change",()=>{
 
 sizeEl.addEventListener("change",()=>{
   size = Number(sizeEl.value);
-  initBoard();
+  initBoard(); // サイズ変更時に自動的にFREEが不適合なら解除されるロジック内包
 });
 
 randomBtn.addEventListener("click",randomFill);
