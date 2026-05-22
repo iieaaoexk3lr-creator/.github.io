@@ -6,38 +6,57 @@
 <title>カラオケビンゴ！</title>
 <style>
   :root {
-    --bg-color: #0b0c10;
+    /* ── 画面全体の背景を薄い灰色に変更 ── */
+    --bg-color: #e9ecef;
     --card-bg: #1f2833;
-    --text-color: #c5c6c7;
-    --accent-blue: #66fcf1;    /* 通常ヒット枠（ネオンブルー） */
-    --accent-yellow: #ffea00; /* リーチ枠（ネオンイエロー） */
+    --text-color: #212529; /* 文字の基本色をグレー背景に合わせて濃い色に変更 */
+    --title-color: #0077b6; /* タイトルも明るい背景に映える濃い青に調整 */
+    
+    /* ── ゲーム進行中のネオンエフェクト ── */
+    --accent-blue: #00f2fe;   /* 通常ヒット枠（ネオンブルー） */
     --accent-red: #ff0055;    /* ビンゴ成立枠（ネオンレッド） */
-    --title-color: #a8dadc;
-    --border-radius: 8px;
-    --font-family: 'Helvetica Neue', Arial, sans-serif;
+    
+    /* ── 画像を再現した極太ネオン外枠（スカイブルー） ── */
+    --neon-edge-sky: #3a86ff; 
+    --neon-glow-sky: #00b4d8;
+
+    /* ── 各行の【ハッキリした元のネオン枠線・文字色】 ── */
+    --row1-border: #ff2a5f; /* 1行目：レッド */
+    --row2-border: #00b4d8; /* 2行目：ブルー */
+    --row3-border: #ffdf00; /* 3行目：イエロー */
+    --row4-border: #00f5d4; /* 4行目：グリーン */
+    --row5-border: #ff7000; /* 5行目：オレンジ */
+
+    --border-radius: 6px; 
+    --font-family: 'Arial Black', 'Helvetica Neue', Arial, sans-serif;
   }
 
   body {
     background-color: var(--bg-color);
+    background-image: radial-gradient(circle at 50% 50%, #f8f9fa 0%, #e9ecef 70%);
     color: var(--text-color);
     font-family: var(--font-family);
     text-align: center;
     padding: 10px;
     margin: 0;
+    min-height: 100vh;
   }
 
   h1 { 
     font-size: 2rem; 
     margin: 15px 0 10px 0; 
     color: var(--title-color);
-    text-shadow: 0 0 10px rgba(168, 218, 220, 0.6); 
+    text-shadow: 0 0 10px rgba(0, 119, 182, 0.2); 
   }
 
   .controls-group {
-    background: var(--card-bg);
+    background: rgba(255, 255, 255, 0.85); 
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid rgba(0, 0, 0, 0.1);
     padding: 15px;
-    border-radius: var(--border-radius);
-    max-width: 420px;
+    border-radius: 8px;
+    max-width: 480px;
     margin: 0 auto 15px auto;
     box-sizing: border-box;
     transition: all 0.3s ease;
@@ -52,25 +71,56 @@
     padding: 8px;
     margin: 4px;
     border-radius: 6px;
-    border: 1px solid #444;
-    background: #000;
-    color: #fff;
+    border: 1px solid #ccc;
+    background: #fff;
+    color: #000;
     box-sizing: border-box;
   }
 
-  #scoreRangeBox {
-    display: block;
+  .score-config-area {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 8px;
     margin: 10px 0;
-    font-size: 0.95rem;
-    color: #aaa;
   }
-  #scoreRangeBox input { width: 70px; }
+
+  #scoreRangeBox {
+    font-size: 0.95rem;
+    color: #495057;
+  }
+  #scoreRangeBox input { width: 65px; background: #fff; color: #000; }
+
+  #freeToggleBtn {
+    font-size: 0.85rem;
+    padding: 6px 12px;
+    min-width: auto;
+    border-radius: 20px;
+    background: #fff;
+    color: #ff0055;
+    border: 1px solid #ff0055;
+    box-shadow: 0 0 8px rgba(255, 0, 85, 0.1);
+  }
+  #freeToggleBtn.active {
+    background: #ff0055;
+    color: #fff;
+    box-shadow: 0 0 12px rgba(255, 0, 85, 0.4);
+  }
+  #freeToggleBtn:disabled {
+    background: #e0e0e0 !important;
+    color: #a0a0a0 !important;
+    border-color: #ccc !important;
+    box-shadow: none !important;
+    cursor: not-allowed;
+  }
 
   .button-row {
     display: flex;
     flex-wrap: wrap;
     justify-content: center;
     gap: 6px;
+    margin-top: 5px;
   }
 
   button {
@@ -80,7 +130,7 @@
     border-radius: 6px;
     border: none;
     cursor: pointer;
-    transition: background 0.2s;
+    transition: background 0.2s, transform 0.1s;
     min-width: 90px;
   }
   button:active { transform: scale(0.98); }
@@ -90,72 +140,137 @@
   #resetBtn { background: #6c757d; color: #fff; }
   
   .btn-menu { 
-    background: #343a40; 
-    color: var(--text-color); 
+    background: #495057; 
+    color: #fff; 
     min-width: 140px;
     margin-top: 15px;
     display: inline-block;
   }
-  button:disabled { background: #333 !important; color: #555 !important; cursor: not-allowed; }
+  button:disabled { background: #ccc !important; color: #888 !important; cursor: not-allowed; }
 
+  /* ── ビンゴカード全体の背景枠 ── */
   #board {
-    margin: 15px auto;
+    margin: 25px auto;
     display: grid;
-    gap: 6px;
+    gap: 4px; 
     max-width: 100%;
-    width: 310px;
+    width: 370px; 
+    aspect-ratio: 1 / 1; 
     box-sizing: border-box;
+    padding: 12px;
+    border-radius: 16px;
+    background: #090514; 
+
+    /* 立体的な太い空色ネオン外枠 */
+    border: 5px solid var(--neon-edge-sky);
+    outline: 2px solid rgba(255, 255, 255, 0.4);
+    outline-offset: -3px;
+    box-shadow: 
+      0 0 20px rgba(0, 180, 216, 0.8), 
+      inset 0 0 15px rgba(0, 180, 216, 0.6),
+      0 15px 35px rgba(0,0,0,0.3); 
   }
 
+  /* ── 各マスの基本スタイル ── */
   .cell {
-    background: #121212;
     border-radius: var(--border-radius);
-    min-height: 60px;
+    aspect-ratio: 1 / 1; 
     display: flex;
+    flex-direction: column;
     align-items: center;
     justify-content: center;
-    font-size: 1.3rem;
-    font-weight: bold;
-    padding: 6px;
-    word-break: break-word;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+    
+    font-size: min(1.9rem, calc(1.0rem + 2vw)); 
+    font-weight: 900;
+    padding: 2px;
+    white-space: nowrap; 
+    overflow: hidden;
+    text-overflow: ellipsis;
     box-sizing: border-box;
-    transition: all 0.25s ease;
-    border: 2px solid transparent;
+    position: relative;
+    transition: all 0.2s ease;
+    
+    box-shadow: inset 0 1px 3px rgba(0,0,0,0.6);
+    
+    /* 非選択時の文字に幅の狭い黒い縁取り（4方向シャドウ）を設定 */
+    text-shadow: 
+      1.5px  1.5px 0px #000,
+     -1.5px  1.5px 0px #000,
+      1.5px -1.5px 0px #000,
+     -1.5px -1.5px 0px #000; 
+  }
+
+  /* 非選択時のデザイン：枠線は細めでクッキリ、背景は完全透明（漆黒） */
+  .r1 { border: 1.5px solid var(--row1-border); color: var(--row1-border); background: transparent; }
+  .r2 { border: 1.5px solid var(--row2-border); color: var(--row2-border); background: transparent; }
+  .r3 { border: 1.5px solid var(--row3-border); color: var(--row3-border); background: transparent; }
+  .r4 { border: 1.5px solid var(--row4-border); color: var(--row4-border); background: transparent; }
+  .r5 { border: 1.5px solid var(--row5-border); color: var(--row5-border); background: transparent; }
+  .r-default { border: 1.5px solid var(--row5-border); color: var(--row5-border); background: transparent; }
+
+  /* FREEマスの特別デザイン ── */
+  .free-cell {
+    font-size: min(0.8rem, calc(0.5rem + 1vw)) !important;
+    line-height: 1.1;
+  }
+  .free-cell span {
+    font-size: min(1.2rem, calc(0.7rem + 1.2vw));
+    display: block;
+    margin-bottom: 2px;
   }
 
   .editable:hover { 
     outline: none;
-    border-color: #666; 
+    border-color: #fff !important; 
+    box-shadow: 0 0 8px #fff;
   }
 
-  /* アップデート：ヒット時（通常）は枠内が白、文字が黒 */
+  /* ── [アップデート] ヒット時（選択）は全体背景と同じ「薄い灰色」×「黒文字」に変更 ── */
   .hit {
-    background: #ffffff; 
-    color: #000000;
-    border-color: var(--accent-blue);
-    transform: scale(1.02);
-    box-shadow: 0 0 10px rgba(102, 252, 241, 0.6); 
+    background: var(--bg-color) !important; /* 全体背景と同じ薄い灰色 (#e9ecef) */
+    color: #000000 !important;              /* 文字色は黒 */
+    border: 2.5px solid var(--accent-blue) !important;
+    transform: scale(1.02) !important;
+    box-shadow: 0 0 12px var(--accent-blue), inset 0 0 6px rgba(255,255,255,0.6) !important;
+    text-shadow: none !important;            /* 白背景で見やすいため黒縁は解除 */
+    z-index: 2;
   }
 
-  /* リーチ状態の枠：ネオンイエロー（中身の白と文字の黒は維持） */
-  .cell.reach {
-    border-color: var(--accent-yellow) !important;
-    box-shadow: 0 0 12px rgba(255, 234, 0, 0.8) !important;
+  /* リーチ時の赤マル（〇） ── */
+  .cell.reach::before {
+    content: "";
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    right: 2px;
+    bottom: 2px;
+    border: 3px solid #ff0055; 
+    border-radius: 50%; 
+    pointer-events: none; 
+    box-shadow: 0 0 6px #ff0055, inset 0 0 5px #ff0055;
+    animation: pulseCircle 1s infinite alternate;
+    z-index: 5;
   }
 
-  /* ビンゴ達成ラインの枠：ネオンレッド、中身は少し濃いめの緑、文字は黒 */
+  @keyframes pulseCircle {
+    0% { transform: scale(0.95); opacity: 0.8; }
+    100% { transform: scale(1.01); opacity: 1; }
+  }
+
+  /* ビンゴ達成ラインの枠：ネオンレッド */
   .cell.bingo-line {
     background: #a3cfbb !important; 
-    color: #000 !important;
+    color: #000000 !important;
     border-color: var(--accent-red) !important;
-    box-shadow: 0 0 14px rgba(255, 0, 85, 0.9) !important;
+    box-shadow: 0 0 18px rgba(255, 0, 85, 1) !important;
+    text-shadow: none !important;
     animation: pulseRed 1.5s infinite alternate;
   }
+  .cell.bingo-line::before { display: none; }
 
   @keyframes pulseRed {
     0% { box-shadow: 0 0 8px rgba(255, 0, 85, 0.6); }
-    100% { box-shadow: 0 0 18px rgba(255, 0, 85, 1); }
+    100% { box-shadow: 0 0 20px rgba(255, 0, 85, 1); }
   }
 
   /* ビンゴ情報バナー */
@@ -174,15 +289,16 @@
     margin: 20px auto 10px auto;
     max-width: 420px;
     text-align: left;
-    background: var(--card-bg);
+    background: rgba(255, 255, 255, 0.85);
+    border: 1px solid rgba(0, 0, 0, 0.1);
     padding: 15px;
-    border-radius: var(--border-radius);
+    border-radius: 8px;
     font-size: 0.9rem;
     line-height: 1.6;
-    color: #aaa;
+    color: #495057;
     box-sizing: border-box;
   }
-  #rules b { color: #fff; }
+  #rules b { color: #000; }
 </style>
 </head>
 <body>
@@ -204,10 +320,13 @@
       </select>
     </div>
 
-    <span id="scoreRangeBox">
-      最低点 <input id="minScore" type="number" value="70">
-      最高点 <input id="maxScore" type="number" value="100">
-    </span>
+    <div class="score-config-area">
+      <span id="scoreRangeBox">
+        最低点 <input id="minScore" type="number" value="80">
+        最高点 <input id="maxScore" type="number" value="99">
+      </span>
+      <button id="freeToggleBtn" type="button">FREE中央マス：無効</button>
+    </div>
   </div>
 
   <div class="button-row">
@@ -225,10 +344,10 @@
   <b>【遊び方】</b><br>
   ・点数ビンゴ or 漢字ビンゴを選びます。<br>
   ・マス数（4×4 / 5×5 / 6×6）を選びます。<br>
-  ・START前はマスをクリックして候補から選択できます。<br>
-  ・START後は編集できません。<br>
+  ・【5×5マス限定】フリー切替ボタンを有効にすると、中央が自動でFREEマスになり、START時に自動解放されます！<br>
+  ・START前はマスをクリックして個別編集も可能です。<br>
   ・ゲーム中は一致したマスをタップしてロックします（もう一度タップで解除）。<br>
-  ・<b>あと1マスで揃う列は枠が黄色（リーチ）</b>になります。<br>
+  ・<b>あと1マスで揃う列がある場合、その「最後の空きマス」に赤マル〇が表示（リーチ）</b>されます。<br>
   ・<b>揃った列は枠が赤色（ビンゴ）</b>になり、枠の中が少し濃い緑色に変化します！
 </div>
 
@@ -252,11 +371,13 @@ let mode = "score";
 let boardValues = [];
 let hits = [];
 let started = false;
+let isFreeEnabled = false;
 
 const boardEl = document.getElementById("board");
 const modeEl = document.getElementById("mode");
 const sizeEl = document.getElementById("sizeSelect");
 const scoreRangeBox = document.getElementById("scoreRangeBox");
+const freeToggleBtn = document.getElementById("freeToggleBtn");
 const randomBtn = document.getElementById("randomBtn");
 const startBtn = document.getElementById("startBtn");
 const resetBtn = document.getElementById("resetBtn");
@@ -270,14 +391,36 @@ function initBoard(){
   boardValues = new Array(total).fill("");
   hits = new Array(total).fill(false);
 
+  if (size !== 5) {
+    isFreeEnabled = false;
+    freeToggleBtn.classList.remove("active");
+    freeToggleBtn.textContent = "FREE中央マス：無効";
+    freeToggleBtn.disabled = true;
+  } else {
+    freeToggleBtn.disabled = false;
+  }
+
   for(let i=0;i<total;i++){
     const div = document.createElement("div");
-    div.className = "cell editable";
+    
+    const rowIndex = Math.floor(i / size);
+    let rowClass = "r-default";
+    if (rowIndex < 5) {
+      rowClass = `r${rowIndex + 1}`;
+    }
+    
+    div.className = `cell editable ${rowClass}`;
     div.dataset.index = i;
     div.onclick = () => onCellClick(i);
     boardEl.appendChild(div);
   }
+
+  if (size === 5 && isFreeEnabled) {
+    boardValues[12] = "FREE";
+  }
+
   bingoBanner.style.display = "none";
+  renderBoard();
 }
 
 function onCellClick(i){
@@ -288,17 +431,22 @@ function onCellClick(i){
     return;
   }
 
+  const centerIndex = Math.floor((size * size) / 2);
+
+  if (size === 5 && isFreeEnabled && i === centerIndex) {
+    alert("現在FREE中央機能が有効なため、このマスはFREE固定です。");
+    return;
+  }
+
+  inputManualValue(i);
+}
+
+function inputManualValue(i){
   if(mode === "score"){
-    const min = Number(document.getElementById("minScore").value);
-    const max = Number(document.getElementById("maxScore").value);
-    const count = size*size;
-    const candidates = generateScoreCandidates(min,max,count);
-    const choice = prompt("点数を選んでください：\n" + candidates.join(" / "));
+    const choice = prompt("設定したい【点数】を入力してください：");
     if(choice) boardValues[i] = choice;
   }else{
-    const count = size*size;
-    const candidates = generateKanjiCandidates(count);
-    const choice = prompt("漢字を選んでください：\n" + candidates.join(" / "));
+    const choice = prompt("設定したい【漢字】を入力してください：");
     if(choice) boardValues[i] = choice;
   }
   renderBoard();
@@ -335,6 +483,11 @@ function randomFill(){
   }else{
     boardValues = generateKanjiCandidates(total);
   }
+
+  if(size === 5 && isFreeEnabled){
+    boardValues[12] = "FREE";
+  }
+
   renderBoard();
 }
 
@@ -348,11 +501,16 @@ function startGame(){
 
   started = true;
 
+  if (size === 5 && isFreeEnabled && boardValues[12] === "FREE") {
+    hits[12] = true;
+  }
+
   hideSetupContainer.style.display = "none";
   randomBtn.style.display = "none";
   startBtn.style.display = "none";
 
   renderBoard();
+  checkBingo(); 
 }
 
 function checkBingo(){
@@ -383,7 +541,7 @@ function checkBingo(){
 
   let bingoCount = 0;
   let bingoIndices = new Set();
-  let reachIndices = new Set();
+  let lastEmptyIndices = new Set(); 
 
   for(const line of lines){
     const hitCount = line.filter(i => hits[i]).length;
@@ -392,11 +550,14 @@ function checkBingo(){
       bingoCount++;
       line.forEach(i => bingoIndices.add(i));
     } else if (hitCount === size - 1) {
-      line.forEach(i => reachIndices.add(i));
+      const emptyCellIndex = line.find(i => !hits[i]);
+      if (emptyCellIndex !== undefined) {
+        lastEmptyIndices.add(emptyCellIndex);
+      }
     }
   }
 
-  reachIndices.forEach(i => {
+  lastEmptyIndices.forEach(i => {
     cells[i].classList.add("reach");
   });
 
@@ -418,8 +579,19 @@ function checkBingo(){
 
 function renderBoard(){
   const cells = boardEl.querySelectorAll(".cell");
+  if(cells.length === 0) return;
+  
   cells.forEach((c,idx)=>{
-    c.textContent = boardValues[idx];
+    const val = boardValues[idx];
+    
+    if (val === "FREE") {
+      c.classList.add("free-cell");
+      c.innerHTML = "<span>🎤</span>FREE";
+    } else {
+      c.classList.remove("free-cell");
+      c.textContent = val;
+    }
+    
     c.classList.toggle("hit", hits[idx]);
     c.classList.toggle("editable", !started);
   });
@@ -440,6 +612,22 @@ function resetAll(){
   initBoard();
 }
 
+freeToggleBtn.addEventListener("click", () => {
+  if (started || size !== 5) return;
+
+  isFreeEnabled = !isFreeEnabled;
+  if (isFreeEnabled) {
+    freeToggleBtn.classList.add("active");
+    freeToggleBtn.textContent = "FREE中央マス：有効";
+    boardValues[12] = "FREE";
+  } else {
+    freeToggleBtn.classList.remove("active");
+    freeToggleBtn.textContent = "FREE中央マス：無効";
+    boardValues[12] = "";
+  }
+  renderBoard();
+});
+
 modeEl.addEventListener("change",()=>{
   mode = modeEl.value;
   scoreRangeBox.style.display = mode==="score" ? "inline" : "none";
@@ -447,7 +635,7 @@ modeEl.addEventListener("change",()=>{
 
 sizeEl.addEventListener("change",()=>{
   size = Number(sizeEl.value);
-  initBoard();
+  initBoard(); 
 });
 
 randomBtn.addEventListener("click",randomFill);
