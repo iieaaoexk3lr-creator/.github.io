@@ -6,17 +6,17 @@
 <title>カラオケビンゴ！</title>
 <style>
   :root {
-    /* ── 画面全体の背景（深紫） ── */
-    --bg-color: #120826;
+    /* ── [アップデート] 画面全体の背景を薄い灰色に変更 ── */
+    --bg-color: #e9ecef;
     --card-bg: #1f2833;
-    --text-color: #c5c6c7;
-    --title-color: #a8dadc;
+    --text-color: #212529; /* 文字の基本色をグレー背景に合わせて濃い色に変更 */
+    --title-color: #0077b6; /* タイトルも明るい背景に映える濃い青に調整 */
     
     /* ── ゲーム進行中のネオンエフェクト ── */
     --accent-blue: #00f2fe;   /* 通常ヒット枠（ネオンブルー） */
     --accent-red: #ff0055;    /* ビンゴ成立枠（ネオンレッド） */
     
-    /* ── [アップデート] 画像を再現した極太ネオン外枠（スカイブルー） ── */
+    /* ── 画像を再現した極太ネオン外枠（スカイブルー） ── */
     --neon-edge-sky: #3a86ff; 
     --neon-glow-sky: #00b4d8;
 
@@ -27,13 +27,14 @@
     --row4-border: #00f5d4; /* 4行目：グリーン */
     --row5-border: #ff7000; /* 5行目：オレンジ */
 
-    --border-radius: 6px; /* 画像に合わせてややシャープに */
+    --border-radius: 6px; 
     --font-family: 'Arial Black', 'Helvetica Neue', Arial, sans-serif;
   }
 
   body {
     background-color: var(--bg-color);
-    background-image: radial-gradient(circle at 50% 50%, #251245 0%, #120826 70%);
+    /* 薄い灰色ベースの、滑らかなグラデーションに変更 */
+    background-image: radial-gradient(circle at 50% 50%, #f8f9fa 0%, #e9ecef 70%);
     color: var(--text-color);
     font-family: var(--font-family);
     text-align: center;
@@ -46,14 +47,14 @@
     font-size: 2rem; 
     margin: 15px 0 10px 0; 
     color: var(--title-color);
-    text-shadow: 0 0 10px rgba(168, 218, 220, 0.6); 
+    text-shadow: 0 0 10px rgba(0, 119, 182, 0.2); 
   }
 
   .controls-group {
-    background: rgba(31, 40, 51, 0.6);
+    background: rgba(255, 255, 255, 0.85); /* コントロールエリアも明るい背景に馴染むように調整 */
     backdrop-filter: blur(10px);
     -webkit-backdrop-filter: blur(10px);
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(0, 0, 0, 0.1);
     padding: 15px;
     border-radius: 8px;
     max-width: 480px;
@@ -71,9 +72,9 @@
     padding: 8px;
     margin: 4px;
     border-radius: 6px;
-    border: 1px solid #444;
-    background: #000;
-    color: #fff;
+    border: 1px solid #ccc;
+    background: #fff;
+    color: #000;
     box-sizing: border-box;
   }
 
@@ -88,29 +89,29 @@
 
   #scoreRangeBox {
     font-size: 0.95rem;
-    color: #aaa;
+    color: #495057;
   }
-  #scoreRangeBox input { width: 65px; }
+  #scoreRangeBox input { width: 65px; background: #fff; color: #000; }
 
   #freeToggleBtn {
     font-size: 0.85rem;
     padding: 6px 12px;
     min-width: auto;
     border-radius: 20px;
-    background: #212529;
+    background: #fff;
     color: #ff0055;
     border: 1px solid #ff0055;
-    box-shadow: 0 0 8px rgba(255, 0, 85, 0.2);
+    box-shadow: 0 0 8px rgba(255, 0, 85, 0.1);
   }
   #freeToggleBtn.active {
     background: #ff0055;
     color: #fff;
-    box-shadow: 0 0 12px rgba(255, 0, 85, 0.6);
+    box-shadow: 0 0 12px rgba(255, 0, 85, 0.4);
   }
   #freeToggleBtn:disabled {
-    background: #333 !important;
-    color: #666 !important;
-    border-color: #444 !important;
+    background: #e0e0e0 !important;
+    color: #a0a0a0 !important;
+    border-color: #ccc !important;
     box-shadow: none !important;
     cursor: not-allowed;
   }
@@ -140,38 +141,38 @@
   #resetBtn { background: #6c757d; color: #fff; }
   
   .btn-menu { 
-    background: #343a40; 
-    color: var(--text-color); 
+    background: #495057; 
+    color: #fff; 
     min-width: 140px;
     margin-top: 15px;
     display: inline-block;
   }
-  button:disabled { background: #333 !important; color: #555 !important; cursor: not-allowed; }
+  button:disabled { background: #ccc !important; color: #888 !important; cursor: not-allowed; }
 
-  /* ── [アップデート] ビンゴカード全体の背景枠（極太空色ネオンプレート化＆隙間縮小） ── */
+  /* ── ビンゴカード全体の背景枠 ── */
   #board {
     margin: 25px auto;
     display: grid;
-    gap: 4px; /* 画像に合わせてマス同士の間隔を狭めに調整 */
+    gap: 4px; 
     max-width: 100%;
     width: 370px; 
     aspect-ratio: 1 / 1; 
     box-sizing: border-box;
     padding: 12px;
     border-radius: 16px;
-    background: #090514; /* マス背面をドッシリとした漆黒に */
+    background: #090514; /* 例の画像通り、カード内側は重厚な漆黒を維持 */
 
-    /* 例の画像のような、立体的な太い空色ネオン外枠を多重線とシャドウで構築 */
+    /* 立体的な太い空色ネオン外枠 */
     border: 5px solid var(--neon-edge-sky);
     outline: 2px solid rgba(255, 255, 255, 0.4);
     outline-offset: -3px;
     box-shadow: 
       0 0 20px rgba(0, 180, 216, 0.8), 
       inset 0 0 15px rgba(0, 180, 216, 0.6),
-      0 15px 35px rgba(0,0,0,0.8);
+      0 15px 35px rgba(0,0,0,0.3); /* 背景が明るいので、影の不透明度を調整 */
   }
 
-  /* ── [アップデート] 各マスの基本スタイル（文字を画像のように大きく調整） ── */
+  /* ── 各マスの基本スタイル ── */
   .cell {
     border-radius: var(--border-radius);
     aspect-ratio: 1 / 1; 
@@ -180,7 +181,6 @@
     align-items: center;
     justify-content: center;
     
-    /* 枠いっぱいに数字が引き立つようフォントサイズを限界まで大きく */
     font-size: min(1.9rem, calc(1.0rem + 2vw)); 
     font-weight: 900;
     padding: 2px;
@@ -191,7 +191,6 @@
     position: relative;
     transition: all 0.2s ease;
     
-    /* 細い内シャドウで枠線の立体感を強調 */
     box-shadow: inset 0 1px 3px rgba(0,0,0,0.6);
     
     /* 非選択時の文字に幅の狭い黒い縁取り（4方向シャドウ）を設定 */
@@ -207,10 +206,10 @@
   .r2 { border: 1.5px solid var(--row2-border); color: var(--row2-border); background: transparent; }
   .r3 { border: 1.5px solid var(--row3-border); color: var(--row3-border); background: transparent; }
   .r4 { border: 1.5px solid var(--row4-border); color: var(--row4-border); background: transparent; }
-  .r5 { border: 1.5px solid var(--row5-border); color: var(--row5-border); background: transparent; }
+  .r5 { border: 2.5px solid var(--row5-border); color: var(--row5-border); background: transparent; }
   .r-default { border: 1.5px solid var(--row5-border); color: var(--row5-border); background: transparent; }
 
-  /* FREEマスの特別デザイン（文字サイズが大きくても崩れないよう調整） ── */
+  /* FREEマスの特別デザイン ── */
   .free-cell {
     font-size: min(0.8rem, calc(0.5rem + 1vw)) !important;
     line-height: 1.1;
@@ -227,10 +226,10 @@
     box-shadow: 0 0 8px #fff;
   }
 
-  /* ── ヒット時（選択）は「全体背景と同じ深紫×白文字×ネオンブルー枠」（文字の黒縁は解除） ── */
+  /* ── ヒット時（選択）は「元の深紫ベース×白文字×ネオンブルー枠」で鮮やかに目立たせる ── */
   .hit {
-    background: #120826 !important; /* 全体背景（深紫）と同じ色 */
-    color: #ffffff !important;      /* 白文字 */
+    background: #120826 !important; 
+    color: #ffffff !important;      
     border: 2.5px solid var(--accent-blue) !important;
     transform: scale(1.02) !important;
     box-shadow: 0 0 12px var(--accent-blue), inset 0 0 6px rgba(255,255,255,0.2) !important;
@@ -238,7 +237,7 @@
     z-index: 2;
   }
 
-  /* リーチ時に「最後に空ければいい1マス」を囲む赤マル（〇） ── */
+  /* リーチ時の赤マル（〇） ── */
   .cell.reach::before {
     content: "";
     position: absolute;
@@ -291,16 +290,16 @@
     margin: 20px auto 10px auto;
     max-width: 420px;
     text-align: left;
-    background: rgba(31, 40, 51, 0.6);
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.85);
+    border: 1px solid rgba(0, 0, 0, 0.1);
     padding: 15px;
     border-radius: 8px;
     font-size: 0.9rem;
     line-height: 1.6;
-    color: #aaa;
+    color: #495057;
     box-sizing: border-box;
   }
-  #rules b { color: #fff; }
+  #rules b { color: #000; }
 </style>
 </head>
 <body>
