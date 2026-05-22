@@ -26,9 +26,6 @@
     --row4-border: #00f5d4; /* 4行目：グリーン */
     --row5-border: #ff7000; /* 5行目：オレンジ */
 
-    /* ── [アップデート] 非選択時の数字が入っているマスの塗りつぶし（灰色） ── */
-    --cell-gray-bg: #22252c; 
-
     --border-radius: 10px;
     --font-family: 'Arial Black', 'Helvetica Neue', Arial, sans-serif;
   }
@@ -150,25 +147,25 @@
   }
   button:disabled { background: #333 !important; color: #555 !important; cursor: not-allowed; }
 
-  /* ── ビンゴカード全体の背景枠（※常に綺麗な正方形を保つよう指定） ── */
+  /* ── ビンゴカード全体の背景枠 ── */
   #board {
     margin: 25px auto;
     display: grid;
     gap: 8px; 
     max-width: 100%;
     width: 360px; 
-    aspect-ratio: 1 / 1; /* 全体を常に1:1の正方形に固定 */
+    aspect-ratio: 1 / 1; 
     box-sizing: border-box;
     padding: 16px;
     border-radius: 20px;
 
-    /* 白ベースに各行の色を縦にうっすらとグラデーション */
+    /* [アップデート] 各行の文字色を極限まで淡くブレンドした特製グラデーション背景 */
     background: linear-gradient(to bottom, 
-      #fff2f4 0%,   
-      #f2f8ff 25%,  
-      #fffdeb 50%,  
-      #f0fffb 75%,  
-      #fff6f0 100%  
+      rgba(255, 42, 95, 0.15) 0%,   /* 1行目の淡い赤 */
+      rgba(0, 180, 216, 0.12) 25%,  /* 2行目の淡い青 */
+      rgba(255, 223, 0, 0.10) 50%,  /* 3行目の淡い黄 */
+      rgba(0, 245, 148, 0.12) 75%,  /* 4行目の淡い緑 */
+      rgba(255, 112, 0, 0.15) 100%  /* 5行目の淡い橙 */
     ); 
 
     /* 極細（1px）の緑ネオン枠と、クッキリとした発光シャドウ */
@@ -179,16 +176,15 @@
       0 20px 40px rgba(0,0,0,0.7);
   }
 
-  /* ── 各マスの基本スタイル（※常に正方形を保ち、文字を縮小） ── */
+  /* ── 各マスの基本スタイル ── */
   .cell {
     border-radius: var(--border-radius);
-    aspect-ratio: 1 / 1; /* 各マスを常に1:1の完璧な正方形に固定 */
+    aspect-ratio: 1 / 1; 
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
     
-    /* 正方形の枠に美しく収まり、縦書き化を防ぐ文字サイズ計算式 */
     font-size: min(1.3rem, calc(0.6rem + 1.2vw)); 
     font-weight: 900;
     padding: 4px;
@@ -201,16 +197,22 @@
     
     /* 立体的に沈み込んで見える内側シャドウ */
     box-shadow: inset 0 2px 4px rgba(0,0,0,0.4), 0 2px 4px rgba(0,0,0,0.2);
-    text-shadow: none; 
+    
+    /* [アップデート] 非選択時の文字に幅の狭い黒い縁取り（4方向シャドウ）を設定 */
+    text-shadow: 
+      1px  1px 0px #000,
+     -1px  1px 0px #000,
+      1px -1px 0px #000,
+     -1px -1px 0px #000; 
   }
 
-  /* ── [アップデート] 非選択時のデザイン：文字・枠は濃く、内側のみ灰色（var(--cell-gray-bg)） ── */
-  .r1 { border: 2.5px solid var(--row1-border); color: var(--row1-border); background: var(--cell-gray-bg); box-shadow: inset 0 0 6px rgba(255,42,95,0.2); }
-  .r2 { border: 2.5px solid var(--row2-border); color: var(--row2-border); background: var(--cell-gray-bg); box-shadow: inset 0 0 6px rgba(0,180,216,0.2); }
-  .r3 { border: 2.5px solid var(--row3-border); color: var(--row3-border); background: var(--cell-gray-bg); box-shadow: inset 0 0 6px rgba(255,223,0,0.2); }
-  .r4 { border: 2.5px solid var(--row4-border); color: var(--row4-border); background: var(--cell-gray-bg); box-shadow: inset 0 0 6px rgba(0,245,148,0.2); }
-  .r5 { border: 2.5px solid var(--row5-border); color: var(--row5-border); background: var(--cell-gray-bg); box-shadow: inset 0 0 6px rgba(255,112,0,0.2); }
-  .r-default { border: 2.5px solid var(--row5-border); color: var(--row5-border); background: var(--cell-gray-bg); box-shadow: inset 0 0 6px rgba(255,112,0,0.2); }
+  /* ── [アップデート] 非選択時のデザイン：塗りつぶしを消して「透明（全体の枠の色）」に統一 ── */
+  .r1 { border: 2.5px solid var(--row1-border); color: var(--row1-border); background: transparent; }
+  .r2 { border: 2.5px solid var(--row2-border); color: var(--row2-border); background: transparent; }
+  .r3 { border: 2.5px solid var(--row3-border); color: var(--row3-border); background: transparent; }
+  .r4 { border: 2.5px solid var(--row4-border); color: var(--row4-border); background: transparent; }
+  .r5 { border: 2.5px solid var(--row5-border); color: var(--row5-border); background: transparent; }
+  .r-default { border: 2.5px solid var(--row5-border); color: var(--row5-border); background: transparent; }
 
   /* FREEマスの特別デザイン ── */
   .free-cell {
@@ -229,14 +231,14 @@
     box-shadow: 0 0 8px #fff;
   }
 
-  /* ── [アップデート] ヒット時（選択）は「全体背景と同じ深紫×白文字×ネオンブルー枠」 ── */
+  /* ── [アップデート] ヒット時（選択）は「全体背景と同じ深紫×白文字×ネオンブルー枠」（文字の黒縁は解除） ── */
   .hit {
     background: #120826 !important; /* 全体背景（深紫）と同じ色 */
     color: #ffffff !important;      /* 白文字 */
     border: 2.5px solid var(--accent-blue) !important;
     transform: scale(1.03) !important;
     box-shadow: 0 0 15px var(--accent-blue), inset 0 0 8px rgba(255,255,255,0.2) !important;
-    text-shadow: none !important;
+    text-shadow: none !important;  /* 白文字が見やすいよう黒縁をリセット */
     z-index: 2;
   }
 
