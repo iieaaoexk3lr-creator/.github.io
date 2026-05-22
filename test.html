@@ -147,13 +147,13 @@
   }
   button:disabled { background: #333 !important; color: #555 !important; cursor: not-allowed; }
 
-  /* ── ビンゴカード全体の背景枠 ── */
+  /* ── ビンゴカード全体の背景枠（※6×6に対応して最大幅を330pxから380pxに少し拡張） ── */
   #board {
     margin: 25px auto;
     display: grid;
-    gap: 10px;
+    gap: 8px; /* 6×6の時につまらないよう隙間を少し微調整 */
     max-width: 100%;
-    width: 330px;
+    width: 380px; 
     box-sizing: border-box;
     padding: 16px;
     border-radius: 20px;
@@ -175,18 +175,25 @@
       0 20px 40px rgba(0,0,0,0.7);
   }
 
-  /* ── 各マスの基本スタイル ── */
+  /* ── 各マスの基本スタイル（※文字サイズを枠に合わせて可変縮小化） ── */
   .cell {
     border-radius: var(--border-radius);
-    min-height: 60px;
+    min-height: 55px;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    font-size: 1.5rem;
+    
+    /* 画面幅とマスの数に合わせて文字が縮小・調整される計算式（縦書き化を防止） */
+    font-size: min(1.4rem, calc(0.8rem + 1.2vw)); 
     font-weight: 900;
-    padding: 6px;
-    word-break: break-word;
+    padding: 4px;
+    
+    /* 意図しない改行を完全に防ぎ、1行に強制 */
+    white-space: nowrap; 
+    overflow: hidden;
+    text-overflow: ellipsis;
+    
     box-sizing: border-box;
     position: relative;
     transition: all 0.25s ease;
@@ -206,11 +213,11 @@
 
   /* FREEマスの特別デザイン ── */
   .free-cell {
-    font-size: 0.8rem !important;
+    font-size: min(0.8rem, calc(0.5rem + 0.8vw)) !important;
     line-height: 1.2;
   }
   .free-cell span {
-    font-size: 1.4rem;
+    font-size: min(1.2rem, calc(0.7rem + 1vw));
     display: block;
     margin-bottom: -2px;
   }
@@ -221,10 +228,10 @@
     box-shadow: 0 0 8px #fff;
   }
 
-  /* ── [アップデート] ヒット時（選択）は「全体背景と同じ深紫×白文字×ネオンブルー枠」 ── */
+  /* ── ヒット時（選択）は「深みのあるグレー×白文字×ネオンブルー枠」 ── */
   .hit {
-    background: #120826 !important; /* 全体背景（深紫）と同じ色に変更 */
-    color: #ffffff !important;      /* 白文字 */
+    background: #3a324a !important; 
+    color: #ffffff !important;      
     border: 2.5px solid var(--accent-blue) !important;
     transform: scale(1.03) !important;
     box-shadow: 0 0 15px var(--accent-blue), inset 0 0 8px rgba(255,255,255,0.2) !important;
@@ -240,10 +247,10 @@
     left: 3px;
     right: 3px;
     bottom: 3px;
-    border: 4px solid #ff0055; 
+    border: 3.5px solid #ff0055; 
     border-radius: 50%; 
     pointer-events: none; 
-    box-shadow: 0 0 8px #ff0055, inset 0 0 8px #ff0055;
+    box-shadow: 0 0 6px #ff0055, inset 0 0 6px #ff0055;
     animation: pulseCircle 1s infinite alternate;
     z-index: 5;
   }
@@ -543,7 +550,7 @@ function checkBingo(){
 
   let bingoCount = 0;
   let bingoIndices = new Set();
-  let lastEmptyIndices = new Set(); // ── [アップデート] 最後の空きマスだけを保持するセット ──
+  let lastEmptyIndices = new Set(); 
 
   for(const line of lines){
     const hitCount = line.filter(i => hits[i]).length;
@@ -552,7 +559,6 @@ function checkBingo(){
       bingoCount++;
       line.forEach(i => bingoIndices.add(i));
     } else if (hitCount === size - 1) {
-      // ── [アップデート] あと1マスで揃う列の、まだ空いていない(ヒットしていない)マスを探す ──
       const emptyCellIndex = line.find(i => !hits[i]);
       if (emptyCellIndex !== undefined) {
         lastEmptyIndices.add(emptyCellIndex);
@@ -560,7 +566,6 @@ function checkBingo(){
     }
   }
 
-  // ── [アップデート] 最後の1マスだけに .reach クラス（赤マル）を適用 ──
   lastEmptyIndices.forEach(i => {
     cells[i].classList.add("reach");
   });
