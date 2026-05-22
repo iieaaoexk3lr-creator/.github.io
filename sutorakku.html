@@ -307,7 +307,7 @@ button:active {
   ・履歴内の「変更」「削除」から、入力ミスした数字の修正や消去がいつでも可能です。
   <br><br>
   <b>🎁 ボーナス特典</b><br>
-  ・入力した数値の<b>下1桁が「0」</b>だった場合、残り挑戦回数が<b>「+1回」ボーナス</b>されます！<br>
+  ・入力した数値の<b>下1桁が「0」</b>だった場合、残り挑戦回数が<b>「+1回」ボーナス</b>される！<br>
   ・ただし、このボーナスは1ゲームにつき<b>最大3回まで</b>獲得可能です。
   <br><br>
   <b>🔄 強制リセット</b><br>
@@ -459,7 +459,12 @@ function updateGameState() {
   if (brokenCount === 9) {
     isCleared = true;
     document.getElementById("info").innerHTML = "<span style='color:#00ff87; font-size:1.6rem; text-shadow:0 0 10px #00ff87;'>🎉 GAME CLEAR!! 🎉</span>";
-    unlockControls(); // クリア時に開始前のロック解除状態に戻す
+    
+    // ── [アップデート] 画面上の「GAME CLEAR!!」を一度ブラウザに描画させるためにsetTimeoutを使用 ──
+    setTimeout(() => {
+      alert("おめでとうございます！ゲームクリアです！");
+      unlockControls(); // アラートのOKを押した後に開始前のロック解除状態に戻す
+    }, 50);
     return;
   }
 
