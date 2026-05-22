@@ -16,8 +16,9 @@
     --accent-blue: #00f2fe;   /* 通常ヒット枠（ネオンブルー） */
     --accent-red: #ff0055;    /* ビンゴ成立枠（ネオンレッド） */
     
-    /* ── カードの縁：極細のミントグリーンネオン ── */
-    --neon-edge: #00f5d4; 
+    /* ── [アップデート] 画像を再現した極太ネオン外枠（スカイブルー） ── */
+    --neon-edge-sky: #3a86ff; 
+    --neon-glow-sky: #00b4d8;
 
     /* ── 各行の【ハッキリした元のネオン枠線・文字色】 ── */
     --row1-border: #ff2a5f; /* 1行目：レッド */
@@ -26,7 +27,7 @@
     --row4-border: #00f5d4; /* 4行目：グリーン */
     --row5-border: #ff7000; /* 5行目：オレンジ */
 
-    --border-radius: 10px;
+    --border-radius: 6px; /* 画像に合わせてややシャープに */
     --font-family: 'Arial Black', 'Helvetica Neue', Arial, sans-serif;
   }
 
@@ -147,38 +148,30 @@
   }
   button:disabled { background: #333 !important; color: #555 !important; cursor: not-allowed; }
 
-  /* ── ビンゴカード全体の背景枠 ── */
+  /* ── [アップデート] ビンゴカード全体の背景枠（極太空色ネオンプレート化＆隙間縮小） ── */
   #board {
     margin: 25px auto;
     display: grid;
-    gap: 8px; 
+    gap: 4px; /* 画像に合わせてマス同士の間隔を狭めに調整 */
     max-width: 100%;
-    width: 360px; 
+    width: 370px; 
     aspect-ratio: 1 / 1; 
     box-sizing: border-box;
-    padding: 16px;
-    border-radius: 20px;
+    padding: 12px;
+    border-radius: 16px;
+    background: #090514; /* マス背面をドッシリとした漆黒に */
 
-    /* [アップデート] 各行の色を混ぜ込みつつ、白を基調(各色5〜7%程度)にした淡いグラデーション */
-    background: linear-gradient(to bottom, 
-      rgba(255, 255, 255, 0.95) 0%,
-      rgba(255, 42, 95, 0.06) 10%,   /* 1行目：淡い赤 */
-      rgba(0, 180, 216, 0.05) 32%,  /* 2行目：淡い青 */
-      rgba(255, 223, 0, 0.04) 55%,  /* 3行目：淡い黄 */
-      rgba(0, 245, 148, 0.05) 78%,  /* 4行目：淡い緑 */
-      rgba(255, 112, 0, 0.06) 90%,  /* 5行目：淡い橙 */
-      rgba(255, 255, 255, 0.95) 100%
-    ), #ffffff; /* ベースの下地を完全な白に固定 */
-
-    /* 極細（1px）の緑ネオン枠と、クッキリとした発光シャドウ */
-    border: 1px solid var(--neon-edge);
+    /* 例の画像のような、立体的な太い空色ネオン外枠を多重線とシャドウで構築 */
+    border: 5px solid var(--neon-edge-sky);
+    outline: 2px solid rgba(255, 255, 255, 0.4);
+    outline-offset: -3px;
     box-shadow: 
-      0 0 15px rgba(0, 245, 212, 0.6), 
-      inset 0 0 10px rgba(0, 245, 212, 0.2),
-      0 20px 40px rgba(0,0,0,0.7);
+      0 0 20px rgba(0, 180, 216, 0.8), 
+      inset 0 0 15px rgba(0, 180, 216, 0.6),
+      0 15px 35px rgba(0,0,0,0.8);
   }
 
-  /* ── 各マスの基本スタイル ── */
+  /* ── [アップデート] 各マスの基本スタイル（文字を画像のように大きく調整） ── */
   .cell {
     border-radius: var(--border-radius);
     aspect-ratio: 1 / 1; 
@@ -187,44 +180,45 @@
     align-items: center;
     justify-content: center;
     
-    font-size: min(1.3rem, calc(0.6rem + 1.2vw)); 
+    /* 枠いっぱいに数字が引き立つようフォントサイズを限界まで大きく */
+    font-size: min(1.9rem, calc(1.0rem + 2vw)); 
     font-weight: 900;
-    padding: 4px;
+    padding: 2px;
     white-space: nowrap; 
     overflow: hidden;
     text-overflow: ellipsis;
     box-sizing: border-box;
     position: relative;
-    transition: all 0.25s ease;
+    transition: all 0.2s ease;
     
-    /* 立体的に沈み込んで見える内側シャドウ */
-    box-shadow: inset 0 2px 4px rgba(0,0,0,0.4), 0 2px 4px rgba(0,0,0,0.2);
+    /* 細い内シャドウで枠線の立体感を強調 */
+    box-shadow: inset 0 1px 3px rgba(0,0,0,0.6);
     
     /* 非選択時の文字に幅の狭い黒い縁取り（4方向シャドウ）を設定 */
     text-shadow: 
-      1px  1px 0px #000,
-     -1px  1px 0px #000,
-      1px -1px 0px #000,
-     -1px -1px 0px #000; 
+      1.5px  1.5px 0px #000,
+     -1.5px  1.5px 0px #000,
+      1.5px -1.5px 0px #000,
+     -1.5px -1.5px 0px #000; 
   }
 
-  /* 非選択時のデザイン：塗りつぶしは透明（全体の白基調枠の色） */
-  .r1 { border: 2.5px solid var(--row1-border); color: var(--row1-border); background: transparent; }
-  .r2 { border: 2.5px solid var(--row2-border); color: var(--row2-border); background: transparent; }
-  .r3 { border: 2.5px solid var(--row3-border); color: var(--row3-border); background: transparent; }
-  .r4 { border: 2.5px solid var(--row4-border); color: var(--row4-border); background: transparent; }
-  .r5 { border: 2.5px solid var(--row5-border); color: var(--row5-border); background: transparent; }
-  .r-default { border: 2.5px solid var(--row5-border); color: var(--row5-border); background: transparent; }
+  /* 非選択時のデザイン：枠線は細めでクッキリ、背景は完全透明（漆黒） */
+  .r1 { border: 1.5px solid var(--row1-border); color: var(--row1-border); background: transparent; }
+  .r2 { border: 1.5px solid var(--row2-border); color: var(--row2-border); background: transparent; }
+  .r3 { border: 1.5px solid var(--row3-border); color: var(--row3-border); background: transparent; }
+  .r4 { border: 1.5px solid var(--row4-border); color: var(--row4-border); background: transparent; }
+  .r5 { border: 1.5px solid var(--row5-border); color: var(--row5-border); background: transparent; }
+  .r-default { border: 1.5px solid var(--row5-border); color: var(--row5-border); background: transparent; }
 
-  /* FREEマスの特別デザイン ── */
+  /* FREEマスの特別デザイン（文字サイズが大きくても崩れないよう調整） ── */
   .free-cell {
-    font-size: min(0.75rem, calc(0.4rem + 0.8vw)) !important;
-    line-height: 1.2;
+    font-size: min(0.8rem, calc(0.5rem + 1vw)) !important;
+    line-height: 1.1;
   }
   .free-cell span {
-    font-size: min(1.1rem, calc(0.6rem + 1vw));
+    font-size: min(1.2rem, calc(0.7rem + 1.2vw));
     display: block;
-    margin-bottom: -2px;
+    margin-bottom: 2px;
   }
 
   .editable:hover { 
@@ -238,8 +232,8 @@
     background: #120826 !important; /* 全体背景（深紫）と同じ色 */
     color: #ffffff !important;      /* 白文字 */
     border: 2.5px solid var(--accent-blue) !important;
-    transform: scale(1.03) !important;
-    box-shadow: 0 0 15px var(--accent-blue), inset 0 0 8px rgba(255,255,255,0.2) !important;
+    transform: scale(1.02) !important;
+    box-shadow: 0 0 12px var(--accent-blue), inset 0 0 6px rgba(255,255,255,0.2) !important;
     text-shadow: none !important;  
     z-index: 2;
   }
@@ -248,21 +242,21 @@
   .cell.reach::before {
     content: "";
     position: absolute;
-    top: 3px;
-    left: 3px;
-    right: 3px;
-    bottom: 3px;
-    border: 3.5px solid #ff0055; 
+    top: 2px;
+    left: 2px;
+    right: 2px;
+    bottom: 2px;
+    border: 3px solid #ff0055; 
     border-radius: 50%; 
     pointer-events: none; 
-    box-shadow: 0 0 6px #ff0055, inset 0 0 6px #ff0055;
+    box-shadow: 0 0 6px #ff0055, inset 0 0 5px #ff0055;
     animation: pulseCircle 1s infinite alternate;
     z-index: 5;
   }
 
   @keyframes pulseCircle {
-    0% { transform: scale(0.94); opacity: 0.8; }
-    100% { transform: scale(1.02); opacity: 1; }
+    0% { transform: scale(0.95); opacity: 0.8; }
+    100% { transform: scale(1.01); opacity: 1; }
   }
 
   /* ビンゴ達成ラインの枠：ネオンレッド */
@@ -449,7 +443,6 @@ function onCellClick(i){
   inputManualValue(i);
 }
 
-/* [アップデート] 選択肢（候補）を提示するロジックを廃止し、直接入力のみにする */
 function inputManualValue(i){
   if(mode === "score"){
     const choice = prompt("設定したい【点数】を入力してください：");
