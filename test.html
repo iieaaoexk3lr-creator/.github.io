@@ -19,22 +19,15 @@
     /* ── カードの縁：極細のミントグリーンネオン ── */
     --neon-edge: #00f5d4; 
 
-    /* ── [アップデート] 選択されていない時の各行の色（灰色に近づけた色） ── */
-    /* 1行目：レッド系（くすんだ赤） */
-    --row1-border: #a6737f;
-    --row1-bg: #322125;
-    /* 2行目：ブルー系（くすんだ青） */
-    --row2-border: #6d8ba0;
-    --row2-bg: #1f282e;
-    /* 3行目：イエロー系（くすんだ黄） */
-    --row3-border: #a1966d;
-    --row3-bg: #322f21;
-    /* 4行目：グリーン系（くすんだ緑） */
-    --row4-border: #6d9e8c;
-    --row4-bg: #212e29;
-    /* 5行目：オレンジ系（くすんだ橙） */
-    --row5-border: #a6846d;
-    --row5-bg: #322821;
+    /* ── 各行の【ハッキリした元のネオン枠線・文字色】 ── */
+    --row1-border: #ff2a5f; /* 1行目：レッド */
+    --row2-border: #00b4d8; /* 2行目：ブルー */
+    --row3-border: #ffdf00; /* 3行目：イエロー */
+    --row4-border: #00f5d4; /* 4行目：グリーン */
+    --row5-border: #ff7000; /* 5行目：オレンジ */
+
+    /* ── [アップデート] 非選択時の数字が入っているマスの塗りつぶし（灰色） ── */
+    --cell-gray-bg: #22252c; 
 
     --border-radius: 10px;
     --font-family: 'Arial Black', 'Helvetica Neue', Arial, sans-serif;
@@ -157,13 +150,14 @@
   }
   button:disabled { background: #333 !important; color: #555 !important; cursor: not-allowed; }
 
-  /* ── ビンゴカード全体の背景枠 ── */
+  /* ── ビンゴカード全体の背景枠（※常に綺麗な正方形を保つよう指定） ── */
   #board {
     margin: 25px auto;
     display: grid;
     gap: 8px; 
     max-width: 100%;
-    width: 380px; 
+    width: 360px; 
+    aspect-ratio: 1 / 1; /* 全体を常に1:1の正方形に固定 */
     box-sizing: border-box;
     padding: 16px;
     border-radius: 20px;
@@ -185,15 +179,17 @@
       0 20px 40px rgba(0,0,0,0.7);
   }
 
-  /* ── 各マスの基本スタイル ── */
+  /* ── 各マスの基本スタイル（※常に正方形を保ち、文字を縮小） ── */
   .cell {
     border-radius: var(--border-radius);
-    min-height: 55px;
+    aspect-ratio: 1 / 1; /* 各マスを常に1:1の完璧な正方形に固定 */
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    font-size: min(1.4rem, calc(0.8rem + 1.2vw)); 
+    
+    /* 正方形の枠に美しく収まり、縦書き化を防ぐ文字サイズ計算式 */
+    font-size: min(1.3rem, calc(0.6rem + 1.2vw)); 
     font-weight: 900;
     padding: 4px;
     white-space: nowrap; 
@@ -208,21 +204,21 @@
     text-shadow: none; 
   }
 
-  /* ── [アップデート] 選択されていない時の各行のデザイン（くすんだネオン枠、灰色の背景） ── */
-  .r1 { border: 2.5px solid var(--row1-border); color: var(--row1-border); background: var(--row1-bg); box-shadow: inset 0 0 6px rgba(166,115,127,0.2), 0 0 6px rgba(166,115,127,0.2); }
-  .r2 { border: 2.5px solid var(--row2-border); color: var(--row2-border); background: var(--row2-bg); box-shadow: inset 0 0 6px rgba(109,139,160,0.2), 0 0 6px rgba(109,139,160,0.2); }
-  .r3 { border: 2.5px solid var(--row3-border); color: var(--row3-border); background: var(--row3-bg); box-shadow: inset 0 0 6px rgba(161,150,109,0.2), 0 0 6px rgba(161,150,109,0.2); }
-  .r4 { border: 2.5px solid var(--row4-border); color: var(--row4-border); background: var(--row4-bg); box-shadow: inset 0 0 6px rgba(109,158,140,0.2), 0 0 6px rgba(109,158,140,0.2); }
-  .r5 { border: 2.5px solid var(--row5-border); color: var(--row5-border); background: var(--row5-bg); box-shadow: inset 0 0 6px rgba(166,132,109,0.2), 0 0 6px rgba(166,132,109,0.2); }
-  .r-default { border: 2.5px solid var(--row5-border); color: var(--row5-border); background: var(--row5-bg); box-shadow: inset 0 0 6px rgba(166,132,109,0.2), 0 0 6px rgba(166,132,109,0.2); }
+  /* ── [アップデート] 非選択時のデザイン：文字・枠は濃く、内側のみ灰色（var(--cell-gray-bg)） ── */
+  .r1 { border: 2.5px solid var(--row1-border); color: var(--row1-border); background: var(--cell-gray-bg); box-shadow: inset 0 0 6px rgba(255,42,95,0.2); }
+  .r2 { border: 2.5px solid var(--row2-border); color: var(--row2-border); background: var(--cell-gray-bg); box-shadow: inset 0 0 6px rgba(0,180,216,0.2); }
+  .r3 { border: 2.5px solid var(--row3-border); color: var(--row3-border); background: var(--cell-gray-bg); box-shadow: inset 0 0 6px rgba(255,223,0,0.2); }
+  .r4 { border: 2.5px solid var(--row4-border); color: var(--row4-border); background: var(--cell-gray-bg); box-shadow: inset 0 0 6px rgba(0,245,148,0.2); }
+  .r5 { border: 2.5px solid var(--row5-border); color: var(--row5-border); background: var(--cell-gray-bg); box-shadow: inset 0 0 6px rgba(255,112,0,0.2); }
+  .r-default { border: 2.5px solid var(--row5-border); color: var(--row5-border); background: var(--cell-gray-bg); box-shadow: inset 0 0 6px rgba(255,112,0,0.2); }
 
   /* FREEマスの特別デザイン ── */
   .free-cell {
-    font-size: min(0.8rem, calc(0.5rem + 0.8vw)) !important;
+    font-size: min(0.75rem, calc(0.4rem + 0.8vw)) !important;
     line-height: 1.2;
   }
   .free-cell span {
-    font-size: min(1.2rem, calc(0.7rem + 1vw));
+    font-size: min(1.1rem, calc(0.6rem + 1vw));
     display: block;
     margin-bottom: -2px;
   }
@@ -235,7 +231,7 @@
 
   /* ── [アップデート] ヒット時（選択）は「全体背景と同じ深紫×白文字×ネオンブルー枠」 ── */
   .hit {
-    background: #120826 !important; /* 全体背景と同じ紫 */
+    background: #120826 !important; /* 全体背景（深紫）と同じ色 */
     color: #ffffff !important;      /* 白文字 */
     border: 2.5px solid var(--accent-blue) !important;
     transform: scale(1.03) !important;
