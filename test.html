@@ -159,14 +159,16 @@
     padding: 16px;
     border-radius: 20px;
 
-    /* [アップデート] 各行の文字色を極限まで淡くブレンドした特製グラデーション背景 */
+    /* [アップデート] 各行の色を混ぜ込みつつ、白を基調(各色5〜7%程度)にした淡いグラデーション */
     background: linear-gradient(to bottom, 
-      rgba(255, 42, 95, 0.15) 0%,   /* 1行目の淡い赤 */
-      rgba(0, 180, 216, 0.12) 25%,  /* 2行目の淡い青 */
-      rgba(255, 223, 0, 0.10) 50%,  /* 3行目の淡い黄 */
-      rgba(0, 245, 148, 0.12) 75%,  /* 4行目の淡い緑 */
-      rgba(255, 112, 0, 0.15) 100%  /* 5行目の淡い橙 */
-    ); 
+      rgba(255, 255, 255, 0.95) 0%,
+      rgba(255, 42, 95, 0.06) 10%,   /* 1行目：淡い赤 */
+      rgba(0, 180, 216, 0.05) 32%,  /* 2行目：淡い青 */
+      rgba(255, 223, 0, 0.04) 55%,  /* 3行目：淡い黄 */
+      rgba(0, 245, 148, 0.05) 78%,  /* 4行目：淡い緑 */
+      rgba(255, 112, 0, 0.06) 90%,  /* 5行目：淡い橙 */
+      rgba(255, 255, 255, 0.95) 100%
+    ), #ffffff; /* ベースの下地を完全な白に固定 */
 
     /* 極細（1px）の緑ネオン枠と、クッキリとした発光シャドウ */
     border: 1px solid var(--neon-edge);
@@ -198,7 +200,7 @@
     /* 立体的に沈み込んで見える内側シャドウ */
     box-shadow: inset 0 2px 4px rgba(0,0,0,0.4), 0 2px 4px rgba(0,0,0,0.2);
     
-    /* [アップデート] 非選択時の文字に幅の狭い黒い縁取り（4方向シャドウ）を設定 */
+    /* 非選択時の文字に幅の狭い黒い縁取り（4方向シャドウ）を設定 */
     text-shadow: 
       1px  1px 0px #000,
      -1px  1px 0px #000,
@@ -206,7 +208,7 @@
      -1px -1px 0px #000; 
   }
 
-  /* ── [アップデート] 非選択時のデザイン：塗りつぶしを消して「透明（全体の枠の色）」に統一 ── */
+  /* 非選択時のデザイン：塗りつぶしは透明（全体の白基調枠の色） */
   .r1 { border: 2.5px solid var(--row1-border); color: var(--row1-border); background: transparent; }
   .r2 { border: 2.5px solid var(--row2-border); color: var(--row2-border); background: transparent; }
   .r3 { border: 2.5px solid var(--row3-border); color: var(--row3-border); background: transparent; }
@@ -231,14 +233,14 @@
     box-shadow: 0 0 8px #fff;
   }
 
-  /* ── [アップデート] ヒット時（選択）は「全体背景と同じ深紫×白文字×ネオンブルー枠」（文字の黒縁は解除） ── */
+  /* ── ヒット時（選択）は「全体背景と同じ深紫×白文字×ネオンブルー枠」（文字の黒縁は解除） ── */
   .hit {
     background: #120826 !important; /* 全体背景（深紫）と同じ色 */
     color: #ffffff !important;      /* 白文字 */
     border: 2.5px solid var(--accent-blue) !important;
     transform: scale(1.03) !important;
     box-shadow: 0 0 15px var(--accent-blue), inset 0 0 8px rgba(255,255,255,0.2) !important;
-    text-shadow: none !important;  /* 白文字が見やすいよう黒縁をリセット */
+    text-shadow: none !important;  
     z-index: 2;
   }
 
@@ -447,18 +449,13 @@ function onCellClick(i){
   inputManualValue(i);
 }
 
+/* [アップデート] 選択肢（候補）を提示するロジックを廃止し、直接入力のみにする */
 function inputManualValue(i){
   if(mode === "score"){
-    const min = Number(document.getElementById("minScore").value);
-    const max = Number(document.getElementById("maxScore").value);
-    const count = size*size;
-    const candidates = generateScoreCandidates(min,max,count);
-    const choice = prompt("点数を選んでください：\n" + candidates.join(" / "));
+    const choice = prompt("設定したい【点数】を入力してください：");
     if(choice) boardValues[i] = choice;
   }else{
-    const count = size*size;
-    const candidates = generateKanjiCandidates(count);
-    const choice = prompt("漢字を選んでください：\n" + candidates.join(" / "));
+    const choice = prompt("設定したい【漢字】を入力してください：");
     if(choice) boardValues[i] = choice;
   }
   renderBoard();
