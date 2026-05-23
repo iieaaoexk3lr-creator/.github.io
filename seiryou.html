@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>声量チェッカー</title>
+
+<style>
+body{
+    margin:0;
+    background:#111827;
+    font-family:sans-serif;
+    color:white;
+    display:flex;
+    justify-content:center;
+    padding:20px;
+}
+
+.app{
+    width:100%;
+    max-width:430px;
+    background:#1f2937;
+    border-radius:28px;
+    padding:20px;
+    box-sizing:border-box;
+    box-shadow:0 0 20px rgba(0,0,0,0.5);
+}
+
+h1{
+    text-align:center;
+    margin-top:0;
+    font-size:28px;
+}
+
+.card{
+    background:#374151;
+    border-radius:20px;
+    padding:16px;
+    margin-bottom:16px;
+}
+
+.label{
+    margin-bottom:8px;
+    font-size:14px;
+    opacity:0.8;
+}
+
+input{
+    width:100%;
+    padding:12px;
+    border:none;
+    border-radius:12px;
+    font-size:18px;
+    box-sizing:border-box;
+}
+
+button{
+    width:100%;
+    padding:14px;
+    border:none;
+    border-radius:16px;
+    font-size:18px;
+    font-weight:bold;
+    cursor:pointer;
+    margin-top:10px;
+}
+
+.start{
+    background:#10b981;
+    color:white;
+}
+
+.stop{
+    background:#ef4444;
+    color:white;
+}
+
+.save{
+    background:#3b82f6;
+    color:white;
+}
+
+.meter{
+    height:28px;
+    background:#111827;
+    border-radius:999px;
+    overflow:hidden;
+    margin-top:10px;
+}
+
+.bar{
+    height:100%;
+    width:0%;
+    background:linear-gradient(90deg,#22c55e,#eab308,#ef4444);
+}
+
+.values{
+    display:flex;
+    justify-content:space-between;
+    margin-top:12px;
+    font-size:18px;
+}
+
+canvas{
+    width:100%;
+    background:#111827;
+    border-radius:16px;
+    margin-top:10px;
+}
+
+.timer{
+    text-align:center;
+    font-size:36px;
+    font-weight:bold;
+}
+
+.small{
+    opacity:0.7;
+    font-size:13px;
+    margin-top:5px;
+}
+</style>
+</head>
+
+<body>
+
+<div class="app">
+
+<h1>🎤 声量チェッカー</h1>
+
+<div class="card">
+    <div class="label">制限時間（秒）※最大600秒</div>
+    <input type="number" id="timeInput" min="1" max="600" value="60">
+    <div class="small">10分まで設定可能</div>
+</div>
+
+<div class="card">
+    <div class="timer" id="timer">60</div>
+
+    <div class="meter">
+        <div class="bar" id="bar"></div>
+    </div>
+
+    <div class="values">
+        <div>現在: <span id="current">0</span></div>
+        <div>最大: <span id="max">0</span></div>
+    </div>
+</div>
+
+<div class="card">
+    <canvas id="graph" width="360" height="220"></canvas>
+</div>
+
+<button class="start" id="startBtn">開始</button>
+<button class="stop" id="stopBtn">停止</button>
+<button class="save" id="saveBtn">画像保存</button>
+
+</div>
+
+<script>
+
+const startBtn = document.getElementById("startBtn");
+const stopBtn = document.getElementById("stopBtn");
+const saveBtn = document.getElementById("saveBtn");
+
+const currentText = document.getElementById("current");
+const maxText = document.getElementById("max");
+const timerText = document.getElementById("timer");
+
+const bar = document.getElementById("bar");
+
+const canvas = document.getElementById("graph");
+const ctx = canvas.getContext("2d");
+
+const timeInput = document.getElementById("timeInput");
+
+let analyser;
+let dataArray;
+let animationId;
+
+let history = [];
+let maxVolume = 0;
+
+let startTime;
+let limitTime = 60;
+
+let running = false;
+
+function drawGraph(){
+
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+
+    ctx.fillStyle = "#111827";
+    ctx.fillRect(0,0,canvas.width,canvas.height);
+
+    ctx.strokeStyle = "#374151";
+
+    for(let i=0;i<5;i++){
+        let y = i * 55;
+        ctx.beginPath();
+        ctx.moveTo(0,y);
+        ctx.lineTo(canvas.width,y);
+        ctx.stroke();
+    }
+
+    ctx.strokeStyle = "#22c55e";
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+
+    history.forEach((v,i)=>{
+
+        let x = (i / Math.max(history.length-1,1)) * canvas.width;
+        let y = canvas.height - (v / 1000) * canvas.height;
+
+        if(i===0){
+            ctx.moveTo(x,y);
+        }else{
+            ctx.lineTo(x,y);
+        }
+    });
+
+    ctx.stroke();
+
+    ctx.fillStyle = "white";
+    ctx.font = "20px sans-serif";
+    ctx.fillText("最大: " + Math.floor(maxVolume), 15, 30);
+}
+
+async function start(){
+
+    if(running) return;
+
+    running = true;
+
+    history = [];
+    maxVolume = 0;
+
+    limitTime = Math.min(
+        Math.max(parseInt(timeInput.value) || 60,1),
+        600
+    );
+
+    timerText.textContent = limitTime;
+
+    const stream = await navigator.mediaDevices.getUserMedia({
+        audio:true
+    });
+
+    const audioContext = new AudioContext();
+
+    const source = audioContext.createMediaStreamSource(stream);
+
+    analyser = audioContext.createAnalyser();
+
+    analyser.fftSize = 256;
+
+    source.connect(analyser);
+
+    dataArray = new Uint8Array(analyser.frequencyBinCount);
+
+    startTime = Date.now();
+
+    update();
+}
+
+function stop(){
+
+    running = false;
+
+    cancelAnimationFrame(animationId);
+}
+
+function update(){
+
+    if(!running) return;
+
+    analyser.getByteTimeDomainData(dataArray);
+
+    let sum = 0;
+
+    for(let i=0;i<dataArray.length;i++){
+
+        const v = (dataArray[i]-128)/128;
+
+        sum += v*v;
+    }
+
+    let volume = Math.sqrt(sum/dataArray.length);
+
+    // ノイズ除去
+    if(volume < 0.02){
+        volume = 0;
+    }
+
+    let score = Math.min(volume * 1200, 1000);
+
+    history.push(score);
+
+    if(score > maxVolume){
+        maxVolume = score;
+    }
+
+    currentText.textContent = Math.floor(score);
+    maxText.textContent = Math.floor(maxVolume);
+
+    bar.style.width = (score / 10) + "%";
+
+    drawGraph();
+
+    const elapsed = Math.floor((Date.now() - startTime)/1000);
+
+    const remain = Math.max(limitTime - elapsed,0);
+
+    timerText.textContent = remain;
+
+    if(remain <= 0){
+
+        stop();
+
+        return;
+    }
+
+    animationId = requestAnimationFrame(update);
+}
+
+function saveImage(){
+
+    const link = document.createElement("a");
+
+    link.download = "voice_result.png";
+
+    link.href = canvas.toDataURL("image/png");
+
+    link.click();
+}
+
+startBtn.onclick = start;
+stopBtn.onclick = stop;
+saveBtn.onclick = saveImage;
+
+drawGraph();
+
+</script>
+
+</body>
+</html>
