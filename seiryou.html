@@ -52,6 +52,7 @@ input{
     border-radius:12px;
     font-size:18px;
     box-sizing:border-box;
+    margin-bottom:10px;
 }
 
 button{
@@ -95,8 +96,9 @@ button{
 }
 
 .values{
-    display:flex;
-    justify-content:space-between;
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:10px;
     margin-top:12px;
     font-size:18px;
 }
@@ -119,6 +121,13 @@ canvas{
     font-size:13px;
     margin-top:5px;
 }
+
+.info{
+    margin-top:10px;
+    font-size:14px;
+    opacity:0.8;
+    line-height:1.6;
+}
 </style>
 </head>
 
@@ -129,12 +138,18 @@ canvas{
 <h1>🎤 声量チェッカー</h1>
 
 <div class="card">
+
+    <div class="label">プレイヤー名（任意）</div>
+    <input type="text" id="playerName" placeholder="名前を入力">
+
     <div class="label">制限時間（秒）※最大600秒</div>
     <input type="number" id="timeInput" min="1" max="600" value="60">
+
     <div class="small">10分まで設定可能</div>
 </div>
 
 <div class="card">
+
     <div class="timer" id="timer">60</div>
 
     <div class="meter">
@@ -142,13 +157,18 @@ canvas{
     </div>
 
     <div class="values">
-        <div>現在: <span id="current">0</span></div>
-        <div>最大: <span id="max">0</span></div>
+        <div>現在: <span id="current">0</span> vB</div>
+        <div>最大: <span id="max">0</span> vB</div>
+        <div>平均: <span id="avg">0</span> vB</div>
+        <div>時間: <span id="elapsed">0</span> 秒</div>
     </div>
+
+    <div class="info" id="info"></div>
+
 </div>
 
 <div class="card">
-    <canvas id="graph" width="360" height="220"></canvas>
+    <canvas id="graph" width="360" height="260"></canvas>
 </div>
 
 <button class="start" id="startBtn">開始</button>
@@ -165,6 +185,9 @@ const saveBtn = document.getElementById("saveBtn");
 
 const currentText = document.getElementById("current");
 const maxText = document.getElementById("max");
+const avgText = document.getElementById("avg");
+const elapsedText = document.getElementById("elapsed");
+
 const timerText = document.getElementById("timer");
 
 const bar = document.getElementById("bar");
@@ -173,6 +196,9 @@ const canvas = document.getElementById("graph");
 const ctx = canvas.getContext("2d");
 
 const timeInput = document.getElementById("timeInput");
+const playerNameInput = document.getElementById("playerName");
+
+const info = document.getElementById("info");
 
 let analyser;
 let dataArray;
@@ -186,6 +212,21 @@ let limitTime = 60;
 
 let running = false;
 
+let currentDate = "";
+
+function getAverage(){
+
+    if(history.length === 0) return 0;
+
+    let sum = 0;
+
+    history.forEach(v=>{
+        sum += v;
+    });
+
+    return sum / history.length;
+}
+
 function drawGraph(){
 
     ctx.clearRect(0,0,canvas.width,canvas.height);
@@ -193,24 +234,64 @@ function drawGraph(){
     ctx.fillStyle = "#111827";
     ctx.fillRect(0,0,canvas.width,canvas.height);
 
-    ctx.strokeStyle = "#374151";
+    const graphLeft = 45;
+    const graphBottom = 220;
+    const graphTop = 20;
+    const graphRight = 330;
 
-    for(let i=0;i<5;i++){
-        let y = i * 55;
+    ctx.strokeStyle = "#374151";
+    ctx.lineWidth = 1;
+
+    // 横線
+    for(let i=0;i<=5;i++){
+
+        const y = graphBottom - ((graphBottom - graphTop)/5)*i;
+
         ctx.beginPath();
-        ctx.moveTo(0,y);
-        ctx.lineTo(canvas.width,y);
+        ctx.moveTo(graphLeft,y);
+        ctx.lineTo(graphRight,y);
         ctx.stroke();
+
+        ctx.fillStyle = "#9ca3af";
+        ctx.font = "12px sans-serif";
+
+        const value = i * 200;
+
+        ctx.fillText(value + "vB", 2, y+4);
     }
 
+    // 縦線
+    for(let i=0;i<=5;i++){
+
+        const x = graphLeft + ((graphRight - graphLeft)/5)*i;
+
+        ctx.beginPath();
+        ctx.moveTo(x,graphTop);
+        ctx.lineTo(x,graphBottom);
+        ctx.stroke();
+
+        const sec = Math.floor((limitTime/5)*i);
+
+        ctx.fillStyle = "#9ca3af";
+        ctx.fillText(sec + "s", x-10, 240);
+    }
+
+    // グラフ線
     ctx.strokeStyle = "#22c55e";
     ctx.lineWidth = 3;
     ctx.beginPath();
 
     history.forEach((v,i)=>{
 
-        let x = (i / Math.max(history.length-1,1)) * canvas.width;
-        let y = canvas.height - (v / 1000) * canvas.height;
+        const x =
+            graphLeft +
+            (i / Math.max(history.length-1,1)) *
+            (graphRight - graphLeft);
+
+        const y =
+            graphBottom -
+            (v / 1000) *
+            (graphBottom - graphTop);
 
         if(i===0){
             ctx.moveTo(x,y);
@@ -221,9 +302,30 @@ function drawGraph(){
 
     ctx.stroke();
 
+    // タイトル
     ctx.fillStyle = "white";
-    ctx.font = "20px sans-serif";
-    ctx.fillText("最大: " + Math.floor(maxVolume), 15, 30);
+    ctx.font = "18px sans-serif";
+
+    const player =
+        playerNameInput.value.trim() || "NO NAME";
+
+    ctx.fillText(player, 15, 18);
+
+    ctx.font = "14px sans-serif";
+
+    ctx.fillText(currentDate, 15, 38);
+
+    ctx.fillText(
+        "MAX " + Math.floor(maxVolume) + " vB",
+        200,
+        20
+    );
+
+    ctx.fillText(
+        "AVG " + Math.floor(getAverage()) + " vB",
+        200,
+        40
+    );
 }
 
 async function start(){
@@ -242,13 +344,21 @@ async function start(){
 
     timerText.textContent = limitTime;
 
-    const stream = await navigator.mediaDevices.getUserMedia({
-        audio:true
-    });
+    currentDate =
+        new Date().toLocaleString("ja-JP");
+
+    info.innerHTML =
+        "測定日時: " + currentDate;
+
+    const stream =
+        await navigator.mediaDevices.getUserMedia({
+            audio:true
+        });
 
     const audioContext = new AudioContext();
 
-    const source = audioContext.createMediaStreamSource(stream);
+    const source =
+        audioContext.createMediaStreamSource(stream);
 
     analyser = audioContext.createAnalyser();
 
@@ -256,7 +366,8 @@ async function start(){
 
     source.connect(analyser);
 
-    dataArray = new Uint8Array(analyser.frequencyBinCount);
+    dataArray =
+        new Uint8Array(analyser.frequencyBinCount);
 
     startTime = Date.now();
 
@@ -285,14 +396,16 @@ function update(){
         sum += v*v;
     }
 
-    let volume = Math.sqrt(sum/dataArray.length);
+    let volume =
+        Math.sqrt(sum/dataArray.length);
 
     // ノイズ除去
     if(volume < 0.02){
         volume = 0;
     }
 
-    let score = Math.min(volume * 1200, 1000);
+    let score =
+        Math.min(volume * 1200, 1000);
 
     history.push(score);
 
@@ -300,16 +413,29 @@ function update(){
         maxVolume = score;
     }
 
-    currentText.textContent = Math.floor(score);
-    maxText.textContent = Math.floor(maxVolume);
+    currentText.textContent =
+        Math.floor(score);
 
-    bar.style.width = (score / 10) + "%";
+    maxText.textContent =
+        Math.floor(maxVolume);
+
+    avgText.textContent =
+        Math.floor(getAverage());
+
+    bar.style.width =
+        (score / 10) + "%";
+
+    const elapsed =
+        Math.floor(
+            (Date.now() - startTime)/1000
+        );
+
+    elapsedText.textContent = elapsed;
 
     drawGraph();
 
-    const elapsed = Math.floor((Date.now() - startTime)/1000);
-
-    const remain = Math.max(limitTime - elapsed,0);
+    const remain =
+        Math.max(limitTime - elapsed,0);
 
     timerText.textContent = remain;
 
@@ -320,16 +446,22 @@ function update(){
         return;
     }
 
-    animationId = requestAnimationFrame(update);
+    animationId =
+        requestAnimationFrame(update);
 }
 
 function saveImage(){
 
-    const link = document.createElement("a");
+    drawGraph();
 
-    link.download = "voice_result.png";
+    const link =
+        document.createElement("a");
 
-    link.href = canvas.toDataURL("image/png");
+    link.download =
+        "voice_result.png";
+
+    link.href =
+        canvas.toDataURL("image/png");
 
     link.click();
 }
