@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>本格派・声量チェッカー (初動完全ガード仕様)</title>
+<title>本格派・盛り上がりチェッカー (カメラ切り替え・初動ガード仕様)</title>
 
 <style>
 body{
@@ -61,7 +61,7 @@ h1{
     opacity:0.8;
 }
 
-input{
+input[type="text"], input[type="number"]{
     width:100%;
     padding:12px;
     border:none;
@@ -69,6 +69,31 @@ input{
     font-size:18px;
     box-sizing:border-box;
     margin-bottom:10px;
+    background: white;
+    color: black;
+}
+
+.radio-container {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 12px;
+    background: #111827;
+    padding: 12px;
+    border-radius: 12px;
+}
+.radio-label {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+    font-size: 15px;
+}
+.radio-label input[type="radio"] {
+    width: 18px;
+    height: 18px;
+    margin: 0;
+    cursor: pointer;
 }
 
 .calib-container {
@@ -88,21 +113,6 @@ input{
 input[type="range"] {
     width: 100%;
     margin: 5px 0;
-    cursor: pointer;
-}
-
-.checkbox-container {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    margin-bottom: 10px;
-    cursor: pointer;
-    font-size: 16px;
-}
-.checkbox-container input[type="checkbox"] {
-    width: 20px;
-    height: 20px;
-    margin: 0;
     cursor: pointer;
 }
 
@@ -132,10 +142,25 @@ button{
     color:white;
 }
 
-.save-audio{
+.save-video{
     background:#8b5cf6;
     color:white;
     display:none;
+}
+
+.save-audio{
+    background:#ec4899;
+    color:white;
+    display:none;
+}
+
+.switch-cam {
+    background: #4b5563;
+    color: white;
+    font-size: 14px;
+    padding: 10px;
+    margin-bottom: 10px;
+    border: 1px solid #6b7280;
 }
 
 .toggle-help{
@@ -193,12 +218,6 @@ canvas{
     font-weight:bold;
 }
 
-.small{
-    opacity:0.7;
-    font-size:13px;
-    margin-top:5px;
-}
-
 .info{
     margin-top:10px;
     font-size:14px;
@@ -216,18 +235,22 @@ canvas{
     line-height: 1.6;
     color: #d1d5db;
 }
+
+#hiddenVideo {
+    display: none;
+}
 </style>
 </head>
 
 <body>
 
 <div class="line-warning" id="lineWarning">
-    ⚠️ LINEアプリ内では録音や測定が動作しません。<br>右上のボタンから「デフォルトのブラウザ(Safari/Chrome等)で開く」を選んでください。
+    ⚠️ LINEアプリ内では録画や測定が動作しません。<br>右上のボタンから「デフォルトのブラウザ(Safari/Chrome等)で開く」を選んでください。
 </div>
 
 <div class="app">
 
-<h1>🎤 声量チェッカー</h1>
+<h1>🎤 盛り上がりチェッカー</h1>
 
 <div class="card">
     <div class="label">プレイヤー名（任意）</div>
@@ -239,10 +262,23 @@ canvas{
     <div class="label">制限時間（秒）※最大600秒</div>
     <input type="number" id="timeInput" min="1" max="600" value="360">
 
-    <label class="checkbox-container">
-        <input type="checkbox" id="recordToggle" checked>
-        <span>同時に音声を録音する</span>
-    </label>
+    <div class="label">保存モード選択</div>
+    <div class="radio-container">
+        <label class="radio-label">
+            <input type="radio" name="modeSelect" value="video" checked>
+            <span>📹 カメラ映像と音声を動画保存</span>
+        </label>
+        <label class="radio-label">
+            <input type="radio" name="modeSelect" value="audio">
+            <span>🎵 音声のみを録音保存 (カメラOFF)</span>
+        </label>
+        <label class="radio-label">
+            <input type="radio" name="modeSelect" value="none">
+            <span>📊 測定のみ (ファイル保存なし)</span>
+        </label>
+    </div>
+
+    <button class="switch-cam" id="switchCamBtn">📷 カメラ切り替え (現在: 背面)</button>
 
     <div class="calib-container">
         <div class="calib-header">
@@ -272,31 +308,36 @@ canvas{
 </div>
 
 <div class="card">
-    <canvas id="graph" width="360" height="260"></canvas>
+    <canvas id="graph" width="360" height="480"></canvas>
 </div>
 
 <button class="start" id="startBtn">開始</button>
 <button class="stop" id="stopBtn">停止</button>
 <button class="save-img" id="saveImgBtn">画像保存</button>
+<button class="save-video" id="saveVideoBtn">動画保存</button>
 <button class="save-audio" id="saveAudioBtn">録音保存</button>
 
 <button class="toggle-help" id="toggleHelpBtn">▼ 使い方を表示</button>
 <div class="help-content" id="helpContent">
-    <div class="help-title">【特徴・ロジック】</div>
+    <div class="help-title">【盛り上がりチェッカーの特徴】</div>
     <ul>
-        <li><b>開始3秒完全ミュート：</b> 起動時に入ってくるマイクの「ボフッ」という初期爆音ノイズをシステム側で3秒間100%遮断します（この間の最大値誤検知もゼロになります）。</li>
-        <li><b>高低音の分離描写:</b> 中央の「70dB」を基準線とし、上側は高音成分（叫び・倍音）、下側は低音成分（地声の太さ）の音圧を独立してトゲトゲ描写します。</li>
-        <li><b>10点刻み評価:</b> ハイライト得点（MAX+AVG÷2）の点数に基づき、10点刻みでよりシビアかつ達成感のある声量ランクが算出されます。</li>
+        <li><b>背面・前面カメラ切替：</b> デフォルトで背面アウトカメラが起動します。ステージや部屋全体の盛り上がりを写しながらリアルタイムで上下に炸裂する声紋波形を合成できます。</li>
+        <li><b>選べる録音録画：</b> 動画として残すか、音声ファイルだけを切り出すか、あるいはデータ測定のみにするかを自由にスイッチ可能です。</li>
+        <li><b>開始3秒完全ガード：</b> ボタン起動時特有の「ボフッ」という初期爆音をシステム側で3秒間100%遮断します（この間の最大値誤検知もありません）。</li>
     </ul>
 </div>
 
 </div>
 
+<video id="hiddenVideo" autoplay playsinline muted></video>
+
 <script>
 const startBtn = document.getElementById("startBtn");
 const stopBtn = document.getElementById("stopBtn");
 const saveImgBtn = document.getElementById("saveImgBtn");
+const saveVideoBtn = document.getElementById("saveVideoBtn");
 const saveAudioBtn = document.getElementById("saveAudioBtn");
+const switchCamBtn = document.getElementById("switchCamBtn");
 const toggleHelpBtn = document.getElementById("toggleHelpBtn");
 const helpContent = document.getElementById("helpContent");
 const lineWarning = document.getElementById("lineWarning");
@@ -311,11 +352,11 @@ const bar = document.getElementById("bar");
 
 const canvas = document.getElementById("graph");
 const ctx = canvas.getContext("2d");
+const hiddenVideo = document.getElementById("hiddenVideo");
 
 const timeInput = document.getElementById("timeInput");
 const playerNameInput = document.getElementById("playerName");
 const songNameInput = document.getElementById("songName");
-const recordToggle = document.getElementById("recordToggle");
 const calibSlider = document.getElementById("calibSlider");
 const calibVal = document.getElementById("calibVal");
 const info = document.getElementById("info");
@@ -324,6 +365,7 @@ let analyser;
 let dataArray;
 let animationId;
 let audioContext;
+let streamStream; 
 
 const MAX_WAVE_BARS = 80;
 let waveHistory = new Array(MAX_WAVE_BARS).fill(null).map(() => ({ high: 70, low: 70 }));
@@ -351,9 +393,15 @@ let currentDate = "";
 const MIN_DB = 0;
 const MAX_DB = 150; 
 
+// メディアレコーダー（動画・音声用）
 let mediaRecorder;
+let videoChunks = [];
+let videoBlob = null;
 let audioChunks = [];
 let audioBlob = null;
+
+// カメラ向き管理 ('environment' = 背面デフォルト, 'user' = 前面)
+let currentFacingMode = "environment";
 
 const ua = navigator.userAgent.toLowerCase();
 if (ua.indexOf("line") > -1) {
@@ -363,6 +411,21 @@ if (ua.indexOf("line") > -1) {
 calibSlider.oninput = function() {
     let val = parseInt(this.value);
     calibVal.textContent = (val > 0 ? "+" : "") + val;
+};
+
+// カメラ切り替えボタンロジック
+switchCamBtn.onclick = function() {
+    if (running) {
+        alert("測定中はカメラを切り替えられません。一度停止してください。");
+        return;
+    }
+    if (currentFacingMode === "environment") {
+        currentFacingMode = "user";
+        switchCamBtn.textContent = "📷 カメラ切り替え (現在: 前面)";
+    } else {
+        currentFacingMode = "environment";
+        switchCamBtn.textContent = "📷 カメラ切り替え (現在: 背面)";
+    }
 };
 
 toggleHelpBtn.onclick = function() {
@@ -394,25 +457,20 @@ function calculateVoiceRankFromScore(score) {
 
 function calculateHighlightScore() {
     if (sectionData.length === 0) return 0;
-
     let maxScore = 0;
     const comboLength = 10; 
-
     for (let i = 0; i <= sectionData.length - comboLength; i++) {
         let comboMax = 0;
         let comboSum = 0;
-        
         for (let j = 0; j < comboLength; j++) {
             const data = sectionData[i + j];
             if (data.max > comboMax) comboMax = data.max;
             comboSum += data.avg;
         }
-        
         const comboAvg = comboSum / comboLength;
         const score = Math.floor(comboMax + (comboAvg / 2));
         if (score > maxScore) maxScore = score;
     }
-
     if (sectionData.length < comboLength && sectionData.length > 0) {
         let comboMax = 0;
         let comboSum = 0;
@@ -423,15 +481,14 @@ function calculateHighlightScore() {
         const comboAvg = comboSum / sectionData.length;
         maxScore = Math.floor(comboMax + (comboAvg / 2));
     }
-
     return maxScore;
 }
 
-function drawVoicePrintCore(targetCtx, w, h, dataArrayToDraw) {
+function drawVoicePrintCore(targetCtx, startY, w, h, dataArrayToDraw) {
     targetCtx.fillStyle = "#111827";
-    targetCtx.fillRect(0, 0, w, h);
+    targetCtx.fillRect(0, startY, w, h);
 
-    const centerY = h / 2;
+    const centerY = startY + (h / 2);
     const totalBars = dataArrayToDraw.length;
     
     const gap = 1;
@@ -442,8 +499,8 @@ function drawVoicePrintCore(targetCtx, w, h, dataArrayToDraw) {
     targetCtx.lineWidth = 1;
     targetCtx.beginPath();
     targetCtx.moveTo(0, centerY); targetCtx.lineTo(w, centerY); 
-    targetCtx.moveTo(0, centerY - (centerY * 0.9)); targetCtx.lineTo(w, centerY - (centerY * 0.9)); 
-    targetCtx.moveTo(0, centerY + (centerY * 0.9)); targetCtx.lineTo(w, centerY + (centerY * 0.9)); 
+    targetCtx.moveTo(0, centerY - (h * 0.45)); targetCtx.lineTo(w, centerY - (h * 0.45)); 
+    targetCtx.moveTo(0, centerY + (h * 0.45)); targetCtx.lineTo(w, centerY + (h * 0.45)); 
     targetCtx.stroke();
 
     targetCtx.shadowBlur = 7;
@@ -455,12 +512,12 @@ function drawVoicePrintCore(targetCtx, w, h, dataArrayToDraw) {
         let ratioHigh = (item.high - 70) / (130 - 70);
         if(ratioHigh < 0) ratioHigh = 0;
         if(ratioHigh > 1) ratioHigh = 1;
-        const heightHigh = (centerY * 0.9) * ratioHigh;
+        const heightHigh = (h * 0.45) * ratioHigh;
 
         let ratioLow = (item.low - 70) / (130 - 70);
         if(ratioLow < 0) ratioLow = 0;
         if(ratioLow > 1) ratioLow = 1;
-        const heightLow = (centerY * 0.9) * ratioLow;
+        const heightLow = (h * 0.45) * ratioLow;
 
         const x = startX + i * (barWidth + gap);
 
@@ -475,28 +532,67 @@ function drawVoicePrintCore(targetCtx, w, h, dataArrayToDraw) {
             targetCtx.fillRect(x, centerY - 1, barWidth, 2);
         }
     }
-
     targetCtx.shadowBlur = 0;
 }
 
-function drawVoicePrint(targetCtx, w, h) {
-    drawVoicePrintCore(targetCtx, w, h, waveHistory);
+function drawCombinedFrame(targetCtx, w, h, mode) {
+    const halfH = h / 2;
+    
+    // モードがビデオ選択時のみカメラ映像を上半分に描く
+    if (mode === "video" && running && hiddenVideo.readyState === hiddenVideo.HAVE_ENOUGH_DATA) {
+        targetCtx.fillStyle = "#000000";
+        targetCtx.fillRect(0, 0, w, halfH);
+        
+        const videoAspect = hiddenVideo.videoWidth / hiddenVideo.videoHeight;
+        const canvasAspect = w / halfH;
+        let drawW, drawH, drawX, drawY;
+        
+        if (videoAspect > canvasAspect) {
+            drawH = halfH;
+            drawW = halfH * videoAspect;
+            drawX = (w - drawW) / 2;
+            drawY = 0;
+        } else {
+            drawW = w;
+            drawH = w / videoAspect;
+            drawX = 0;
+            drawY = (halfH - drawH) / 2;
+        }
+        targetCtx.drawImage(hiddenVideo, drawX, drawY, drawW, drawH);
+    } else {
+        // 音声モード、またはカメラなし、準備中の時
+        targetCtx.fillStyle = "#1f2937";
+        targetCtx.fillRect(0, 0, w, halfH);
+        targetCtx.fillStyle = "#9ca3af";
+        targetCtx.font = "14px sans-serif";
+        targetCtx.textAlign = "center";
+        if(mode === "video") {
+            targetCtx.fillText("カメラ起動中...", w / 2, halfH / 2);
+        } else {
+            targetCtx.fillText("🎵 音声波形解析モード (カメラOFF)", w / 2, halfH / 2);
+        }
+        targetCtx.textAlign = "left";
+    }
 
+    // 下半分に高低音分離波形を描画
+    drawVoicePrintCore(targetCtx, halfH, w, halfH, waveHistory);
+
+    // テキストオーバーレイ
     targetCtx.fillStyle = "white";
-    targetCtx.font = "15px sans-serif";
+    targetCtx.font = "14px sans-serif";
     const player = playerNameInput.value.trim() || "NO NAME";
     const song = songNameInput.value.trim() || "NO SONG";
-    targetCtx.fillText(player + " / " + song, 15, 24);
+    targetCtx.fillText(player + " / " + song, 15, halfH + 24);
 
-    targetCtx.font = "12px sans-serif";
+    targetCtx.font = "11px sans-serif";
     targetCtx.fillStyle = "#9ca3af";
-    targetCtx.fillText(currentDate, 15, 42);
+    targetCtx.fillText(currentDate, 15, halfH + 42);
     
-    const centerY = h / 2;
+    const centerY = halfH + (halfH / 2);
     targetCtx.fillStyle = "rgba(255,255,255,0.4)";
-    targetCtx.fillText("130dB (高音)", w - 75, centerY - (centerY * 0.75));
+    targetCtx.fillText("130dB (高音)", w - 75, centerY - (halfH * 0.38));
     targetCtx.fillText("70dB", w - 40, centerY + 4);
-    targetCtx.fillText("130dB (低音)", w - 75, centerY + (centerY * 0.83));
+    targetCtx.fillText("130dB (低音)", w - 75, centerY + (halfH * 0.41));
 }
 
 async function start(){
@@ -518,9 +614,12 @@ async function start(){
     lastIntervalIndex = 0;
     sectionData = [];
 
+    videoChunks = [];
+    videoBlob = null;
     audioChunks = [];
     audioBlob = null;
-    saveAudioBtn.style.display = "none"; 
+    saveVideoBtn.style.display = "none"; 
+    saveAudioBtn.style.display = "none";
 
     limitTime = Math.min(Math.max(parseInt(timeInput.value) || 360, 1), 600);
     timerText.textContent = limitTime;
@@ -528,39 +627,29 @@ async function start(){
     currentDate = new Date().toLocaleString("ja-JP");
     info.innerHTML = "測定日時: " + currentDate;
 
+    // ラジオボタンの選択値を取得
+    const selectedMode = document.querySelector('input[name="modeSelect"]:checked').value;
+
     try {
-        const stream = await navigator.mediaDevices.getUserMedia({ 
+        // 設定されたカメラ向き(背面/前面)を反映
+        const constraints = {
             audio: {
                 echoCancellation: { exact: false },  
                 noiseSuppression: { exact: false },   
                 autoGainControl: { exact: false }
-            } 
-        });
-        
-        if (recordToggle.checked) {
-            let options = { mimeType: 'audio/webm;codecs=opus' };
-            if (!MediaRecorder.isTypeSupported(options.mimeType)) {
-                options = { mimeType: 'audio/ogg;codecs=opus' };
-            }
-            if (!MediaRecorder.isTypeSupported(options.mimeType)) {
-                options = { mimeType: '' }; 
-            }
+            },
+            video: (selectedMode === "video") ? { width: 480, height: 480, facingMode: currentFacingMode } : false
+        };
 
-            mediaRecorder = new MediaRecorder(stream, options);
-            mediaRecorder.ondataavailable = function(e) {
-                if (e.data.size > 0) {
-                    audioChunks.push(e.data);
-                }
-            };
-            mediaRecorder.onstop = function() {
-                audioBlob = new Blob(audioChunks, { type: mediaRecorder.mimeType || "audio/aac" });
-                saveAudioBtn.style.display = "block"; 
-            };
-            mediaRecorder.start(250); 
+        streamStream = await navigator.mediaDevices.getUserMedia(constraints);
+        
+        if (selectedMode === "video") {
+            hiddenVideo.srcObject = streamStream;
+            hiddenVideo.play();
         }
 
         audioContext = new (window.AudioContext || window.webkitAudioContext)();
-        const source = audioContext.createMediaStreamSource(stream);
+        const source = audioContext.createMediaStreamSource(streamStream);
 
         analyser = audioContext.createAnalyser();
         analyser.fftSize = 512;
@@ -569,9 +658,54 @@ async function start(){
         dataArray = new Uint8Array(analyser.frequencyBinCount);
         startTime = Date.now();
 
+        // 【1. ビデオ録画モード時のレコーダー】
+        if (selectedMode === "video") {
+            const canvasStream = canvas.captureStream(24);
+            const audioTrack = streamStream.getAudioTracks()[0];
+            canvasStream.addTrack(audioTrack);
+
+            let options = { mimeType: 'video/webm;codecs=vp8,opus' };
+            if (!MediaRecorder.isTypeSupported(options.mimeType)) {
+                options = { mimeType: 'video/mp4' }; 
+            }
+            if (!MediaRecorder.isTypeSupported(options.mimeType)) {
+                options = { mimeType: '' }; 
+            }
+
+            mediaRecorder = new MediaRecorder(canvasStream, options);
+            mediaRecorder.ondataavailable = function(e) {
+                if (e.data.size > 0) videoChunks.push(e.data);
+            };
+            mediaRecorder.onstop = function() {
+                videoBlob = new Blob(videoChunks, { type: mediaRecorder.mimeType || "video/mp4" });
+                saveVideoBtn.style.display = "block"; 
+            };
+            mediaRecorder.start(250); 
+        } 
+        // 【2. 音声のみ録音モード時のレコーダー】
+        else if (selectedMode === "audio") {
+            let options = { mimeType: 'audio/webm;codecs=opus' };
+            if (!MediaRecorder.isTypeSupported(options.mimeType)) {
+                options = { mimeType: 'audio/ogg;codecs=opus' };
+            }
+            if (!MediaRecorder.isTypeSupported(options.mimeType)) {
+                options = { mimeType: '' }; 
+            }
+
+            mediaRecorder = new MediaRecorder(streamStream, options);
+            mediaRecorder.ondataavailable = function(e) {
+                if (e.data.size > 0) audioChunks.push(e.data);
+            };
+            mediaRecorder.onstop = function() {
+                audioBlob = new Blob(audioChunks, { type: mediaRecorder.mimeType || "audio/aac" });
+                saveAudioBtn.style.display = "block"; 
+            };
+            mediaRecorder.start(250);
+        }
+
         update();
     } catch(e) {
-        alert("マイクの許可、またはデバイスが対応していません。通常のブラウザで開き直してください。");
+        alert("マイク・カメラの許可、またはデバイスが対応していません。通常の標準ブラウザで開き直してください。");
         running = false;
     }
 }
@@ -596,14 +730,18 @@ function stop(){
     if(!running) return;
     running = false;
     cancelAnimationFrame(animationId);
+    
     if (mediaRecorder && mediaRecorder.state !== "inactive") {
         mediaRecorder.stop();
-        mediaRecorder.stream.getTracks().forEach(track => track.stop());
+    }
+    if (streamStream) {
+        streamStream.getTracks().forEach(track => track.stop());
     }
     if (audioContext) {
         audioContext.close();
     }
     
+    hiddenVideo.srcObject = null;
     finalizeScore();
     voiceRankText.textContent = calculateVoiceRankFromScore(finalHighScore || Math.floor(maxVolume + (getAverage() / 2)));
 }
@@ -700,39 +838,31 @@ function update(){
     if(dbLow < 70) dbLow = 70;   if(dbLow > 130) dbLow = 130;
     if(dbHigh < 70) dbHigh = 70; if(dbHigh > 130) dbHigh = 130;
 
-    // ==============================================================
-    // ★【バグ完全撃破】：開始直後の3秒間は入力値を完全に上書きミュート
-    // ==============================================================
+    // ★【初動3秒完全ガード機能】
     if (elapsedSeconds < 3) {
-        modifiedDb = 30; // 表示数値の初期爆音をカット
-        dbLow = 70;      // 低音声紋をセンターに固定
-        dbHigh = 70;     // 高音声紋をセンターに固定
+        modifiedDb = 30;
+        dbLow = 70;
+        dbHigh = 70;
     }
-    // ==============================================================
 
     if (now - lastWavePushTime >= 750) {
         waveHistory.shift();
         waveHistory.push({ high: dbHigh, low: dbLow });
-        // 3秒間のデータは全歴史ストック側もノイズとして残さないようクリーンに保持
         fullHistory.push({ high: dbHigh, low: dbLow, total: modifiedDb }); 
         lastWavePushTime = now;
     }
     
-    // 3秒経過後のみ、採点や最大値の統計処理を開始する（初期ノイズを完全に除外）
     if (elapsedSeconds >= 3) {
         totalSum += modifiedDb;
         totalCount++;
-
         intervalSum += modifiedDb;
         intervalCount++;
-        
         if (modifiedDb > maxVolume) {
             maxVolume = modifiedDb;
         }
     }
 
     const currentIntervalIndex = Math.floor(elapsedSeconds / 10);
-    
     if (currentIntervalIndex > lastIntervalIndex) {
         if (intervalCount > 0) {
             const chunkAvg = intervalSum / intervalCount;
@@ -748,7 +878,6 @@ function update(){
         intervalSum = 0;
         intervalCount = 0;
         lastIntervalIndex = currentIntervalIndex;
-        
         finalHighScore = calculateHighlightScore();
     }
 
@@ -766,7 +895,8 @@ function update(){
 
     elapsedText.textContent = elapsedSeconds;
 
-    drawVoicePrint(ctx, canvas.width, canvas.height);
+    const selectedMode = document.querySelector('input[name="modeSelect"]:checked').value;
+    drawCombinedFrame(ctx, canvas.width, canvas.height, selectedMode);
 
     const remain = Math.max(limitTime - elapsedSeconds, 0);
     timerText.textContent = remain;
@@ -786,6 +916,7 @@ function getBaseFileName() {
     return `${player}_${song}_${maxDbStr}`;
 }
 
+// 2画面・全歴史の画像保存
 function saveImage(){
     stop(); 
     
@@ -812,7 +943,7 @@ function saveImage(){
         dataToDraw = [...waveHistory];
     }
 
-    drawVoicePrintCore(tCtx, printW, printH, dataToDraw);
+    drawVoicePrintCore(tCtx, 0, printW, printH, dataToDraw);
     sCtx.drawImage(tempCanvas, 0, 0);
 
     sCtx.fillStyle = "white";
@@ -876,6 +1007,18 @@ function saveImage(){
     imgLink.click();
 }
 
+// 動画保存
+function saveVideo(){
+    if (!videoBlob) return;
+    const baseFileName = getBaseFileName();
+    const videoLink = document.createElement("a");
+    const ext = videoBlob.type.includes("mp4") ? ".mp4" : ".webm";
+    videoLink.download = baseFileName + ext;
+    videoLink.href = URL.createObjectURL(videoBlob);
+    videoLink.click();
+}
+
+// 音声保存
 function saveAudio(){
     if (!audioBlob) return;
     const baseFileName = getBaseFileName();
@@ -889,9 +1032,12 @@ function saveAudio(){
 startBtn.onclick = start;
 stopBtn.onclick = stop;
 saveImgBtn.onclick = saveImage;
+saveVideoBtn.onclick = saveVideo;
 saveAudioBtn.onclick = saveAudio;
 
-drawVoicePrint(ctx, canvas.width, canvas.height);
+// 初期表示
+const selectedMode = document.querySelector('input[name="modeSelect"]:checked').value;
+drawCombinedFrame(ctx, canvas.width, canvas.height, selectedMode);
 </script>
 
 </body>
