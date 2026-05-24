@@ -232,17 +232,18 @@ canvas{
 <div class="help-content" id="helpContent">
     <div class="help-title">【使い方】</div>
     <ul>
-        <li>「名前」や「曲名」、「制限時間」を入力して<b>[開始]</b>を押すとマイク測定が始まります。</li>
+        <li>「名前」「曲名」「制限時間」を入力して<b>[開始]</b>を押すと測定と録音が始まります。</li>
         <li>測定中は現在の声量がリアルタイムにデシベル(dB)でグラフ化されます。</li>
-        <li><b>[停止]</b>を押すか、制限時間になると測定が終了します。</li>
-        <li><b>[画像保存]</b>を押すと、結果グラフを画像としてダウンロードできます（録音ON時は音声も保存）。</li>
+        <li><b>[停止]</b>を押すか、制限時間になると測定が自動終了します。</li>
+        <li><b>[画像保存]</b>を押すと、結果グラフ画像と音声ファイル（録音ON時のみ）が自動で同時に保存されます。</li>
     </ul>
     
     <div class="help-title">【仕様について】</div>
     <ul>
-        <li><b>同じ音量での0化防止:</b> 音声の周波数解析エンジンを一新し、同じ大きさの声を出し続けても0にならず正確に検知し続けます。</li>
-        <li><b>グラフの1分リセット:</b> 1分（60秒）ごとに自動でグラフが左端から新しく追加され、長時間の測定でも見やすさを維持します。</li>
-        <li><b>全記録のダウンロード:</b> 画像保存時には、画面上の1分間グラフに加え、スタートからゴールまでの「すべての記録」が描画されたロンググラフが2段目に追加されて保存されます。</li>
+        <li><b>適切なdB感度調整:</b> 上限をMAX 200dBに調整し、不要な音量の過大検知を防ぐため感度を最適化しました。</li>
+        <li><b>スマホ標準の高音質録音:</b> スマホ内蔵の標準録音機能をバックグラウンドで走らせ、エコー除去やノイズ抑制などの干渉をOFFにすることで、音割れ（ガピガピ音）のないクリアな生音を記録します。</li>
+        <li><b>録音のON/OFF切り替え:</b> チェックボックスで、測定時の自動録音を行うかどうかを自由に変更できます。</li>
+        <li><b>ファイル名・文字入れ連動:</b> 保存される画像には「名前 / 曲名」が自動挿入され、ダウンロード時のファイル名も「名前_曲名_最大音量」の形式で分かりやすく保存されます。</li>
     </ul>
 </div>
 
@@ -370,7 +371,7 @@ function drawGraph(){
     });
     ctx.stroke();
 
-    // テキスト（名前／曲名 表示にアップデート）
+    // テキスト（名前／曲名 表示）
     ctx.fillStyle = "white";
     ctx.font = "16px sans-serif";
     const player = playerNameInput.value.trim() || "NO NAME";
@@ -435,26 +436,25 @@ async function start(){
     info.innerHTML = "測定日時: " + currentDate;
 
     try {
-        // 音割れ（ガピガピ）防止とスマホ標準のクオリティを引き出すための制約設定
+        // スマホ標準の録音クオリティを活かすためオーディオプロセス処理を極力バイパス
         const stream = await navigator.mediaDevices.getUserMedia({ 
             audio: {
-                echoCancellation: false,  // エコー除去を切って生音を拾う
-                noiseSuppression: false,   // ノイズ除去による音割れを防止
-                autoGainControl: false,    // 自動音量調整による感度ブレを防止
-                sampleRate: 48000,         // 高サンプリングレート指定
+                echoCancellation: false,  
+                noiseSuppression: false,   
+                autoGainControl: false,    
+                sampleRate: 48000,         
                 channelCount: 1
             } 
         });
         
-        // 録音のON/OFFがチェックされている場合のみ録音機能を開始
+        // 録音トグルチェック時のみ動作
         if (recordToggle.checked) {
-            // スマホ（iOS/Android）やブラウザで最も安定して高音質を保てるMIMEタイプを設定
             let options = { mimeType: 'audio/webm;codecs=opus' };
             if (!MediaRecorder.isTypeSupported(options.mimeType)) {
                 options = { mimeType: 'audio/ogg;codecs=opus' };
             }
             if (!MediaRecorder.isTypeSupported(options.mimeType)) {
-                options = { mimeType: '' }; // 未対応の場合はブラウザのデフォルト（高音質）
+                options = { mimeType: '' }; 
             }
 
             mediaRecorder = new MediaRecorder(stream, options);
@@ -464,10 +464,9 @@ async function start(){
                 }
             };
             mediaRecorder.onstop = function() {
-                // ファイル拡張子はスマホ側が対応しやすい一般的なコンテナとして出力
                 audioBlob = new Blob(audioChunks, { type: mediaRecorder.mimeType || "audio/aac" });
             };
-            mediaRecorder.start(250); // 250msごとにデータを細かくバッファして音飛びを防止
+            mediaRecorder.start(250); 
         }
 
         // 解析セットアップ
@@ -508,10 +507,16 @@ function update(){
     }
     
     let averageAmplitude = sum / dataArray.length;
-    let dbfs = 20 * Math.log10(Math.max(averageAmplitude / 255, 0.0001));
     
-    // 【感度を従来の半分程度にし、最大200に収まるようにチューニング】
-    let db = 200 + (dbfs * 1.75); 
+    // 無音時のベース底上げを抑え、声を出したときの急激な跳ね上がりを滑らかにする感度式に修正
+    // 0〜255の平均振幅を元に、0〜200dBへ対数スケーリングを最適化
+    let db = 0;
+    if (averageAmplitude > 0.5) {
+        // 最小感度の基準を引き下げ、実質的なレンジを拡大
+        let dbfs = 20 * Math.log10(averageAmplitude / 255);
+        // 通常の-60dBFS〜0dBFSの範囲を、0〜200dBの目盛りにちょうどよく収まるようマッピング
+        db = ((dbfs + 55) * 3.63);
+    }
     
     if (db < MIN_DB) db = MIN_DB;
     if (db > MAX_DB) db = MAX_DB;
@@ -553,18 +558,16 @@ function update(){
     animationId = requestAnimationFrame(update);
 }
 
-// 画像保存関数（ファイル名連動・音声ファイルダウンロード対応）
+// 画像保存関数（画像と音声が確実に両方独立してダウンロードされるよう修正）
 function saveImage(){
     drawGraph(); 
 
     const player = playerNameInput.value.trim() || "NO_NAME";
     const song = songNameInput.value.trim() || "NO_SONG";
     const maxDbStr = Math.floor(maxVolume) + "dB";
-    
-    // ファイル名の生成ルール: 「名前_曲名_最大音量」
     const baseFileName = `${player}_${song}_${maxDbStr}`;
 
-    // --- グラフ画像の生成・保存処理 ---
+    // --- 1. グラフ画像の生成・保存処理 ---
     const saveCanvas = document.createElement("canvas");
     saveCanvas.width = 360;
     saveCanvas.height = 500; 
@@ -584,10 +587,8 @@ function saveImage(){
 
     const gLeft = 45;
     const gRight = 330;
-    
     const gTop1 = 70;
     const gBottom1 = 240;
-    
     const gTop2 = 290;
     const gBottom2 = 460;
 
@@ -631,19 +632,26 @@ function saveImage(){
     });
     sCtx.stroke();
 
+    // DOMへの追加を介さず個別にトリガーさせてリンク重複によるDLエラーを防ぐ
     const imgLink = document.createElement("a");
     imgLink.download = baseFileName + ".png";
     imgLink.href = saveCanvas.toDataURL("image/png");
-    imgLink.click();
-
-    // --- 音声ファイルのダウンロード処理（トグルがONかつデータがある場合） ---
+    
+    // --- 2. 音声ファイルのダウンロード処理（ONかつデータがある場合） ---
     if (recordToggle.checked && audioBlob) {
         const audioLink = document.createElement("a");
-        // ブラウザの録音フォーマットに合わせて拡張子を自動判定
         const ext = audioBlob.type.includes("webm") ? ".webm" : audioBlob.type.includes("ogg") ? ".ogg" : ".m4a";
         audioLink.download = baseFileName + ext;
         audioLink.href = URL.createObjectURL(audioBlob);
-        audioLink.click();
+        
+        // 僅かに時間をずらして連続実行することで、ブラウザが2つのダウンロードを並行処理できるようにする
+        imgLink.click();
+        setTimeout(() => {
+            audioLink.click();
+        }, 100);
+    } else {
+        // 録音OFFのときは即時画像のみ保存
+        imgLink.click();
     }
 }
 
