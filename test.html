@@ -12,8 +12,25 @@ body{
     font-family:sans-serif;
     color:white;
     display:flex;
-    justify-content:center;
+    flex-direction:column;
+    align-items:center;
     padding:20px;
+}
+
+/* LINEブラウザ警告用スタイル */
+.line-warning {
+    display: none;
+    width: 100%;
+    max-width: 430px;
+    background: #ef4444;
+    color: white;
+    padding: 12px;
+    border-radius: 12px;
+    margin-bottom: 15px;
+    font-weight: bold;
+    font-size: 14px;
+    text-align: center;
+    box-sizing: border-box;
 }
 
 .app{
@@ -92,9 +109,15 @@ button{
     color:white;
 }
 
-.save{
+.save-img{
     background:#3b82f6;
     color:white;
+}
+
+.save-audio{
+    background:#8b5cf6;
+    color:white;
+    display:none; /* 初期状態は非表示 */
 }
 
 .toggle-help{
@@ -176,10 +199,19 @@ canvas{
     margin-top: 8px;
     margin-bottom: 4px;
 }
+.warning-text {
+    color: #f87171;
+    font-weight: bold;
+}
 </style>
 </head>
 
 <body>
+
+<!-- LINEブラウザ警告エリア -->
+<div class="line-warning" id="lineWarning">
+    ⚠️ LINEアプリ内では録音や測定が動作しません。<br>右上のボタンから「デフォルトのブラウザ(Safari/Chrome等)で開く」を選んでください。
+</div>
 
 <div class="app">
 
@@ -226,24 +258,18 @@ canvas{
 
 <button class="start" id="startBtn">開始</button>
 <button class="stop" id="stopBtn">停止</button>
-<button class="save" id="saveBtn">画像保存</button>
+<button class="save-img" id="saveImgBtn">画像保存</button>
+<button class="save-audio" id="saveAudioBtn">録音保存</button>
 
-<button class="toggle-help" id="toggleHelpBtn">▼ 使い方と仕様を表示</button>
+<button class="toggle-help" id="toggleHelpBtn">▼ 使い方を表示</button>
 <div class="help-content" id="helpContent">
     <div class="help-title">【使い方】</div>
     <ul>
+        <li><span class="warning-text">※重要：LINEアプリ内で開いている場合は、測定や録音が正常に動作しません。必ずSafariやChromeなど「デフォルトのブラウザ」に切り替えて開いてください。</span></li>
         <li>「名前」「曲名」「制限時間」を入力して<b>[開始]</b>を押すと測定と録音が始まります。</li>
         <li>測定中は現在の声量がリアルタイムにデシベル(dB)でグラフ化されます。</li>
         <li><b>[停止]</b>を押すか、制限時間になると測定が自動終了します。</li>
-        <li><b>[画像保存]</b>を押すと、結果グラフ画像と音声ファイル（録音ON時のみ）が自動で同時に保存されます。</li>
-    </ul>
-    
-    <div class="help-title">【仕様について】</div>
-    <ul>
-        <li><b>適切なdB感度調整:</b> 上限をMAX 200dBに調整し、不要な音量の過大検知を防ぐため感度を最適化しました。</li>
-        <li><b>スマホ標準の高音質録音:</b> スマホ内蔵の標準録音機能をバックグラウンドで走らせ、エコー除去やノイズ抑制などの干渉をOFFにすることで、音割れ（ガピガピ音）のないクリアな生音を記録します。</li>
-        <li><b>録音のON/OFF切り替え:</b> チェックボックスで、測定時の自動録音を行うかどうかを自由に変更できます。</li>
-        <li><b>ファイル名・文字入れ連動:</b> 保存される画像には「名前 / 曲名」が自動挿入され、ダウンロード時のファイル名も「名前_曲名_最大音量」の形式で分かりやすく保存されます。</li>
+        <li>測定終了後、<b>[画像保存]</b>を押すと結果のグラフ画像が保存されます。録音ONで測定した場合は、新しく出現する<b>[録音保存]</b>ボタンから音声ファイルを保存できます。</li>
     </ul>
 </div>
 
@@ -252,9 +278,11 @@ canvas{
 <script>
 const startBtn = document.getElementById("startBtn");
 const stopBtn = document.getElementById("stopBtn");
-const saveBtn = document.getElementById("saveBtn");
+const saveImgBtn = document.getElementById("saveImgBtn");
+const saveAudioBtn = document.getElementById("saveAudioBtn");
 const toggleHelpBtn = document.getElementById("toggleHelpBtn");
 const helpContent = document.getElementById("helpContent");
+const lineWarning = document.getElementById("lineWarning");
 
 const currentText = document.getElementById("current");
 const maxText = document.getElementById("max");
@@ -288,7 +316,6 @@ let limitTime = 60;
 let running = false;
 let currentDate = "";
 
-// デシベルの上限を200に変更
 const MIN_DB = 0;
 const MAX_DB = 200;
 
@@ -297,13 +324,19 @@ let mediaRecorder;
 let audioChunks = [];
 let audioBlob = null;
 
+// LINEブラウザ判定
+const ua = navigator.userAgent.toLowerCase();
+if (ua.indexOf("line") > -1) {
+    lineWarning.style.display = "block";
+}
+
 toggleHelpBtn.onclick = function() {
     if (helpContent.style.display === "block") {
         helpContent.style.display = "none";
-        toggleHelpBtn.textContent = "▼ 使い方と仕様を表示";
+        toggleHelpBtn.textContent = "▼ 使い方を表示";
     } else {
         helpContent.style.display = "block";
-        toggleHelpBtn.textContent = "▲ 使い方と仕様を非表示";
+        toggleHelpBtn.textContent = "▲ 使い方を非表示";
     }
 };
 
@@ -428,6 +461,7 @@ async function start(){
     maxVolume = MIN_DB;
     audioChunks = [];
     audioBlob = null;
+    saveAudioBtn.style.display = "none"; // ボタンを初期化
 
     limitTime = Math.min(Math.max(parseInt(timeInput.value) || 60, 1), 600);
     timerText.textContent = limitTime;
@@ -436,7 +470,6 @@ async function start(){
     info.innerHTML = "測定日時: " + currentDate;
 
     try {
-        // スマホ標準の録音クオリティを活かすためオーディオプロセス処理を極力バイパス
         const stream = await navigator.mediaDevices.getUserMedia({ 
             audio: {
                 echoCancellation: false,  
@@ -447,7 +480,6 @@ async function start(){
             } 
         });
         
-        // 録音トグルチェック時のみ動作
         if (recordToggle.checked) {
             let options = { mimeType: 'audio/webm;codecs=opus' };
             if (!MediaRecorder.isTypeSupported(options.mimeType)) {
@@ -465,6 +497,7 @@ async function start(){
             };
             mediaRecorder.onstop = function() {
                 audioBlob = new Blob(audioChunks, { type: mediaRecorder.mimeType || "audio/aac" });
+                saveAudioBtn.style.display = "block"; // 録音完了後に保存ボタンを表示
             };
             mediaRecorder.start(250); 
         }
@@ -482,7 +515,7 @@ async function start(){
 
         update();
     } catch(e) {
-        alert("マイクの許可が必要です。");
+        alert("マイクの許可が必要です。LINEアプリ内では動作しないため、通常のブラウザで開き直してください。");
         running = false;
     }
 }
@@ -508,16 +541,21 @@ function update(){
     
     let averageAmplitude = sum / dataArray.length;
     
-    // 無音時のベース底上げを抑え、声を出したときの急激な跳ね上がりを滑らかにする感度式に修正
-    // 0〜255の平均振幅を元に、0〜200dBへ対数スケーリングを最適化
+    // 室音で35dB付近、少しの声で60〜70dB、大声で150dB以上になるよう対数増幅率と底上げを徹底調整
     let db = 0;
-    if (averageAmplitude > 0.5) {
-        // 最小感度の基準を引き下げ、実質的なレンジを拡大
+    if (averageAmplitude > 0.1) {
         let dbfs = 20 * Math.log10(averageAmplitude / 255);
-        // 通常の-60dBFS〜0dBFSの範囲を、0〜200dBの目盛りにちょうどよく収まるようマッピング
-        db = ((dbfs + 55) * 3.63);
+        // 室音(振幅が極めて小さい時)を35〜40に、少しの声(中振幅)を滑らかに分散、大声をMAX付近に配置
+        db = ((dbfs + 65) * 2.3) + 20;
+    } else {
+        db = 0;
     }
     
+    // 何もない時の最小室音の範囲を35~40dB前後に安定させる補正
+    if (db > 0 && db < 40) {
+        db = 35 + (db / 8);
+    }
+
     if (db < MIN_DB) db = MIN_DB;
     if (db > MAX_DB) db = MAX_DB;
 
@@ -558,16 +596,20 @@ function update(){
     animationId = requestAnimationFrame(update);
 }
 
-// 画像保存関数（画像と音声が確実に両方独立してダウンロードされるよう修正）
-function saveImage(){
-    drawGraph(); 
-
+// 共通ファイル名生成関数
+function getBaseFileName() {
     const player = playerNameInput.value.trim() || "NO_NAME";
     const song = songNameInput.value.trim() || "NO_SONG";
     const maxDbStr = Math.floor(maxVolume) + "dB";
-    const baseFileName = `${player}_${song}_${maxDbStr}`;
+    return `${player}_${song}_${maxDbStr}`;
+}
 
-    // --- 1. グラフ画像の生成・保存処理 ---
+// 画像保存のみを実行
+function saveImage(){
+    drawGraph(); 
+
+    const baseFileName = getBaseFileName();
+
     const saveCanvas = document.createElement("canvas");
     saveCanvas.width = 360;
     saveCanvas.height = 500; 
@@ -578,6 +620,8 @@ function saveImage(){
 
     sCtx.fillStyle = "white";
     sCtx.font = "16px sans-serif";
+    const player = playerNameInput.value.trim() || "NO NAME";
+    const song = songNameInput.value.trim() || "NO SONG";
     sCtx.fillText(player + " / " + song, 15, 22);
 
     sCtx.font = "14px sans-serif";
@@ -632,32 +676,27 @@ function saveImage(){
     });
     sCtx.stroke();
 
-    // DOMへの追加を介さず個別にトリガーさせてリンク重複によるDLエラーを防ぐ
     const imgLink = document.createElement("a");
     imgLink.download = baseFileName + ".png";
     imgLink.href = saveCanvas.toDataURL("image/png");
-    
-    // --- 2. 音声ファイルのダウンロード処理（ONかつデータがある場合） ---
-    if (recordToggle.checked && audioBlob) {
-        const audioLink = document.createElement("a");
-        const ext = audioBlob.type.includes("webm") ? ".webm" : audioBlob.type.includes("ogg") ? ".ogg" : ".m4a";
-        audioLink.download = baseFileName + ext;
-        audioLink.href = URL.createObjectURL(audioBlob);
-        
-        // 僅かに時間をずらして連続実行することで、ブラウザが2つのダウンロードを並行処理できるようにする
-        imgLink.click();
-        setTimeout(() => {
-            audioLink.click();
-        }, 100);
-    } else {
-        // 録音OFFのときは即時画像のみ保存
-        imgLink.click();
-    }
+    imgLink.click();
+}
+
+// 音声保存のみを実行
+function saveAudio(){
+    if (!audioBlob) return;
+    const baseFileName = getBaseFileName();
+    const audioLink = document.createElement("a");
+    const ext = audioBlob.type.includes("webm") ? ".webm" : audioBlob.type.includes("ogg") ? ".ogg" : ".m4a";
+    audioLink.download = baseFileName + ext;
+    audioLink.href = URL.createObjectURL(audioBlob);
+    audioLink.click();
 }
 
 startBtn.onclick = start;
 stopBtn.onclick = stop;
-saveBtn.onclick = saveImage;
+saveImgBtn.onclick = saveImage;
+saveAudioBtn.onclick = saveAudio;
 
 drawGraph();
 </script>
