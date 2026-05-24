@@ -1,252 +1,148 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>REQUEST KARAOKE PRO</title>
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
-        import { getFirestore, collection, doc, setDoc, addDoc, onSnapshot, query, where, updateDoc, deleteDoc, getDocs, writeBatch } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>カラオケ企画メニュー</title>
+<style>
+  /* 全体のリセットと基本スタイル */
+  * {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+  }
 
-        const firebaseConfig = {
-            apiKey: "AIzaSyC4DQhH_swesAD98Xyjg8d1lcWEkkrHrgw",
-            authDomain: "gamehistory-m84.firebaseapp.com",
-            databaseURL: "https://gamehistory-m84-default-rtdb.firebaseio.com",
-            projectId: "gamehistory-m84",
-            storageBucket: "gamehistory-m84.firebasestorage.app",
-            messagingSenderId: "475761727837",
-            appId: "1:475761727837:web:06d07e1ab4120a7ccaf0b4",
-            measurementId: "G-3636W6LC4F"
-        };
+  body {
+    font-family: 'Helvetica Neue', Arial, 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', sans-serif;
+    background: #0f0f15;
+    color: #fff;
+    text-align: center;
+    padding: 20px 15px;
+  }
 
-        const app = initializeApp(firebaseConfig);
-        const db = getFirestore(app);
+  h1 {
+    font-size: 1.8rem;
+    margin-bottom: 25px;
+    letter-spacing: 1px;
+    text-shadow: 0 0 10px rgba(255,255,255,0.2);
+  }
 
-        // --- 状態管理 ---
-        let currentRoom = "";
-        let myName = "";
-        let players = [];
+  h2 {
+    font-size: 1.2rem;
+    color: #aaa;
+    margin: 30px 0 15px;
+    text-align: left;
+    max-width: 500px;
+    margin-left: auto;
+    margin-right: auto;
+    padding-left: 5px;
+    border-left: 4px solid #ff007f;
+  }
 
-        // --- DOM要素 ---
-        const loginScreen = document.getElementById('loginScreen');
-        const mainScreen = document.getElementById('mainScreen');
+  /* 共通のボタン基盤 */
+  a {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    text-decoration: none;
+    font-weight: bold;
+    border-radius: 12px;
+    transition: transform 0.2s, opacity 0.2s;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+  }
 
-        // --- 入室処理 ---
-        window.joinRoom = async () => {
-            const r = document.getElementById('roomInput').value;
-            const n = document.getElementById('nameInput').value;
-            if(!r || !n) return alert("ルーム名と名前を入力してください");
-            
-            currentRoom = r;
-            myName = n;
+  a:active {
+    transform: scale(0.95);
+    opacity: 0.9;
+  }
 
-            // プレイヤー登録
-            await setDoc(doc(db, "REQUEST_Players", `${currentRoom}_${myName}`), {
-                REQUEST_playerName: myName,
-                REQUEST_roomId: currentRoom,
-                REQUEST_score: 0,
-                REQUEST_lastActive: Date.now()
-            });
+  /* ゲームエリア（1行2枠 / Gridレイアウト） */
+  .game-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+    max-width: 500px;
+    margin: 0 auto;
+  }
 
-            loginScreen.style.display = 'none';
-            mainScreen.style.display = 'block';
-            document.getElementById('displayRoomName').innerText = `Room: ${currentRoom}`;
-            initSync();
-        };
+  .game-grid a {
+    height: 90px;
+    font-size: 0.95rem;
+    padding: 10px;
+    line-height: 1.4;
+  }
 
-        // --- 同期開始 ---
-        function initSync() {
-            // プレイヤー一覧
-            onSnapshot(query(collection(db, "REQUEST_Players"), where("REQUEST_roomId", "==", currentRoom)), (snap) => {
-                players = snap.docs.map(d => d.data());
-                document.getElementById('memberCount').innerText = `${players.length}名`;
-                renderRanking();
-            });
+  /* ゲームごとのカラフルな背景（グラデーション） */
+  .btn-bom      { background: linear-gradient(135deg, #ff3366, #ff6633); }
+  .btn-quiz     { background: linear-gradient(135deg, #ff9900, #ffcc00); color: #111; }
+  .btn-talk     { background: linear-gradient(135deg, #00cc66, #00ffcc); color: #111; }
+  .btn-sugo     { background: linear-gradient(135deg, #0099ff, #33ccff); }
+  .btn-denshin  { background: linear-gradient(135deg, #9933ff, #cc66ff); }
+  .btn-50kara   { background: linear-gradient(135deg, #ff3399, #ff99cc); }
+  .btn-str      { background: linear-gradient(135deg, #0055ff, #00aaff); }
+  .btn-pict     { background: linear-gradient(135deg, #ff5500, #ffaa00); }
+  .btn-bingo    { background: linear-gradient(135deg, #e60067, #ff5e97); }
+  .btn-bowl     { background: linear-gradient(135deg, #2baf2b, #3be83b); color: #111; }
 
-            // 曲リスト
-            onSnapshot(query(collection(db, "REQUEST_Songs"), where("REQUEST_roomId", "==", currentRoom)), (snap) => {
-                const songList = document.getElementById('songList');
-                songList.innerHTML = "";
-                snap.docs.forEach(d => {
-                    const data = d.data();
-                    songList.appendChild(createSongCard(d.id, data));
-                });
-            });
+  /* ツールエリア（別枠表示） */
+  .tool-box {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    max-width: 500px;
+    margin: 0 auto;
+  }
 
-            // お題
-            onSnapshot(doc(db, "REQUEST_Rooms", currentRoom), (doc) => {
-                if(doc.exists()) {
-                    document.getElementById('themeText').innerText = `お題：${doc.data().REQUEST_currentTheme || "なし"}`;
-                }
-            });
-        }
+  .tool-box h2 {
+    border-left-color: #00e5ff;
+  }
 
-        // --- スコア計算ロジック ---
-        window.updateResult = async (songId, requesterName, targetName, isSuccess) => {
-            const batch = writeBatch(db);
-            
-            // ポイント設定
-            const suggesterBonus = isSuccess ? 1 : -1;
-            const singerBonus = isSuccess ? 2 : -1;
+  .tool-box a {
+    flex-direction: row;
+    height: 65px;
+    font-size: 1.1rem;
+    gap: 10px;
+    background: #222530;
+    border: 2px solid #3a3f58;
+  }
 
-            // 提案者のスコア更新
-            const reqRef = doc(db, "REQUEST_Players", `${currentRoom}_${requesterName}`);
-            const singerRef = doc(db, "REQUEST_Players", `${currentRoom}_${targetName}`);
-
-            const p1 = players.find(p => p.REQUEST_playerName === requesterName);
-            const p2 = players.find(p => p.REQUEST_playerName === targetName);
-
-            if(p1) batch.update(reqRef, { REQUEST_score: (p1.REQUEST_score || 0) + suggesterBonus });
-            if(p2) batch.update(singerRef, { REQUEST_score: (p2.REQUEST_score || 0) + singerBonus });
-
-            batch.delete(doc(db, "REQUEST_Songs", songId)); // 歌い終わったらリストから削除
-            await batch.commit();
-        };
-
-        // --- 曲の提案 ---
-        window.addSong = async () => {
-            const title = document.getElementById('songInput').value;
-            if(!title) return;
-            
-            // ランダムに歌う人を決定
-            const target = players[Math.floor(Math.random() * players.length)].REQUEST_playerName;
-
-            await addDoc(collection(db, "REQUEST_Songs"), {
-                REQUEST_roomId: currentRoom,
-                REQUEST_songTitle: title,
-                REQUEST_requesterName: myName,
-                REQUEST_targetName: target,
-                REQUEST_status: "pending"
-            });
-            document.getElementById('songInput').value = "";
-        };
-
-        // --- お題管理 ---
-        const themes = ["懐メロ", "アニソン", "失恋ソング", "最新チャート", "英語の曲", "ネタ曲", "V系"];
-        window.setTheme = async (t) => {
-            const theme = t || themes[Math.floor(Math.random() * themes.length)];
-            await setDoc(doc(db, "REQUEST_Rooms", currentRoom), { REQUEST_currentTheme: theme }, { merge: true });
-            document.getElementById('themeControlPanel').style.display = 'none';
-        };
-
-        // --- リセット ---
-        window.resetScores = async () => {
-            if(!confirm("全員のスコアを0に戻しますか？")) return;
-            const batch = writeBatch(db);
-            const q = query(collection(db, "REQUEST_Players"), where("REQUEST_roomId", "==", currentRoom));
-            const snap = await getDocs(q);
-            snap.forEach(d => batch.update(d.ref, { REQUEST_score: 0 }));
-            await batch.commit();
-        };
-
-        // --- UI生成 ---
-        function createSongCard(id, data) {
-            const div = document.createElement('div');
-            div.className = 'song-card';
-            const isMyTurn = data.REQUEST_targetName === myName;
-            div.innerHTML = `
-                <div style="font-size:0.9rem; color:#a0aec0;">🎤 ${data.REQUEST_targetName} さんへの指令</div>
-                <div style="font-size:1.4rem; font-weight:bold; margin:5px 0;">${data.REQUEST_songTitle}</div>
-                <div style="font-size:0.8rem; color:#ff007f;">提案者: ${data.REQUEST_requesterName}</div>
-                <div class="btn-group">
-                    <button class="btn-success" onclick="updateResult('${id}', '${data.REQUEST_requesterName}', '${data.REQUEST_targetName}', true)">成功</button>
-                    <button class="btn-fail" onclick="updateResult('${id}', '${data.REQUEST_requesterName}', '${data.REQUEST_targetName}', false)">失敗</button>
-                </div>
-            `;
-            return div;
-        }
-
-        function renderRanking() {
-            const list = document.getElementById('playerRanking');
-            list.innerHTML = "";
-            players.sort((a,b) => b.REQUEST_score - a.REQUEST_score).forEach(p => {
-                const item = document.createElement('div');
-                item.style = "display:flex; justify-content:space-between; padding:10px; border-bottom:1px solid #333; font-size:1.2rem;";
-                item.innerHTML = `<span>${p.REQUEST_playerName}</span><span style="color:#00ffcc; font-weight:bold;">${p.REQUEST_score} pt</span>`;
-                list.appendChild(item);
-            });
-        }
-
-        window.togglePanel = () => {
-            const p = document.getElementById('themeControlPanel');
-            p.style.display = p.style.display === 'none' ? 'block' : 'none';
-        };
-    </script>
-    <style>
-        :root { 
-            --bg: #121214; --card: #1e1e24; 
-            --primary: linear-gradient(135deg, #ff007f, #7928ca);
-            --secondary: linear-gradient(135deg, #00f2fe, #4facfe);
-            --danger: linear-gradient(135deg, #ff416c, #ff4b2b);
-        }
-        body { background: var(--bg); color: #fff; font-family: sans-serif; margin: 0; padding: 0; }
-        .container { max-width: 500px; margin: 0 auto; padding: 20px; }
-        input { background: #121214; border: 2px solid #333; color: #fff; padding: 15px; border-radius: 12px; width: 100%; box-sizing: border-box; font-size: 1.2rem; margin-bottom: 15px; }
-        button { border: none; border-radius: 12px; color: #fff; padding: 15px; font-weight: bold; font-size: 1.1rem; cursor: pointer; transition: 0.2s; }
-        button:active { transform: scale(0.95); }
-        
-        /* ログイン */
-        #loginScreen { text-align: center; padding-top: 100px; }
-        
-        /* メイン画面 */
-        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 2px solid #333; padding-bottom: 10px; }
-        .song-card { background: var(--card); padding: 20px; border-radius: 20px; margin-bottom: 15px; border: 1px solid #333; }
-        .btn-group { display: flex; gap: 10px; margin-top: 15px; }
-        .btn-success { background: var(--secondary); flex: 2; }
-        .btn-fail { background: #333; flex: 1; }
-        
-        #themeBox { background: var(--card); padding: 15px; border-radius: 15px; margin-bottom: 20px; text-align: center; border: 1px solid #ffdd55; }
-        .theme-btn { background: #2d2d35; margin: 5px; font-size: 0.9rem; padding: 8px 12px; }
-        .ranking-box { background: #121214; border-radius: 15px; padding: 10px; margin-top: 30px; }
-    </style>
+  /* PCやタブレットなど少し大きめの画面用の微調整 */
+  @media (min-width: 450px) {
+    .game-grid a {
+      font-size: 1.05rem;
+      height: 100px;
+    }
+    h1 { font-size: 2.2rem; }
+  }
+</style>
 </head>
 <body>
 
-<div class="container">
-    <div id="loginScreen">
-        <h1 style="background: var(--primary); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-size: 2.5rem;">KARAOKE REQ</h1>
-        <input type="text" id="roomInput" placeholder="ルーム名を入力">
-        <input type="text" id="nameInput" placeholder="あなたの名前">
-        <button onclick="joinRoom()" style="background: var(--primary); width: 100%;">入室する</button>
-    </div>
+<h1>カラオケ企画メニュー</h1>
 
-    <div id="mainScreen" style="display: none;">
-        <div class="header">
-            <div>
-                <div id="displayRoomName" style="font-weight: bold; font-size: 1.2rem;"></div>
-                <div style="color: #a0aec0;">参加中: <span id="memberCount">0名</span></div>
-            </div>
-            <button onclick="resetScores()" style="background: var(--danger); font-size: 0.8rem; padding: 8px;">スコアリセット</button>
-        </div>
+<h2>🎮 GAMES (10)</h2>
+<div class="game-grid">
+  <a href="Fivebom.html" class="btn-bom"><span>💣</span><span>カラフルボンバー </span></a>
+  <a href="ikkaku.html" class="btn-quiz"><span>🏆</span><span>一画千点！曲名クイズ</span></a>
+  <a href="setumei.html" class="btn-talk"><span>🎤</span><span>歌って話して<br>説明クイズ</span></a>
+  <a href="majan.html" class="btn-sugo"><span>🀄</span><span>ひらがジャンカラ </span></a>
+  <a href="kaerematen.html" class="btn-denshin"><span>📈</span><span>意思電信ゲーム</span></a>
+  <a href="50karaoke.html" class="btn-50kara"><span>📺</span><span>50カラオケ </span></a>
+  <a href="sutorakku.html" class="btn-str"><span>⚾</span><span>ストラックアウト </span></a>
+  <a href="pictimage.html" class="btn-pict"><span>📈</span><span>この絵は何？ </span></a>
+  <a href="bingo.html" class="btn-bingo"><span>🎶</span><span>カラオケBINGO!</span></a>
+  <a href="bouringu.html" class="btn-bowl"><span>🗓️</span><span>採点ボウリング</span></a>
+</div>
+  <a href="request.html" class="btn-bowl"><span>🙌</span><span>リクエストバトル</span></a>
+  </div>
 
-        <div id="themeBox">
-            <div id="themeText" style="font-size: 1.2rem; color: #ffdd55; margin-bottom: 10px;">お題：なし</div>
-            <button onclick="togglePanel()" class="theme-btn">⚙ お題設定</button>
-            <div id="themeControlPanel" style="display: none; margin-top: 10px;">
-                <button onclick="setTheme()" class="theme-btn" style="background: var(--secondary);">ランダム</button>
-                <button onclick="setTheme('アニソン')" class="theme-btn">アニソン</button>
-                <button onclick="setTheme('懐メロ')" class="theme-btn">懐メロ</button>
-                <button onclick="setTheme(prompt('お題を入力'))" class="theme-btn">自由入力</button>
-            </div>
-        </div>
-
-        <div style="margin-bottom: 30px;">
-            <input type="text" id="songInput" placeholder="歌ってほしい曲を入力">
-            <button onclick="addSong()" style="background: var(--primary); width: 100%; font-size: 1.3rem;">リクエストを投げる</button>
-        </div>
-
-        <h2 style="font-size: 1.1rem; color: #ff007f;">🔥 進行中の指令</h2>
-        <div id="songList"></div>
-
-        <div class="ranking-box">
-            <h2 style="font-size: 1rem; color: #a0aec0; text-align: center;">🏆 ランキング</h2>
-            <div id="playerRanking"></div>
-        </div>
-
-        <div style="text-align: center; margin-top: 40px;">
-            <button onclick="location.reload()" style="background: #333; width: 80%;">画面を更新</button>
-        </div>
-    </div>
+<div class="tool-box">
+  <h2>🛠️ TOOLS</h2>
+  <a href="hayaosi.html"><span>⏱️</span> 早押しボタン <span></span></a>
+  <a href="seiryou.html"><span>🎶</span> 盛り上がりチェッカー <span></span></a>
+  <a href="gamehistory.html"><span>📈</span> スコアボード <span></span></a>
 </div>
 
 </body>
