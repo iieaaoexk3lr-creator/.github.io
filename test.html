@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>声量チェッカー (dB・全記録保存版)</title>
+<title>声量チェッカー (dB・300MAX版)</title>
 
 <style>
 body{
@@ -249,20 +249,20 @@ let analyser;
 let dataArray;
 let animationId;
 
-let history = [];      // 画面表示用の1分リセットの履歴
-let fullHistory = [];  // 保存用の全期間の記録履歴
+let history = [];      
+let fullHistory = [];  
 
 let totalSum = 0;   
 let totalCount = 0;
-let maxVolume = 30;
+let maxVolume = 0;
 
 let startTime;
 let limitTime = 60;
 let running = false;
 let currentDate = "";
 
-const MIN_DB = 30;
-const MAX_DB = 100;
+const MIN_DB = 0;
+const MAX_DB = 300;
 
 toggleHelpBtn.onclick = function() {
     if (helpContent.style.display === "block") {
@@ -279,7 +279,7 @@ function getAverage(){
     return totalSum / totalCount;
 }
 
-// 通常の画面描画（1分ごとのリセット表示）
+// 通常の画面描画
 function drawGraph(){
     ctx.clearRect(0,0,canvas.width,canvas.height);
     ctx.fillStyle = "#111827";
@@ -293,7 +293,7 @@ function drawGraph(){
     ctx.strokeStyle = "#374151";
     ctx.lineWidth = 1;
 
-    // 横線（30dB〜100dB）
+    // 横線（0dB〜300dB）
     for(let i=0;i<=5;i++){
         const y = graphBottom - ((graphBottom - graphTop)/5)*i;
         ctx.beginPath();
@@ -350,8 +350,8 @@ function drawGraph(){
     ctx.fillText("AVG " + Math.floor(getAverage()) + " dB", 200, 40);
 }
 
-// 共通の枠・グリッド描画関数（画像保存の生成用）
-function drawBaseGrid(cCtx, left, right, top, bottom, xMaxLabel) {
+// 共通の枠・グリッド描画関数（時間軸の開始秒数（baseX）を指定可能に修正）
+function drawBaseGrid(cCtx, left, right, top, bottom, baseX, xMaxLabel) {
     cCtx.strokeStyle = "#374151";
     cCtx.lineWidth = 1;
 
@@ -377,7 +377,7 @@ function drawBaseGrid(cCtx, left, right, top, bottom, xMaxLabel) {
         cCtx.lineTo(x,bottom);
         cCtx.stroke();
 
-        const labelVal = Math.floor((xMaxLabel / 5) * i);
+        const labelVal = baseX + Math.floor((xMaxLabel / 5) * i);
         cCtx.fillStyle = "#9ca3af";
         cCtx.fillText(labelVal + "s", x-10, bottom + 20);
     }
@@ -435,18 +435,19 @@ function update(){
     
     let averageAmplitude = sum / dataArray.length;
     let dbfs = 20 * Math.log10(Math.max(averageAmplitude / 255, 0.0001));
-    let db = 110 + dbfs; 
+    
+    // スケールを最大300にマッピングするための調整
+    let db = 300 + (dbfs * 3.5); 
     
     if (db < MIN_DB) db = MIN_DB;
     if (db > MAX_DB) db = MAX_DB;
 
-    // 1分間（約3600フレーム）で画面用履歴はリセット
     if (history.length >= 3600) {
         history = []; 
     }
 
     history.push(db);
-    fullHistory.push(db); // フル履歴はリセットせず蓄積し続ける
+    fullHistory.push(db); 
     
     totalSum += db;
     totalCount++;
@@ -478,21 +479,18 @@ function update(){
     animationId = requestAnimationFrame(update);
 }
 
-// 【大幅改良】全期間の記録も含めて、画像を縦長2段にして保存する関数
+// 画像保存関数
 function saveImage(){
-    drawGraph(); // 現状の画面グラフを確定
+    drawGraph(); 
 
-    // 保存用に仮想の縦長キャンバス(高さ500px)を作成
     const saveCanvas = document.createElement("canvas");
     saveCanvas.width = 360;
     saveCanvas.height = 500; 
     const sCtx = saveCanvas.getContext("2d");
 
-    // 背景色
     sCtx.fillStyle = "#111827";
     sCtx.fillRect(0, 0, saveCanvas.width, saveCanvas.height);
 
-    // 情報エリア（プレイヤー名、日付、マックス、アベレージ）
     sCtx.fillStyle = "white";
     sCtx.font = "18px sans-serif";
     const player = playerNameInput.value.trim() || "NO NAME";
@@ -503,15 +501,12 @@ function saveImage(){
     sCtx.fillText("MAX " + Math.floor(maxVolume) + " dB", 200, 22);
     sCtx.fillText("AVG " + Math.floor(getAverage()) + " dB", 200, 42);
 
-    // 各グラフの配置座標の定義
     const gLeft = 45;
     const gRight = 330;
     
-    // 1段目：直近のグラフ (高さ170px)
     const gTop1 = 70;
     const gBottom1 = 240;
     
-    // 2段目：全体のグラフ (高さ170px)
     const gTop2 = 290;
     const gBottom2 = 460;
 
@@ -521,14 +516,10 @@ function saveImage(){
     sCtx.fillText("【直近1分間の推移】", 15, 64);
     
     const currentMinute = Math.floor(history.length ? (totalCount / 3600) : 0);
-    drawBaseGrid(sCtx, gLeft, gRight, gTop1, gBottom1, (currentMinute + 1) * 60);
-    // 1分前の開始秒数を計算して目盛りのスタートを補正
     const baseSec = currentMinute * 60;
-    for(let i=0; i<=5; i++){
-        const x = gLeft + ((gRight - gLeft)/5)*i;
-        sCtx.fillStyle = "#9ca3af";
-        sCtx.fillText((baseSec + Math.floor((60 / 5) * i)) + "s", x-10, gBottom1 + 16);
-    }
+    
+    // 重複描画を解消し、引数で正しいベース秒数を渡してクリーンに1回で描画
+    drawBaseGrid(sCtx, gLeft, gRight, gTop1, gBottom1, baseSec, 60);
 
     sCtx.strokeStyle = "#22c55e";
     sCtx.lineWidth = 2.5;
@@ -543,13 +534,13 @@ function saveImage(){
     sCtx.stroke();
 
 
-    // --- 2段目: スタートからの全期間グラフ枠と線を描画 ---
+    // --- 2段目: 全期間グラフ枠と線を描画 ---
     sCtx.fillStyle = "#3b82f6";
     sCtx.font = "12px sans-serif";
     sCtx.fillText("【全体の測定推移（全記録）】", 15, 284);
 
     const totalElapsedSeconds = Math.max(Math.floor(totalCount / 60), 1);
-    drawBaseGrid(sCtx, gLeft, gRight, gTop2, gBottom2, totalElapsedSeconds);
+    drawBaseGrid(sCtx, gLeft, gRight, gTop2, gBottom2, 0, totalElapsedSeconds);
 
     sCtx.strokeStyle = "#3b82f6";
     sCtx.lineWidth = 2.5;
@@ -563,7 +554,6 @@ function saveImage(){
     });
     sCtx.stroke();
 
-    // ダウンロード処理
     const link = document.createElement("a");
     link.download = "voice_result_full.png";
     link.href = saveCanvas.toDataURL("image/png");
