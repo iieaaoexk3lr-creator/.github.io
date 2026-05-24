@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>本格派・声量チェッカー (声紋ダイナミクス仕様)</title>
+<title>本格派・声量チェッカー (激音ダイナミクス・全体画像保存仕様)</title>
 
 <style>
 body{
@@ -237,7 +237,7 @@ canvas{
     <input type="text" id="songName" placeholder="曲名を入力">
 
     <div class="label">制限時間（秒）※最大600秒</div>
-    <input type="number" id="timeInput" min="1" max="600" value="120">
+    <input type="number" id="timeInput" min="1" max="600" value="360">
 
     <label class="checkbox-container">
         <input type="checkbox" id="recordToggle" checked>
@@ -251,11 +251,10 @@ canvas{
         </div>
         <input type="range" id="calibSlider" min="-20" max="20" value="0" step="1">
     </div>
-    <div class="small" style="margin-top:10px;">※ハイライト採点のため100秒以上の設定を推奨</div>
 </div>
 
 <div class="card">
-    <div class="timer" id="timer">120</div>
+    <div class="timer" id="timer">360</div>
 
     <div class="meter">
         <div class="bar" id="bar"></div>
@@ -285,9 +284,9 @@ canvas{
 <div class="help-content" id="helpContent">
     <div class="help-title">【特徴・ロジック】</div>
     <ul>
-        <li><b>開始直後ガード:</b> 開始から3秒間はマイク接続時の初期ノイズを弾くため、判定を鈍感に補正して誤検知を防ぎます。</li>
-        <li><b>声紋波形表示:</b> リアルタイムの声を分析し、中央が50dBA、上下端が130dBAに対応する上下対称のエモいビジュアル波形を生成します。</li>
-        <li><b>ハイライト100秒採点:</b> 曲の長さによる不平等を無くすため、曲中で最も盛り上がった「連続する100秒間」を自動検出。その区間の【MAX + AVG ÷ 2】を最終得点としてリザルト画像右側へ刻印します。</li>
+        <li><b>60秒で1周スクロール:</b> 画面上の波形はちょうど60秒で右端まで埋まる速度（約0.75秒ステップ）で、じっくりと綺麗に流れます。</li>
+        <li><b>激しいトゲトゲ声紋:</b> なだらかになりすぎないようダイナミクスをシャープに調整。声のキレに合わせて波形が激しく上下動します。</li>
+        <li><b>全歴史ダウンロード:</b> [画像保存] ボタンを押すと、曲の始まりから終わりまでの「全体の履歴すべて」を1枚に収めた超ロング波形画像が、右側の採点付きで出力されます！</li>
     </ul>
 </div>
 
@@ -326,27 +325,30 @@ let dataArray;
 let animationId;
 let audioContext;
 
-// 声紋表示用のバッファ（最新の波形履歴）
-let waveHistory = new Array(80).fill(50);
+// 60秒間で綺麗に画面が埋まるための本数設定 (360px幅に対して、4.5px間隔 = 80本)
+const MAX_WAVE_BARS = 80;
+let waveHistory = new Array(MAX_WAVE_BARS).fill(50);
+// 歌い始めから終わりまで「すべての波形履歴」を完全に記憶する全歴史配列
 let fullHistory = [];  
 
 let totalSum = 0;   
 let totalCount = 0;
 let maxVolume = 0;
 
-// 動的補正用変数
+// 動的補正用・ノイズカット変数
 let lastOneSecondDb = 40; 
 let lastSavedTimeForDelta = 0;
+let lastWavePushTime = 0; // スピード制御用
 
 // 10秒ごとのデータを完全にトラッキングする配列(10区間で100秒)
 let finalHighScore = 0;
 let intervalSum = 0;
 let intervalCount = 0;
 let lastIntervalIndex = 0;
-let sectionData = []; // { max: 0, avg: 0 } を10秒ごとに保持
+let sectionData = []; 
 
 let startTime;
-let limitTime = 120;
+let limitTime = 360;
 let running = false;
 let currentDate = "";
 
@@ -390,7 +392,7 @@ function calculateVoiceRank(avgDb) {
     return "控えめ・おしゃべり音量 (〜54dB)";
 }
 
-// 【指定ロジック】最高の連続100秒(10区間)から MAX + AVG ÷ 2 を算出
+// 最高の連続100秒(10区間)から MAX + AVG ÷ 2 を算出
 function calculateHighlightScore() {
     if (sectionData.length === 0) return 0;
 
@@ -412,7 +414,6 @@ function calculateHighlightScore() {
         if (score > maxScore) maxScore = score;
     }
 
-    // 100秒に満たない場合は、今ある全区間から算出
     if (sectionData.length < comboLength && sectionData.length > 0) {
         let comboMax = 0;
         let comboSum = 0;
@@ -427,36 +428,33 @@ function calculateHighlightScore() {
     return maxScore;
 }
 
-// 声紋型グラフィックの描画（中央50、上下端130）
-function drawVoicePrint(targetCtx, w, h) {
+// 指定配列を指定キャンバスにシアン声紋描画するコア関数
+function drawVoicePrintCore(targetCtx, w, h, dataArrayToDraw, maxBarsCount) {
     targetCtx.fillStyle = "#111827";
     targetCtx.fillRect(0, 0, w, h);
 
     const centerY = h / 2;
-    const barWidth = 3;
-    const gap = 1.5;
-    const totalBars = waveHistory.length;
+    const totalBars = dataArrayToDraw.length;
+    
+    // 全体がきれいに収まるようにバーの太さと隙間を自動アロケーション
+    const gap = 1;
+    const barWidth = Math.max((w - (totalBars * gap)) / totalBars, 1.5);
     const startX = (w - (totalBars * (barWidth + gap))) / 2;
 
-    // 背景にうっすらとセンターライン(50dB)と境界ガイドを引く
-    targetCtx.strokeStyle = "rgba(55, 65, 81, 0.5)";
+    targetCtx.strokeStyle = "rgba(55, 65, 81, 0.4)";
     targetCtx.lineWidth = 1;
     targetCtx.beginPath();
-    targetCtx.moveTo(0, centerY); targetCtx.lineTo(w, centerY); // 50dB
-    targetCtx.moveTo(0, centerY - (centerY * 0.9)); targetCtx.lineTo(w, centerY - (centerY * 0.9)); // 上端部
-    targetCtx.moveTo(0, centerY + (centerY * 0.9)); targetCtx.lineTo(w, centerY + (centerY * 0.9)); // 下端部
+    targetCtx.moveTo(0, centerY); targetCtx.lineTo(w, centerY); 
+    targetCtx.moveTo(0, centerY - (centerY * 0.9)); targetCtx.lineTo(w, centerY - (centerY * 0.9)); 
+    targetCtx.moveTo(0, centerY + (centerY * 0.9)); targetCtx.lineTo(w, centerY + (centerY * 0.9)); 
     targetCtx.stroke();
 
-    // ネオンシアンのグローエフェクト演出
-    targetCtx.shadowBlur = 8;
+    targetCtx.shadowBlur = 7;
     targetCtx.shadowColor = "#22d3ee";
 
     for (let i = 0; i < totalBars; i++) {
-        const dbValue = waveHistory[i];
-        
-        // 中央を50とし、そこからのズレ幅を計算
+        const dbValue = dataArrayToDraw[i];
         let delta = dbValue - 50; 
-        // 130dB時にちょうど画面の上端・下端(100%高さ)付近へ達するようマッピング率を調整
         let ratio = delta / (130 - 50); 
         if(ratio < 0) ratio = 0;
         if(ratio > 1) ratio = 1;
@@ -464,26 +462,29 @@ function drawVoicePrint(targetCtx, w, h) {
         const barHeight = (centerY * 0.9) * ratio;
         const x = startX + i * (barWidth + gap);
 
-        // 上下対称にシアンの縦棒を伸ばす
         targetCtx.fillStyle = "#22d3ee";
         targetCtx.fillRect(x, centerY - barHeight, barWidth, barHeight * 2 || 2);
     }
 
-    // シャドウ設定を初期化に戻す
     targetCtx.shadowBlur = 0;
+}
 
-    // 左上に情報テキストを描画
+// 画面表示用のリアルタイム描画 (最新60秒分をローテーション)
+function drawVoicePrint(targetCtx, w, h) {
+    drawVoicePrintCore(targetCtx, w, h, waveHistory, MAX_WAVE_BARS);
+
+    // テキストオーバーレイ
     targetCtx.fillStyle = "white";
     targetCtx.font = "15px sans-serif";
     const player = playerNameInput.value.trim() || "NO NAME";
     const song = songNameInput.value.trim() || "NO SONG";
-    targetCtx.fillText(player + " / " + song, 15, 22);
+    targetCtx.fillText(player + " / " + song, 15, 24);
 
     targetCtx.font = "12px sans-serif";
     targetCtx.fillStyle = "#9ca3af";
-    targetCtx.fillText(currentDate, 15, 40);
+    targetCtx.fillText(currentDate, 15, 42);
     
-    // スケールガイド文字
+    const centerY = h / 2;
     targetCtx.fillStyle = "rgba(255,255,255,0.4)";
     targetCtx.fillText("130dB", w - 45, centerY - (centerY * 0.75));
     targetCtx.fillText("50dB", w - 40, centerY + 4);
@@ -494,15 +495,15 @@ async function start(){
     if(running) return;
 
     running = true;
-    waveHistory = new Array(80).fill(50);
+    waveHistory = new Array(MAX_WAVE_BARS).fill(50);
     fullHistory = [];
     totalSum = 0;
     totalCount = 0;
     maxVolume = MIN_DB;
     
-    // 各種初期化
     lastOneSecondDb = 40;
     lastSavedTimeForDelta = Date.now();
+    lastWavePushTime = Date.now();
     finalHighScore = 0;
     intervalSum = 0;
     intervalCount = 0;
@@ -513,7 +514,7 @@ async function start(){
     audioBlob = null;
     saveAudioBtn.style.display = "none"; 
 
-    limitTime = Math.min(Math.max(parseInt(timeInput.value) || 120, 1), 600);
+    limitTime = Math.min(Math.max(parseInt(timeInput.value) || 360, 1), 600);
     timerText.textContent = limitTime;
 
     currentDate = new Date().toLocaleString("ja-JP");
@@ -569,7 +570,6 @@ async function start(){
 
 function finalizeScore() {
     if (intervalCount > 0) {
-        // 現在走っている計測途中の区間も計算に織り込む
         const chunkAvg = intervalSum / intervalCount;
         let chunkMax = MIN_DB;
         const searchCount = Math.min(fullHistory.length, intervalCount);
@@ -619,7 +619,12 @@ function update(){
     let weightedSum = 0;
     let totalWeight = 0;
 
+    // 【なだらかさ改善】：以前の鋭いアタック検知を再現
+    let peakAmplitude = 0;
     for (let i = 0; i < bufferLength; i++) {
+        if (dataArray[i] > peakAmplitude) {
+            peakAmplitude = dataArray[i]; 
+        }
         const amplitude = dataArray[i]; 
         if (amplitude > 0) {
             const frequency = (i * sampleRate) / analyser.fftSize;
@@ -632,10 +637,13 @@ function update(){
     
     let averageAmplitude = totalWeight > 0 ? (weightedSum / totalWeight) : 0;
     
+    // ピーク成分を35%高精度ブレンドして波の「激しさ・トゲトゲ感」を増幅
+    let finalAmplitude = (averageAmplitude * 0.65) + (peakAmplitude * 0.35);
+
     let rawDb = 0;
-    if (averageAmplitude > 0) {
-        let dbfs = 20 * Math.log10(averageAmplitude / 255);
-        rawDb = dbfs + 100; 
+    if (finalAmplitude > 0) {
+        let dbfs = 20 * Math.log10(finalAmplitude / 255);
+        rawDb = dbfs + 102; // 感度調整ベース
     } else {
         rawDb = 30; 
     }
@@ -652,7 +660,6 @@ function update(){
     let now = Date.now();
     const elapsedSeconds = Math.floor((now - startTime) / 1000);
 
-    // 1秒ごとのデルタ用基準更新
     if (now - lastSavedTimeForDelta >= 1000) {
         lastOneSecondDb = rawDb;
         lastSavedTimeForDelta = now;
@@ -662,9 +669,7 @@ function update(){
     let modifiedDb = rawDb;
 
     if (rawDb > 45) {
-        // ★【バグ・急上昇誤判定ガード】：開始直後3秒間は100dB等の跳ね上がりを防ぐためdelta補正を0にする
-        let dynamicScale = (elapsedSeconds < 3) ? 0.0 : 0.4;
-        
+        let dynamicScale = (elapsedSeconds < 3) ? 0.0 : 0.45; // 鋭さを少しアップ
         modifiedDb = rawDb + (delta * dynamicScale);
         modifiedDb = 35 + (modifiedDb - 35) * 1.15;
     }
@@ -672,10 +677,17 @@ function update(){
     if (modifiedDb < MIN_DB) modifiedDb = MIN_DB;
     if (modifiedDb > MAX_DB) modifiedDb = MAX_DB;
 
-    // 声紋バッファのシフト（左へ流れるアニメーション）
-    waveHistory.shift();
-    waveHistory.push(modifiedDb);
-    fullHistory.push(modifiedDb); 
+    // -------------------------------------------------------------
+    // 指定条件：波形の更新速度を「60秒で画面が1枚埋まる速度」に制御
+    // 60秒 = 60000ms / 80本 ＝ 約750msに1回プッシュ
+    // -------------------------------------------------------------
+    if (now - lastWavePushTime >= 750) {
+        waveHistory.shift();
+        waveHistory.push(modifiedDb);
+        fullHistory.push(modifiedDb); // 全歴史にストック
+        lastWavePushTime = now;
+    }
+    // -------------------------------------------------------------
     
     totalSum += modifiedDb;
     totalCount++;
@@ -685,16 +697,17 @@ function update(){
     
     const currentIntervalIndex = Math.floor(elapsedSeconds / 10);
     
-    // 10秒境界の処理
     if (currentIntervalIndex > lastIntervalIndex) {
         if (intervalCount > 0) {
             const chunkAvg = intervalSum / intervalCount;
-            // この10秒間の最大値を抽出
             let chunkMax = MIN_DB;
             const searchCount = Math.min(fullHistory.length, intervalCount);
-            for(let i = fullHistory.length - searchCount; i < fullHistory.length; i++) {
+            // 直近の歴史からMAXを抽出
+            const startIdx = Math.max(fullHistory.length - searchCount, 0);
+            for(let i = startIdx; i < fullHistory.length; i++) {
                 if(fullHistory[i] > chunkMax) chunkMax = fullHistory[i];
             }
+            if(chunkMax === MIN_DB) chunkMax = modifiedDb; // フォールバック
             sectionData.push({ max: chunkMax, avg: chunkAvg });
         }
         intervalSum = 0;
@@ -741,35 +754,47 @@ function getBaseFileName() {
     return `${player}_${song}_${maxDbStr}`;
 }
 
-// 2画面画像保存 (右側に得点・リザルト情報をすっきり集約)
+// 指定要望：曲の最初から最後まで「全歴史」を縮尺して1枚に落とし込む全体画像保存
 function saveImage(){
-    stop(); // 計測中なら安全に確定させる
+    stop(); 
     
     const baseFileName = getBaseFileName();
     const saveCanvas = document.createElement("canvas");
     
-    // 右側に得点情報エリアを設けるため、横幅を540pxに拡張
     saveCanvas.width = 540;
     saveCanvas.height = 420; 
     const sCtx = saveCanvas.getContext("2d");
 
-    // 全体背景
     sCtx.fillStyle = "#111827";
     sCtx.fillRect(0, 0, saveCanvas.width, saveCanvas.height);
 
-    // 左側に現在の声紋ビジュアルをレンダリング (340x420サイズにアジャスト)
     const printW = 340;
     const printH = 420;
     
-    // サブキャンバスで左側波形を生成
     const tempCanvas = document.createElement("canvas");
     tempCanvas.width = printW;
     tempCanvas.height = printH;
     const tCtx = tempCanvas.getContext("2d");
     
-    // waveHistoryの現在の状態をそのまま描画
-    drawVoicePrint(tCtx, printW, printH);
+    // 【バグ防止】：まだ履歴が全くない（開始直後に押された）場合は、現在の画面をコピー
+    let dataToDraw = [...fullHistory];
+    if (dataToDraw.length === 0) {
+        dataToDraw = [...waveHistory];
+    }
+
+    // 全長がどれだけ長くても、340pxの中に全歴史を綺麗にトゲトゲのまま詰め込む
+    drawVoicePrintCore(tCtx, printW, printH, dataToDraw, dataToDraw.length);
     sCtx.drawImage(tempCanvas, 0, 0);
+
+    // テキストオーバーレイ（全体リザルト用）
+    sCtx.fillStyle = "white";
+    sCtx.font = "14px sans-serif";
+    const player = playerNameInput.value.trim() || "NO NAME";
+    const song = songNameInput.value.trim() || "NO SONG";
+    sCtx.fillText(player + " / " + song, 15, 24);
+    sCtx.fillStyle = "#9ca3af";
+    sCtx.font = "11px sans-serif";
+    sCtx.fillText(currentDate + " (ALL TIME WAVE)", 15, 42);
 
     // 右側エリアの境界線
     sCtx.strokeStyle = "#374151";
@@ -779,12 +804,12 @@ function saveImage(){
     sCtx.lineTo(printW, printH);
     sCtx.stroke();
 
-    // ★【指定要望】：右側の情報・得点表示エリア
+    // 右側の情報・得点表示エリア
     const infoX = printW + 20;
     
     sCtx.fillStyle = "#3b82f6";
     sCtx.font = "bold 14px sans-serif";
-    sCtx.fillText("【📊 最終リザルト】", infoX, 40);
+    sCtx.fillText("【📊 全体リザルト】", infoX, 40);
 
     sCtx.fillStyle = "#9ca3af";
     sCtx.font = "13px sans-serif";
@@ -805,15 +830,13 @@ function saveImage(){
     sCtx.font = "bold 15px sans-serif";
     sCtx.fillText("🔥 ハイライト得点 (100s)", infoX, 200);
     
-    // デカ文字で総合得点を右側に表示
     sCtx.fillStyle = "#22d3ee";
     sCtx.font = "bold 44px sans-serif";
     
-    // 最終計算を確実に同期
+    // スコアの確定計算
     const scoreVal = calculateHighlightScore() || Math.floor(maxVolume + (getAverage() / 2));
     sCtx.fillText(scoreVal + " 点", infoX, 255);
 
-    // 総合評価
     sCtx.fillStyle = "#facc15";
     sCtx.font = "bold 13px sans-serif";
     sCtx.fillText("【声量評価】", infoX, 320);
@@ -821,12 +844,10 @@ function saveImage(){
     sCtx.font = "13px sans-serif";
     
     const rankStr = calculateVoiceRank(getAverage());
-    // 長い文字列に対応するため、名称部分のみ綺麗に配置
     sCtx.fillText(rankStr.split(" (")[0], infoX, 345);
 
-    // ダウンロード処理
     const imgLink = document.createElement("a");
-    imgLink.download = baseFileName + ".png";
+    imgLink.download = baseFileName + "_alltime.png";
     imgLink.href = saveCanvas.toDataURL("image/png");
     imgLink.click();
 }
@@ -846,7 +867,6 @@ stopBtn.onclick = stop;
 saveImgBtn.onclick = saveImage;
 saveAudioBtn.onclick = saveAudio;
 
-// 初回起動時に空の声紋ベースを描画
 drawVoicePrint(ctx, canvas.width, canvas.height);
 </script>
 
