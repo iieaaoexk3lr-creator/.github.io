@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>声量チェッカー (dB・200MAX版)</title>
+<title>本格派・声量チェッカー (A特性＆校正機能付き)</title>
 
 <style>
 body{
@@ -70,6 +70,27 @@ input{
     font-size:18px;
     box-sizing:border-box;
     margin-bottom:10px;
+}
+
+/* 校正用スライダースタイル */
+.calib-container {
+    background: #111827;
+    padding: 12px;
+    border-radius: 12px;
+    margin-top: 10px;
+}
+.calib-header {
+    display: flex;
+    justify-content: space-between;
+    font-size: 13px;
+    margin-bottom: 6px;
+    color: #3b82f6;
+    font-weight: bold;
+}
+input[type="range"] {
+    width: 100%;
+    margin: 5px 0;
+    cursor: pointer;
 }
 
 /* 録音選択用トグルスタイル */
@@ -232,7 +253,19 @@ canvas{
         <span>同時に音声を録音する</span>
     </label>
 
-    <div class="small">10分まで設定可能</div>
+    <!-- 本格化アプローチ：マイク感度の校正スライダー -->
+    <div class="calib-container">
+        <div class="calib-header">
+            <span>🛠️ マイク感度のズレ補正(校正)</span>
+            <span><span id="calibVal">0</span> dB</span>
+        </div>
+        <input type="range" id="calibSlider" min="-20" max="20" value="0" step="1">
+        <div class="small" style="color:#9ca3af; font-size:11px; margin:0;">
+            ※静かな部屋で35〜40dB、普通の話し声で60〜70dBになるよう微調整してください。
+        </div>
+    </div>
+
+    <div class="small" style="margin-top:10px;">10分まで設定可能</div>
 </div>
 
 <div class="card">
@@ -243,9 +276,9 @@ canvas{
     </div>
 
     <div class="values">
-        <div>現在: <span id="current">0</span> dB</div>
-        <div>最大: <span id="max">0</span> dB</div>
-        <div>平均: <span id="avg">0</span> dB</div>
+        <div>現在: <span id="current">0</span> dBA</div>
+        <div>最大: <span id="max">0</span> dBA</div>
+        <div>平均: <span id="avg">0</span> dBA</div>
         <div>時間: <span id="elapsed">0</span> 秒</div>
     </div>
 
@@ -267,7 +300,8 @@ canvas{
     <ul>
         <li><span class="warning-text">※重要：LINEアプリ内で開いている場合は、測定や録音が正常に動作しません。必ずSafariやChromeなど「デフォルトのブラウザ」に切り替えて開いてください。</span></li>
         <li>「名前」「曲名」「制限時間」を入力して<b>[開始]</b>を押すと測定と録音が始まります。</li>
-        <li>測定中は現在の声量がリアルタイムにデシベル(dB)でグラフ化されます。</li>
+        <li>測定中は現在の声量がリアルタイムに、人間の耳の特性に合わせた「デシベル(dBA)」でグラフ化されます。</li>
+        <li><b>[マイク感度のズレ補正]</b>を使うと、お使いのスマホ機種特有のマイクの個体差を調整できます。</li>
         <li><b>[停止]</b>を押すか、制限時間になると測定が自動終了します。</li>
         <li>測定終了後、<b>[画像保存]</b>を押すと結果のグラフ画像が保存されます。録音ONで測定した場合は、新しく出現する<b>[録音保存]</b>ボタンから音声ファイルを保存できます。</li>
     </ul>
@@ -298,11 +332,14 @@ const timeInput = document.getElementById("timeInput");
 const playerNameInput = document.getElementById("playerName");
 const songNameInput = document.getElementById("songName");
 const recordToggle = document.getElementById("recordToggle");
+const calibSlider = document.getElementById("calibSlider");
+const calibVal = document.getElementById("calibVal");
 const info = document.getElementById("info");
 
 let analyser;
 let dataArray;
 let animationId;
+let audioContext;
 
 let history = [];      
 let fullHistory = [];  
@@ -329,6 +366,12 @@ const ua = navigator.userAgent.toLowerCase();
 if (ua.indexOf("line") > -1) {
     lineWarning.style.display = "block";
 }
+
+// 校正スライダーの値同期
+calibSlider.oninput = function() {
+    let val = parseInt(this.value);
+    calibVal.textContent = (val > 0 ? "+" : "") + val;
+};
 
 toggleHelpBtn.onclick = function() {
     if (helpContent.style.display === "block") {
@@ -370,7 +413,7 @@ function drawGraph(){
         ctx.fillStyle = "#9ca3af";
         ctx.font = "12px sans-serif";
         const value = Math.floor(MIN_DB + ((MAX_DB - MIN_DB) / 5) * i);
-        ctx.fillText(value + "dB", 2, y+4);
+        ctx.fillText(value + "dBA", 2, y+4);
     }
 
     // 縦線
@@ -413,8 +456,8 @@ function drawGraph(){
 
     ctx.font = "14px sans-serif";
     ctx.fillText(currentDate, 15, 38);
-    ctx.fillText("MAX " + Math.floor(maxVolume) + " dB", 200, 20);
-    ctx.fillText("AVG " + Math.floor(getAverage()) + " dB", 200, 40);
+    ctx.fillText("MAX " + Math.floor(maxVolume) + " dBA", 190, 20);
+    ctx.fillText("AVG " + Math.floor(getAverage()) + " dBA", 190, 40);
 }
 
 // 共通の枠・グリッド描画関数
@@ -433,7 +476,7 @@ function drawBaseGrid(cCtx, left, right, top, bottom, baseX, xMaxLabel) {
         cCtx.fillStyle = "#9ca3af";
         cCtx.font = "12px sans-serif";
         const value = Math.floor(MIN_DB + ((MAX_DB - MIN_DB) / 5) * i);
-        cCtx.fillText(value + "dB", 2, y+4);
+        cCtx.fillText(value + "dBA", 2, y+4);
     }
 
     // 縦線
@@ -461,7 +504,7 @@ async function start(){
     maxVolume = MIN_DB;
     audioChunks = [];
     audioBlob = null;
-    saveAudioBtn.style.display = "none"; // ボタンを初期化
+    saveAudioBtn.style.display = "none"; 
 
     limitTime = Math.min(Math.max(parseInt(timeInput.value) || 60, 1), 600);
     timerText.textContent = limitTime;
@@ -470,13 +513,12 @@ async function start(){
     info.innerHTML = "測定日時: " + currentDate;
 
     try {
+        // 本格化アプローチ1：idealではなく【exact】を使用してスマホAGCを強力に無効化
         const stream = await navigator.mediaDevices.getUserMedia({ 
             audio: {
-                echoCancellation: false,  
-                noiseSuppression: false,   
-                autoGainControl: false,    
-                sampleRate: 48000,         
-                channelCount: 1
+                echoCancellation: { exact: false },  
+                noiseSuppression: { exact: false },   
+                autoGainControl: { exact: false }
             } 
         });
         
@@ -497,13 +539,13 @@ async function start(){
             };
             mediaRecorder.onstop = function() {
                 audioBlob = new Blob(audioChunks, { type: mediaRecorder.mimeType || "audio/aac" });
-                saveAudioBtn.style.display = "block"; // 録音完了後に保存ボタンを表示
+                saveAudioBtn.style.display = "block"; 
             };
             mediaRecorder.start(250); 
         }
 
         // 解析セットアップ
-        const audioContext = new AudioContext();
+        audioContext = new (window.AudioContext || window.webkitAudioContext)();
         const source = audioContext.createMediaStreamSource(stream);
 
         analyser = audioContext.createAnalyser();
@@ -515,7 +557,7 @@ async function start(){
 
         update();
     } catch(e) {
-        alert("マイクの許可が必要です。LINEアプリ内では動作しないため、通常のブラウザで開き直してください。");
+        alert("マイクの許可、またはデバイスが対応していません。LINEアプリ内では動作しないため、通常のブラウザで開き直してください。");
         running = false;
     }
 }
@@ -527,6 +569,20 @@ function stop(){
         mediaRecorder.stop();
         mediaRecorder.stream.getTracks().forEach(track => track.stop());
     }
+    if (audioContext) {
+        audioContext.close();
+    }
+}
+
+// 本格化アプローチ2：A特性（人間の耳の聞こえ方）を疑似シミュレートする関数
+function getAWeightingOffset(frequency) {
+    if (frequency <= 0) return -100;
+    // A特性の近似計算式
+    const f2 = frequency * frequency;
+    const f4 = f2 * f2;
+    const rA = (12194 * 12194 * f4) / 
+               ((f2 + 20.6 * 20.6) * Math.sqrt((f2 + 107.7 * 107.7) * (f2 + 737.9 * 737.9)) * (f2 + 12194 * 12194));
+    return 20 * Math.log10(rA) + 2.0; 
 }
 
 function update(){
@@ -534,28 +590,55 @@ function update(){
 
     analyser.getByteFrequencyData(dataArray);
 
-    let sum = 0;
-    for(let i=0; i<dataArray.length; i++){
-        sum += dataArray[i];
+    const bufferLength = analyser.frequencyBinCount;
+    const sampleRate = audioContext.sampleRate;
+    
+    let weightedSum = 0;
+    let totalWeight = 0;
+
+    // 各周波数帯のエネルギーにA特性フィルターの重み付けを適用
+    for (let i = 0; i < bufferLength; i++) {
+        const amplitude = dataArray[i]; // 0 ~ 255
+        if (amplitude > 0) {
+            // インデックスを実際の周波数(Hz)に変換
+            const frequency = (i * sampleRate) / analyser.fftSize;
+            // 周波数ごとのA特性補正値(dB)を取得
+            const offset = getAWeightingOffset(frequency);
+            
+            // 補正値を倍率に変換して乗算
+            const weight = Math.pow(10, offset / 20);
+            weightedSum += amplitude * weight;
+            totalWeight += weight;
+        }
     }
     
-    let averageAmplitude = sum / dataArray.length;
+    // 平均振幅の算出
+    let averageAmplitude = totalWeight > 0 ? (weightedSum / totalWeight) : 0;
     
-    // 室音で35dB付近、少しの声で60〜70dB、大声で150dB以上になるよう対数増幅率と底上げを徹底調整
+    // 基本のデシベル計算（0〜255をdB表現へマッピング）
     let db = 0;
-    if (averageAmplitude > 0.1) {
+    if (averageAmplitude > 0) {
         let dbfs = 20 * Math.log10(averageAmplitude / 255);
-        // 室音(振幅が極めて小さい時)を35〜40に、少しの声(中振幅)を滑らかに分散、大声をMAX付近に配置
-        db = ((dbfs + 65) * 2.3) + 20;
+        // 通常の騒音計レンジに引き上げるためのベース
+        db = dbfs + 100; 
     } else {
-        db = 0;
-    }
-    
-    // 何もない時の最小室音の範囲を35~40dB前後に安定させる補正
-    if (db > 0 && db < 40) {
-        db = 35 + (db / 8);
+        db = 30; // 完全無音時の最低保障
     }
 
+    // 本格化アプローチ3：手動校正（キャリブレーション）の値を加算
+    const calibrationOffset = parseInt(calibSlider.value);
+    db += calibrationOffset;
+
+    // 環境騒音としてのベースライン(30dB〜35dB)以下にならないようガード
+    if (db < 30) db = 30;
+    
+    // 物理限界付近の頭打ちを滑らかにして200dBAまで拡張する非線形補正
+    if (db > 90) {
+        let excess = db - 90;
+        db = 90 + (excess * 1.5); // 大声の時は200dB側へ綺麗に突き抜けるように
+    }
+
+    // 最終レンジ制限
     if (db < MIN_DB) db = MIN_DB;
     if (db > MAX_DB) db = MAX_DB;
 
@@ -600,11 +683,11 @@ function update(){
 function getBaseFileName() {
     const player = playerNameInput.value.trim() || "NO_NAME";
     const song = songNameInput.value.trim() || "NO_SONG";
-    const maxDbStr = Math.floor(maxVolume) + "dB";
+    const maxDbStr = Math.floor(maxVolume) + "dBA";
     return `${player}_${song}_${maxDbStr}`;
 }
 
-// 画像保存のみを実行
+// 画像保存を実行
 function saveImage(){
     drawGraph(); 
 
@@ -626,8 +709,8 @@ function saveImage(){
 
     sCtx.font = "14px sans-serif";
     sCtx.fillText(currentDate, 15, 42);
-    sCtx.fillText("MAX " + Math.floor(maxVolume) + " dB", 200, 22);
-    sCtx.fillText("AVG " + Math.floor(getAverage()) + " dB", 200, 42);
+    sCtx.fillText("MAX " + Math.floor(maxVolume) + " dBA", 190, 22);
+    sCtx.fillText("AVG " + Math.floor(getAverage()) + " dBA", 190, 42);
 
     const gLeft = 45;
     const gRight = 330;
@@ -682,7 +765,7 @@ function saveImage(){
     imgLink.click();
 }
 
-// 音声保存のみを実行
+// 音声保存を実行
 function saveAudio(){
     if (!audioBlob) return;
     const baseFileName = getBaseFileName();
