@@ -32,7 +32,6 @@ body{
     box-sizing: border-box;
 }
 
-/* メニューに戻るボタンのスタイル */
 .back-to-menu {
     width: 100%;
     max-width: 430px;
@@ -77,7 +76,6 @@ h1{
     margin-bottom:16px;
 }
 
-/* 保存枠のスタイル */
 .save-container-box {
     background: #111827;
     border: 2px dashed #4b5563;
@@ -182,7 +180,6 @@ button{
     color:white;
 }
 
-/* 保存ボタンをこれまでの半分のサイズ感（コンパクト）に調整 */
 .save-img, .save-video, .save-audio {
     flex: 1;
     min-width: 100px;
@@ -418,6 +415,7 @@ let audioContext;
 let streamStream; 
 
 const MAX_WAVE_BARS = 80;
+// 初期状態の下限を80に設定
 let waveHistory = new Array(MAX_WAVE_BARS).fill(null).map(() => ({ high: 80, low: 80 }));
 let fullHistory = [];  
 
@@ -425,11 +423,9 @@ let totalSum = 0;
 let totalCount = 0;
 let maxVolume = 0;
 
-let lastOneSecondDb = 85; 
 let lastSavedTimeForDelta = 0;
 let lastWavePushTime = 0; 
 
-// 低音と高音の集計用
 let lowSumTotal = 0;
 let lowCountTotal = 0;
 let maxLowVolume = 80;
@@ -444,8 +440,9 @@ let running = false;
 let isEndingDelay = false; 
 let currentDate = "";
 
+// 画面表示上の範囲を「80〜160」へ拡大
 const MIN_DB = 80;
-const MAX_DB = 150; 
+const MAX_DB = 160; 
 
 let mediaRecorder;
 let videoChunks = [];
@@ -504,7 +501,6 @@ function getHighAverage(){
     return highSumTotal / highCountTotal;
 }
 
-// 低音(最大+平均) ＋ 高音(最大+平均)
 function calculateHighlightScore() {
     const lMax = Math.floor(maxLowVolume);
     const lAvg = Math.floor(getLowAverage());
@@ -548,12 +544,13 @@ function drawVoicePrintCore(dataArrayToDraw, targetCtx, startY, w, h) {
     for (let i = 0; i < totalBars; i++) {
         const item = dataArrayToDraw[i];
         
-        let ratioHigh = (item.high - 80) / (150 - 80);
+        // 80〜160の範囲で比率を計算
+        let ratioHigh = (item.high - 80) / (160 - 80);
         if(ratioHigh < 0) ratioHigh = 0;
         if(ratioHigh > 1) ratioHigh = 1;
         const heightHigh = (h * 0.45) * ratioHigh;
 
-        let ratioLow = (item.low - 80) / (150 - 80);
+        let ratioLow = (item.low - 80) / (160 - 80);
         if(ratioLow < 0) ratioLow = 0;
         if(ratioLow > 1) ratioLow = 1;
         const heightLow = (h * 0.45) * ratioLow;
@@ -602,17 +599,14 @@ function drawEmbedResult(targetCtx, w, h) {
     targetCtx.fillStyle = "white";
     targetCtx.font = "16px sans-serif";
     
-    // 左カラム：低音
     targetCtx.textAlign = "right";
     targetCtx.fillText("低音最大: " + scoreObj.lowMax + " dB", w / 2 - 25, 225);
     targetCtx.fillText("低音平均: " + scoreObj.lowAvg + " dB", w / 2 - 25, 260);
     
-    // 右カラム：高音
     targetCtx.textAlign = "left";
     targetCtx.fillText("高音最大: " + scoreObj.highMax + " dB", w / 2 + 25, 225);
     targetCtx.fillText("高音平均: " + scoreObj.highAvg + " dB", w / 2 + 25, 260);
 
-    // トータルスコア
     targetCtx.textAlign = "center";
     targetCtx.fillStyle = "#22d3ee";
     targetCtx.font = "bold 24px sans-serif";
@@ -680,9 +674,9 @@ function drawCombinedFrame(targetCtx, w, h, mode) {
     
     const centerY = halfH + (halfH / 2);
     targetCtx.fillStyle = "rgba(255,255,255,0.4)";
-    targetCtx.fillText("150dB (高音)", w - 75, centerY - (halfH * 0.38));
+    targetCtx.fillText("160dB (高音)", w - 75, centerY - (halfH * 0.38));
     targetCtx.fillText("80dB", w - 40, centerY + 4);
-    targetCtx.fillText("150dB (低音)", w - 75, centerY + (halfH * 0.41));
+    targetCtx.fillText("160dB (低音)", w - 75, centerY + (halfH * 0.41));
 }
 
 async function start(){
@@ -696,7 +690,6 @@ async function start(){
     totalCount = 0;
     maxVolume = MIN_DB;
     
-    lastOneSecondDb = 85;
     lastSavedTimeForDelta = Date.now();
     lastWavePushTime = Date.now();
     
@@ -841,15 +834,6 @@ function stop(){
     }
 }
 
-function getAWeightingOffset(frequency) {
-    if (frequency <= 0) return -100;
-    const f2 = frequency * frequency;
-    const f4 = f2 * f2;
-    const rA = (12194 * 12194 * f4) / 
-               ((f2 + 20.6 * 20.6) * Math.sqrt((f2 + 107.7 * 107.7) * (f2 + 737.9 * 737.9)) * (f2 + 12194 * 12194));
-    return 20 * Math.log10(rA) + 2.0; 
-}
-
 function update(){
     if(!running) return;
 
@@ -858,25 +842,17 @@ function update(){
     const bufferLength = analyser.frequencyBinCount;
     const sampleRate = audioContext.sampleRate;
     
-    let weightedSum = 0;
-    let totalWeight = 0;
-    let peakAmplitude = 0;
-
+    let totalAmp = 0;
+    let countAmp = 0;
     let lowSum = 0, lowCount = 0;
     let highSum = 0, highCount = 0;
 
     for (let i = 0; i < bufferLength; i++) {
-        if (dataArray[i] > peakAmplitude) {
-            peakAmplitude = dataArray[i]; 
-        }
         const amplitude = dataArray[i]; 
         if (amplitude > 0) {
             const frequency = (i * sampleRate) / analyser.fftSize;
-            const offset = getAWeightingOffset(frequency);
-            const weight = Math.pow(10, offset / 20);
-            
-            weightedSum += amplitude * weight;
-            totalWeight += weight;
+            totalAmp += amplitude;
+            countAmp++;
 
             if (frequency >= 80 && frequency < 700) {
                 lowSum += amplitude;
@@ -888,55 +864,50 @@ function update(){
         }
     }
     
-    let averageAmplitude = totalWeight > 0 ? (weightedSum / totalWeight) : 0;
-    let finalAmplitude = (averageAmplitude * 0.6) + (peakAmplitude * 0.4);
+    let avgAmplitude = countAmp > 0 ? (totalAmp / countAmp) : 0;
+    let avgLowAmp = lowCount > 0 ? (lowSum / lowCount) : 0;
+    let avgHighAmp = highCount > 0 ? (highSum / highCount) : 0;
 
-    let rawDb = 80;
-    if (finalAmplitude > 0) {
-        rawDb = (24 * Math.log10(finalAmplitude / 255)) + 118; 
-    }
+    // 校正スライダーの値を取得
     const calibrationOffset = parseInt(calibSlider.value);
-    rawDb += calibrationOffset;
 
-    if (rawDb < 80) rawDb = 80;
-    if (rawDb > 105) rawDb = 105 + ((rawDb - 105) * 1.6); 
+    // 【スマホの0〜最大入力を 80〜160 へマッピングする純粋・高反応ロジック】
+    // デシベル（-100dB〜0dB）を計算し、それをそのまま表示領域の80〜160に直線マッピング
+    let dbRaw = -100;
+    if (avgAmplitude > 0) {
+        dbRaw = 20 * Math.log10(avgAmplitude / 255); 
+    }
+    // -100dB〜0dB を 80〜160 に変換
+    let modifiedDb = 80 + ((dbRaw + 100) / 100) * 80 + calibrationOffset;
+
+    let dbLow = -100;
+    if (avgLowAmp > 0) {
+        dbLow = 20 * Math.log10(avgLowAmp / 255);
+    }
+    dbLow = 80 + ((dbLow + 100) / 100) * 80 + calibrationOffset;
+
+    let dbHigh = -100;
+    if (avgHighAmp > 0) {
+        dbHigh = 20 * Math.log10(avgHighAmp / 255);
+    }
+    dbHigh = 80 + ((dbHigh + 100) / 100) * 80 + calibrationOffset;
+
+    // 上限と下限のガード
+    if (modifiedDb < MIN_DB) modifiedDb = MIN_DB;
+    if (modifiedDb > MAX_DB) modifiedDb = MAX_DB;
+    if (dbLow < MIN_DB) dbLow = MIN_DB;
+    if (dbLow > MAX_DB) dbLow = MAX_DB;
+    if (dbHigh < MIN_DB) dbHigh = MIN_DB;
+    if (dbHigh > MAX_DB) dbHigh = MAX_DB;
 
     let now = Date.now();
     const elapsedSeconds = Math.floor((now - startTime) / 1000);
 
-    if (now - lastSavedTimeForDelta >= 1000) {
-        lastOneSecondDb = rawDb;
-        lastSavedTimeForDelta = now;
-    }
-
-    let delta = rawDb - lastOneSecondDb;
-    let modifiedDb = rawDb;
-
-    if (rawDb > 85) {
-        let dynamicScale = (elapsedSeconds < 1) ? 0.0 : 0.55; 
-        modifiedDb = rawDb + (delta * dynamicScale);
-        modifiedDb = 82 + (modifiedDb - 82) * 1.2;
-    }
-
-    if (modifiedDb < MIN_DB) modifiedDb = MIN_DB;
-    if (modifiedDb > MAX_DB) modifiedDb = MAX_DB;
-
-    let avgLowAmp = lowCount > 0 ? (lowSum / lowCount) : 0;
-    let avgHighAmp = highCount > 0 ? (highSum / highCount) : 0;
-
-    let dbLow = avgLowAmp > 0 ? (24 * Math.log10(avgLowAmp / 255) + 118) + calibrationOffset : 80;
-    let dbHigh = avgHighAmp > 0 ? (24 * Math.log10(avgHighAmp / 255) + 118) + calibrationOffset : 80;
-
-    if (dbLow > 85)  dbLow = 82 + (dbLow + delta * 0.4 - 82) * 1.2;
-    if (dbHigh > 85) dbHigh = 82 + (dbHigh + delta * 0.6 - 82) * 1.2;
-
-    if(dbLow < 80) dbLow = 80;   if(dbLow > 150) dbLow = 150;
-    if(dbHigh < 80) dbHigh = 80; if(dbHigh > 150) dbHigh = 150;
-
+    // 音割れ対策ガード（初動1秒は80固定）
     if (elapsedSeconds < 1) {
-        modifiedDb = 80;
-        dbLow = 80;
-        dbHigh = 80;
+        modifiedDb = MIN_DB;
+        dbLow = MIN_DB;
+        dbHigh = MIN_DB;
     }
 
     if (!isEndingDelay && (now - lastWavePushTime >= 750)) {
