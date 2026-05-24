@@ -408,22 +408,14 @@ const calibSlider = document.getElementById("calibSlider");
 const calibVal = document.getElementById("calibVal");
 const info = document.getElementById("info");
 
-let analyser;
-let dataArray;
-let animationId;
-let audioContext;
-let streamStream; 
-
 const MAX_WAVE_BARS = 80;
-// 初期状態の下限を80に設定
 let waveHistory = new Array(MAX_WAVE_BARS).fill(null).map(() => ({ high: 80, low: 80 }));
 let fullHistory = [];  
 
 let totalSum = 0;   
 let totalCount = 0;
-let maxVolume = 0;
+let maxVolume = 80;
 
-let lastSavedTimeForDelta = 0;
 let lastWavePushTime = 0; 
 
 let lowSumTotal = 0;
@@ -440,9 +432,14 @@ let running = false;
 let isEndingDelay = false; 
 let currentDate = "";
 
-// 画面表示上の範囲を「80〜160」へ拡大
+// 画面上に表示してガードをかける範囲は「80〜160」
 const MIN_DB = 80;
 const MAX_DB = 160; 
+
+// 前の音との差分補正用の変数
+let prevRawTotal = 80;
+let prevRawLow = 80;
+let prevRawHigh = 80;
 
 let mediaRecorder;
 let videoChunks = [];
@@ -544,7 +541,6 @@ function drawVoicePrintCore(dataArrayToDraw, targetCtx, startY, w, h) {
     for (let i = 0; i < totalBars; i++) {
         const item = dataArrayToDraw[i];
         
-        // 80〜160の範囲で比率を計算
         let ratioHigh = (item.high - 80) / (160 - 80);
         if(ratioHigh < 0) ratioHigh = 0;
         if(ratioHigh > 1) ratioHigh = 1;
@@ -690,7 +686,6 @@ async function start(){
     totalCount = 0;
     maxVolume = MIN_DB;
     
-    lastSavedTimeForDelta = Date.now();
     lastWavePushTime = Date.now();
     
     lowSumTotal = 0;
@@ -700,6 +695,10 @@ async function start(){
     highSumTotal = 0;
     highCountTotal = 0;
     maxHighVolume = MIN_DB;
+
+    prevRawTotal = 0;
+    prevRawLow = 0;
+    prevRawHigh = 0;
 
     videoChunks = [];
     videoBlob = null;
@@ -868,31 +867,52 @@ function update(){
     let avgLowAmp = lowCount > 0 ? (lowSum / lowCount) : 0;
     let avgHighAmp = highCount > 0 ? (highSum / highCount) : 0;
 
-    // 校正スライダーの値を取得
     const calibrationOffset = parseInt(calibSlider.value);
 
-    // 【スマホの0〜最大入力を 80〜160 へマッピングする純粋・高反応ロジック】
-    // デシベル（-100dB〜0dB）を計算し、それをそのまま表示領域の80〜160に直線マッピング
-    let dbRaw = -100;
+    // 【1】スマホのフルスケール（-100dB〜0dB）を0〜160へダイレクトに直線マッピング
+    let dbTotalRaw = -100;
     if (avgAmplitude > 0) {
-        dbRaw = 20 * Math.log10(avgAmplitude / 255); 
+        dbTotalRaw = 20 * Math.log10(avgAmplitude / 255); 
     }
-    // -100dB〜0dB を 80〜160 に変換
-    let modifiedDb = 80 + ((dbRaw + 100) / 100) * 80 + calibrationOffset;
+    let currentRawTotal = ((dbTotalRaw + 100) / 100) * 160 + calibrationOffset;
 
-    let dbLow = -100;
+    let dbLowRaw = -100;
     if (avgLowAmp > 0) {
-        dbLow = 20 * Math.log10(avgLowAmp / 255);
+        dbLowRaw = 20 * Math.log10(avgLowAmp / 255);
     }
-    dbLow = 80 + ((dbLow + 100) / 100) * 80 + calibrationOffset;
+    let currentRawLow = ((dbLowRaw + 100) / 100) * 160 + calibrationOffset;
 
-    let dbHigh = -100;
+    let dbHighRaw = -100;
     if (avgHighAmp > 0) {
-        dbHigh = 20 * Math.log10(avgHighAmp / 255);
+        dbHighRaw = 20 * Math.log10(avgHighAmp / 255);
     }
-    dbHigh = 80 + ((dbHigh + 100) / 100) * 80 + calibrationOffset;
+    let currentRawHigh = ((dbHighRaw + 100) / 100) * 160 + calibrationOffset;
 
-    // 上限と下限のガード
+    // 【2】前の音との差分（勢い）を検知して強力に音量補正（上乗せ）
+    let diffTotal = currentRawTotal - prevRawTotal;
+    let modifiedDb = currentRawTotal;
+    if (diffTotal > 0) {
+        modifiedDb += diffTotal * 1.8; // 立ち上がりを1.8倍に強烈ブースト
+    }
+
+    let diffLow = currentRawLow - prevRawLow;
+    let dbLow = currentRawLow;
+    if (diffLow > 0) {
+        dbLow += diffLow * 1.8;
+    }
+
+    let diffHigh = currentRawHigh - prevRawHigh;
+    let dbHigh = currentRawHigh;
+    if (diffHigh > 0) {
+        dbHigh += diffHigh * 1.8;
+    }
+
+    // 今回の生値を次回の比較用に保存
+    prevRawTotal = currentRawTotal;
+    prevRawLow = currentRawLow;
+    prevRawHigh = currentRawHigh;
+
+    // 【3】表示用のガード（80〜160の範囲に収める）
     if (modifiedDb < MIN_DB) modifiedDb = MIN_DB;
     if (modifiedDb > MAX_DB) modifiedDb = MAX_DB;
     if (dbLow < MIN_DB) dbLow = MIN_DB;
@@ -903,7 +923,7 @@ function update(){
     let now = Date.now();
     const elapsedSeconds = Math.floor((now - startTime) / 1000);
 
-    // 音割れ対策ガード（初動1秒は80固定）
+    // 初動1秒の安全ガード
     if (elapsedSeconds < 1) {
         modifiedDb = MIN_DB;
         dbLow = MIN_DB;
