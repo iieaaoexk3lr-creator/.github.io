@@ -410,7 +410,7 @@ const info = document.getElementById("info");
 
 const MAX_WAVE_BARS = 80;
 let waveHistory = new Array(MAX_WAVE_BARS).fill(null).map(() => ({ high: 600, low: 600 }));
-let fullHistory = [];  
+let fullHistory = [];   
 
 let totalSum = 0;    
 let totalCount = 0;
@@ -448,9 +448,6 @@ let audioChunks = [];
 let audioBlob = null;
 
 let currentFacingMode = "environment";
-let animationId; // 追加
-let streamStream; // 追加
-let audioContext, analyser, dataArray; // 追加
 
 const ua = navigator.userAgent.toLowerCase();
 if (ua.indexOf("line") > -1) {
@@ -530,6 +527,7 @@ function drawVoicePrintCore(dataArrayToDraw, targetCtx, startY, w, h) {
     const barWidth = Math.max((w - (totalBars * gap)) / totalBars, 1.5);
     const startX = (w - (totalBars * (barWidth + gap))) / 2;
 
+    // 100ずつの目盛り線 (600, 700, 800, 900, 1000) の描画
     actualCtx.strokeStyle = "rgba(55, 65, 81, 0.4)";
     actualCtx.lineWidth = 1;
     
@@ -550,6 +548,7 @@ function drawVoicePrintCore(dataArrayToDraw, targetCtx, startY, w, h) {
     for (let i = 0; i < totalBars; i++) {
         const item = dataArrayToDraw[i];
         
+        // 600〜1000の範囲で比率を計算
         let ratioHigh = (item.high - 600) / (1000 - 600);
         if(ratioHigh < 0) ratioHigh = 0;
         if(ratioHigh > 1) ratioHigh = 1;
@@ -575,11 +574,13 @@ function drawVoicePrintCore(dataArrayToDraw, targetCtx, startY, w, h) {
     }
     actualCtx.shadowBlur = 0;
 
+    // 画像の上端に高音のMAXと平均を表示
     actualCtx.fillStyle = "#f43f5e";
     actualCtx.font = "bold 11px sans-serif";
     actualCtx.textAlign = "left";
     actualCtx.fillText(`高音 MAX: ${Math.floor(maxHighVolume)} | AVG: ${Math.floor(getHighAverage())}`, 10, startY + 16);
 
+    // 画像の下端に低音のMAXと平均を表示
     actualCtx.fillStyle = "#34d399";
     actualCtx.fillText(`低音 MAX: ${Math.floor(maxLowVolume)} | AVG: ${Math.floor(getLowAverage())}`, 10, startY + h - 10);
 }
@@ -685,6 +686,7 @@ function drawCombinedFrame(targetCtx, w, h, mode) {
     targetCtx.fillStyle = "#9ca3af";
     targetCtx.fillText(currentDate, 15, halfH + 50);
     
+    // 右側に100ずつのメモリ(目盛り)ラベルを表示
     const centerY = halfH + (halfH / 2);
     targetCtx.fillStyle = "rgba(255,255,255,0.4)";
     targetCtx.font = "9px sans-serif";
@@ -894,8 +896,14 @@ function update(){
     let avgLowAmp = lowCount > 0 ? (lowSum / lowCount) : 0;
     let avgHighAmp = highCount > 0 ? (highSum / highCount) : 0;
 
+    // 【100のオフセット適用】
+    avgAmplitude = Math.max(0, avgAmplitude - 100);
+    avgLowAmp = Math.max(0, avgLowAmp - 100);
+    avgHighAmp = Math.max(0, avgHighAmp - 100);
+
     const calibrationOffset = parseInt(calibSlider.value);
 
+    // 【スマホのフルスケール -100dB〜0dB を 500〜1000 へダイレクトマッピング】
     let dbTotalRaw = -100;
     if (avgAmplitude > 0) {
         dbTotalRaw = 20 * Math.log10(avgAmplitude / 255); 
@@ -914,30 +922,30 @@ function update(){
     }
     let currentRawHigh = 500 + ((dbHighRaw + 100) / 100) * 500 + calibrationOffset;
 
-    // --- 【重要：修正箇所】補正係数を 1.8 から 1.3 へ変更 ---
+    // 前の音との差分検知による強力音量補正（補正係数を1.2に変更）
     let diffTotal = currentRawTotal - prevRawTotal;
     let modifiedDb = currentRawTotal;
     if (diffTotal > 0) {
-        modifiedDb += diffTotal * 1.3; 
+        modifiedDb += diffTotal * 1.2; 
     }
 
     let diffLow = currentRawLow - prevRawLow;
     let dbLow = currentRawLow;
     if (diffLow > 0) {
-        dbLow += diffLow * 1.3;
+        dbLow += diffLow * 1.2;
     }
 
     let diffHigh = currentRawHigh - prevRawHigh;
     let dbHigh = currentRawHigh;
     if (diffHigh > 0) {
-        dbHigh += diffHigh * 1.3;
+        dbHigh += diffHigh * 1.2;
     }
-    // ----------------------------------------------------
 
     prevRawTotal = currentRawTotal;
     prevRawLow = currentRawLow;
     prevRawHigh = currentRawHigh;
 
+    // 表示上のガードを 600〜1000 に制限
     if (modifiedDb < MIN_DB) modifiedDb = MIN_DB;
     if (modifiedDb > MAX_DB) modifiedDb = MAX_DB;
     if (dbLow < MIN_DB) dbLow = MIN_DB;
@@ -948,6 +956,7 @@ function update(){
     let now = Date.now();
     const elapsedSeconds = Math.floor((now - startTime) / 1000);
 
+    // 初動ガード
     if (elapsedSeconds < 1) {
         modifiedDb = MIN_DB;
         dbLow = MIN_DB;
