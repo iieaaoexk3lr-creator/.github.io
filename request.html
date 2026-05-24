@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>カラオケ・リクエスト・バトル</title>
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
+        import { getFirestore, collection, addDoc, onSnapshot, doc, updateDoc } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
+
+        // --- ここにあなたのfirebaseConfigを記述 ---
+        const firebaseConfig = { /* ... */ };
+        
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        // --- ゲームロジック ---
+        // 1. 曲の提案を送信
+        async function submitRequest(songTitle, requesterName) {
+            await addDoc(collection(db, "REQUEST_Songs"), {
+                REQUEST_songTitle: songTitle,
+                REQUEST_requesterName: requesterName,
+                REQUEST_status: "pending",
+                REQUEST_targetName: null
+            });
+        }
+
+        // 2. 歌唱結果の登録と得点計算
+        async function completeSong(songId, requesterId, targetId, isSuccess) {
+            // スコア更新処理などここに記述
+            // 成功なら提案者+1, 歌った人+2 / 失敗なら提案者-1, 歌った人-1
+        }
+    </script>
+    <style>
+        /* 50カラオケのUIをベースに構築 */
+        :root { --bg: #121214; --card: #1e1e24; --primary: linear-gradient(135deg, #ff007f, #7928ca); }
+        body { background: var(--bg); color: #fff; font-family: sans-serif; padding: 20px; }
+        .card { background: var(--card); padding: 20px; border-radius: 20px; margin-bottom: 20px; }
+        input, button { width: 100%; padding: 12px; margin: 5px 0; border-radius: 10px; border: none; }
+        button { background: var(--primary); color: white; font-weight: bold; cursor: pointer; }
+        .score-board { font-size: 1.5rem; color: #00ffcc; text-align: center; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>カラオケ・リクエスト・バトル</h1>
+
+    <div class="card">
+        <input type="text" id="playerName" placeholder="あなたの名前">
+        <input type="text" id="songTitle" placeholder="リクエストしたい曲名">
+        <button onclick="handleRequest()">この曲を提案する</button>
+    </div>
+
+    <div class="card score-board" id="scoreDisplay">
+        現在の得点：0 pt
+    </div>
+
+    <div class="card" id="requestList">
+        <h3>みんなのリクエスト</h3>
+        </div>
+</div>
+
+<script>
+    function handleRequest() {
+        const name = document.getElementById('playerName').value;
+        const song = document.getElementById('songTitle').value;
+        if(name && song) {
+            submitRequest(song, name);
+            alert("提案しました！");
+        }
+    }
+</script>
+</body>
+</html>
