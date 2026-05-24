@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>声量チェッカー</title>
+<title>盛り上がりチェッカー</title>
 
 <style>
 body{
@@ -12,8 +12,46 @@ body{
     font-family:sans-serif;
     color:white;
     display:flex;
-    justify-content:center;
+    flex-direction:column;
+    align-items:center;
     padding:20px;
+}
+
+.line-warning {
+    display: none;
+    width: 100%;
+    max-width: 430px;
+    background: #ef4444;
+    color: white;
+    padding: 12px;
+    border-radius: 12px;
+    margin-bottom: 15px;
+    font-weight: bold;
+    font-size: 14px;
+    text-align: center;
+    box-sizing: border-box;
+}
+
+/* メニューに戻るボタンのスタイル */
+.back-to-menu {
+    width: 100%;
+    max-width: 430px;
+    background: #4b5563;
+    color: white;
+    padding: 12px;
+    border: none;
+    border-radius: 14px;
+    font-size: 15px;
+    font-weight: bold;
+    cursor: pointer;
+    margin-bottom: 15px;
+    box-sizing: border-box;
+    text-align: center;
+    text-decoration: none;
+    display: block;
+}
+.back-to-menu:hover {
+    background: #374151;
 }
 
 .app{
@@ -39,13 +77,36 @@ h1{
     margin-bottom:16px;
 }
 
+/* 保存枠のスタイル */
+.save-container-box {
+    background: #111827;
+    border: 2px dashed #4b5563;
+    border-radius: 20px;
+    padding: 14px;
+    margin-top: 16px;
+    margin-bottom: 16px;
+}
+.save-title {
+    font-size: 13px;
+    font-weight: bold;
+    color: #9ca3af;
+    margin-bottom: 10px;
+    text-align: center;
+}
+.save-buttons-grid {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
 .label{
     margin-bottom:8px;
     font-size:14px;
     opacity:0.8;
 }
 
-input{
+input[type="text"], input[type="number"]{
     width:100%;
     padding:12px;
     border:none;
@@ -53,6 +114,51 @@ input{
     font-size:18px;
     box-sizing:border-box;
     margin-bottom:10px;
+    background: white;
+    color: black;
+}
+
+.radio-container {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 12px;
+    background: #111827;
+    padding: 12px;
+    border-radius: 12px;
+}
+.radio-label {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+    font-size: 15px;
+}
+.radio-label input[type="radio"] {
+    width: 18px;
+    height: 18px;
+    margin: 0;
+    cursor: pointer;
+}
+
+.calib-container {
+    background: #111827;
+    padding: 12px;
+    border-radius: 12px;
+    margin-top: 10px;
+}
+.calib-header {
+    display: flex;
+    justify-content: space-between;
+    font-size: 13px;
+    margin-bottom: 6px;
+    color: #3b82f6;
+    font-weight: bold;
+}
+input[type="range"] {
+    width: 100%;
+    margin: 5px 0;
+    cursor: pointer;
 }
 
 button{
@@ -76,9 +182,48 @@ button{
     color:white;
 }
 
-.save{
+/* 保存ボタンをこれまでの半分のサイズ感（コンパクト）に調整 */
+.save-img, .save-video, .save-audio {
+    flex: 1;
+    min-width: 100px;
+    padding: 10px 8px;
+    font-size: 14px;
+    border-radius: 12px;
+    margin-top: 0;
+}
+
+.save-img{
     background:#3b82f6;
     color:white;
+}
+
+.save-video{
+    background:#8b5cf6;
+    color:white;
+    display:none;
+}
+
+.save-audio{
+    background:#ec4899;
+    color:white;
+    display:none;
+}
+
+.switch-cam {
+    background: #4b5563;
+    color: white;
+    font-size: 14px;
+    padding: 10px;
+    margin-bottom: 10px;
+    border: 1px solid #6b7280;
+}
+
+.toggle-help{
+    background:#4b5563;
+    color:white;
+    font-size:14px;
+    padding:10px;
+    margin-top:15px;
 }
 
 .meter{
@@ -116,362 +261,843 @@ canvas{
     font-weight:bold;
 }
 
-.small{
-    opacity:0.7;
-    font-size:13px;
-    margin-top:5px;
-}
-
 .info{
     margin-top:10px;
     font-size:14px;
     opacity:0.8;
     line-height:1.6;
 }
+
+.help-content {
+    display: none;
+    margin-top: 10px;
+    background: #111827;
+    padding: 14px;
+    border-radius: 16px;
+    font-size: 14px;
+    line-height: 1.6;
+    color: #d1d5db;
+}
+
+#hiddenVideo {
+    display: none;
+}
 </style>
 </head>
 
 <body>
 
+<a href="index.html" class="back-to-menu">🏠 メニューへ戻る</a>
+
+<div class="line-warning" id="lineWarning">
+    ⚠️ LINEアプリ内では録画や測定が動作しません。<br>右上のボタンから「デフォルトのブラウザ(Safari/Chrome等)で開く」を選んでください。
+</div>
+
 <div class="app">
 
-<h1>🎤 声量チェッカー</h1>
+<h1>🎤 盛り上がりチェッカー</h1>
 
 <div class="card">
-
     <div class="label">プレイヤー名（任意）</div>
     <input type="text" id="playerName" placeholder="名前を入力">
 
-    <div class="label">制限時間（秒）※最大600秒</div>
-    <input type="number" id="timeInput" min="1" max="600" value="60">
+    <div class="label">曲名（任意）</div>
+    <input type="text" id="songName" placeholder="曲名を入力">
 
-    <div class="small">10分まで設定可能</div>
+    <div class="label">制限時間（秒）※最大600秒</div>
+    <input type="number" id="timeInput" min="1" max="600" value="360">
+
+    <div class="label">保存モード選択</div>
+    <div class="radio-container">
+        <label class="radio-label">
+            <input type="radio" name="modeSelect" value="video" checked>
+            <span>📹 カメラ映像と音声を動画保存</span>
+        </label>
+        <label class="radio-label">
+            <input type="radio" name="modeSelect" value="audio">
+            <span>🎵 音声のみを録音保存 (カメラOFF)</span>
+        </label>
+        <label class="radio-label">
+            <input type="radio" name="modeSelect" value="none">
+            <span>📊 測定のみ (ファイル保存なし)</span>
+        </label>
+    </div>
+
+    <button class="switch-cam" id="switchCamBtn">📷 カメラ切り替え (現在: 背面)</button>
+
+    <div class="calib-container">
+        <div class="calib-header">
+            <span>🛠️ マイク感度のズレ補正(校正)</span>
+            <span><span id="calibVal">0</span> dB</span>
+        </div>
+        <input type="range" id="calibSlider" min="-20" max="20" value="0" step="1">
+    </div>
 </div>
 
 <div class="card">
-
-    <div class="timer" id="timer">60</div>
+    <div class="timer" id="timer">360</div>
 
     <div class="meter">
         <div class="bar" id="bar"></div>
     </div>
 
     <div class="values">
-        <div>現在: <span id="current">0</span> vB</div>
-        <div>最大: <span id="max">0</span> vB</div>
-        <div>平均: <span id="avg">0</span> vB</div>
+        <div>現在: <span id="current">0</span> dBA</div>
+        <div>最大: <span id="max">0</span> dBA</div>
+        <div>平均: <span id="avg">0</span> dBA</div>
         <div>時間: <span id="elapsed">0</span> 秒</div>
     </div>
 
     <div class="info" id="info"></div>
-
 </div>
 
 <div class="card">
-    <canvas id="graph" width="360" height="260"></canvas>
+    <canvas id="graph" width="360" height="480"></canvas>
 </div>
 
 <button class="start" id="startBtn">開始</button>
 <button class="stop" id="stopBtn">停止</button>
-<button class="save" id="saveBtn">画像保存</button>
+
+<div class="save-container-box">
+    <div class="save-title">💾 データの保存</div>
+    <div class="save-buttons-grid">
+        <button class="save-img" id="saveImgBtn">画像保存</button>
+        <button class="save-video" id="saveVideoBtn">動画保存</button>
+        <button class="save-audio" id="saveAudioBtn">録音保存</button>
+    </div>
+</div>
+
+<button class="toggle-help" id="toggleHelpBtn">▼ 使い方を表示</button>
+<div class="help-content" id="helpContent">
+    <b>【かんたん操作手順】</b><br>
+    1. 名前や曲名、保存モード（動画/音声/なし）を選びます。<br>
+    2. <b>[開始]</b> ボタンを押して歌うか、音を鳴らします。<br>
+    3. 終わったら <b>[停止]</b> ボタンを押します。<br>
+    4. 現れた <b>[動画保存]</b> や <b>[画像保存]</b> ボタンからデータを保存できます。<br>
+    <br>
+    ※動画モードの時は、自動的に動画の最後に3秒間リザルト画面（記録結果）が映ってから保存されます。
+</div>
 
 </div>
 
-<script>
+<video id="hiddenVideo" autoplay playsinline muted></video>
 
+<script>
 const startBtn = document.getElementById("startBtn");
 const stopBtn = document.getElementById("stopBtn");
-const saveBtn = document.getElementById("saveBtn");
+const saveImgBtn = document.getElementById("saveImgBtn");
+const saveVideoBtn = document.getElementById("saveVideoBtn");
+const saveAudioBtn = document.getElementById("saveAudioBtn");
+const switchCamBtn = document.getElementById("switchCamBtn");
+const toggleHelpBtn = document.getElementById("toggleHelpBtn");
+const helpContent = document.getElementById("helpContent");
+const lineWarning = document.getElementById("lineWarning");
 
 const currentText = document.getElementById("current");
 const maxText = document.getElementById("max");
 const avgText = document.getElementById("avg");
 const elapsedText = document.getElementById("elapsed");
-
 const timerText = document.getElementById("timer");
-
 const bar = document.getElementById("bar");
 
 const canvas = document.getElementById("graph");
 const ctx = canvas.getContext("2d");
+const hiddenVideo = document.getElementById("hiddenVideo");
 
 const timeInput = document.getElementById("timeInput");
 const playerNameInput = document.getElementById("playerName");
-
+const songNameInput = document.getElementById("songName");
+const calibSlider = document.getElementById("calibSlider");
+const calibVal = document.getElementById("calibVal");
 const info = document.getElementById("info");
 
 let analyser;
 let dataArray;
 let animationId;
+let audioContext;
+let streamStream; 
 
-let history = [];
+const MAX_WAVE_BARS = 80;
+let waveHistory = new Array(MAX_WAVE_BARS).fill(null).map(() => ({ high: 80, low: 80 }));
+let fullHistory = [];  
+
+let totalSum = 0;   
+let totalCount = 0;
 let maxVolume = 0;
 
+let lastOneSecondDb = 85; 
+let lastSavedTimeForDelta = 0;
+let lastWavePushTime = 0; 
+
+// 低音と高音の集計用
+let lowSumTotal = 0;
+let lowCountTotal = 0;
+let maxLowVolume = 80;
+
+let highSumTotal = 0;
+let highCountTotal = 0;
+let maxHighVolume = 80;
+
 let startTime;
-let limitTime = 60;
-
+let limitTime = 360;
 let running = false;
-
+let isEndingDelay = false; 
 let currentDate = "";
 
+const MIN_DB = 80;
+const MAX_DB = 150; 
+
+let mediaRecorder;
+let videoChunks = [];
+let videoBlob = null;
+let audioChunks = [];
+let audioBlob = null;
+
+let currentFacingMode = "environment";
+
+const ua = navigator.userAgent.toLowerCase();
+if (ua.indexOf("line") > -1) {
+    lineWarning.style.display = "block";
+}
+
+calibSlider.oninput = function() {
+    let val = parseInt(this.value);
+    calibVal.textContent = (val > 0 ? "+" : "") + val;
+};
+
+switchCamBtn.onclick = function() {
+    if (running) {
+        alert("測定中はカメラを切り替えられません。一度停止してください。");
+        return;
+    }
+    if (currentFacingMode === "environment") {
+        currentFacingMode = "user";
+        switchCamBtn.textContent = "📷 カメラ切り替え (現在: 前面)";
+    } else {
+        currentFacingMode = "environment";
+        switchCamBtn.textContent = "📷 カメラ切り替え (現在: 背面)";
+    }
+};
+
+toggleHelpBtn.onclick = function() {
+    if (helpContent.style.display === "block") {
+        helpContent.style.display = "none";
+        toggleHelpBtn.textContent = "▼ 使い方を表示";
+    } else {
+        helpContent.style.display = "block";
+        toggleHelpBtn.textContent = "▲ 使い方を非表示";
+    }
+};
+
 function getAverage(){
-
-    if(history.length === 0) return 0;
-
-    let sum = 0;
-
-    history.forEach(v=>{
-        sum += v;
-    });
-
-    return sum / history.length;
+    if(totalCount === 0) return MIN_DB;
+    return totalSum / totalCount;
 }
 
-function drawGraph(){
+function getLowAverage(){
+    if(lowCountTotal === 0) return MIN_DB;
+    return lowSumTotal / lowCountTotal;
+}
 
-    ctx.clearRect(0,0,canvas.width,canvas.height);
+function getHighAverage(){
+    if(highCountTotal === 0) return MIN_DB;
+    return highSumTotal / highCountTotal;
+}
 
-    ctx.fillStyle = "#111827";
-    ctx.fillRect(0,0,canvas.width,canvas.height);
+// 低音(最大+平均) ＋ 高音(最大+平均)
+function calculateHighlightScore() {
+    const lMax = Math.floor(maxLowVolume);
+    const lAvg = Math.floor(getLowAverage());
+    const hMax = Math.floor(maxHighVolume);
+    const hAvg = Math.floor(getHighAverage());
+    
+    return {
+        total: lMax + lAvg + hMax + hAvg,
+        lowMax: lMax,
+        lowAvg: lAvg,
+        highMax: hMax,
+        highAvg: hAvg
+    };
+}
 
-    const graphLeft = 45;
-    const graphBottom = 220;
-    const graphTop = 20;
-    const graphRight = 330;
+function drawVoicePrintCore(dataArrayToDraw, targetCtx, startY, w, h) {
+    targetCtx.style = targetCtx.style || {}; 
+    const actualCtx = targetCtx.getContext ? targetCtx.getContext("2d") : targetCtx;
 
-    ctx.strokeStyle = "#374151";
-    ctx.lineWidth = 1;
+    actualCtx.fillStyle = "#111827";
+    actualCtx.fillRect(0, startY, w, h);
 
-    // 横線
-    for(let i=0;i<=5;i++){
+    const centerY = startY + (h / 2);
+    const totalBars = dataArrayToDraw.length;
+    
+    const gap = 1;
+    const barWidth = Math.max((w - (totalBars * gap)) / totalBars, 1.5);
+    const startX = (w - (totalBars * (barWidth + gap))) / 2;
 
-        const y = graphBottom - ((graphBottom - graphTop)/5)*i;
+    actualCtx.strokeStyle = "rgba(55, 65, 81, 0.4)";
+    actualCtx.lineWidth = 1;
+    actualCtx.beginPath();
+    actualCtx.moveTo(0, centerY); actualCtx.lineTo(w, centerY); 
+    actualCtx.moveTo(0, centerY - (h * 0.45)); actualCtx.lineTo(w, centerY - (h * 0.45)); 
+    actualCtx.moveTo(0, centerY + (h * 0.45)); actualCtx.lineTo(w, centerY + (h * 0.45)); 
+    actualCtx.stroke();
 
-        ctx.beginPath();
-        ctx.moveTo(graphLeft,y);
-        ctx.lineTo(graphRight,y);
-        ctx.stroke();
+    actualCtx.shadowBlur = 7;
+    actualCtx.shadowColor = "#22d3ee";
 
-        ctx.fillStyle = "#9ca3af";
-        ctx.font = "12px sans-serif";
+    for (let i = 0; i < totalBars; i++) {
+        const item = dataArrayToDraw[i];
+        
+        let ratioHigh = (item.high - 80) / (150 - 80);
+        if(ratioHigh < 0) ratioHigh = 0;
+        if(ratioHigh > 1) ratioHigh = 1;
+        const heightHigh = (h * 0.45) * ratioHigh;
 
-        const value = i * 200;
+        let ratioLow = (item.low - 80) / (150 - 80);
+        if(ratioLow < 0) ratioLow = 0;
+        if(ratioLow > 1) ratioLow = 1;
+        const heightLow = (h * 0.45) * ratioLow;
 
-        ctx.fillText(value + "vB", 2, y+4);
-    }
+        const x = startX + i * (barWidth + gap);
 
-    // 縦線
-    for(let i=0;i<=5;i++){
-
-        const x = graphLeft + ((graphRight - graphLeft)/5)*i;
-
-        ctx.beginPath();
-        ctx.moveTo(x,graphTop);
-        ctx.lineTo(x,graphBottom);
-        ctx.stroke();
-
-        const sec = Math.floor((limitTime/5)*i);
-
-        ctx.fillStyle = "#9ca3af";
-        ctx.fillText(sec + "s", x-10, 240);
-    }
-
-    // グラフ線
-    ctx.strokeStyle = "#22c55e";
-    ctx.lineWidth = 3;
-    ctx.beginPath();
-
-    history.forEach((v,i)=>{
-
-        const x =
-            graphLeft +
-            (i / Math.max(history.length-1,1)) *
-            (graphRight - graphLeft);
-
-        const y =
-            graphBottom -
-            (v / 1000) *
-            (graphBottom - graphTop);
-
-        if(i===0){
-            ctx.moveTo(x,y);
-        }else{
-            ctx.lineTo(x,y);
+        actualCtx.fillStyle = "#22d3ee";
+        if(heightHigh > 0) {
+            actualCtx.fillRect(x, centerY - heightHigh, barWidth, heightHigh);
         }
-    });
-
-    ctx.stroke();
-
-    // タイトル
-    ctx.fillStyle = "white";
-    ctx.font = "18px sans-serif";
-
-    const player =
-        playerNameInput.value.trim() || "NO NAME";
-
-    ctx.fillText(player, 15, 18);
-
-    ctx.font = "14px sans-serif";
-
-    ctx.fillText(currentDate, 15, 38);
-
-    ctx.fillText(
-        "MAX " + Math.floor(maxVolume) + " vB",
-        200,
-        20
-    );
-
-    ctx.fillText(
-        "AVG " + Math.floor(getAverage()) + " vB",
-        200,
-        40
-    );
+        if(heightLow > 0) {
+            actualCtx.fillRect(x, centerY, barWidth, heightLow);
+        }
+        if(heightHigh <= 0 && heightLow <= 0) {
+            actualCtx.fillRect(x, centerY - 1, barWidth, 2);
+        }
+    }
+    actualCtx.shadowBlur = 0;
 }
 
-async function start(){
+function drawEmbedResult(targetCtx, w, h) {
+    targetCtx.fillStyle = "#111827";
+    targetCtx.fillRect(0, 0, w, h);
 
-    if(running) return;
+    targetCtx.fillStyle = "#3b82f6";
+    targetCtx.font = "bold 24px sans-serif";
+    targetCtx.textAlign = "center";
+    targetCtx.fillText("📊 最終リザルト", w / 2, 60);
 
-    running = true;
+    targetCtx.fillStyle = "white";
+    targetCtx.font = "18px sans-serif";
+    const player = playerNameInput.value.trim() || "NO NAME";
+    const song = songNameInput.value.trim() || "NO SONG";
+    targetCtx.fillText(player + " / " + song, w / 2, 105);
 
-    history = [];
-    maxVolume = 0;
+    targetCtx.fillStyle = "#9ca3af";
+    targetCtx.font = "14px sans-serif";
+    targetCtx.fillText(currentDate, w / 2, 130);
 
-    limitTime = Math.min(
-        Math.max(parseInt(timeInput.value) || 60,1),
-        600
-    );
+    const scoreObj = calculateHighlightScore();
 
-    timerText.textContent = limitTime;
+    targetCtx.fillStyle = "#60a5fa";
+    targetCtx.font = "bold 16px sans-serif";
+    targetCtx.fillText("🔥 スコア内訳 (低音・高音の最大＋平均)", w / 2, 185);
+    
+    targetCtx.fillStyle = "white";
+    targetCtx.font = "16px sans-serif";
+    
+    // 左カラム：低音
+    targetCtx.textAlign = "right";
+    targetCtx.fillText("低音最大: " + scoreObj.lowMax + " dB", w / 2 - 25, 225);
+    targetCtx.fillText("低音平均: " + scoreObj.lowAvg + " dB", w / 2 - 25, 260);
+    
+    // 右カラム：高音
+    targetCtx.textAlign = "left";
+    targetCtx.fillText("高音最大: " + scoreObj.highMax + " dB", w / 2 + 25, 225);
+    targetCtx.fillText("高音平均: " + scoreObj.highAvg + " dB", w / 2 + 25, 260);
 
-    currentDate =
-        new Date().toLocaleString("ja-JP");
+    // トータルスコア
+    targetCtx.textAlign = "center";
+    targetCtx.fillStyle = "#22d3ee";
+    targetCtx.font = "bold 24px sans-serif";
+    targetCtx.fillText("TOTAL SCORE", w / 2, 325);
+    
+    targetCtx.font = "bold 55px sans-serif";
+    targetCtx.fillText(scoreObj.total + " 点", w / 2, 400);
 
-    info.innerHTML =
-        "測定日時: " + currentDate;
-
-    const stream =
-        await navigator.mediaDevices.getUserMedia({
-            audio:true
-        });
-
-    const audioContext = new AudioContext();
-
-    const source =
-        audioContext.createMediaStreamSource(stream);
-
-    analyser = audioContext.createAnalyser();
-
-    analyser.fftSize = 256;
-
-    source.connect(analyser);
-
-    dataArray =
-        new Uint8Array(analyser.frequencyBinCount);
-
-    startTime = Date.now();
-
-    update();
+    targetCtx.textAlign = "left"; 
 }
 
-function stop(){
-
-    running = false;
-
-    cancelAnimationFrame(animationId);
-}
-
-function update(){
-
-    if(!running) return;
-
-    analyser.getByteTimeDomainData(dataArray);
-
-    let sum = 0;
-
-    for(let i=0;i<dataArray.length;i++){
-
-        const v = (dataArray[i]-128)/128;
-
-        sum += v*v;
-    }
-
-    let volume =
-        Math.sqrt(sum/dataArray.length);
-
-    // ノイズ除去
-    if(volume < 0.02){
-        volume = 0;
-    }
-
-    let score =
-        Math.min(volume * 1200, 1000);
-
-    history.push(score);
-
-    if(score > maxVolume){
-        maxVolume = score;
-    }
-
-    currentText.textContent =
-        Math.floor(score);
-
-    maxText.textContent =
-        Math.floor(maxVolume);
-
-    avgText.textContent =
-        Math.floor(getAverage());
-
-    bar.style.width =
-        (score / 10) + "%";
-
-    const elapsed =
-        Math.floor(
-            (Date.now() - startTime)/1000
-        );
-
-    elapsedText.textContent = elapsed;
-
-    drawGraph();
-
-    const remain =
-        Math.max(limitTime - elapsed,0);
-
-    timerText.textContent = remain;
-
-    if(remain <= 0){
-
-        stop();
-
+function drawCombinedFrame(targetCtx, w, h, mode) {
+    if (isEndingDelay) {
+        drawEmbedResult(targetCtx, w, h);
         return;
     }
 
-    animationId =
-        requestAnimationFrame(update);
+    const halfH = h / 2;
+    
+    if (mode === "video" && running && hiddenVideo.readyState === hiddenVideo.HAVE_ENOUGH_DATA) {
+        targetCtx.fillStyle = "#000000";
+        targetCtx.fillRect(0, 0, w, halfH);
+        
+        const videoAspect = hiddenVideo.videoWidth / hiddenVideo.videoHeight;
+        const canvasAspect = w / halfH;
+        let drawW, drawH, drawX, drawY;
+        
+        if (videoAspect > canvasAspect) {
+            drawH = halfH;
+            drawW = halfH * videoAspect;
+            drawX = (w - drawW) / 2;
+            drawY = 0;
+        } else {
+            drawW = w;
+            drawH = w / videoAspect;
+            drawX = 0;
+            drawY = (halfH - drawH) / 2;
+        }
+        targetCtx.drawImage(hiddenVideo, drawX, drawY, drawW, drawH);
+    } else {
+        targetCtx.fillStyle = "#1f2937";
+        targetCtx.fillRect(0, 0, w, halfH);
+        targetCtx.fillStyle = "#9ca3af";
+        targetCtx.font = "14px sans-serif";
+        targetCtx.textAlign = "center";
+        if(mode === "video") {
+            targetCtx.fillText("カメラ起動中...", w / 2, halfH / 2);
+        } else {
+            targetCtx.fillText("🎵 音声波形解析モード (カメラOFF)", w / 2, halfH / 2);
+        }
+        targetCtx.textAlign = "left";
+    }
+
+    drawVoicePrintCore(waveHistory, targetCtx, halfH, w, halfH);
+
+    targetCtx.fillStyle = "white";
+    targetCtx.font = "14px sans-serif";
+    const player = playerNameInput.value.trim() || "NO NAME";
+    const song = songNameInput.value.trim() || "NO SONG";
+    targetCtx.fillText(player + " / " + song, 15, halfH + 24);
+
+    targetCtx.font = "11px sans-serif";
+    targetCtx.fillStyle = "#9ca3af";
+    targetCtx.fillText(currentDate, 15, halfH + 42);
+    
+    const centerY = halfH + (halfH / 2);
+    targetCtx.fillStyle = "rgba(255,255,255,0.4)";
+    targetCtx.fillText("150dB (高音)", w - 75, centerY - (halfH * 0.38));
+    targetCtx.fillText("80dB", w - 40, centerY + 4);
+    targetCtx.fillText("150dB (低音)", w - 75, centerY + (halfH * 0.41));
+}
+
+async function start(){
+    if(running) return;
+
+    running = true;
+    isEndingDelay = false;
+    waveHistory = new Array(MAX_WAVE_BARS).fill(null).map(() => ({ high: 80, low: 80 }));
+    fullHistory = [];
+    totalSum = 0;
+    totalCount = 0;
+    maxVolume = MIN_DB;
+    
+    lastOneSecondDb = 85;
+    lastSavedTimeForDelta = Date.now();
+    lastWavePushTime = Date.now();
+    
+    lowSumTotal = 0;
+    lowCountTotal = 0;
+    maxLowVolume = MIN_DB;
+
+    highSumTotal = 0;
+    highCountTotal = 0;
+    maxHighVolume = MIN_DB;
+
+    videoChunks = [];
+    videoBlob = null;
+    audioChunks = [];
+    audioBlob = null;
+    saveVideoBtn.style.display = "none"; 
+    saveAudioBtn.style.display = "none";
+
+    limitTime = Math.min(Math.max(parseInt(timeInput.value) || 360, 1), 600);
+    timerText.textContent = limitTime;
+
+    currentDate = new Date().toLocaleString("ja-JP");
+    info.innerHTML = "測定日時: " + currentDate;
+
+    const selectedMode = document.querySelector('input[name="modeSelect"]:checked').value;
+
+    try {
+        const constraints = {
+            audio: {
+                echoCancellation: { exact: false },  
+                noiseSuppression: { exact: false },   
+                autoGainControl: { exact: false }
+            },
+            video: (selectedMode === "video") ? { width: 480, height: 480, facingMode: currentFacingMode } : false
+        };
+
+        streamStream = await navigator.mediaDevices.getUserMedia(constraints);
+        
+        if (selectedMode === "video") {
+            hiddenVideo.srcObject = streamStream;
+            hiddenVideo.play();
+        }
+
+        audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        const source = audioContext.createMediaStreamSource(streamStream);
+
+        analyser = audioContext.createAnalyser();
+        analyser.fftSize = 512;
+        source.connect(analyser);
+
+        dataArray = new Uint8Array(analyser.frequencyBinCount);
+        startTime = Date.now();
+
+        if (selectedMode === "video") {
+            const canvasStream = canvas.captureStream(24);
+            const audioTrack = streamStream.getAudioTracks()[0];
+            canvasStream.addTrack(audioTrack);
+
+            let options = { mimeType: 'video/webm;codecs=vp8,opus' };
+            if (!MediaRecorder.isTypeSupported(options.mimeType)) {
+                options = { mimeType: 'video/mp4' }; 
+            }
+            if (!MediaRecorder.isTypeSupported(options.mimeType)) {
+                options = { mimeType: '' }; 
+            }
+
+            mediaRecorder = new MediaRecorder(canvasStream, options);
+            mediaRecorder.ondataavailable = function(e) {
+                if (e.data.size > 0) videoChunks.push(e.data);
+            };
+            mediaRecorder.onstop = function() {
+                videoBlob = new Blob(videoChunks, { type: mediaRecorder.mimeType || "video/mp4" });
+                saveVideoBtn.style.display = "block"; 
+            };
+            mediaRecorder.start(250); 
+        } 
+        else if (selectedMode === "audio") {
+            let options = { mimeType: 'audio/webm;codecs=opus' };
+            if (!MediaRecorder.isTypeSupported(options.mimeType)) {
+                options = { mimeType: 'audio/ogg;codecs=opus' };
+            }
+            if (!MediaRecorder.isTypeSupported(options.mimeType)) {
+                options = { mimeType: '' }; 
+            }
+
+            mediaRecorder = new MediaRecorder(streamStream, options);
+            mediaRecorder.ondataavailable = function(e) {
+                if (e.data.size > 0) audioChunks.push(e.data);
+            };
+            mediaRecorder.onstop = function() {
+                audioBlob = new Blob(audioChunks, { type: mediaRecorder.mimeType || "audio/aac" });
+                saveAudioBtn.style.display = "block"; 
+            };
+            mediaRecorder.start(250);
+        }
+
+        update();
+    } catch(e) {
+        alert("マイク・カメラの許可、またはデバイスが対応していません。通常の標準ブラウザで開き直してください。");
+        running = false;
+    }
+}
+
+function stop(){
+    if(!running) return;
+    
+    const selectedMode = document.querySelector('input[name="modeSelect"]:checked').value;
+
+    if (selectedMode === "video" && mediaRecorder && mediaRecorder.state === "recording") {
+        isEndingDelay = true;
+        if (streamStream) {
+            streamStream.getAudioTracks().forEach(track => track.stop());
+        }
+        
+        setTimeout(() => {
+            running = false;
+            cancelAnimationFrame(animationId);
+            if (mediaRecorder && mediaRecorder.state !== "inactive") {
+                mediaRecorder.stop();
+            }
+            if (streamStream) {
+                streamStream.getTracks().forEach(track => track.stop());
+            }
+            if (audioContext) {
+                audioContext.close();
+            }
+            hiddenVideo.srcObject = null;
+        }, 3000); 
+    } else {
+        running = false;
+        cancelAnimationFrame(animationId);
+        if (mediaRecorder && mediaRecorder.state !== "inactive") {
+            mediaRecorder.stop();
+        }
+        if (streamStream) {
+            streamStream.getTracks().forEach(track => track.stop());
+        }
+        if (audioContext) {
+            audioContext.close();
+        }
+        hiddenVideo.srcObject = null;
+    }
+}
+
+function getAWeightingOffset(frequency) {
+    if (frequency <= 0) return -100;
+    const f2 = frequency * frequency;
+    const f4 = f2 * f2;
+    const rA = (12194 * 12194 * f4) / 
+               ((f2 + 20.6 * 20.6) * Math.sqrt((f2 + 107.7 * 107.7) * (f2 + 737.9 * 737.9)) * (f2 + 12194 * 12194));
+    return 20 * Math.log10(rA) + 2.0; 
+}
+
+function update(){
+    if(!running) return;
+
+    analyser.getByteFrequencyData(dataArray);
+
+    const bufferLength = analyser.frequencyBinCount;
+    const sampleRate = audioContext.sampleRate;
+    
+    let weightedSum = 0;
+    let totalWeight = 0;
+    let peakAmplitude = 0;
+
+    let lowSum = 0, lowCount = 0;
+    let highSum = 0, highCount = 0;
+
+    for (let i = 0; i < bufferLength; i++) {
+        if (dataArray[i] > peakAmplitude) {
+            peakAmplitude = dataArray[i]; 
+        }
+        const amplitude = dataArray[i]; 
+        if (amplitude > 0) {
+            const frequency = (i * sampleRate) / analyser.fftSize;
+            const offset = getAWeightingOffset(frequency);
+            const weight = Math.pow(10, offset / 20);
+            
+            weightedSum += amplitude * weight;
+            totalWeight += weight;
+
+            if (frequency >= 80 && frequency < 700) {
+                lowSum += amplitude;
+                lowCount++;
+            } else if (frequency >= 700 && frequency <= 4000) {
+                highSum += amplitude;
+                highCount++;
+            }
+        }
+    }
+    
+    let averageAmplitude = totalWeight > 0 ? (weightedSum / totalWeight) : 0;
+    let finalAmplitude = (averageAmplitude * 0.6) + (peakAmplitude * 0.4);
+
+    let rawDb = 80;
+    if (finalAmplitude > 0) {
+        rawDb = (24 * Math.log10(finalAmplitude / 255)) + 118; 
+    }
+    const calibrationOffset = parseInt(calibSlider.value);
+    rawDb += calibrationOffset;
+
+    if (rawDb < 80) rawDb = 80;
+    if (rawDb > 105) rawDb = 105 + ((rawDb - 105) * 1.6); 
+
+    let now = Date.now();
+    const elapsedSeconds = Math.floor((now - startTime) / 1000);
+
+    if (now - lastSavedTimeForDelta >= 1000) {
+        lastOneSecondDb = rawDb;
+        lastSavedTimeForDelta = now;
+    }
+
+    let delta = rawDb - lastOneSecondDb;
+    let modifiedDb = rawDb;
+
+    if (rawDb > 85) {
+        let dynamicScale = (elapsedSeconds < 1) ? 0.0 : 0.55; 
+        modifiedDb = rawDb + (delta * dynamicScale);
+        modifiedDb = 82 + (modifiedDb - 82) * 1.2;
+    }
+
+    if (modifiedDb < MIN_DB) modifiedDb = MIN_DB;
+    if (modifiedDb > MAX_DB) modifiedDb = MAX_DB;
+
+    let avgLowAmp = lowCount > 0 ? (lowSum / lowCount) : 0;
+    let avgHighAmp = highCount > 0 ? (highSum / highCount) : 0;
+
+    let dbLow = avgLowAmp > 0 ? (24 * Math.log10(avgLowAmp / 255) + 118) + calibrationOffset : 80;
+    let dbHigh = avgHighAmp > 0 ? (24 * Math.log10(avgHighAmp / 255) + 118) + calibrationOffset : 80;
+
+    if (dbLow > 85)  dbLow = 82 + (dbLow + delta * 0.4 - 82) * 1.2;
+    if (dbHigh > 85) dbHigh = 82 + (dbHigh + delta * 0.6 - 82) * 1.2;
+
+    if(dbLow < 80) dbLow = 80;   if(dbLow > 150) dbLow = 150;
+    if(dbHigh < 80) dbHigh = 80; if(dbHigh > 150) dbHigh = 150;
+
+    if (elapsedSeconds < 1) {
+        modifiedDb = 80;
+        dbLow = 80;
+        dbHigh = 80;
+    }
+
+    if (!isEndingDelay && (now - lastWavePushTime >= 750)) {
+        waveHistory.shift();
+        waveHistory.push({ high: dbHigh, low: dbLow });
+        fullHistory.push({ high: dbHigh, low: dbLow, total: modifiedDb }); 
+        lastWavePushTime = now;
+    }
+    
+    if (!isEndingDelay && elapsedSeconds >= 1) { 
+        totalSum += modifiedDb;
+        totalCount++;
+        
+        lowSumTotal += dbLow;
+        lowCountTotal++;
+        
+        highSumTotal += dbHigh;
+        highCountTotal++;
+        
+        if (modifiedDb > maxVolume) {
+            maxVolume = modifiedDb;
+        }
+        if (dbLow > maxLowVolume) {
+            maxLowVolume = dbLow;
+        }
+        if (dbHigh > maxHighVolume) {
+            maxHighVolume = dbHigh;
+        }
+    }
+
+    if (!isEndingDelay) {
+        currentText.textContent = Math.floor(modifiedDb);
+        maxText.textContent = Math.floor(maxVolume);
+        avgText.textContent = Math.floor(getAverage());
+        
+        const barPercent = ((modifiedDb - MIN_DB) / (MAX_DB - MIN_DB)) * 100;
+        bar.style.width = barPercent + "%";
+        elapsedText.textContent = elapsedSeconds;
+
+        const remain = Math.max(limitTime - elapsedSeconds, 0);
+        timerText.textContent = remain;
+
+        if(remain <= 0){
+            stop();
+            return;
+        }
+    }
+
+    const selectedMode = document.querySelector('input[name="modeSelect"]:checked').value;
+    drawCombinedFrame(ctx, canvas.width, canvas.height, selectedMode);
+
+    animationId = requestAnimationFrame(update);
+}
+
+function getBaseFileName() {
+    const player = playerNameInput.value.trim() || "NO_NAME";
+    const song = songNameInput.value.trim() || "NO_SONG";
+    const maxDbStr = Math.floor(maxVolume) + "dBA";
+    return `${player}_${song}_${maxDbStr}`;
 }
 
 function saveImage(){
+    const wasRunning = running;
+    if(wasRunning) stop(); 
+    
+    const baseFileName = getBaseFileName();
+    const saveCanvas = document.createElement("canvas");
+    
+    saveCanvas.width = 540;
+    saveCanvas.height = 420; 
+    const sCtx = saveCanvas.getContext("2d");
 
-    drawGraph();
+    sCtx.fillStyle = "#111827";
+    sCtx.fillRect(0, 0, saveCanvas.width, saveCanvas.height);
 
-    const link =
-        document.createElement("a");
+    const printW = 340;
+    const printH = 420;
+    
+    const tempCanvas = document.createElement("canvas");
+    tempCanvas.width = printW;
+    tempCanvas.height = printH;
+    
+    let dataToDraw = [...fullHistory];
+    if (dataToDraw.length === 0) {
+        dataToDraw = [...waveHistory];
+    }
 
-    link.download =
-        "voice_result.png";
+    drawVoicePrintCore(dataToDraw, tempCanvas, 0, printW, printH);
+    sCtx.drawImage(tempCanvas, 0, 0);
 
-    link.href =
-        canvas.toDataURL("image/png");
+    sCtx.fillStyle = "white";
+    sCtx.font = "14px sans-serif";
+    const player = playerNameInput.value.trim() || "NO NAME";
+    const song = songNameInput.value.trim() || "NO SONG";
+    sCtx.fillText(player + " / " + song, 15, 24);
+    sCtx.fillStyle = "#9ca3af";
+    sCtx.font = "11px sans-serif";
+    sCtx.fillText(currentDate + " (ALL TIME WAVE)", 15, 42);
 
-    link.click();
+    sCtx.strokeStyle = "#374151";
+    sCtx.lineWidth = 2;
+    sCtx.beginPath();
+    sCtx.moveTo(printW, 0);
+    sCtx.lineTo(printW, printH);
+    sCtx.stroke();
+
+    const infoX = printW + 15;
+    
+    sCtx.fillStyle = "#3b82f6";
+    sCtx.font = "bold 13px sans-serif";
+    sCtx.fillText("【📊 リザルト詳細】", infoX, 35);
+
+    const scoreObj = calculateHighlightScore();
+    sCtx.fillStyle = "#9ca3af";
+    sCtx.font = "12px sans-serif";
+    sCtx.fillText("低音最大: " + scoreObj.lowMax + " dB", infoX, 70);
+    sCtx.fillText("低音平均: " + scoreObj.lowAvg + " dB", infoX, 95);
+    sCtx.fillText("高音最大: " + scoreObj.highMax + " dB", infoX, 130);
+    sCtx.fillText("高音平均: " + scoreObj.highAvg + " dB", infoX, 155);
+
+    sCtx.fillStyle = "#22d3ee";
+    sCtx.font = "bold 14px sans-serif";
+    sCtx.fillText("TOTAL SCORE", infoX, 230);
+    
+    sCtx.font = "bold 40px sans-serif";
+    sCtx.fillText(scoreObj.total + " 点", infoX, 285);
+
+    const imgLink = document.createElement("a");
+    imgLink.download = baseFileName + "_result.png";
+    imgLink.href = saveCanvas.toDataURL("image/png");
+    imgLink.click();
+}
+
+function saveVideo(){
+    if (!videoBlob) return;
+    const baseFileName = getBaseFileName();
+    const videoLink = document.createElement("a");
+    const ext = videoBlob.type.includes("mp4") ? ".mp4" : ".webm";
+    videoLink.download = baseFileName + ext;
+    videoLink.href = URL.createObjectURL(videoBlob);
+    videoLink.click();
+}
+
+function saveAudio(){
+    if (!audioBlob) return;
+    const baseFileName = getBaseFileName();
+    const audioLink = document.createElement("a");
+    const ext = audioBlob.type.includes("webm") ? ".webm" : audioBlob.type.includes("ogg") ? ".ogg" : ".m4a";
+    audioLink.download = baseFileName + ext;
+    audioLink.href = URL.createObjectURL(audioBlob);
+    audioLink.click();
 }
 
 startBtn.onclick = start;
 stopBtn.onclick = stop;
-saveBtn.onclick = saveImage;
+saveImgBtn.onclick = saveImage;
+saveVideoBtn.onclick = saveVideo;
+saveAudioBtn.onclick = saveAudio;
 
-drawGraph();
-
+const selectedMode = document.querySelector('input[name="modeSelect"]:checked').value;
+drawCombinedFrame(ctx, canvas.width, canvas.height, selectedMode);
 </script>
 
 </body>
