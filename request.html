@@ -26,15 +26,8 @@
         let myName = "";
         let players = [];
 
-        // お題データ
         const themeCategories = {
-            normal: [
-                "夏の曲", "冬の曲", "春の曲", "秋の曲",
-                "アニメ曲", "色入りの曲", "グループ曲", "数字がある曲",
-                "全てひらがなの曲", "全てカタカナの曲","全て漢字の曲",
-                "1980年代の曲", "1990年代の曲",
-                "2000年代の曲", "2010年代の曲"
-            ]
+            normal: ["夏の曲", "冬の曲", "春の曲", "秋の曲", "アニメ曲", "色入りの曲", "アイドル曲", "数字がある曲", "全てひらがなの曲", "全てカタカナの曲", "1980年代の曲", "1990年代の曲", "2000年代の曲", "2010年代の曲"]
         };
 
         window.joinRoom = async () => {
@@ -67,20 +60,61 @@
             });
         }
 
-        window.setTheme = (type) => {
-            if (type === 'random') {
-                const list = themeCategories.normal;
-                updateThemeInFirestore(list[Math.floor(Math.random() * list.length)]);
-            } else if (type === 'custom') {
-                const theme = prompt("お題を入力してください");
-                if (theme) updateThemeInFirestore(theme);
-            } else if (type === 'list') {
-                const p = document.getElementById('themeListPanel');
-                p.innerHTML = '<h3 style="font-size:0.9rem; margin:10px 0;">お題を選択:</h3>';
-                themeCategories.normal.forEach(t => {
-                    const b = document.createElement('button'); b.innerText = t; b.className = 'theme-btn';
-                    b.onclick = () => updateThemeInFirestore(t);
-                    p.appendChild(b);
+        window.addSong = async () => {
+            const title = document.getElementById('songInput').value;
+            if(!title) return;
+            // 重複チェック
+            const q = query(collection(db, "REQUEST_Songs"), where("REQUEST_roomId", "==", currentRoom), where("REQUEST_songTitle", "==", title));
+            const snap = await getDocs(q);
+            if(!snap.empty) return alert("その曲は既に提案されています");
+
+            await addDoc(collection(db, "REQUEST_Songs"), {
+                REQUEST_roomId: currentRoom, REQUEST_songTitle: title,
+                REQUEST_requesterName: myName, REQUEST_targetName: null
+            });
+            document.getElementById('songInput').value = "";
+        };
+
+        window.assignSongs = async () => {
+            const q = query(collection(db, "REQUEST_Songs"), where("REQUEST_roomId", "==", currentRoom));
+            const snap = await getDocs(q);
+            const songs = snap.docs;
+            if(songs.length === 0 || songs.length !== players.length) return alert("全員分のリクエストが必要です");
+
+            const batch = writeBatch(db);
+            const shuffledPlayers = [...players].sort(() => Math.random() - 0.5);
+            
+            songs.forEach((doc, idx) => {
+                batch.update(doc.ref, { REQUEST_targetName: shuffledPlayers[idx].REQUEST_playerName });
+            });
+            await batch.commit();
+        };
+
+        window.updateResult = async (songId, reqName, targetName, isSuccess) => {
+            const batch = writeBatch(db);
+            const p1 = players.find(p => p.REQUEST_playerName === reqName);
+            const p2 = players.find(p => p.REQUEST_playerName === targetName);
+            if(p1) batch.update(doc(db, "REQUEST_Players", `${currentRoom}_${reqName}`), { REQUEST_score: (p1.REQUEST_score || 0) + (isSuccess ? 1 : -1) });
+            if(p2) batch.update(doc(db, "REQUEST_Players", `${currentRoom}_${targetName}`), { REQUEST_score: (p2.REQUEST_score || 0) + (isSuccess ? 2 : -1) });
+            batch.delete(doc(db, "REQUEST_Songs", songId));
+            await batch.commit();
+        };
+
+        window.resetScores = async () => {
+            if(!confirm("リセットしますか？")) return;
+            const batch = writeBatch(db);
+            players.forEach(p => batch.update(doc(db, "REQUEST_Players", `${currentRoom}_${p.REQUEST_playerName}`), { REQUEST_score: 0 }));
+            await batch.commit();
+        };
+
+        window.setTheme = (t) => {
+            if (t === 'random') updateThemeInFirestore(themeCategories.normal[Math.floor(Math.random() * themeCategories.normal.length)]);
+            else if (t === 'custom') { const theme = prompt("お題:"); if(theme) updateThemeInFirestore(theme); }
+            else if (t === 'list') {
+                const p = document.getElementById('themeListPanel'); p.innerHTML = "";
+                themeCategories.normal.forEach(val => {
+                    const b = document.createElement('button'); b.innerText = val; b.className = 'theme-btn';
+                    b.onclick = () => updateThemeInFirestore(val); p.appendChild(b);
                 });
                 p.style.display = 'block';
             }
@@ -88,47 +122,15 @@
 
         async function updateThemeInFirestore(theme) {
             await setDoc(doc(db, "REQUEST_Rooms", currentRoom), { REQUEST_currentTheme: theme }, { merge: true });
-            document.getElementById('themeControlPanel').style.display = 'none';
             document.getElementById('themeListPanel').style.display = 'none';
         }
 
-        window.addSong = async () => {
-            const title = document.getElementById('songInput').value;
-            if(!title || players.length === 0) return;
-            const target = players[Math.floor(Math.random() * players.length)].REQUEST_playerName;
-            await addDoc(collection(db, "REQUEST_Songs"), {
-                REQUEST_roomId: currentRoom, REQUEST_songTitle: title,
-                REQUEST_requesterName: myName, REQUEST_targetName: target
-            });
-            document.getElementById('songInput').value = "";
-        };
-
-        window.updateResult = async (songId, reqName, targetName, isSuccess) => {
-            const batch = writeBatch(db);
-            const reqRef = doc(db, "REQUEST_Players", `${currentRoom}_${reqName}`);
-            const singerRef = doc(db, "REQUEST_Players", `${currentRoom}_${targetName}`);
-            const p1 = players.find(p => p.REQUEST_playerName === reqName);
-            const p2 = players.find(p => p.REQUEST_playerName === targetName);
-            if(p1) batch.update(reqRef, { REQUEST_score: (p1.REQUEST_score || 0) + (isSuccess ? 1 : -1) });
-            if(p2) batch.update(singerRef, { REQUEST_score: (p2.REQUEST_score || 0) + (isSuccess ? 2 : -1) });
-            batch.delete(doc(db, "REQUEST_Songs", songId));
-            await batch.commit();
-        };
-
-        window.resetScores = async () => {
-            if(!confirm("スコアをリセットしますか？")) return;
-            const batch = writeBatch(db);
-            players.forEach(p => batch.update(doc(db, "REQUEST_Players", `${currentRoom}_${p.REQUEST_playerName}`), { REQUEST_score: 0 }));
-            await batch.commit();
-        };
-
         function createSongCard(id, data) {
             const div = document.createElement('div'); div.className = 'song-card';
-            div.innerHTML = `<div>🎤 ${data.REQUEST_targetName} さんへの指令</div>
-                <div style="font-size:1.4rem; font-weight:bold; margin:5px 0;">${data.REQUEST_songTitle}</div>
+            div.innerHTML = `<div>🎤 ${data.REQUEST_targetName || "割り当て待機中..."}</div>
+                <div style="font-size:1.4rem; font-weight:bold;">${data.REQUEST_songTitle}</div>
                 <div style="font-size:0.8rem; color:#ff007f;">提案者: ${data.REQUEST_requesterName}</div>
-                <div class="btn-group"><button class="btn-success" onclick="updateResult('${id}','${data.REQUEST_requesterName}','${data.REQUEST_targetName}',true)">成功</button>
-                <button class="btn-fail" onclick="updateResult('${id}','${data.REQUEST_requesterName}','${data.REQUEST_targetName}',false)">失敗</button></div>`;
+                ${data.REQUEST_targetName ? `<div class="btn-group"><button class="btn-success" onclick="updateResult('${id}','${data.REQUEST_requesterName}','${data.REQUEST_targetName}',true)">成功</button><button class="btn-fail" onclick="updateResult('${id}','${data.REQUEST_requesterName}','${data.REQUEST_targetName}',false)">失敗</button></div>` : ""}`;
             return div;
         }
 
@@ -147,44 +149,47 @@
         body { background: var(--bg); color: #fff; font-family: sans-serif; margin: 0; padding: 20px; }
         .container { max-width: 500px; margin: 0 auto; }
         input { background: #121214; border: 2px solid #333; color: #fff; padding: 15px; border-radius: 12px; width: 100%; box-sizing: border-box; font-size: 1.2rem; margin-bottom: 15px; }
-        button { border: none; border-radius: 12px; color: #fff; padding: 15px; font-weight: bold; font-size: 1.1rem; cursor: pointer; transition: 0.2s; }
-        .song-card { background: var(--card); padding: 20px; border-radius: 20px; margin-bottom: 15px; border: 1px solid #333; }
-        .btn-group { display: flex; gap: 10px; margin-top: 15px; }
+        button { border: none; border-radius: 12px; color: #fff; padding: 15px; font-weight: bold; cursor: pointer; }
+        .song-card { background: var(--card); padding: 15px; border-radius: 15px; margin-bottom: 10px; border: 1px solid #333; }
+        .btn-group { display: flex; gap: 10px; margin-top: 10px; }
         .btn-success { background: var(--secondary); flex: 2; }
         .btn-fail { background: #333; flex: 1; }
-        #themeBox { background: var(--card); padding: 15px; border-radius: 15px; margin-bottom: 20px; text-align: center; border: 1px solid #ffdd55; }
-        .theme-btn { background: #2d2d35; margin: 5px; font-size: 0.9rem; padding: 8px 12px; }
+        .theme-btn { background: #2d2d35; margin: 5px; padding: 8px; font-size: 0.9rem; }
     </style>
 </head>
 <body>
 <div class="container">
     <div id="loginScreen">
-        <h1 style="background: var(--primary); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-size: 2rem;">KARAOKE REQ</h1>
+        <h1 style="background: var(--primary); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">KARAOKE REQ</h1>
         <input type="text" id="roomInput" placeholder="ルーム名">
         <input type="text" id="nameInput" placeholder="名前">
         <button onclick="joinRoom()" style="background: var(--primary); width: 100%;">入室</button>
     </div>
     <div id="mainScreen" style="display: none;">
-        <div style="display:flex; justify-content:space-between; align-items:center;">
-            <div id="displayRoomName" style="font-weight:bold; font-size:1.2rem;"></div>
-            <button onclick="resetScores()" style="background:#555; font-size:0.8rem; padding:8px;">リセット</button>
+        <div style="display:flex; justify-content:space-between;">
+            <div id="displayRoomName" style="font-weight:bold;"></div>
+            <button onclick="location.href='index.html'" style="background:#555; font-size:0.8rem;">メニューへ</button>
         </div>
-        <div id="themeBox">
-            <div id="themeText" style="font-size:1.2rem; color:#ffdd55; margin-bottom:10px;">お題：なし</div>
+        <div id="themeBox" style="background:var(--card); padding:10px; border-radius:10px; margin:10px 0;">
+            <div id="themeText">お題：なし</div>
             <button onclick="togglePanel()" class="theme-btn">⚙ お題設定</button>
-            <div id="themeControlPanel" style="display:none; margin-top:10px;">
+            <div id="themeControlPanel" style="display:none;">
                 <button onclick="setTheme('random')" class="theme-btn">ランダム</button>
                 <button onclick="setTheme('list')" class="theme-btn">リスト選択</button>
                 <button onclick="setTheme('custom')" class="theme-btn">直接入力</button>
             </div>
             <div id="themeListPanel" style="display:none;"></div>
         </div>
-        <input type="text" id="songInput" placeholder="曲名を入力">
-        <button onclick="addSong()" style="background: var(--primary); width: 100%; font-size: 1.3rem;">提案する</button>
-        <h2 style="font-size: 1.1rem; color: #ff007f; margin-top:30px;">🔥 指令リスト</h2>
+        <input type="text" id="songInput" placeholder="曲名">
+        <button onclick="addSong()" style="background: var(--primary); width: 100%;">提案</button>
+        <button onclick="assignSongs()" style="background: #00ffcc; color:#000; width: 100%; margin-top:10px;">全リクエストを確定・割り振り</button>
+        <button onclick="location.reload()" style="background: #444; width: 100%; margin-top:10px;">最新の状態に更新</button>
+        
+        <h2 style="font-size: 1rem; color: #ff007f;">指令リスト</h2>
         <div id="songList"></div>
-        <div style="background:#1e1e24; border-radius:15px; padding:15px; margin-top:20px;">
-            <h2 style="text-align:center;">🏆 スコア (<span id="memberCount">0</span>名)</h2>
+        <div style="background:#1e1e24; padding:10px; border-radius:10px;">
+            <div style="display:flex; justify-content:space-between;"><h2>🏆 スコア (<span id="memberCount">0</span>名)</h2>
+            <button onclick="resetScores()" style="background:#555; font-size:0.7rem;">リセット</button></div>
             <div id="playerRanking"></div>
         </div>
     </div>
