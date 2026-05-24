@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>本格派・盛り上がりチェッカー (カメラ切り替え・初動ガード仕様)</title>
+<title>盛り上がりチェッカー</title>
 
 <style>
 body{
@@ -193,18 +193,6 @@ button{
     font-size:18px;
 }
 
-.rank-box {
-    grid-column: span 2;
-    background: #111827;
-    padding: 10px;
-    border-radius: 12px;
-    text-align: center;
-    font-weight: bold;
-    color: #facc15;
-    font-size: 20px;
-    margin-top: 5px;
-}
-
 canvas{
     width:100%;
     background:#111827;
@@ -231,7 +219,7 @@ canvas{
     background: #111827;
     padding: 14px;
     border-radius: 16px;
-    font-size: 13px;
+    font-size: 14px;
     line-height: 1.6;
     color: #d1d5db;
 }
@@ -301,7 +289,6 @@ canvas{
         <div>最大: <span id="max">0</span> dBA</div>
         <div>平均: <span id="avg">0</span> dBA</div>
         <div>時間: <span id="elapsed">0</span> 秒</div>
-        <div class="rank-box">声量評価: <span id="voiceRank">-</span></div>
     </div>
 
     <div class="info" id="info"></div>
@@ -319,12 +306,13 @@ canvas{
 
 <button class="toggle-help" id="toggleHelpBtn">▼ 使い方を表示</button>
 <div class="help-content" id="helpContent">
-    <div class="help-title">【盛り上がりチェッカーの特徴】</div>
-    <ul>
-        <li><b>背面・前面カメラ切替：</b> デフォルトで背面アウトカメラが起動します。ステージや部屋全体の盛り上がりを写しながらリアルタイムで上下に炸裂する声紋波形を合成できます。</li>
-        <li><b>選べる録音録画：</b> 動画として残すか、音声ファイルだけを切り出すか、あるいはデータ測定のみにするかを自由にスイッチ可能です。</li>
-        <li><b>開始3秒完全ガード：</b> ボタン起動時特有の「ボフッ」という初期爆音をシステム側で3秒間100%遮断します（この間の最大値誤検知もありません）。</li>
-    </ul>
+    <b>【かんたん操作手順】</b><br>
+    1. 名前や曲名、保存モード（動画/音声/なし）を選びます。<br>
+    2. <b>[開始]</b> ボタンを押して歌うか、音を鳴らします。<br>
+    3. 終わったら <b>[停止]</b> ボタンを押します。<br>
+    4. 現れた <b>[動画保存]</b> や <b>[画像保存]</b> ボタンからデータを保存できます。<br>
+    <br>
+    ※動画モードの時は、自動的に動画の最後に3秒間リザルト画面（記録結果）が映ってから保存されます。
 </div>
 
 </div>
@@ -347,7 +335,6 @@ const maxText = document.getElementById("max");
 const avgText = document.getElementById("avg");
 const elapsedText = document.getElementById("elapsed");
 const timerText = document.getElementById("timer");
-const voiceRankText = document.getElementById("voiceRank");
 const bar = document.getElementById("bar");
 
 const canvas = document.getElementById("graph");
@@ -368,14 +355,14 @@ let audioContext;
 let streamStream; 
 
 const MAX_WAVE_BARS = 80;
-let waveHistory = new Array(MAX_WAVE_BARS).fill(null).map(() => ({ high: 70, low: 70 }));
+let waveHistory = new Array(MAX_WAVE_BARS).fill(null).map(() => ({ high: 80, low: 80 }));
 let fullHistory = [];  
 
 let totalSum = 0;   
 let totalCount = 0;
 let maxVolume = 0;
 
-let lastOneSecondDb = 40; 
+let lastOneSecondDb = 85; 
 let lastSavedTimeForDelta = 0;
 let lastWavePushTime = 0; 
 
@@ -388,19 +375,19 @@ let sectionData = [];
 let startTime;
 let limitTime = 360;
 let running = false;
+let isEndingDelay = false; // ラスト3秒リザルト合成中フラグ
 let currentDate = "";
 
-const MIN_DB = 0;
+// 最低デシベルをご指定の「80」に変更
+const MIN_DB = 80;
 const MAX_DB = 150; 
 
-// メディアレコーダー（動画・音声用）
 let mediaRecorder;
 let videoChunks = [];
 let videoBlob = null;
 let audioChunks = [];
 let audioBlob = null;
 
-// カメラ向き管理 ('environment' = 背面デフォルト, 'user' = 前面)
 let currentFacingMode = "environment";
 
 const ua = navigator.userAgent.toLowerCase();
@@ -413,7 +400,6 @@ calibSlider.oninput = function() {
     calibVal.textContent = (val > 0 ? "+" : "") + val;
 };
 
-// カメラ切り替えボタンロジック
 switchCamBtn.onclick = function() {
     if (running) {
         alert("測定中はカメラを切り替えられません。一度停止してください。");
@@ -441,18 +427,6 @@ toggleHelpBtn.onclick = function() {
 function getAverage(){
     if(totalCount === 0) return MIN_DB;
     return totalSum / totalCount;
-}
-
-function calculateVoiceRankFromScore(score) {
-    if (score >= 140) return "GOD・神域の咆哮 (140点〜)";
-    if (score >= 130) return "SSS・絶対的カリスマ (130〜139点)";
-    if (score >= 120) return "SS・圧倒的プロ級 (120〜129点)";
-    if (score >= 110) return "S・凄腕シンガー (110〜119点)";
-    if (score >= 100) return "A・実力派・声量十分 (100〜109点)";
-    if (score >= 90)  return "B +・ハイクオリティ (90〜99点)";
-    if (score >= 80)  return "B・標準クラス (80〜89点)";
-    if (score >= 70)  return "C・おしゃべり音量 (70〜79点)";
-    return "D・ささやきボイス (〜69点)";
 }
 
 function calculateHighlightScore() {
@@ -509,12 +483,13 @@ function drawVoicePrintCore(targetCtx, startY, w, h, dataArrayToDraw) {
     for (let i = 0; i < totalBars; i++) {
         const item = dataArrayToDraw[i];
         
-        let ratioHigh = (item.high - 70) / (130 - 70);
+        // 最低値を80dB基準にマッピング
+        let ratioHigh = (item.high - 80) / (150 - 80);
         if(ratioHigh < 0) ratioHigh = 0;
         if(ratioHigh > 1) ratioHigh = 1;
         const heightHigh = (h * 0.45) * ratioHigh;
 
-        let ratioLow = (item.low - 70) / (130 - 70);
+        let ratioLow = (item.low - 80) / (150 - 80);
         if(ratioLow < 0) ratioLow = 0;
         if(ratioLow > 1) ratioLow = 1;
         const heightLow = (h * 0.45) * ratioLow;
@@ -535,10 +510,62 @@ function drawVoicePrintCore(targetCtx, startY, w, h, dataArrayToDraw) {
     targetCtx.shadowBlur = 0;
 }
 
+// 動画の最後に差し込む「リザルト単体画面」をキャンバス全面に描画する関数
+function drawEmbedResult(targetCtx, w, h) {
+    targetCtx.fillStyle = "#111827";
+    targetCtx.fillRect(0, 0, w, h);
+
+    targetCtx.fillStyle = "#3b82f6";
+    targetCtx.font = "bold 22px sans-serif";
+    targetCtx.textAlign = "center";
+    targetCtx.fillText("📊 最終リザルト", w / 2, 60);
+
+    targetCtx.fillStyle = "white";
+    targetCtx.font = "18px sans-serif";
+    const player = playerNameInput.value.trim() || "NO NAME";
+    const song = songNameInput.value.trim() || "NO SONG";
+    targetCtx.fillText(player + " / " + song, w / 2, 105);
+
+    targetCtx.fillStyle = "#9ca3af";
+    targetCtx.font = "14px sans-serif";
+    targetCtx.fillText(currentDate, w / 2, 135);
+
+    // 数値出力
+    targetCtx.fillStyle = "#9ca3af";
+    targetCtx.font = "16px sans-serif";
+    targetCtx.fillText("最大音量:", w / 2 - 50, 200);
+    targetCtx.fillStyle = "white";
+    targetCtx.font = "bold 22px sans-serif";
+    targetCtx.fillText(Math.floor(maxVolume) + " dBA", w / 2 + 50, 200);
+
+    targetCtx.fillStyle = "#9ca3af";
+    targetCtx.font = "16px sans-serif";
+    targetCtx.fillText("全体平均:", w / 2 - 50, 250);
+    targetCtx.fillStyle = "white";
+    targetCtx.font = "bold 22px sans-serif";
+    targetCtx.fillText(Math.floor(getAverage()) + " dBA", w / 2 + 50, 250);
+
+    targetCtx.fillStyle = "#60a5fa";
+    targetCtx.font = "bold 18px sans-serif";
+    targetCtx.fillText("🔥 ハイライト得点", w / 2, 330);
+    
+    targetCtx.fillStyle = "#22d3ee";
+    targetCtx.font = "bold 55px sans-serif";
+    const scoreVal = calculateHighlightScore() || Math.floor(maxVolume + (getAverage() / 2));
+    targetCtx.fillText(scoreVal + " 点", w / 2, 405);
+
+    targetCtx.textAlign = "left"; // 元に戻す
+}
+
 function drawCombinedFrame(targetCtx, w, h, mode) {
+    // 動画の最後にリザルト画面を表示するモードのとき
+    if (isEndingDelay) {
+        drawEmbedResult(targetCtx, w, h);
+        return;
+    }
+
     const halfH = h / 2;
     
-    // モードがビデオ選択時のみカメラ映像を上半分に描く
     if (mode === "video" && running && hiddenVideo.readyState === hiddenVideo.HAVE_ENOUGH_DATA) {
         targetCtx.fillStyle = "#000000";
         targetCtx.fillRect(0, 0, w, halfH);
@@ -560,7 +587,6 @@ function drawCombinedFrame(targetCtx, w, h, mode) {
         }
         targetCtx.drawImage(hiddenVideo, drawX, drawY, drawW, drawH);
     } else {
-        // 音声モード、またはカメラなし、準備中の時
         targetCtx.fillStyle = "#1f2937";
         targetCtx.fillRect(0, 0, w, halfH);
         targetCtx.fillStyle = "#9ca3af";
@@ -574,10 +600,8 @@ function drawCombinedFrame(targetCtx, w, h, mode) {
         targetCtx.textAlign = "left";
     }
 
-    // 下半分に高低音分離波形を描画
     drawVoicePrintCore(targetCtx, halfH, w, halfH, waveHistory);
 
-    // テキストオーバーレイ
     targetCtx.fillStyle = "white";
     targetCtx.font = "14px sans-serif";
     const player = playerNameInput.value.trim() || "NO NAME";
@@ -590,22 +614,23 @@ function drawCombinedFrame(targetCtx, w, h, mode) {
     
     const centerY = halfH + (halfH / 2);
     targetCtx.fillStyle = "rgba(255,255,255,0.4)";
-    targetCtx.fillText("130dB (高音)", w - 75, centerY - (halfH * 0.38));
-    targetCtx.fillText("70dB", w - 40, centerY + 4);
-    targetCtx.fillText("130dB (低音)", w - 75, centerY + (halfH * 0.41));
+    targetCtx.fillText("150dB (高音)", w - 75, centerY - (halfH * 0.38));
+    targetCtx.fillText("80dB", w - 40, centerY + 4);
+    targetCtx.fillText("150dB (低音)", w - 75, centerY + (halfH * 0.41));
 }
 
 async function start(){
     if(running) return;
 
     running = true;
-    waveHistory = new Array(MAX_WAVE_BARS).fill(null).map(() => ({ high: 70, low: 70 }));
+    isEndingDelay = false;
+    waveHistory = new Array(MAX_WAVE_BARS).fill(null).map(() => ({ high: 80, low: 80 }));
     fullHistory = [];
     totalSum = 0;
     totalCount = 0;
     maxVolume = MIN_DB;
     
-    lastOneSecondDb = 40;
+    lastOneSecondDb = 85;
     lastSavedTimeForDelta = Date.now();
     lastWavePushTime = Date.now();
     finalHighScore = 0;
@@ -627,11 +652,9 @@ async function start(){
     currentDate = new Date().toLocaleString("ja-JP");
     info.innerHTML = "測定日時: " + currentDate;
 
-    // ラジオボタンの選択値を取得
     const selectedMode = document.querySelector('input[name="modeSelect"]:checked').value;
 
     try {
-        // 設定されたカメラ向き(背面/前面)を反映
         const constraints = {
             audio: {
                 echoCancellation: { exact: false },  
@@ -658,7 +681,6 @@ async function start(){
         dataArray = new Uint8Array(analyser.frequencyBinCount);
         startTime = Date.now();
 
-        // 【1. ビデオ録画モード時のレコーダー】
         if (selectedMode === "video") {
             const canvasStream = canvas.captureStream(24);
             const audioTrack = streamStream.getAudioTracks()[0];
@@ -682,7 +704,6 @@ async function start(){
             };
             mediaRecorder.start(250); 
         } 
-        // 【2. 音声のみ録音モード時のレコーダー】
         else if (selectedMode === "audio") {
             let options = { mimeType: 'audio/webm;codecs=opus' };
             if (!MediaRecorder.isTypeSupported(options.mimeType)) {
@@ -728,22 +749,47 @@ function finalizeScore() {
 
 function stop(){
     if(!running) return;
-    running = false;
-    cancelAnimationFrame(animationId);
     
-    if (mediaRecorder && mediaRecorder.state !== "inactive") {
-        mediaRecorder.stop();
-    }
-    if (streamStream) {
-        streamStream.getTracks().forEach(track => track.stop());
-    }
-    if (audioContext) {
-        audioContext.close();
-    }
-    
-    hiddenVideo.srcObject = null;
     finalizeScore();
-    voiceRankText.textContent = calculateVoiceRankFromScore(finalHighScore || Math.floor(maxVolume + (getAverage() / 2)));
+    const selectedMode = document.querySelector('input[name="modeSelect"]:checked').value;
+
+    // 動画モードなら、レコーダーをすぐに止めず、3秒間リザルト画面にすり替えて録画をキープ
+    if (selectedMode === "video" && mediaRecorder && mediaRecorder.state === "recording") {
+        isEndingDelay = true;
+        // マイクだけ先に止めて余計な音が入るのを防ぐ
+        if (streamStream) {
+            streamStream.getAudioTracks().forEach(track => track.stop());
+        }
+        
+        setTimeout(() => {
+            running = false;
+            cancelAnimationFrame(animationId);
+            if (mediaRecorder && mediaRecorder.state !== "inactive") {
+                mediaRecorder.stop();
+            }
+            if (streamStream) {
+                streamStream.getTracks().forEach(track => track.stop());
+            }
+            if (audioContext) {
+                audioContext.close();
+            }
+            hiddenVideo.srcObject = null;
+        }, 3000); // 3秒間のラストリザルト画面演出
+    } else {
+        // 音声、測定のみモードは通常通り一瞬で停止
+        running = false;
+        cancelAnimationFrame(animationId);
+        if (mediaRecorder && mediaRecorder.state !== "inactive") {
+            mediaRecorder.stop();
+        }
+        if (streamStream) {
+            streamStream.getTracks().forEach(track => track.stop());
+        }
+        if (audioContext) {
+            audioContext.close();
+        }
+        hiddenVideo.srcObject = null;
+    }
 }
 
 function getAWeightingOffset(frequency) {
@@ -794,17 +840,18 @@ function update(){
     }
     
     let averageAmplitude = totalWeight > 0 ? (weightedSum / totalWeight) : 0;
-    let finalAmplitude = (averageAmplitude * 0.65) + (peakAmplitude * 0.35);
+    let finalAmplitude = (averageAmplitude * 0.6) + (peakAmplitude * 0.4);
 
-    let rawDb = 30;
+    let rawDb = 80;
     if (finalAmplitude > 0) {
-        rawDb = (20 * Math.log10(finalAmplitude / 255)) + 102; 
+        // カラオケボックス（爆音）環境下でも綺麗にトゲトゲが跳ね上がるように計算式を底上げチューン
+        rawDb = (24 * Math.log10(finalAmplitude / 255)) + 118; 
     }
     const calibrationOffset = parseInt(calibSlider.value);
     rawDb += calibrationOffset;
 
-    if (rawDb < 30) rawDb = 30;
-    if (rawDb > 90) rawDb = 90 + ((rawDb - 90) * 1.5);
+    if (rawDb < 80) rawDb = 80;
+    if (rawDb > 105) rawDb = 105 + ((rawDb - 105) * 1.6); // 高音圧の伸びをより派手に
 
     let now = Date.now();
     const elapsedSeconds = Math.floor((now - startTime) / 1000);
@@ -817,10 +864,10 @@ function update(){
     let delta = rawDb - lastOneSecondDb;
     let modifiedDb = rawDb;
 
-    if (rawDb > 45) {
-        let dynamicScale = (elapsedSeconds < 3) ? 0.0 : 0.45;
+    if (rawDb > 85) {
+        let dynamicScale = (elapsedSeconds < 3) ? 0.0 : 0.55;
         modifiedDb = rawDb + (delta * dynamicScale);
-        modifiedDb = 35 + (modifiedDb - 35) * 1.15;
+        modifiedDb = 82 + (modifiedDb - 82) * 1.2;
     }
 
     if (modifiedDb < MIN_DB) modifiedDb = MIN_DB;
@@ -829,30 +876,30 @@ function update(){
     let avgLowAmp = lowCount > 0 ? (lowSum / lowCount) : 0;
     let avgHighAmp = highCount > 0 ? (highSum / highCount) : 0;
 
-    let dbLow = avgLowAmp > 0 ? (20 * Math.log10(avgLowAmp / 255) + 102) + calibrationOffset : 30;
-    let dbHigh = avgHighAmp > 0 ? (20 * Math.log10(avgHighAmp / 255) + 102) + calibrationOffset : 30;
+    let dbLow = avgLowAmp > 0 ? (24 * Math.log10(avgLowAmp / 255) + 118) + calibrationOffset : 80;
+    let dbHigh = avgHighAmp > 0 ? (24 * Math.log10(avgHighAmp / 255) + 118) + calibrationOffset : 80;
 
-    if (dbLow > 45)  dbLow = 35 + (dbLow + delta * 0.3 - 35) * 1.15;
-    if (dbHigh > 45) dbHigh = 35 + (dbHigh + delta * 0.5 - 35) * 1.15;
+    if (dbLow > 85)  dbLow = 82 + (dbLow + delta * 0.4 - 82) * 1.2;
+    if (dbHigh > 85) dbHigh = 82 + (dbHigh + delta * 0.6 - 82) * 1.2;
 
-    if(dbLow < 70) dbLow = 70;   if(dbLow > 130) dbLow = 130;
-    if(dbHigh < 70) dbHigh = 70; if(dbHigh > 130) dbHigh = 130;
+    if(dbLow < 80) dbLow = 80;   if(dbLow > 150) dbLow = 150;
+    if(dbHigh < 80) dbHigh = 80; if(dbHigh > 150) dbHigh = 150;
 
-    // ★【初動3秒完全ガード機能】
+    // 初動3秒完全ガード（80dB固定）
     if (elapsedSeconds < 3) {
-        modifiedDb = 30;
-        dbLow = 70;
-        dbHigh = 70;
+        modifiedDb = 80;
+        dbLow = 80;
+        dbHigh = 80;
     }
 
-    if (now - lastWavePushTime >= 750) {
+    if (!isEndingDelay && (now - lastWavePushTime >= 750)) {
         waveHistory.shift();
         waveHistory.push({ high: dbHigh, low: dbLow });
         fullHistory.push({ high: dbHigh, low: dbLow, total: modifiedDb }); 
         lastWavePushTime = now;
     }
     
-    if (elapsedSeconds >= 3) {
+    if (!isEndingDelay && elapsedSeconds >= 3) {
         totalSum += modifiedDb;
         totalCount++;
         intervalSum += modifiedDb;
@@ -863,7 +910,7 @@ function update(){
     }
 
     const currentIntervalIndex = Math.floor(elapsedSeconds / 10);
-    if (currentIntervalIndex > lastIntervalIndex) {
+    if (!isEndingDelay && currentIntervalIndex > lastIntervalIndex) {
         if (intervalCount > 0) {
             const chunkAvg = intervalSum / intervalCount;
             let chunkMax = MIN_DB;
@@ -881,30 +928,26 @@ function update(){
         finalHighScore = calculateHighlightScore();
     }
 
-    currentText.textContent = Math.floor(modifiedDb);
-    maxText.textContent = Math.floor(maxVolume);
-    
-    const currentAvg = getAverage();
-    avgText.textContent = Math.floor(currentAvg);
-    
-    const liveScore = finalHighScore || Math.floor(maxVolume + (currentAvg / 2));
-    voiceRankText.textContent = calculateVoiceRankFromScore(liveScore);
+    if (!isEndingDelay) {
+        currentText.textContent = Math.floor(modifiedDb);
+        maxText.textContent = Math.floor(maxVolume);
+        avgText.textContent = Math.floor(getAverage());
+        
+        const barPercent = ((modifiedDb - MIN_DB) / (MAX_DB - MIN_DB)) * 100;
+        bar.style.width = barPercent + "%";
+        elapsedText.textContent = elapsedSeconds;
 
-    const barPercent = ((modifiedDb - MIN_DB) / (MAX_DB - MIN_DB)) * 100;
-    bar.style.width = barPercent + "%";
+        const remain = Math.max(limitTime - elapsedSeconds, 0);
+        timerText.textContent = remain;
 
-    elapsedText.textContent = elapsedSeconds;
+        if(remain <= 0){
+            stop();
+            return;
+        }
+    }
 
     const selectedMode = document.querySelector('input[name="modeSelect"]:checked').value;
     drawCombinedFrame(ctx, canvas.width, canvas.height, selectedMode);
-
-    const remain = Math.max(limitTime - elapsedSeconds, 0);
-    timerText.textContent = remain;
-
-    if(remain <= 0){
-        stop();
-        return;
-    }
 
     animationId = requestAnimationFrame(update);
 }
@@ -916,9 +959,10 @@ function getBaseFileName() {
     return `${player}_${song}_${maxDbStr}`;
 }
 
-// 2画面・全歴史の画像保存
+// 2画面・全歴史の画像保存（評価テキストなしVer）
 function saveImage(){
-    stop(); 
+    const wasRunning = running;
+    if(wasRunning) stop(); 
     
     const baseFileName = getBaseFileName();
     const saveCanvas = document.createElement("canvas");
@@ -992,22 +1036,12 @@ function saveImage(){
     const scoreVal = calculateHighlightScore() || Math.floor(maxVolume + (getAverage() / 2));
     sCtx.fillText(scoreVal + " 点", infoX, 255);
 
-    sCtx.fillStyle = "#facc15";
-    sCtx.font = "bold 13px sans-serif";
-    sCtx.fillText("【声量評価】", infoX, 320);
-    sCtx.fillStyle = "white";
-    sCtx.font = "13px sans-serif";
-    
-    const finalRank = calculateVoiceRankFromScore(scoreVal);
-    sCtx.fillText(finalRank.split(" (")[0], infoX, 345);
-
     const imgLink = document.createElement("a");
-    imgLink.download = baseFileName + "_alltime.png";
+    imgLink.download = baseFileName + "_result.png";
     imgLink.href = saveCanvas.toDataURL("image/png");
     imgLink.click();
 }
 
-// 動画保存
 function saveVideo(){
     if (!videoBlob) return;
     const baseFileName = getBaseFileName();
@@ -1018,7 +1052,6 @@ function saveVideo(){
     videoLink.click();
 }
 
-// 音声保存
 function saveAudio(){
     if (!audioBlob) return;
     const baseFileName = getBaseFileName();
@@ -1035,7 +1068,6 @@ saveImgBtn.onclick = saveImage;
 saveVideoBtn.onclick = saveVideo;
 saveAudioBtn.onclick = saveAudio;
 
-// 初期表示
 const selectedMode = document.querySelector('input[name="modeSelect"]:checked').value;
 drawCombinedFrame(ctx, canvas.width, canvas.height, selectedMode);
 </script>
