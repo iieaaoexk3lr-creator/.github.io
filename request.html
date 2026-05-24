@@ -3,10 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>REQUEST KARAOKE PRO</title>
+    <title>カラオケ・リクエスト・バトル</title>
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
-        import { getFirestore, collection, doc, setDoc, addDoc, onSnapshot, query, where, updateDoc, deleteDoc, getDocs, writeBatch } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
+        import { getFirestore, collection, doc, setDoc, addDoc, onSnapshot, query, where, updateDoc, deleteDoc, getDocs, writeBatch, getDoc } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyC4DQhH_swesAD98Xyjg8d1lcWEkkrHrgw",
@@ -22,232 +22,172 @@
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
 
-        // --- 状態管理 ---
         let currentRoom = "";
         let myName = "";
         let players = [];
 
-        // --- DOM要素 ---
-        const loginScreen = document.getElementById('loginScreen');
-        const mainScreen = document.getElementById('mainScreen');
+        // お題データ
+        const themeCategories = {
+            normal: [
+                "夏の曲", "冬の曲", "春の曲", "秋の曲",
+                "アニメ曲", "色入りの曲", "アイドル曲", "数字がある曲",
+                "全てひらがなの曲", "全てカタカナの曲",
+                "1980年代の曲", "1990年代の曲",
+                "2000年代の曲", "2010年代の曲"
+            ]
+        };
 
-        // --- 入室処理 ---
         window.joinRoom = async () => {
             const r = document.getElementById('roomInput').value;
             const n = document.getElementById('nameInput').value;
             if(!r || !n) return alert("ルーム名と名前を入力してください");
-            
-            currentRoom = r;
-            myName = n;
+            currentRoom = r; myName = n;
 
-            // プレイヤー登録
             await setDoc(doc(db, "REQUEST_Players", `${currentRoom}_${myName}`), {
-                REQUEST_playerName: myName,
-                REQUEST_roomId: currentRoom,
-                REQUEST_score: 0,
-                REQUEST_lastActive: Date.now()
+                REQUEST_playerName: myName, REQUEST_roomId: currentRoom, REQUEST_score: 0
             });
-
-            loginScreen.style.display = 'none';
-            mainScreen.style.display = 'block';
+            document.getElementById('loginScreen').style.display = 'none';
+            document.getElementById('mainScreen').style.display = 'block';
             document.getElementById('displayRoomName').innerText = `Room: ${currentRoom}`;
             initSync();
         };
 
-        // --- 同期開始 ---
         function initSync() {
-            // プレイヤー一覧
             onSnapshot(query(collection(db, "REQUEST_Players"), where("REQUEST_roomId", "==", currentRoom)), (snap) => {
                 players = snap.docs.map(d => d.data());
                 document.getElementById('memberCount').innerText = `${players.length}名`;
                 renderRanking();
             });
-
-            // 曲リスト
             onSnapshot(query(collection(db, "REQUEST_Songs"), where("REQUEST_roomId", "==", currentRoom)), (snap) => {
-                const songList = document.getElementById('songList');
-                songList.innerHTML = "";
-                snap.docs.forEach(d => {
-                    const data = d.data();
-                    songList.appendChild(createSongCard(d.id, data));
-                });
+                const list = document.getElementById('songList'); list.innerHTML = "";
+                snap.docs.forEach(d => list.appendChild(createSongCard(d.id, d.data())));
             });
-
-            // お題
-            onSnapshot(doc(db, "REQUEST_Rooms", currentRoom), (doc) => {
-                if(doc.exists()) {
-                    document.getElementById('themeText').innerText = `お題：${doc.data().REQUEST_currentTheme || "なし"}`;
-                }
+            onSnapshot(doc(db, "REQUEST_Rooms", currentRoom), (d) => {
+                if(d.exists()) document.getElementById('themeText').innerText = `お題：${d.data().REQUEST_currentTheme || "なし"}`;
             });
         }
 
-        // --- スコア計算ロジック ---
-        window.updateResult = async (songId, requesterName, targetName, isSuccess) => {
-            const batch = writeBatch(db);
-            
-            // ポイント設定
-            const suggesterBonus = isSuccess ? 1 : -1;
-            const singerBonus = isSuccess ? 2 : -1;
-
-            // 提案者のスコア更新
-            const reqRef = doc(db, "REQUEST_Players", `${currentRoom}_${requesterName}`);
-            const singerRef = doc(db, "REQUEST_Players", `${currentRoom}_${targetName}`);
-
-            const p1 = players.find(p => p.REQUEST_playerName === requesterName);
-            const p2 = players.find(p => p.REQUEST_playerName === targetName);
-
-            if(p1) batch.update(reqRef, { REQUEST_score: (p1.REQUEST_score || 0) + suggesterBonus });
-            if(p2) batch.update(singerRef, { REQUEST_score: (p2.REQUEST_score || 0) + singerBonus });
-
-            batch.delete(doc(db, "REQUEST_Songs", songId)); // 歌い終わったらリストから削除
-            await batch.commit();
+        window.setTheme = (type) => {
+            if (type === 'random') {
+                const list = themeCategories.normal;
+                updateThemeInFirestore(list[Math.floor(Math.random() * list.length)]);
+            } else if (type === 'custom') {
+                const theme = prompt("お題を入力してください");
+                if (theme) updateThemeInFirestore(theme);
+            } else if (type === 'list') {
+                const p = document.getElementById('themeListPanel');
+                p.innerHTML = '<h3 style="font-size:0.9rem; margin:10px 0;">お題を選択:</h3>';
+                themeCategories.normal.forEach(t => {
+                    const b = document.createElement('button'); b.innerText = t; b.className = 'theme-btn';
+                    b.onclick = () => updateThemeInFirestore(t);
+                    p.appendChild(b);
+                });
+                p.style.display = 'block';
+            }
         };
 
-        // --- 曲の提案 ---
+        async function updateThemeInFirestore(theme) {
+            await setDoc(doc(db, "REQUEST_Rooms", currentRoom), { REQUEST_currentTheme: theme }, { merge: true });
+            document.getElementById('themeControlPanel').style.display = 'none';
+            document.getElementById('themeListPanel').style.display = 'none';
+        }
+
         window.addSong = async () => {
             const title = document.getElementById('songInput').value;
-            if(!title) return;
-            
-            // ランダムに歌う人を決定
+            if(!title || players.length === 0) return;
             const target = players[Math.floor(Math.random() * players.length)].REQUEST_playerName;
-
             await addDoc(collection(db, "REQUEST_Songs"), {
-                REQUEST_roomId: currentRoom,
-                REQUEST_songTitle: title,
-                REQUEST_requesterName: myName,
-                REQUEST_targetName: target,
-                REQUEST_status: "pending"
+                REQUEST_roomId: currentRoom, REQUEST_songTitle: title,
+                REQUEST_requesterName: myName, REQUEST_targetName: target
             });
             document.getElementById('songInput').value = "";
         };
 
-        // --- お題管理 ---
-        const themes = ["懐メロ", "アニソン", "失恋ソング", "最新チャート", "英語の曲", "ネタ曲", "V系"];
-        window.setTheme = async (t) => {
-            const theme = t || themes[Math.floor(Math.random() * themes.length)];
-            await setDoc(doc(db, "REQUEST_Rooms", currentRoom), { REQUEST_currentTheme: theme }, { merge: true });
-            document.getElementById('themeControlPanel').style.display = 'none';
-        };
-
-        // --- リセット ---
-        window.resetScores = async () => {
-            if(!confirm("全員のスコアを0に戻しますか？")) return;
+        window.updateResult = async (songId, reqName, targetName, isSuccess) => {
             const batch = writeBatch(db);
-            const q = query(collection(db, "REQUEST_Players"), where("REQUEST_roomId", "==", currentRoom));
-            const snap = await getDocs(q);
-            snap.forEach(d => batch.update(d.ref, { REQUEST_score: 0 }));
+            const reqRef = doc(db, "REQUEST_Players", `${currentRoom}_${reqName}`);
+            const singerRef = doc(db, "REQUEST_Players", `${currentRoom}_${targetName}`);
+            const p1 = players.find(p => p.REQUEST_playerName === reqName);
+            const p2 = players.find(p => p.REQUEST_playerName === targetName);
+            if(p1) batch.update(reqRef, { REQUEST_score: (p1.REQUEST_score || 0) + (isSuccess ? 1 : -1) });
+            if(p2) batch.update(singerRef, { REQUEST_score: (p2.REQUEST_score || 0) + (isSuccess ? 2 : -1) });
+            batch.delete(doc(db, "REQUEST_Songs", songId));
             await batch.commit();
         };
 
-        // --- UI生成 ---
+        window.resetScores = async () => {
+            if(!confirm("スコアをリセットしますか？")) return;
+            const batch = writeBatch(db);
+            players.forEach(p => batch.update(doc(db, "REQUEST_Players", `${currentRoom}_${p.REQUEST_playerName}`), { REQUEST_score: 0 }));
+            await batch.commit();
+        };
+
         function createSongCard(id, data) {
-            const div = document.createElement('div');
-            div.className = 'song-card';
-            const isMyTurn = data.REQUEST_targetName === myName;
-            div.innerHTML = `
-                <div style="font-size:0.9rem; color:#a0aec0;">🎤 ${data.REQUEST_targetName} さんへの指令</div>
+            const div = document.createElement('div'); div.className = 'song-card';
+            div.innerHTML = `<div>🎤 ${data.REQUEST_targetName} さんへの指令</div>
                 <div style="font-size:1.4rem; font-weight:bold; margin:5px 0;">${data.REQUEST_songTitle}</div>
                 <div style="font-size:0.8rem; color:#ff007f;">提案者: ${data.REQUEST_requesterName}</div>
-                <div class="btn-group">
-                    <button class="btn-success" onclick="updateResult('${id}', '${data.REQUEST_requesterName}', '${data.REQUEST_targetName}', true)">成功</button>
-                    <button class="btn-fail" onclick="updateResult('${id}', '${data.REQUEST_requesterName}', '${data.REQUEST_targetName}', false)">失敗</button>
-                </div>
-            `;
+                <div class="btn-group"><button class="btn-success" onclick="updateResult('${id}','${data.REQUEST_requesterName}','${data.REQUEST_targetName}',true)">成功</button>
+                <button class="btn-fail" onclick="updateResult('${id}','${data.REQUEST_requesterName}','${data.REQUEST_targetName}',false)">失敗</button></div>`;
             return div;
         }
 
         function renderRanking() {
-            const list = document.getElementById('playerRanking');
-            list.innerHTML = "";
+            const list = document.getElementById('playerRanking'); list.innerHTML = "";
             players.sort((a,b) => b.REQUEST_score - a.REQUEST_score).forEach(p => {
-                const item = document.createElement('div');
-                item.style = "display:flex; justify-content:space-between; padding:10px; border-bottom:1px solid #333; font-size:1.2rem;";
+                const item = document.createElement('div'); item.style = "display:flex; justify-content:space-between; padding:10px; border-bottom:1px solid #333; font-size:1.2rem;";
                 item.innerHTML = `<span>${p.REQUEST_playerName}</span><span style="color:#00ffcc; font-weight:bold;">${p.REQUEST_score} pt</span>`;
                 list.appendChild(item);
             });
         }
-
-        window.togglePanel = () => {
-            const p = document.getElementById('themeControlPanel');
-            p.style.display = p.style.display === 'none' ? 'block' : 'none';
-        };
+        window.togglePanel = () => { const p = document.getElementById('themeControlPanel'); p.style.display = p.style.display === 'none' ? 'block' : 'none'; };
     </script>
     <style>
-        :root { 
-            --bg: #121214; --card: #1e1e24; 
-            --primary: linear-gradient(135deg, #ff007f, #7928ca);
-            --secondary: linear-gradient(135deg, #00f2fe, #4facfe);
-            --danger: linear-gradient(135deg, #ff416c, #ff4b2b);
-        }
-        body { background: var(--bg); color: #fff; font-family: sans-serif; margin: 0; padding: 0; }
-        .container { max-width: 500px; margin: 0 auto; padding: 20px; }
+        :root { --bg: #121214; --card: #1e1e24; --primary: linear-gradient(135deg, #ff007f, #7928ca); --secondary: linear-gradient(135deg, #00f2fe, #4facfe); --danger: linear-gradient(135deg, #ff416c, #ff4b2b); }
+        body { background: var(--bg); color: #fff; font-family: sans-serif; margin: 0; padding: 20px; }
+        .container { max-width: 500px; margin: 0 auto; }
         input { background: #121214; border: 2px solid #333; color: #fff; padding: 15px; border-radius: 12px; width: 100%; box-sizing: border-box; font-size: 1.2rem; margin-bottom: 15px; }
         button { border: none; border-radius: 12px; color: #fff; padding: 15px; font-weight: bold; font-size: 1.1rem; cursor: pointer; transition: 0.2s; }
-        button:active { transform: scale(0.95); }
-        
-        /* ログイン */
-        #loginScreen { text-align: center; padding-top: 100px; }
-        
-        /* メイン画面 */
-        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 2px solid #333; padding-bottom: 10px; }
         .song-card { background: var(--card); padding: 20px; border-radius: 20px; margin-bottom: 15px; border: 1px solid #333; }
         .btn-group { display: flex; gap: 10px; margin-top: 15px; }
         .btn-success { background: var(--secondary); flex: 2; }
         .btn-fail { background: #333; flex: 1; }
-        
         #themeBox { background: var(--card); padding: 15px; border-radius: 15px; margin-bottom: 20px; text-align: center; border: 1px solid #ffdd55; }
         .theme-btn { background: #2d2d35; margin: 5px; font-size: 0.9rem; padding: 8px 12px; }
-        .ranking-box { background: #121214; border-radius: 15px; padding: 10px; margin-top: 30px; }
     </style>
 </head>
 <body>
-
 <div class="container">
     <div id="loginScreen">
-        <h1 style="background: var(--primary); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-size: 2.5rem;">KARAOKE REQ</h1>
-        <input type="text" id="roomInput" placeholder="ルーム名を入力">
-        <input type="text" id="nameInput" placeholder="あなたの名前">
-        <button onclick="joinRoom()" style="background: var(--primary); width: 100%;">入室する</button>
+        <h1 style="background: var(--primary); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-size: 2rem;">KARAOKE REQ</h1>
+        <input type="text" id="roomInput" placeholder="ルーム名">
+        <input type="text" id="nameInput" placeholder="名前">
+        <button onclick="joinRoom()" style="background: var(--primary); width: 100%;">入室</button>
     </div>
-
     <div id="mainScreen" style="display: none;">
-        <div class="header">
-            <div>
-                <div id="displayRoomName" style="font-weight: bold; font-size: 1.2rem;"></div>
-                <div style="color: #a0aec0;">参加中: <span id="memberCount">0名</span></div>
-            </div>
-            <button onclick="resetScores()" style="background: var(--danger); font-size: 0.8rem; padding: 8px;">スコアリセット</button>
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+            <div id="displayRoomName" style="font-weight:bold; font-size:1.2rem;"></div>
+            <button onclick="resetScores()" style="background:#555; font-size:0.8rem; padding:8px;">リセット</button>
         </div>
-
         <div id="themeBox">
-            <div id="themeText" style="font-size: 1.2rem; color: #ffdd55; margin-bottom: 10px;">お題：なし</div>
+            <div id="themeText" style="font-size:1.2rem; color:#ffdd55; margin-bottom:10px;">お題：なし</div>
             <button onclick="togglePanel()" class="theme-btn">⚙ お題設定</button>
-            <div id="themeControlPanel" style="display: none; margin-top: 10px;">
-                <button onclick="setTheme()" class="theme-btn" style="background: var(--secondary);">ランダム</button>
-                <button onclick="setTheme('アニソン')" class="theme-btn">アニソン</button>
-                <button onclick="setTheme('懐メロ')" class="theme-btn">懐メロ</button>
-                <button onclick="setTheme(prompt('お題を入力'))" class="theme-btn">自由入力</button>
+            <div id="themeControlPanel" style="display:none; margin-top:10px;">
+                <button onclick="setTheme('random')" class="theme-btn">ランダム</button>
+                <button onclick="setTheme('list')" class="theme-btn">リスト選択</button>
+                <button onclick="setTheme('custom')" class="theme-btn">直接入力</button>
             </div>
+            <div id="themeListPanel" style="display:none;"></div>
         </div>
-
-        <div style="margin-bottom: 30px;">
-            <input type="text" id="songInput" placeholder="歌ってほしい曲を入力">
-            <button onclick="addSong()" style="background: var(--primary); width: 100%; font-size: 1.3rem;">リクエストを投げる</button>
-        </div>
-
-        <h2 style="font-size: 1.1rem; color: #ff007f;">🔥 進行中の指令</h2>
+        <input type="text" id="songInput" placeholder="曲名を入力">
+        <button onclick="addSong()" style="background: var(--primary); width: 100%; font-size: 1.3rem;">提案する</button>
+        <h2 style="font-size: 1.1rem; color: #ff007f; margin-top:30px;">🔥 指令リスト</h2>
         <div id="songList"></div>
-
-        <div class="ranking-box">
-            <h2 style="font-size: 1rem; color: #a0aec0; text-align: center;">🏆 ランキング</h2>
+        <div style="background:#1e1e24; border-radius:15px; padding:15px; margin-top:20px;">
+            <h2 style="text-align:center;">🏆 スコア (<span id="memberCount">0</span>名)</h2>
             <div id="playerRanking"></div>
-        </div>
-
-        <div style="text-align: center; margin-top: 40px;">
-            <button onclick="location.reload()" style="background: #333; width: 80%;">画面を更新</button>
         </div>
     </div>
 </div>
-
 </body>
 </html>
