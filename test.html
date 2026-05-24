@@ -1,546 +1,812 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
-    <title>高精度 音量測定・周波数アナライザー Web</title>
-    <style>
-        /* --- 最新のモダン・ダークテーマUI --- */
-        :root {
-            --bg-color: #121214;
-            --surface-color: #1e1e24;
-            --primary-color: #3888cc;
-            --accent-color: #38ccaa;
-            --text-color: #ffffff;
-            --text-muted: #a0a0ab;
-            --wave-color: rgba(255, 230, 100, 0.85);
-        }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>本格派・声量チェッカー (A特性＆校正・拡張機能付き)</title>
 
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-        }
+<style>
+body{
+    margin:0;
+    background:#111827;
+    font-family:sans-serif;
+    color:white;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    padding:20px;
+}
 
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-            background-color: var(--bg-color);
-            color: var(--text-color);
-            line-height: 1.6;
-            padding: 20px;
-        }
+/* LINEブラウザ警告用スタイル */
+.line-warning {
+    display: none;
+    width: 100%;
+    max-width: 430px;
+    background: #ef4444;
+    color: white;
+    padding: 12px;
+    border-radius: 12px;
+    margin-bottom: 15px;
+    font-weight: bold;
+    font-size: 14px;
+    text-align: center;
+    box-sizing: border-box;
+}
 
-        .container {
-            max-width: 900px;
-            margin: 0 auto;
-            background-color: var(--surface-color);
-            border-radius: 16px;
-            padding: 24px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
-        }
+.app{
+    width:100%;
+    max-width:430px;
+    background:#1f2937;
+    border-radius:28px;
+    padding:20px;
+    box-sizing:border-box;
+    box-shadow:0 0 20px rgba(0,0,0,0.5);
+}
 
-        header {
-            text-align: center;
-            margin-bottom: 24px;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-            padding-bottom: 16px;
-        }
+h1{
+    text-align:center;
+    margin-top:0;
+    font-size:28px;
+}
 
-        header h1 {
-            font-size: 1.8rem;
-            color: var(--accent-color);
-            margin-bottom: 8px;
-        }
+.card{
+    background:#374151;
+    border-radius:20px;
+    padding:16px;
+    margin-bottom:16px;
+}
 
-        .description {
-            color: var(--text-muted);
-            font-size: 0.95rem;
-            max-width: 700px;
-            margin: 0 auto;
-        }
+.label{
+    margin-bottom:8px;
+    font-size:14px;
+    opacity:0.8;
+}
 
-        /* --- メインビジュアル（メーター＆キャンバス） --- */
-        .visualizer-zone {
-            position: relative;
-            margin-bottom: 24px;
-        }
+input{
+    width:100%;
+    padding:12px;
+    border:none;
+    border-radius:12px;
+    font-size:18px;
+    box-sizing:border-box;
+    margin-bottom:10px;
+}
 
-        canvas {
-            width: 100%;
-            height: 360px;
-            background-color: #0d0d11;
-            border-radius: 12px;
-            display: block;
-        }
+/* 校正用スライダースタイル */
+.calib-container {
+    background: #111827;
+    padding: 12px;
+    border-radius: 12px;
+    margin-top: 10px;
+}
+.calib-header {
+    display: flex;
+    justify-content: space-between;
+    font-size: 13px;
+    margin-bottom: 6px;
+    color: #3b82f6;
+    font-weight: bold;
+}
+input[type="range"] {
+    width: 100%;
+    margin: 5px 0;
+    cursor: pointer;
+}
 
-        /* デシベル数値表示 */
-        #dB {
-            display: flex;
-            justify-content: space-around;
-            align-items: center;
-            background: rgba(0, 0, 0, 0.4);
-            padding: 16px;
-            border-radius: 12px;
-            margin-top: 16px;
-            font-family: 'Courier New', Courier, monospace;
-        }
+/* 録音選択用トグルスタイル */
+.checkbox-container {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 10px;
+    cursor: pointer;
+    font-size: 16px;
+}
+.checkbox-container input[type="checkbox"] {
+    width: 20px;
+    height: 20px;
+    margin: 0;
+    cursor: pointer;
+}
 
-        .curdb {
-            font-size: 2.5rem;
-            font-weight: bold;
-            color: var(--accent-color);
-        }
+button{
+    width:100%;
+    padding:14px;
+    border:none;
+    border-radius:16px;
+    font-size:18px;
+    font-weight:bold;
+    cursor:pointer;
+    margin-top:10px;
+}
 
-        .maxdb {
-            font-size: 1.3rem;
-            color: #ef4444;
-        }
+.start{
+    background:#10b981;
+    color:white;
+}
 
-        /* --- コントロール＆設定セクション --- */
-        .controls {
-            display: flex;
-            gap: 12px;
-            justify-content: center;
-            margin-bottom: 24px;
-        }
+.stop{
+    background:#ef4444;
+    color:white;
+}
 
-        button {
-            padding: 12px 24px;
-            font-size: 1rem;
-            font-weight: bold;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            transition: all 0.2s ease;
-        }
+.save-img{
+    background:#3b82f6;
+    color:white;
+}
 
-        #start {
-            background-color: var(--accent-color);
-            color: #000;
-        }
+.save-audio{
+    background:#8b5cf6;
+    color:white;
+    display:none; /* 初期状態は非表示 */
+}
 
-        #start.recording {
-            background-color: #ef4444;
-            color: #fff;
-        }
+.toggle-help{
+    background:#4b5563;
+    color:white;
+    font-size:14px;
+    padding:10px;
+    margin-top:15px;
+}
 
-        #downloadBtn {
-            background-color: var(--primary-color);
-            color: #fff;
-        }
+.meter{
+    height:28px;
+    background:#111827;
+    border-radius:999px;
+    overflow:hidden;
+    margin-top:10px;
+}
 
-        button:hover {
-            opacity: 0.9;
-            transform: translateY(-1px);
-        }
+.bar{
+    height:100%;
+    width:0%;
+    background:linear-gradient(90deg,#22c55e,#eab308,#ef4444);
+}
 
-        button:active {
-            transform: translateY(1px);
-        }
+.values{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:10px;
+    margin-top:12px;
+    font-size:18px;
+}
 
-        /* 設定テーブル */
-        .settings-panel {
-            background: rgba(0, 0, 0, 0.2);
-            padding: 16px;
-            border-radius: 12px;
-            font-size: 0.9rem;
-        }
+/* 追加要素用のハイライトスタイル */
+.rank-box {
+    grid-column: span 2;
+    background: #111827;
+    padding: 10px;
+    border-radius: 12px;
+    text-align: center;
+    font-weight: bold;
+    color: #facc15;
+    font-size: 20px;
+    margin-top: 5px;
+}
 
-        .settings-panel h3 {
-            margin-bottom: 12px;
-            color: var(--primary-color);
-        }
+canvas{
+    width:100%;
+    background:#111827;
+    border-radius:16px;
+    margin-top:10px;
+}
 
-        table {
-            width: 100%;
-            border-collapse: collapse;
-        }
+.timer{
+    text-align:center;
+    font-size:36px;
+    font-weight:bold;
+}
 
-        th, td {
-            padding: 8px;
-            text-align: left;
-        }
+.small{
+    opacity:0.7;
+    font-size:13px;
+    margin-top:5px;
+}
 
-        th {
-            width: 100px;
-            color: var(--text-muted);
-        }
+.info{
+    margin-top:10px;
+    font-size:14px;
+    opacity:0.8;
+    line-height:1.6;
+}
 
-        .radio-group {
-            display: flex;
-            gap: 10px;
-            flex-wrap: wrap;
-        }
-
-        .radio-group label {
-            background: rgba(255, 255, 255, 0.05);
-            padding: 4px 12px;
-            border-radius: 6px;
-            cursor: pointer;
-            transition: background 0.2s;
-        }
-
-        .radio-group input {
-            margin-right: 4px;
-        }
-
-        .radio-group input:checked + span {
-            color: var(--accent-color);
-            font-weight: bold;
-        }
-    </style>
+.help-content {
+    display: none;
+    margin-top: 10px;
+    background: #111827;
+    padding: 14px;
+    border-radius: 16px;
+    font-size: 13px;
+    line-height: 1.6;
+    color: #d1d5db;
+}
+.help-content ul {
+    margin: 0;
+    padding-left: 20px;
+}
+.help-content li {
+    margin-bottom: 5px;
+}
+.help-title {
+    font-weight: bold;
+    color: #3b82f6;
+    margin-top: 8px;
+    margin-bottom: 4px;
+}
+.warning-text {
+    color: #f87171;
+    font-weight: bold;
+}
+</style>
 </head>
+
 <body>
 
-<div class="container">
-    <header>
-        <h1>音量測定Web Pro</h1>
-        <p class="description">
-            ブラウザの高性能な音声解析エンジン（Web Audio API）を使用して、周囲の音量（デシベル）と周波数成分をリアルタイムに視覚化するツールです。緑と青のバーが「周波数ごとの音の強さ」を表し、その上に重なる黄色のシャープな線が「実際の空気の振動（生の時間軸波形）」を表します。
-        </p>
-    </header>
+<!-- LINEブラウザ警告エリア -->
+<div class="line-warning" id="lineWarning">
+    ⚠️ LINEアプリ内では録音や測定が動作しません。<br>右上のボタンから「デフォルトのブラウザ(Safari/Chrome等)で開く」を選んでください。
+</div>
 
-    <div class="controls">
-        <button id="start">計測開始</button>
-        <button id="downloadBtn">周波数グラフを保存</button>
-    </div>
+<div class="app">
 
-    <div class="visualizer-zone">
-        <canvas id="canvas"></canvas>
-        
-        <div id="dB">
-            <div class="curdb"><span id="dBmessage">0.0</span> dB</div>
-            <div class="maxdb">MAX: <span id="dBmax">0.0</span> dB</div>
+<h1>🎤 声量チェッカー</h1>
+
+<div class="card">
+    <div class="label">プレイヤー名（任意）</div>
+    <input type="text" id="playerName" placeholder="名前を入力">
+
+    <div class="label">曲名（任意）</div>
+    <input type="text" id="songName" placeholder="曲名を入力">
+
+    <div class="label">制限時間（秒）※最大600秒</div>
+    <input type="number" id="timeInput" min="1" max="600" value="60">
+
+    <label class="checkbox-container">
+        <input type="checkbox" id="recordToggle" checked>
+        <span>同時に音声を録音する</span>
+    </label>
+
+    <!-- マイク感度の校正スライダー -->
+    <div class="calib-container">
+        <div class="calib-header">
+            <span>🛠️ マイク感度のズレ補正(校正)</span>
+            <span><span id="calibVal">0</span> dB</span>
+        </div>
+        <input type="range" id="calibSlider" min="-20" max="20" value="0" step="1">
+        <div class="small" style="color:#9ca3af; font-size:11px; margin:0;">
+            ※静かな部屋で35〜40dB、普通の話し声で60〜70dBになるよう微調整してください。
         </div>
     </div>
 
-    <!-- 元ソースの機能を完全継承したマイク・解析詳細設定 -->
-    <div class="settings-panel">
-        <h3>アナライザー詳細設定（リアルタイム反映）</h3>
-        <table>
-            <tr>
-                <th>音増幅</th>
-                <td>
-                    <div class="radio-group">
-                        <label><input type="radio" name="rgin" value="1" checked><span>標準 (1x)</span></label>
-                        <label><input type="radio" name="rgin" value="3"><span>中間 (3x)</span></label>
-                        <label><input type="radio" name="rgin" value="10"><span>高 (10x)</span></label>
-                        <label><input type="radio" name="rgin" value="30"><span>最大 (30x)</span></label>
-                    </div>
-                </td>
-            </tr>
-            <tr>
-                <th>Hz範囲</th>
-                <td>
-                    <div class="radio-group">
-                        <label><input type="radio" name="rfeq" value="512"><span>低解像度 (512)</span></label>
-                        <label><input type="radio" name="rfeq" value="2048" checked><span>標準 (2048)</span></label>
-                        <label><input type="radio" name="rfeq" value="4096"><span>高解像度 (4096)</span></label>
-                    </div>
-                </td>
-            </tr>
-            <tr>
-                <th>流速度</th>
-                <td>
-                    <div class="radio-group">
-                        <label><input type="radio" name="rsmo" value="0.9"><span>滑らか (0.9)</span></label>
-                        <label><input type="radio" name="rsmo" value="0.65" checked><span>標準 (0.65)</span></label>
-                        <label><input type="radio" name="rsmo" value="0.4"><span>俊敏 (0.4)</span></label>
-                    </div>
-                </td>
-            </tr>
-        </table>
+    <div class="small" style="margin-top:10px;">10分まで設定可能</div>
+</div>
+
+<div class="card">
+    <div class="timer" id="timer">60</div>
+
+    <div class="meter">
+        <div class="bar" id="bar"></div>
     </div>
+
+    <div class="values">
+        <div>現在: <span id="current">0</span> dBA</div>
+        <div>最大: <span id="max">0</span> dBA</div>
+        <div>平均: <span id="avg">0</span> dBA</div>
+        <div>時間: <span id="elapsed">0</span> 秒</div>
+        <!-- 追加された計算要素の表示エリア -->
+        <div class="rank-box">声量評価: <span id="voiceRank">-</span></div>
+    </div>
+
+    <div class="info" id="info"></div>
+</div>
+
+<div class="card">
+    <canvas id="graph" width="360" height="260"></canvas>
+</div>
+
+<button class="start" id="startBtn">開始</button>
+<button class="stop" id="stopBtn">停止</button>
+<button class="save-img" id="saveImgBtn">画像保存</button>
+<button class="save-audio" id="saveAudioBtn">録音保存</button>
+
+<button class="toggle-help" id="toggleHelpBtn">▼ 使い方を表示</button>
+<div class="help-content" id="helpContent">
+    <div class="help-title">【使い方】</div>
+    <ul>
+        <li><span class="warning-text">※重要：LINEアプリ内で開いている場合は、測定や録音が正常に動作しません。必ずSafariやChromeなど「デフォルトのブラウザ」に切り替えて開いてください。</span></li>
+        <li>「名前」「曲名」「制限時間」を入力して<b>[開始]</b>を押すと測定と録音が始まります。</li>
+        <li>測定中は現在の声量がリアルタイムに、人間の耳の特性に合わせた「デシベル(dBA)」でグラフ化されます。</li>
+        <li><b>[マイク感度のズレ補正]</b>を使うと、お使いのスマホ機種特有のマイクの個体差を調整できます。</li>
+        <li><b>[停止]</b>を押すか、制限時間になると測定が自動終了します。</li>
+        <li>測定終了後、<b>[画像保存]</b>を押すと結果のグラフ画像が保存されます。録音ONで測定した場合は、新しく出現する<b>[録音保存]</b>ボタンから音声ファイルを保存できます。</li>
+    </ul>
+</div>
+
 </div>
 
 <script>
-class AudioVisualizer {
-    constructor() {
-        this.audioContext = null;
-        this.analyzer = null;
-        this.gainNode = null;
-        this.stream = null;
-        this.animationId = null;
+const startBtn = document.getElementById("startBtn");
+const stopBtn = document.getElementById("stopBtn");
+const saveImgBtn = document.getElementById("saveImgBtn");
+const saveAudioBtn = document.getElementById("saveAudioBtn");
+const toggleHelpBtn = document.getElementById("toggleHelpBtn");
+const helpContent = document.getElementById("helpContent");
+const lineWarning = document.getElementById("lineWarning");
 
-        // パラメータ初期値
-        this.config = {
-            fftSize: 2048,
-            smoothing: 0.65,
-            gainValue: 1.0
-        };
+const currentText = document.getElementById("current");
+const maxText = document.getElementById("max");
+const avgText = document.getElementById("avg");
+const elapsedText = document.getElementById("elapsed");
+const timerText = document.getElementById("timer");
+const voiceRankText = document.getElementById("voiceRank"); // 追加
+const bar = document.getElementById("bar");
 
-        // DOM キャッシュ
-        this.canvas = document.getElementById('canvas');
-        this.ctx = this.canvas.getContext('2d');
-        this.dbMessage = document.getElementById('dBmessage');
-        this.dbMax = document.getElementById('dBmax');
-        this.startBtn = document.getElementById('start');
-        this.downloadBtn = document.getElementById('downloadBtn');
+const canvas = document.getElementById("graph");
+const ctx = canvas.getContext("2d");
 
-        this.maxDb = 0.0;
-        this.isPlaying = false;
+const timeInput = document.getElementById("timeInput");
+const playerNameInput = document.getElementById("playerName");
+const songNameInput = document.getElementById("songName");
+const recordToggle = document.getElementById("recordToggle");
+const calibSlider = document.getElementById("calibSlider");
+const calibVal = document.getElementById("calibVal");
+const info = document.getElementById("info");
 
-        this.setupEvents();
-        this.resizeCanvas();
-        window.addEventListener('resize', () => this.resizeCanvas());
+let analyser;
+let dataArray;
+let animationId;
+let audioContext;
+
+let history = [];      
+let fullHistory = [];  
+
+let totalSum = 0;   
+let totalCount = 0;
+let maxVolume = 0;
+
+let startTime;
+let limitTime = 60;
+let running = false;
+let currentDate = "";
+
+const MIN_DB = 0;
+const MAX_DB = 200;
+
+// 録音用変数
+let mediaRecorder;
+let audioChunks = [];
+let audioBlob = null;
+
+// LINEブラウザ判定
+const ua = navigator.userAgent.toLowerCase();
+if (ua.indexOf("line") > -1) {
+    lineWarning.style.display = "block";
+}
+
+// 校正スライダーの値同期
+calibSlider.oninput = function() {
+    let val = parseInt(this.value);
+    calibVal.textContent = (val > 0 ? "+" : "") + val;
+};
+
+toggleHelpBtn.onclick = function() {
+    if (helpContent.style.display === "block") {
+        helpContent.style.display = "none";
+        toggleHelpBtn.textContent = "▼ 使い方を表示";
+    } else {
+        helpContent.style.display = "block";
+        toggleHelpBtn.textContent = "▲ 使い方を非表示";
+    }
+};
+
+function getAverage(){
+    if(totalCount === 0) return MIN_DB;
+    return totalSum / totalCount;
+}
+
+// 追加した計算ロジック：平均dBAに基づく声量ランク判定関数
+function calculateVoiceRank(avgDb) {
+    if (avgDb >= 95) return "プロ級・爆音シンガー (95dB〜)";
+    if (avgDb >= 80) return "パワフル・声量十分 (80〜94dB)";
+    if (avgDb >= 65) return "標準的・通る声 (65〜79dB)";
+    if (avgDb >= 50) return "控えめ・おしゃべり音量 (50〜64dB)";
+    return "ささやき・要マイク近づけ (〜49dB)";
+}
+
+// 通常の画面描画
+function drawGraph(){
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    ctx.fillStyle = "#111827";
+    ctx.fillRect(0,0,canvas.width,canvas.height);
+
+    const graphLeft = 45;
+    const graphBottom = 220;
+    const graphTop = 20;
+    const graphRight = 330;
+
+    ctx.strokeStyle = "#374151";
+    ctx.lineWidth = 1;
+
+    // 横線（0dB〜200dB）
+    for(let i=0;i<=5;i++){
+        const y = graphBottom - ((graphBottom - graphTop)/5)*i;
+        ctx.beginPath();
+        ctx.moveTo(graphLeft,y);
+        ctx.lineTo(graphRight,y);
+        ctx.stroke();
+
+        ctx.fillStyle = "#9ca3af";
+        ctx.font = "12px sans-serif";
+        const value = Math.floor(MIN_DB + ((MAX_DB - MIN_DB) / 5) * i);
+        ctx.fillText(value + "dBA", 2, y+4);
     }
 
-    resizeCanvas() {
-        const rect = this.canvas.getBoundingClientRect();
-        this.canvas.width = rect.width || 800;
-        this.canvas.height = rect.height || 360;
+    // 縦線
+    const currentMinute = Math.floor(history.length ? (totalCount / 3600) : 0); 
+    const baseSecond = currentMinute * 60;
+
+    for(let i=0;i<=5;i++){
+        const x = graphLeft + ((graphRight - graphLeft)/5)*i;
+        ctx.beginPath();
+        ctx.moveTo(x,graphTop);
+        ctx.lineTo(x,graphBottom);
+        ctx.stroke();
+
+        const sec = baseSecond + Math.floor((60 / 5) * i);
+        ctx.fillStyle = "#9ca3af";
+        ctx.fillText(sec + "s", x-10, 240);
     }
 
-    setupEvents() {
-        // 開始・停止切り替え
-        this.startBtn.addEventListener('click', () => {
-            if (this.isPlaying) {
-                this.stop();
-            } else {
-                this.start();
-            }
-        });
+    // グラフ線
+    ctx.strokeStyle = "#22c55e";
+    ctx.lineWidth = 3;
+    ctx.beginPath();
 
-        // 画像の保存
-        this.downloadBtn.addEventListener('click', () => this.downloadSnapshot());
+    history.forEach((v,i)=>{
+        const x = graphLeft + (i / Math.max(history.length-1,1)) * (graphRight - graphLeft);
+        const ratio = (v - MIN_DB) / (MAX_DB - MIN_DB);
+        const y = graphBottom - ratio * (graphBottom - graphTop);
 
-        // 設定のリアルタイム変更イベント
-        document.querySelectorAll('input[name="rgin"]').forEach(radio => {
-            radio.addEventListener('change', (e) => {
-                this.config.gainValue = parseFloat(e.target.value);
-                if (this.gainNode) this.gainNode.gain.setValueAtTime(this.config.gainValue, this.audioContext.currentTime);
-            });
-        });
+        if(i===0) ctx.moveTo(x,y);
+        else ctx.lineTo(x,y);
+    });
+    ctx.stroke();
 
-        document.querySelectorAll('input[name="rfeq"]').forEach(radio => {
-            radio.addEventListener('change', (e) => {
-                this.config.fftSize = parseInt(e.target.value);
-                if (this.analyzer) this.analyzer.fftSize = this.config.fftSize;
-            });
-        });
+    // テキスト（名前／曲名 表示）
+    ctx.fillStyle = "white";
+    ctx.font = "16px sans-serif";
+    const player = playerNameInput.value.trim() || "NO NAME";
+    const song = songNameInput.value.trim() || "NO SONG";
+    ctx.fillText(player + " / " + song, 15, 18);
 
-        document.querySelectorAll('input[name="rsmo"]').forEach(radio => {
-            radio.addEventListener('change', (e) => {
-                this.config.smoothing = parseFloat(e.target.value);
-                if (this.analyzer) this.analyzer.smoothingTimeConstant = this.config.smoothing;
-            });
-        });
+    ctx.font = "14px sans-serif";
+    ctx.fillText(currentDate, 15, 38);
+    ctx.fillText("MAX " + Math.floor(maxVolume) + " dBA", 190, 20);
+    ctx.fillText("AVG " + Math.floor(getAverage()) + " dBA", 190, 40);
+}
+
+// 共通の枠・グリッド描画関数
+function drawBaseGrid(cCtx, left, right, top, bottom, baseX, xMaxLabel) {
+    cCtx.strokeStyle = "#374151";
+    cCtx.lineWidth = 1;
+
+    // 横線
+    for(let i=0;i<=5;i++){
+        const y = bottom - ((bottom - top)/5)*i;
+        cCtx.beginPath();
+        cCtx.moveTo(left,y);
+        cCtx.lineTo(right,y);
+        cCtx.stroke();
+
+        cCtx.fillStyle = "#9ca3af";
+        cCtx.font = "12px sans-serif";
+        const value = Math.floor(MIN_DB + ((MAX_DB - MIN_DB) / 5) * i);
+        cCtx.fillText(value + "dBA", 2, y+4);
     }
 
-    async start() {
-        try {
-            this.stream = await navigator.mediaDevices.getUserMedia({ 
-                audio: {
-                    echoCancellation: false,
-                    noiseSuppression: false,
-                    autoGainControl: false
-                } 
-            });
+    // 縦線
+    for(let i=0;i<=5;i++){
+        const x = left + ((right - left)/5)*i;
+        cCtx.beginPath();
+        cCtx.moveTo(x,top);
+        cCtx.lineTo(x,bottom);
+        cCtx.stroke();
 
-            this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
-            const source = this.audioContext.createMediaStreamSource(this.stream);
-
-            // 音量増幅の仕組み
-            this.gainNode = this.audioContext.createGain();
-            this.gainNode.gain.setValueAtTime(this.config.gainValue, this.audioContext.currentTime);
-
-            // アナライザーの初期化
-            this.analyzer = this.audioContext.createAnalyser();
-            this.analyzer.fftSize = this.config.fftSize;
-            this.analyzer.smoothingTimeConstant = this.config.smoothing;
-
-            // ルーティング接続
-            source.connect(this.gainNode);
-            this.gainNode.connect(this.analyzer);
-
-            this.isPlaying = true;
-            this.maxDb = 0.0;
-            this.startBtn.textContent = '計測停止';
-            this.startBtn.classList.add('recording');
-
-            this.loop();
-        } catch (err) {
-            console.error('マイクアクセスエラー:', err);
-            alert('マイクの使用許可が得られないか、入力デバイスが利用できません。');
-        }
-    }
-
-    stop() {
-        if (!this.isPlaying) return;
-        cancelAnimationFrame(this.animationId);
-        
-        if (this.stream) this.stream.getTracks().forEach(track => track.stop());
-        if (this.audioContext) this.audioContext.close();
-
-        this.isPlaying = false;
-        this.startBtn.textContent = '計測開始';
-        this.startBtn.classList.remove('recording');
-        this.dbMessage.textContent = "0.0";
-    }
-
-    loop() {
-        this.animationId = requestAnimationFrame(() => this.loop());
-
-        const bufferLength = this.analyzer.frequencyBinCount;
-        const freqData = new Uint8Array(bufferLength);
-        const timeData = new Uint8Array(bufferLength);
-
-        this.analyzer.getByteFrequencyData(freqData);
-        this.analyzer.getByteTimeDomainData(timeData);
-
-        // --- 高精度デシベル計算 ---
-        let sum = 0;
-        for (let i = 0; i < bufferLength; i++) {
-            const amplitude = (timeData[i] - 128) / 128;
-            sum += amplitude * amplitude;
-        }
-        const rms = Math.sqrt(sum / bufferLength);
-        
-        // 周囲の静寂レベルを考慮したデシベルマッピング
-        let db = rms > 0 ? 20 * Math.log10(rms) + 94 : 0;
-        db = Math.max(0, Math.min(db, 120)); 
-
-        if (db > this.maxDb && db > 10) {
-            this.maxDb = db;
-        }
-
-        this.dbMessage.textContent = db.toFixed(1);
-        this.dbMax.textContent = this.maxDb.toFixed(1);
-
-        // 描画実行
-        this.draw(freqData, timeData);
-    }
-
-    draw(freqData, timeData) {
-        const width = this.canvas.width;
-        const height = this.canvas.height;
-
-        // 全体を一回クリア（背景塗り）
-        this.ctx.fillStyle = '#0d0d11';
-        this.ctx.fillRect(0, 0, width, height);
-
-        // ==========================================
-        // 【A層】周波数バー・グリッド（画像DLに含まれる領域）
-        // ==========================================
-        this.ctx.save();
-        
-        // 横目盛線の描画
-        this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
-        this.ctx.lineWidth = 1;
-        for (let i = 1; i < 5; i++) {
-            let y = (height / 5) * i;
-            this.ctx.beginPath();
-            this.ctx.moveTo(0, y);
-            this.ctx.lineTo(width, y);
-            this.ctx.stroke();
-        }
-
-        // 周波数スペクトラムの描画
-        const barWidth = (width / freqData.length) * 2.0;
-        let x = 0;
-        for (let i = 0; i < freqData.length; i++) {
-            const barHeight = (freqData[i] / 255) * height;
-            
-            // 下から上へ伸びるスタイリッシュなグラデーション
-            const gradient = this.ctx.createLinearGradient(0, height, 0, height - barHeight);
-            gradient.addColorStop(0, '#38ccaa');
-            gradient.addColorStop(1, '#3888cc');
-
-            this.ctx.fillStyle = gradient;
-            this.ctx.fillRect(x, height - barHeight, barWidth - 1, barHeight);
-            x += barWidth;
-        }
-        this.ctx.restore();
-
-        // ==========================================
-        // 【B層】リアル音声波形（画像DLには含まれない）
-        // ==========================================
-        this.drawRealtimeWave(timeData, width, height);
-    }
-
-    // リアルタイム音声データ（生波形）を重ねて描画するメソッド
-    drawRealtimeWave(timeData, width, height) {
-        this.ctx.save();
-        this.ctx.strokeStyle = 'rgba(255, 230, 100, 0.85)'; // シャープな黄色の線グラフ
-        this.ctx.lineWidth = 2;
-        this.ctx.beginPath();
-
-        const sliceWidth = width / timeData.length;
-        let x = 0;
-
-        for (let i = 0; i < timeData.length; i++) {
-            const v = timeData[i] / 128.0; 
-            const y = (v * height) / 2; // 画面中央を中心に上下にスイング
-
-            if (i === 0) {
-                this.ctx.moveTo(x, y);
-            } else {
-                this.ctx.lineTo(x, y);
-            }
-            x += sliceWidth;
-        }
-
-        this.ctx.lineTo(width, height / 2);
-        this.ctx.stroke();
-        this.ctx.restore();
-    }
-
-    // --- 画像ダウンロード処理（B層の波形線グラフを除外） ---
-    downloadSnapshot() {
-        if (!this.analyzer) {
-            alert('計測を開始してからダウンロードしてください。');
-            return;
-        }
-
-        // メモリ上に書き出し専用の別キャンバスを生成
-        const exportCanvas = document.createElement('canvas');
-        exportCanvas.width = this.canvas.width;
-        exportCanvas.height = this.canvas.height;
-        const exportCtx = exportCanvas.getContext('2d');
-
-        // 最新の周波数データをサンプリング
-        const bufferLength = this.analyzer.frequencyBinCount;
-        const freqData = new Uint8Array(bufferLength);
-        this.analyzer.getByteFrequencyData(freqData);
-
-        // 1. 背景描画
-        exportCtx.fillStyle = '#0d0d11';
-        exportCtx.fillRect(0, 0, exportCanvas.width, exportCanvas.height);
-
-        // 2. 目盛線描画
-        exportCtx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
-        exportCtx.lineWidth = 1;
-        for (let i = 1; i < 5; i++) {
-            let y = (exportCanvas.height / 5) * i;
-            exportCtx.beginPath();
-            exportCtx.moveTo(0, y);
-            exportCtx.lineTo(exportCanvas.width, y);
-            exportCtx.stroke();
-        }
-
-        // 3. 周波数バーのみを忠実に再描画（※ここにはB層のリアルタイム線波形を描画しない）
-        const barWidth = (exportCanvas.width / freqData.length) * 2.0;
-        let x = 0;
-        for (let i = 0; i < freqData.length; i++) {
-            const barHeight = (freqData[i] / 255) * exportCanvas.height;
-            const gradient = exportCtx.createLinearGradient(0, exportCanvas.height, 0, exportCanvas.height - barHeight);
-            gradient.addColorStop(0, '#38ccaa');
-            gradient.addColorStop(1, '#3888cc');
-            exportCtx.fillStyle = gradient;
-            exportCtx.fillRect(x, exportCanvas.height - barHeight, barWidth - 1, barHeight);
-            x += barWidth;
-        }
-
-        // 4. トリガーダウンロード
-        const link = document.createElement('a');
-        link.download = `frequency-analysis-${Date.now()}.png`;
-        link.href = exportCanvas.toDataURL('image/png');
-        link.click();
+        const labelVal = baseX + Math.floor((xMaxLabel / 5) * i);
+        cCtx.fillStyle = "#9ca3af";
+        cCtx.fillText(labelVal + "s", x-10, bottom + 20);
     }
 }
 
-// 起動
-const visualizer = new AudioVisualizer();
+async function start(){
+    if(running) return;
+
+    running = true;
+    history = [];
+    fullHistory = [];
+    totalSum = 0;
+    totalCount = 0;
+    maxVolume = MIN_DB;
+    audioChunks = [];
+    audioBlob = null;
+    saveAudioBtn.style.display = "none"; 
+    voiceRankText.textContent = "-";
+
+    limitTime = Math.min(Math.max(parseInt(timeInput.value) || 60, 1), 600);
+    timerText.textContent = limitTime;
+
+    currentDate = new Date().toLocaleString("ja-JP");
+    info.innerHTML = "測定日時: " + currentDate;
+
+    try {
+        // AGCを強力に無効化
+        const stream = await navigator.mediaDevices.getUserMedia({ 
+            audio: {
+                echoCancellation: { exact: false },  
+                noiseSuppression: { exact: false },   
+                autoGainControl: { exact: false }
+            } 
+        });
+        
+        if (recordToggle.checked) {
+            let options = { mimeType: 'audio/webm;codecs=opus' };
+            if (!MediaRecorder.isTypeSupported(options.mimeType)) {
+                options = { mimeType: 'audio/ogg;codecs=opus' };
+            }
+            if (!MediaRecorder.isTypeSupported(options.mimeType)) {
+                options = { mimeType: '' }; 
+            }
+
+            mediaRecorder = new MediaRecorder(stream, options);
+            mediaRecorder.ondataavailable = function(e) {
+                if (e.data.size > 0) {
+                    audioChunks.push(e.data);
+                }
+            };
+            mediaRecorder.onstop = function() {
+                audioBlob = new Blob(audioChunks, { type: mediaRecorder.mimeType || "audio/aac" });
+                saveAudioBtn.style.display = "block"; 
+            };
+            mediaRecorder.start(250); 
+        }
+
+        // 解析セットアップ
+        audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        const source = audioContext.createMediaStreamSource(stream);
+
+        analyser = audioContext.createAnalyser();
+        analyser.fftSize = 512;
+        source.connect(analyser);
+
+        dataArray = new Uint8Array(analyser.frequencyBinCount);
+        startTime = Date.now();
+
+        update();
+    } catch(e) {
+        alert("マイクの許可、またはデバイスが対応していません。LINEアプリ内では動作しないため、通常のブラウザで開き直してください。");
+        running = false;
+    }
+}
+
+function stop(){
+    running = false;
+    cancelAnimationFrame(animationId);
+    if (mediaRecorder && mediaRecorder.state !== "inactive") {
+        mediaRecorder.stop();
+        mediaRecorder.stream.getTracks().forEach(track => track.stop());
+    }
+    if (audioContext) {
+        audioContext.close();
+    }
+    // 終了時に最終評価を確定表示
+    voiceRankText.textContent = calculateVoiceRank(getAverage());
+}
+
+// A特性フィルター関数
+function getAWeightingOffset(frequency) {
+    if (frequency <= 0) return -100;
+    const f2 = frequency * frequency;
+    const f4 = f2 * f2;
+    const rA = (12194 * 12194 * f4) / 
+               ((f2 + 20.6 * 20.6) * Math.sqrt((f2 + 107.7 * 107.7) * (f2 + 737.9 * 737.9)) * (f2 + 12194 * 12194));
+    return 20 * Math.log10(rA) + 2.0; 
+}
+
+function update(){
+    if(!running) return;
+
+    analyser.getByteFrequencyData(dataArray);
+
+    const bufferLength = analyser.frequencyBinCount;
+    const sampleRate = audioContext.sampleRate;
+    
+    let weightedSum = 0;
+    let totalWeight = 0;
+
+    for (let i = 0; i < bufferLength; i++) {
+        const amplitude = dataArray[i]; 
+        if (amplitude > 0) {
+            const frequency = (i * sampleRate) / analyser.fftSize;
+            const offset = getAWeightingOffset(frequency);
+            const weight = Math.pow(10, offset / 20);
+            weightedSum += amplitude * weight;
+            totalWeight += weight;
+        }
+    }
+    
+    let averageAmplitude = totalWeight > 0 ? (weightedSum / totalWeight) : 0;
+    
+    let db = 0;
+    if (averageAmplitude > 0) {
+        let dbfs = 20 * Math.log10(averageAmplitude / 255);
+        db = dbfs + 100; 
+    } else {
+        db = 30; 
+    }
+
+    const calibrationOffset = parseInt(calibSlider.value);
+    db += calibrationOffset;
+
+    if (db < 30) db = 30;
+    
+    if (db > 90) {
+        let excess = db - 90;
+        db = 90 + (excess * 1.5); 
+    }
+
+    if (db < MIN_DB) db = MIN_DB;
+    if (db > MAX_DB) db = MAX_DB;
+
+    if (history.length >= 3600) {
+        history = []; 
+    }
+
+    history.push(db);
+    fullHistory.push(db); 
+    
+    totalSum += db;
+    totalCount++;
+
+    if(db > maxVolume){
+        maxVolume = db;
+    }
+
+    currentText.textContent = Math.floor(db);
+    maxText.textContent = Math.floor(maxVolume);
+    
+    const currentAvg = getAverage();
+    avgText.textContent = Math.floor(currentAvg);
+    
+    // リアルタイムに声量評価を更新
+    voiceRankText.textContent = calculateVoiceRank(currentAvg);
+
+    const barPercent = ((db - MIN_DB) / (MAX_DB - MIN_DB)) * 100;
+    bar.style.width = barPercent + "%";
+
+    const elapsed = Math.floor((Date.now() - startTime)/1000);
+    elapsedText.textContent = elapsed;
+
+    drawGraph();
+
+    const remain = Math.max(limitTime - elapsed, 0);
+    timerText.textContent = remain;
+
+    if(remain <= 0){
+        stop();
+        return;
+    }
+
+    animationId = requestAnimationFrame(update);
+}
+
+function getBaseFileName() {
+    const player = playerNameInput.value.trim() || "NO_NAME";
+    const song = songNameInput.value.trim() || "NO_SONG";
+    const maxDbStr = Math.floor(maxVolume) + "dBA";
+    return `${player}_${song}_${maxDbStr}`;
+}
+
+// 画像保存を実行（2つのグラフに加え、計算された評価テキストも画像内に描画）
+function saveImage(){
+    drawGraph(); 
+
+    const baseFileName = getBaseFileName();
+
+    const saveCanvas = document.createElement("canvas");
+    saveCanvas.width = 360;
+    saveCanvas.height = 540; // 評価テキストの描画領域確保のため高さを少し拡張
+    const sCtx = saveCanvas.getContext("2d");
+
+    sCtx.fillStyle = "#111827";
+    sCtx.fillRect(0, 0, saveCanvas.width, saveCanvas.height);
+
+    sCtx.fillStyle = "white";
+    sCtx.font = "16px sans-serif";
+    const player = playerNameInput.value.trim() || "NO NAME";
+    const song = songNameInput.value.trim() || "NO SONG";
+    sCtx.fillText(player + " / " + song, 15, 22);
+
+    sCtx.font = "14px sans-serif";
+    sCtx.fillText(currentDate, 15, 42);
+    sCtx.fillText("MAX " + Math.floor(maxVolume) + " dBA", 190, 22);
+    sCtx.fillText("AVG " + Math.floor(getAverage()) + " dBA", 190, 42);
+
+    const gLeft = 45;
+    const gRight = 330;
+    const gTop1 = 70;
+    const gBottom1 = 230;
+    const gTop2 = 280;
+    const gBottom2 = 440;
+
+    sCtx.fillStyle = "#eab308";
+    sCtx.font = "12px sans-serif";
+    sCtx.fillText("【直近1分間の推移】", 15, 64);
+    
+    const currentMinute = Math.floor(history.length ? (totalCount / 3600) : 0);
+    const baseSec = currentMinute * 60;
+    
+    drawBaseGrid(sCtx, gLeft, gRight, gTop1, gBottom1, baseSec, 60);
+
+    sCtx.strokeStyle = "#22c55e";
+    sCtx.lineWidth = 2.5;
+    sCtx.beginPath();
+    history.forEach((v, i) => {
+        const x = gLeft + (i / Math.max(history.length-1, 1)) * (gRight - gLeft);
+        const ratio = (v - MIN_DB) / (MAX_DB - MIN_DB);
+        const y = gBottom1 - ratio * (gBottom1 - gTop1);
+        if(i === 0) sCtx.moveTo(x, y);
+        else sCtx.lineTo(x, y);
+    });
+    sCtx.stroke();
+
+    sCtx.fillStyle = "#3b82f6";
+    sCtx.font = "12px sans-serif";
+    sCtx.fillText("【全体の測定推移（全記録）】", 15, 274);
+
+    const totalElapsedSeconds = Math.max(Math.floor(totalCount / 60), 1);
+    drawBaseGrid(sCtx, gLeft, gRight, gTop2, gBottom2, 0, totalElapsedSeconds);
+
+    sCtx.strokeStyle = "#3b82f6";
+    sCtx.lineWidth = 2.5;
+    sCtx.beginPath();
+    fullHistory.forEach((v, i) => {
+        const x = gLeft + (i / Math.max(fullHistory.length-1, 1)) * (gRight - gLeft);
+        const ratio = (v - MIN_DB) / (MAX_DB - MIN_DB);
+        const y = gBottom2 - ratio * (gBottom2 - gTop2);
+        if(i === 0) sCtx.moveTo(x, y);
+        else sCtx.lineTo(x, y);
+    });
+    sCtx.stroke();
+
+    // 画像の最下部に追加した計算ロジック（声量評価）の結果を描画
+    sCtx.fillStyle = "#facc15";
+    sCtx.font = "bold 15px sans-serif";
+    const finalRank = calculateVoiceRank(getAverage());
+    sCtx.fillText("最終結果 - " + finalRank, 15, 505);
+
+    const imgLink = document.createElement("a");
+    imgLink.download = baseFileName + ".png";
+    imgLink.href = saveCanvas.toDataURL("image/png");
+    imgLink.click();
+}
+
+// 音声保存を実行
+function saveAudio(){
+    if (!audioBlob) return;
+    const baseFileName = getBaseFileName();
+    const audioLink = document.createElement("a");
+    const ext = audioBlob.type.includes("webm") ? ".webm" : audioBlob.type.includes("ogg") ? ".ogg" : ".m4a";
+    audioLink.download = baseFileName + ext;
+    audioLink.href = URL.createObjectURL(audioBlob);
+    audioLink.click();
+}
+
+startBtn.onclick = start;
+stopBtn.onclick = stop;
+saveImgBtn.onclick = saveImage;
+saveAudioBtn.onclick = saveAudio;
+
+drawGraph();
 </script>
 
 </body>
