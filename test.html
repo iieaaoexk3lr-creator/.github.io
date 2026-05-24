@@ -264,6 +264,11 @@ let currentDate = "";
 const MIN_DB = 0;
 const MAX_DB = 300;
 
+// 録音用変数
+let mediaRecorder;
+let audioChunks = [];
+let audioBlob = null;
+
 toggleHelpBtn.onclick = function() {
     if (helpContent.style.display === "block") {
         helpContent.style.display = "none";
@@ -350,7 +355,7 @@ function drawGraph(){
     ctx.fillText("AVG " + Math.floor(getAverage()) + " dB", 200, 40);
 }
 
-// 共通の枠・グリッド描画関数（時間軸の開始秒数（baseX）を指定可能に修正）
+// 共通の枠・グリッド描画関数
 function drawBaseGrid(cCtx, left, right, top, bottom, baseX, xMaxLabel) {
     cCtx.strokeStyle = "#374151";
     cCtx.lineWidth = 1;
@@ -392,6 +397,8 @@ async function start(){
     totalSum = 0;
     totalCount = 0;
     maxVolume = MIN_DB;
+    audioChunks = [];
+    audioBlob = null;
 
     limitTime = Math.min(Math.max(parseInt(timeInput.value) || 60, 1), 600);
     timerText.textContent = limitTime;
@@ -401,6 +408,20 @@ async function start(){
 
     try {
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        
+        // 録音セットアップ
+        mediaRecorder = new MediaRecorder(stream);
+        mediaRecorder.ondataavailable = function(e) {
+            if (e.data.size > 0) {
+                audioChunks.push(e.data);
+            }
+        };
+        mediaRecorder.onstop = function() {
+            audioBlob = new Blob(audioChunks, { type: "audio/wav" });
+        };
+        mediaRecorder.start();
+
+        // 解析セットアップ
         const audioContext = new AudioContext();
         const source = audioContext.createMediaStreamSource(stream);
 
@@ -421,6 +442,11 @@ async function start(){
 function stop(){
     running = false;
     cancelAnimationFrame(animationId);
+    if (mediaRecorder && mediaRecorder.state !== "inactive") {
+        mediaRecorder.stop();
+        // マイクトラックを完全に停止させて終了する
+        mediaRecorder.stream.getTracks().forEach(track => track.stop());
+    }
 }
 
 function update(){
@@ -436,7 +462,6 @@ function update(){
     let averageAmplitude = sum / dataArray.length;
     let dbfs = 20 * Math.log10(Math.max(averageAmplitude / 255, 0.0001));
     
-    // スケールを最大300にマッピングするための調整
     let db = 300 + (dbfs * 3.5); 
     
     if (db < MIN_DB) db = MIN_DB;
@@ -479,10 +504,11 @@ function update(){
     animationId = requestAnimationFrame(update);
 }
 
-// 画像保存関数
+// 画像保存関数（あわせて音声ファイルも自動ダウンロード）
 function saveImage(){
     drawGraph(); 
 
+    // --- グラフ画像の生成・保存処理 ---
     const saveCanvas = document.createElement("canvas");
     saveCanvas.width = 360;
     saveCanvas.height = 500; 
@@ -510,7 +536,6 @@ function saveImage(){
     const gTop2 = 290;
     const gBottom2 = 460;
 
-    // --- 1段目: 直近1分間のグラフ枠と線を描画 ---
     sCtx.fillStyle = "#eab308";
     sCtx.font = "12px sans-serif";
     sCtx.fillText("【直近1分間の推移】", 15, 64);
@@ -518,7 +543,6 @@ function saveImage(){
     const currentMinute = Math.floor(history.length ? (totalCount / 3600) : 0);
     const baseSec = currentMinute * 60;
     
-    // 重複描画を解消し、引数で正しいベース秒数を渡してクリーンに1回で描画
     drawBaseGrid(sCtx, gLeft, gRight, gTop1, gBottom1, baseSec, 60);
 
     sCtx.strokeStyle = "#22c55e";
@@ -533,8 +557,6 @@ function saveImage(){
     });
     sCtx.stroke();
 
-
-    // --- 2段目: 全期間グラフ枠と線を描画 ---
     sCtx.fillStyle = "#3b82f6";
     sCtx.font = "12px sans-serif";
     sCtx.fillText("【全体の測定推移（全記録）】", 15, 284);
@@ -554,10 +576,18 @@ function saveImage(){
     });
     sCtx.stroke();
 
-    const link = document.createElement("a");
-    link.download = "voice_result_full.png";
-    link.href = saveCanvas.toDataURL("image/png");
-    link.click();
+    const imgLink = document.createElement("a");
+    imgLink.download = "voice_result_full.png";
+    imgLink.href = saveCanvas.toDataURL("image/png");
+    imgLink.click();
+
+    // --- 音声ファイルのダウンロード処理 ---
+    if (audioBlob) {
+        const audioLink = document.createElement("a");
+        audioLink.download = "voice_record.wav";
+        audioLink.href = URL.createObjectURL(audioBlob);
+        audioLink.click();
+    }
 }
 
 startBtn.onclick = start;
