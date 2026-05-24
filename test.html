@@ -2,98 +2,579 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<title>声量チェッカー</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>声量チェッカー (dB・全記録保存版)</title>
+
 <style>
-  body {
-    font-family: sans-serif;
-    text-align: center;
-    padding: 30px;
-    background: #111;
-    color: white;
-  }
+body{
+    margin:0;
+    background:#111827;
+    font-family:sans-serif;
+    color:white;
+    display:flex;
+    justify-content:center;
+    padding:20px;
+}
 
-  #meter {
-    width: 300px;
-    height: 40px;
-    background: #333;
-    margin: 20px auto;
-    border-radius: 20px;
-    overflow: hidden;
-  }
+.app{
+    width:100%;
+    max-width:430px;
+    background:#1f2937;
+    border-radius:28px;
+    padding:20px;
+    box-sizing:border-box;
+    box-shadow:0 0 20px rgba(0,0,0,0.5);
+}
 
-  #bar {
-    height: 100%;
-    width: 0%;
-    background: lime;
-    transition: width 0.05s;
-  }
+h1{
+    text-align:center;
+    margin-top:0;
+    font-size:28px;
+}
 
-  #value {
-    font-size: 40px;
-  }
+.card{
+    background:#374151;
+    border-radius:20px;
+    padding:16px;
+    margin-bottom:16px;
+}
 
-  button {
-    padding: 10px 20px;
-    font-size: 20px;
-  }
+.label{
+    margin-bottom:8px;
+    font-size:14px;
+    opacity:0.8;
+}
+
+input{
+    width:100%;
+    padding:12px;
+    border:none;
+    border-radius:12px;
+    font-size:18px;
+    box-sizing:border-box;
+    margin-bottom:10px;
+}
+
+button{
+    width:100%;
+    padding:14px;
+    border:none;
+    border-radius:16px;
+    font-size:18px;
+    font-weight:bold;
+    cursor:pointer;
+    margin-top:10px;
+}
+
+.start{
+    background:#10b981;
+    color:white;
+}
+
+.stop{
+    background:#ef4444;
+    color:white;
+}
+
+.save{
+    background:#3b82f6;
+    color:white;
+}
+
+.toggle-help{
+    background:#4b5563;
+    color:white;
+    font-size:14px;
+    padding:10px;
+    margin-top:15px;
+}
+
+.meter{
+    height:28px;
+    background:#111827;
+    border-radius:999px;
+    overflow:hidden;
+    margin-top:10px;
+}
+
+.bar{
+    height:100%;
+    width:0%;
+    background:linear-gradient(90deg,#22c55e,#eab308,#ef4444);
+}
+
+.values{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:10px;
+    margin-top:12px;
+    font-size:18px;
+}
+
+canvas{
+    width:100%;
+    background:#111827;
+    border-radius:16px;
+    margin-top:10px;
+}
+
+.timer{
+    text-align:center;
+    font-size:36px;
+    font-weight:bold;
+}
+
+.small{
+    opacity:0.7;
+    font-size:13px;
+    margin-top:5px;
+}
+
+.info{
+    margin-top:10px;
+    font-size:14px;
+    opacity:0.8;
+    line-height:1.6;
+}
+
+.help-content {
+    display: none;
+    margin-top: 10px;
+    background: #111827;
+    padding: 14px;
+    border-radius: 16px;
+    font-size: 13px;
+    line-height: 1.6;
+    color: #d1d5db;
+}
+.help-content ul {
+    margin: 0;
+    padding-left: 20px;
+}
+.help-content li {
+    margin-bottom: 5px;
+}
+.help-title {
+    font-weight: bold;
+    color: #3b82f6;
+    margin-top: 8px;
+    margin-bottom: 4px;
+}
 </style>
 </head>
+
 <body>
 
-<h1>声量チェッカー</h1>
+<div class="app">
 
-<button id="startBtn">マイク開始</button>
+<h1>🎤 声量チェッカー</h1>
 
-<div id="meter">
-  <div id="bar"></div>
+<div class="card">
+    <div class="label">プレイヤー名（任意）</div>
+    <input type="text" id="playerName" placeholder="名前を入力">
+
+    <div class="label">制限時間（秒）※最大600秒</div>
+    <input type="number" id="timeInput" min="1" max="600" value="60">
+
+    <div class="small">10分まで設定可能</div>
 </div>
 
-<div id="value">0</div>
+<div class="card">
+    <div class="timer" id="timer">60</div>
+
+    <div class="meter">
+        <div class="bar" id="bar"></div>
+    </div>
+
+    <div class="values">
+        <div>現在: <span id="current">0</span> dB</div>
+        <div>最大: <span id="max">0</span> dB</div>
+        <div>平均: <span id="avg">0</span> dB</div>
+        <div>時間: <span id="elapsed">0</span> 秒</div>
+    </div>
+
+    <div class="info" id="info"></div>
+</div>
+
+<div class="card">
+    <canvas id="graph" width="360" height="260"></canvas>
+</div>
+
+<button class="start" id="startBtn">開始</button>
+<button class="stop" id="stopBtn">停止</button>
+<button class="save" id="saveBtn">画像保存</button>
+
+<button class="toggle-help" id="toggleHelpBtn">▼ 使い方と仕様を表示</button>
+<div class="help-content" id="helpContent">
+    <div class="help-title">【使い方】</div>
+    <ul>
+        <li>「名前」と「制限時間」を入力して<b>[開始]</b>を押すとマイク測定が始まります。</li>
+        <li>測定中は現在の声量がリアルタイムにデシベル(dB)でグラフ化されます。</li>
+        <li><b>[停止]</b>を押すか、制限時間になると測定が終了します。</li>
+        <li><b>[画像保存]</b>を押すと、現在の結果グラフを画像としてダウンロードできます。</li>
+    </ul>
+    
+    <div class="help-title">【仕様について】</div>
+    <ul>
+        <li><b>同じ音量での0化防止:</b> 音声の周波数解析エンジンを一新し、同じ大きさの声を出し続けても0にならず正確に検知し続けます。</li>
+        <li><b>グラフの1分リセット:</b> 1分（60秒）ごとに自動でグラフが左端から新しく追加され、長時間の測定でも見やすさを維持します。</li>
+        <li><b>全記録のダウンロード:</b> 画像保存時には、画面上の1分間グラフに加え、スタートからゴールまでの「すべての記録」が描画されたロンググラフが2段目に追加されて保存されます。</li>
+    </ul>
+</div>
+
+</div>
 
 <script>
 const startBtn = document.getElementById("startBtn");
+const stopBtn = document.getElementById("stopBtn");
+const saveBtn = document.getElementById("saveBtn");
+const toggleHelpBtn = document.getElementById("toggleHelpBtn");
+const helpContent = document.getElementById("helpContent");
+
+const currentText = document.getElementById("current");
+const maxText = document.getElementById("max");
+const avgText = document.getElementById("avg");
+const elapsedText = document.getElementById("elapsed");
+const timerText = document.getElementById("timer");
 const bar = document.getElementById("bar");
-const value = document.getElementById("value");
 
-startBtn.onclick = async () => {
+const canvas = document.getElementById("graph");
+const ctx = canvas.getContext("2d");
 
-  const stream = await navigator.mediaDevices.getUserMedia({
-    audio: true
-  });
+const timeInput = document.getElementById("timeInput");
+const playerNameInput = document.getElementById("playerName");
+const info = document.getElementById("info");
 
-  const audioContext = new AudioContext();
-  const source = audioContext.createMediaStreamSource(stream);
+let analyser;
+let dataArray;
+let animationId;
 
-  const analyser = audioContext.createAnalyser();
-  analyser.fftSize = 256;
+let history = [];      // 画面表示用の1分リセットの履歴
+let fullHistory = [];  // 保存用の全期間の記録履歴
 
-  source.connect(analyser);
+let totalSum = 0;   
+let totalCount = 0;
+let maxVolume = 30;
 
-  const dataArray = new Uint8Array(analyser.frequencyBinCount);
+let startTime;
+let limitTime = 60;
+let running = false;
+let currentDate = "";
 
-  function update() {
+const MIN_DB = 30;
+const MAX_DB = 100;
 
-    analyser.getByteTimeDomainData(dataArray);
+toggleHelpBtn.onclick = function() {
+    if (helpContent.style.display === "block") {
+        helpContent.style.display = "none";
+        toggleHelpBtn.textContent = "▼ 使い方と仕様を表示";
+    } else {
+        helpContent.style.display = "block";
+        toggleHelpBtn.textContent = "▲ 使い方と仕様を非表示";
+    }
+};
 
-    let sum = 0;
+function getAverage(){
+    if(totalCount === 0) return MIN_DB;
+    return totalSum / totalCount;
+}
 
-    for (let i = 0; i < dataArray.length; i++) {
-      const v = (dataArray[i] - 128) / 128;
-      sum += v * v;
+// 通常の画面描画（1分ごとのリセット表示）
+function drawGraph(){
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    ctx.fillStyle = "#111827";
+    ctx.fillRect(0,0,canvas.width,canvas.height);
+
+    const graphLeft = 45;
+    const graphBottom = 220;
+    const graphTop = 20;
+    const graphRight = 330;
+
+    ctx.strokeStyle = "#374151";
+    ctx.lineWidth = 1;
+
+    // 横線（30dB〜100dB）
+    for(let i=0;i<=5;i++){
+        const y = graphBottom - ((graphBottom - graphTop)/5)*i;
+        ctx.beginPath();
+        ctx.moveTo(graphLeft,y);
+        ctx.lineTo(graphRight,y);
+        ctx.stroke();
+
+        ctx.fillStyle = "#9ca3af";
+        ctx.font = "12px sans-serif";
+        const value = Math.floor(MIN_DB + ((MAX_DB - MIN_DB) / 5) * i);
+        ctx.fillText(value + "dB", 2, y+4);
     }
 
-    const volume = Math.sqrt(sum / dataArray.length);
+    // 縦線
+    const currentMinute = Math.floor(history.length ? (totalCount / 3600) : 0); 
+    const baseSecond = currentMinute * 60;
 
-    const percent = Math.min(volume * 300, 100);
+    for(let i=0;i<=5;i++){
+        const x = graphLeft + ((graphRight - graphLeft)/5)*i;
+        ctx.beginPath();
+        ctx.moveTo(x,graphTop);
+        ctx.lineTo(x,graphBottom);
+        ctx.stroke();
 
-    bar.style.width = percent + "%";
-    value.textContent = Math.floor(percent);
+        const sec = baseSecond + Math.floor((60 / 5) * i);
+        ctx.fillStyle = "#9ca3af";
+        ctx.fillText(sec + "s", x-10, 240);
+    }
 
-    requestAnimationFrame(update);
-  }
+    // グラフ線
+    ctx.strokeStyle = "#22c55e";
+    ctx.lineWidth = 3;
+    ctx.beginPath();
 
-  update();
-};
+    history.forEach((v,i)=>{
+        const x = graphLeft + (i / Math.max(history.length-1,1)) * (graphRight - graphLeft);
+        const ratio = (v - MIN_DB) / (MAX_DB - MIN_DB);
+        const y = graphBottom - ratio * (graphBottom - graphTop);
+
+        if(i===0) ctx.moveTo(x,y);
+        else ctx.lineTo(x,y);
+    });
+    ctx.stroke();
+
+    // テキスト
+    ctx.fillStyle = "white";
+    ctx.font = "18px sans-serif";
+    const player = playerNameInput.value.trim() || "NO NAME";
+    ctx.fillText(player, 15, 18);
+
+    ctx.font = "14px sans-serif";
+    ctx.fillText(currentDate, 15, 38);
+    ctx.fillText("MAX " + Math.floor(maxVolume) + " dB", 200, 20);
+    ctx.fillText("AVG " + Math.floor(getAverage()) + " dB", 200, 40);
+}
+
+// 共通の枠・グリッド描画関数（画像保存の生成用）
+function drawBaseGrid(cCtx, left, right, top, bottom, xMaxLabel) {
+    cCtx.strokeStyle = "#374151";
+    cCtx.lineWidth = 1;
+
+    // 横線
+    for(let i=0;i<=5;i++){
+        const y = bottom - ((bottom - top)/5)*i;
+        cCtx.beginPath();
+        cCtx.moveTo(left,y);
+        cCtx.lineTo(right,y);
+        cCtx.stroke();
+
+        cCtx.fillStyle = "#9ca3af";
+        cCtx.font = "12px sans-serif";
+        const value = Math.floor(MIN_DB + ((MAX_DB - MIN_DB) / 5) * i);
+        cCtx.fillText(value + "dB", 2, y+4);
+    }
+
+    // 縦線
+    for(let i=0;i<=5;i++){
+        const x = left + ((right - left)/5)*i;
+        cCtx.beginPath();
+        cCtx.moveTo(x,top);
+        cCtx.lineTo(x,bottom);
+        cCtx.stroke();
+
+        const labelVal = Math.floor((xMaxLabel / 5) * i);
+        cCtx.fillStyle = "#9ca3af";
+        cCtx.fillText(labelVal + "s", x-10, bottom + 20);
+    }
+}
+
+async function start(){
+    if(running) return;
+
+    running = true;
+    history = [];
+    fullHistory = [];
+    totalSum = 0;
+    totalCount = 0;
+    maxVolume = MIN_DB;
+
+    limitTime = Math.min(Math.max(parseInt(timeInput.value) || 60, 1), 600);
+    timerText.textContent = limitTime;
+
+    currentDate = new Date().toLocaleString("ja-JP");
+    info.innerHTML = "測定日時: " + currentDate;
+
+    try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        const audioContext = new AudioContext();
+        const source = audioContext.createMediaStreamSource(stream);
+
+        analyser = audioContext.createAnalyser();
+        analyser.fftSize = 512;
+        source.connect(analyser);
+
+        dataArray = new Uint8Array(analyser.frequencyBinCount);
+        startTime = Date.now();
+
+        update();
+    } catch(e) {
+        alert("マイクの許可が必要です。");
+        running = false;
+    }
+}
+
+function stop(){
+    running = false;
+    cancelAnimationFrame(animationId);
+}
+
+function update(){
+    if(!running) return;
+
+    analyser.getByteFrequencyData(dataArray);
+
+    let sum = 0;
+    for(let i=0; i<dataArray.length; i++){
+        sum += dataArray[i];
+    }
+    
+    let averageAmplitude = sum / dataArray.length;
+    let dbfs = 20 * Math.log10(Math.max(averageAmplitude / 255, 0.0001));
+    let db = 110 + dbfs; 
+    
+    if (db < MIN_DB) db = MIN_DB;
+    if (db > MAX_DB) db = MAX_DB;
+
+    // 1分間（約3600フレーム）で画面用履歴はリセット
+    if (history.length >= 3600) {
+        history = []; 
+    }
+
+    history.push(db);
+    fullHistory.push(db); // フル履歴はリセットせず蓄積し続ける
+    
+    totalSum += db;
+    totalCount++;
+
+    if(db > maxVolume){
+        maxVolume = db;
+    }
+
+    currentText.textContent = Math.floor(db);
+    maxText.textContent = Math.floor(maxVolume);
+    avgText.textContent = Math.floor(getAverage());
+
+    const barPercent = ((db - MIN_DB) / (MAX_DB - MIN_DB)) * 100;
+    bar.style.width = barPercent + "%";
+
+    const elapsed = Math.floor((Date.now() - startTime)/1000);
+    elapsedText.textContent = elapsed;
+
+    drawGraph();
+
+    const remain = Math.max(limitTime - elapsed, 0);
+    timerText.textContent = remain;
+
+    if(remain <= 0){
+        stop();
+        return;
+    }
+
+    animationId = requestAnimationFrame(update);
+}
+
+// 【大幅改良】全期間の記録も含めて、画像を縦長2段にして保存する関数
+function saveImage(){
+    drawGraph(); // 現状の画面グラフを確定
+
+    // 保存用に仮想の縦長キャンバス(高さ500px)を作成
+    const saveCanvas = document.createElement("canvas");
+    saveCanvas.width = 360;
+    saveCanvas.height = 500; 
+    const sCtx = saveCanvas.getContext("2d");
+
+    // 背景色
+    sCtx.fillStyle = "#111827";
+    sCtx.fillRect(0, 0, saveCanvas.width, saveCanvas.height);
+
+    // 情報エリア（プレイヤー名、日付、マックス、アベレージ）
+    sCtx.fillStyle = "white";
+    sCtx.font = "18px sans-serif";
+    const player = playerNameInput.value.trim() || "NO NAME";
+    sCtx.fillText(player, 15, 22);
+
+    sCtx.font = "14px sans-serif";
+    sCtx.fillText(currentDate, 15, 42);
+    sCtx.fillText("MAX " + Math.floor(maxVolume) + " dB", 200, 22);
+    sCtx.fillText("AVG " + Math.floor(getAverage()) + " dB", 200, 42);
+
+    // 各グラフの配置座標の定義
+    const gLeft = 45;
+    const gRight = 330;
+    
+    // 1段目：直近のグラフ (高さ170px)
+    const gTop1 = 70;
+    const gBottom1 = 240;
+    
+    // 2段目：全体のグラフ (高さ170px)
+    const gTop2 = 290;
+    const gBottom2 = 460;
+
+    // --- 1段目: 直近1分間のグラフ枠と線を描画 ---
+    sCtx.fillStyle = "#eab308";
+    sCtx.font = "12px sans-serif";
+    sCtx.fillText("【直近1分間の推移】", 15, 64);
+    
+    const currentMinute = Math.floor(history.length ? (totalCount / 3600) : 0);
+    drawBaseGrid(sCtx, gLeft, gRight, gTop1, gBottom1, (currentMinute + 1) * 60);
+    // 1分前の開始秒数を計算して目盛りのスタートを補正
+    const baseSec = currentMinute * 60;
+    for(let i=0; i<=5; i++){
+        const x = gLeft + ((gRight - gLeft)/5)*i;
+        sCtx.fillStyle = "#9ca3af";
+        sCtx.fillText((baseSec + Math.floor((60 / 5) * i)) + "s", x-10, gBottom1 + 16);
+    }
+
+    sCtx.strokeStyle = "#22c55e";
+    sCtx.lineWidth = 2.5;
+    sCtx.beginPath();
+    history.forEach((v, i) => {
+        const x = gLeft + (i / Math.max(history.length-1, 1)) * (gRight - gLeft);
+        const ratio = (v - MIN_DB) / (MAX_DB - MIN_DB);
+        const y = gBottom1 - ratio * (gBottom1 - gTop1);
+        if(i === 0) sCtx.moveTo(x, y);
+        else sCtx.lineTo(x, y);
+    });
+    sCtx.stroke();
+
+
+    // --- 2段目: スタートからの全期間グラフ枠と線を描画 ---
+    sCtx.fillStyle = "#3b82f6";
+    sCtx.font = "12px sans-serif";
+    sCtx.fillText("【全体の測定推移（全記録）】", 15, 284);
+
+    const totalElapsedSeconds = Math.max(Math.floor(totalCount / 60), 1);
+    drawBaseGrid(sCtx, gLeft, gRight, gTop2, gBottom2, totalElapsedSeconds);
+
+    sCtx.strokeStyle = "#3b82f6";
+    sCtx.lineWidth = 2.5;
+    sCtx.beginPath();
+    fullHistory.forEach((v, i) => {
+        const x = gLeft + (i / Math.max(fullHistory.length-1, 1)) * (gRight - gLeft);
+        const ratio = (v - MIN_DB) / (MAX_DB - MIN_DB);
+        const y = gBottom2 - ratio * (gBottom2 - gTop2);
+        if(i === 0) sCtx.moveTo(x, y);
+        else sCtx.lineTo(x, y);
+    });
+    sCtx.stroke();
+
+    // ダウンロード処理
+    const link = document.createElement("a");
+    link.download = "voice_result_full.png";
+    link.href = saveCanvas.toDataURL("image/png");
+    link.click();
+}
+
+startBtn.onclick = start;
+stopBtn.onclick = stop;
+saveBtn.onclick = saveImage;
+
+drawGraph();
 </script>
 
 </body>
