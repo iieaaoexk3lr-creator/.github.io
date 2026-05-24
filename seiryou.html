@@ -325,9 +325,9 @@ canvas{
     <div class="calib-container">
         <div class="calib-header">
             <span>🛠️ マイク感度のズレ補正(校正)</span>
-            <span><span id="calibVal">0</span> dB</span>
+            <span><span id="calibVal">0</span> pt</span>
         </div>
-        <input type="range" id="calibSlider" min="-20" max="20" value="0" step="1">
+        <input type="range" id="calibSlider" min="-100" max="100" value="0" step="5">
     </div>
 </div>
 
@@ -339,9 +339,9 @@ canvas{
     </div>
 
     <div class="values">
-        <div>現在: <span id="current">0</span> dBA</div>
-        <div>最大: <span id="max">0</span> dBA</div>
-        <div>平均: <span id="avg">0</span> dBA</div>
+        <div>現在: <span id="current">600</span> pt</div>
+        <div>最大: <span id="max">600</span> pt</div>
+        <div>平均: <span id="avg">600</span> pt</div>
         <div>時間: <span id="elapsed">0</span> 秒</div>
     </div>
 
@@ -409,22 +409,22 @@ const calibVal = document.getElementById("calibVal");
 const info = document.getElementById("info");
 
 const MAX_WAVE_BARS = 80;
-let waveHistory = new Array(MAX_WAVE_BARS).fill(null).map(() => ({ high: 80, low: 80 }));
+let waveHistory = new Array(MAX_WAVE_BARS).fill(null).map(() => ({ high: 600, low: 600 }));
 let fullHistory = [];  
 
 let totalSum = 0;   
 let totalCount = 0;
-let maxVolume = 80;
+let maxVolume = 600;
 
 let lastWavePushTime = 0; 
 
 let lowSumTotal = 0;
 let lowCountTotal = 0;
-let maxLowVolume = 80;
+let maxLowVolume = 600;
 
 let highSumTotal = 0;
 let highCountTotal = 0;
-let maxHighVolume = 80;
+let maxHighVolume = 600;
 
 let startTime;
 let limitTime = 360;
@@ -432,14 +432,14 @@ let running = false;
 let isEndingDelay = false; 
 let currentDate = "";
 
-// 画面上に表示してガードをかける範囲は「80〜160」
-const MIN_DB = 80;
-const MAX_DB = 160; 
+// 画面表示・ガード範囲を「600〜1000」に設定
+const MIN_DB = 600;
+const MAX_DB = 1000; 
 
-// 前の音との差分補正用の変数
-let prevRawTotal = 80;
-let prevRawLow = 80;
-let prevRawHigh = 80;
+// 前の音との差分補正用
+let prevRawTotal = 500;
+let prevRawLow = 500;
+let prevRawHigh = 500;
 
 let mediaRecorder;
 let videoChunks = [];
@@ -527,13 +527,20 @@ function drawVoicePrintCore(dataArrayToDraw, targetCtx, startY, w, h) {
     const barWidth = Math.max((w - (totalBars * gap)) / totalBars, 1.5);
     const startX = (w - (totalBars * (barWidth + gap))) / 2;
 
+    // 100ずつの目盛り線 (600, 700, 800, 900, 1000) の描画
     actualCtx.strokeStyle = "rgba(55, 65, 81, 0.4)";
     actualCtx.lineWidth = 1;
-    actualCtx.beginPath();
-    actualCtx.moveTo(0, centerY); actualCtx.lineTo(w, centerY); 
-    actualCtx.moveTo(0, centerY - (h * 0.45)); actualCtx.lineTo(w, centerY - (h * 0.45)); 
-    actualCtx.moveTo(0, centerY + (h * 0.45)); actualCtx.lineTo(w, centerY + (h * 0.45)); 
-    actualCtx.stroke();
+    
+    const steps = [600, 700, 800, 900, 1000];
+    steps.forEach(step => {
+        let ratio = (step - 600) / (1000 - 600);
+        let offset = (h * 0.45) * ratio;
+        
+        actualCtx.beginPath();
+        actualCtx.moveTo(0, centerY - offset); actualCtx.lineTo(w, centerY - offset);
+        actualCtx.moveTo(0, centerY + offset); actualCtx.lineTo(w, centerY + offset);
+        actualCtx.stroke();
+    });
 
     actualCtx.shadowBlur = 7;
     actualCtx.shadowColor = "#22d3ee";
@@ -541,12 +548,13 @@ function drawVoicePrintCore(dataArrayToDraw, targetCtx, startY, w, h) {
     for (let i = 0; i < totalBars; i++) {
         const item = dataArrayToDraw[i];
         
-        let ratioHigh = (item.high - 80) / (160 - 80);
+        // 600〜1000の範囲で比率を計算
+        let ratioHigh = (item.high - 600) / (1000 - 600);
         if(ratioHigh < 0) ratioHigh = 0;
         if(ratioHigh > 1) ratioHigh = 1;
         const heightHigh = (h * 0.45) * ratioHigh;
 
-        let ratioLow = (item.low - 80) / (160 - 80);
+        let ratioLow = (item.low - 600) / (1000 - 600);
         if(ratioLow < 0) ratioLow = 0;
         if(ratioLow > 1) ratioLow = 1;
         const heightLow = (h * 0.45) * ratioLow;
@@ -565,6 +573,16 @@ function drawVoicePrintCore(dataArrayToDraw, targetCtx, startY, w, h) {
         }
     }
     actualCtx.shadowBlur = 0;
+
+    // 画像の上端に高音のMAXと平均を表示
+    actualCtx.fillStyle = "#f43f5e";
+    actualCtx.font = "bold 11px sans-serif";
+    actualCtx.textAlign = "left";
+    actualCtx.fillText(`高音 MAX: ${Math.floor(maxHighVolume)} | AVG: ${Math.floor(getHighAverage())}`, 10, startY + 16);
+
+    // 画像の下端に低音のMAXと平均を表示
+    actualCtx.fillStyle = "#34d399";
+    actualCtx.fillText(`低音 MAX: ${Math.floor(maxLowVolume)} | AVG: ${Math.floor(getLowAverage())}`, 10, startY + h - 10);
 }
 
 function drawEmbedResult(targetCtx, w, h) {
@@ -596,12 +614,12 @@ function drawEmbedResult(targetCtx, w, h) {
     targetCtx.font = "16px sans-serif";
     
     targetCtx.textAlign = "right";
-    targetCtx.fillText("低音最大: " + scoreObj.lowMax + " dB", w / 2 - 25, 225);
-    targetCtx.fillText("低音平均: " + scoreObj.lowAvg + " dB", w / 2 - 25, 260);
+    targetCtx.fillText("低音最大: " + scoreObj.lowMax + " pt", w / 2 - 25, 225);
+    targetCtx.fillText("低音平均: " + scoreObj.lowAvg + " pt", w / 2 - 25, 260);
     
     targetCtx.textAlign = "left";
-    targetCtx.fillText("高音最大: " + scoreObj.highMax + " dB", w / 2 + 25, 225);
-    targetCtx.fillText("高音平均: " + scoreObj.highAvg + " dB", w / 2 + 25, 260);
+    targetCtx.fillText("高音最大: " + scoreObj.highMax + " pt", w / 2 + 25, 225);
+    targetCtx.fillText("高音平均: " + scoreObj.highAvg + " pt", w / 2 + 25, 260);
 
     targetCtx.textAlign = "center";
     targetCtx.fillStyle = "#22d3ee";
@@ -662,17 +680,28 @@ function drawCombinedFrame(targetCtx, w, h, mode) {
     targetCtx.font = "14px sans-serif";
     const player = playerNameInput.value.trim() || "NO NAME";
     const song = songNameInput.value.trim() || "NO SONG";
-    targetCtx.fillText(player + " / " + song, 15, halfH + 24);
+    targetCtx.fillText(player + " / " + song, 15, halfH + 34);
 
     targetCtx.font = "11px sans-serif";
     targetCtx.fillStyle = "#9ca3af";
-    targetCtx.fillText(currentDate, 15, halfH + 42);
+    targetCtx.fillText(currentDate, 15, halfH + 50);
     
+    // 右側に100ずつのメモリ(目盛り)ラベルを表示
     const centerY = halfH + (halfH / 2);
     targetCtx.fillStyle = "rgba(255,255,255,0.4)";
-    targetCtx.fillText("160dB (高音)", w - 75, centerY - (halfH * 0.38));
-    targetCtx.fillText("80dB", w - 40, centerY + 4);
-    targetCtx.fillText("160dB (低音)", w - 75, centerY + (halfH * 0.41));
+    targetCtx.font = "9px sans-serif";
+    targetCtx.textAlign = "right";
+    
+    const labelSteps = [600, 700, 800, 900, 1000];
+    labelSteps.forEach(step => {
+        let ratio = (step - 600) / (1000 - 600);
+        let offset = (halfH * 0.45) * ratio;
+        targetCtx.fillText(step + "—", w - 4, centerY - offset + 3);
+        if (step !== 600) {
+            targetCtx.fillText(step + "—", w - 4, centerY + offset + 3);
+        }
+    });
+    targetCtx.textAlign = "left";
 }
 
 async function start(){
@@ -680,7 +709,7 @@ async function start(){
 
     running = true;
     isEndingDelay = false;
-    waveHistory = new Array(MAX_WAVE_BARS).fill(null).map(() => ({ high: 80, low: 80 }));
+    waveHistory = new Array(MAX_WAVE_BARS).fill(null).map(() => ({ high: 600, low: 600 }));
     fullHistory = [];
     totalSum = 0;
     totalCount = 0;
@@ -696,9 +725,9 @@ async function start(){
     highCountTotal = 0;
     maxHighVolume = MIN_DB;
 
-    prevRawTotal = 0;
-    prevRawLow = 0;
-    prevRawHigh = 0;
+    prevRawTotal = 500;
+    prevRawLow = 500;
+    prevRawHigh = 500;
 
     videoChunks = [];
     videoBlob = null;
@@ -869,30 +898,30 @@ function update(){
 
     const calibrationOffset = parseInt(calibSlider.value);
 
-    // 【1】スマホのフルスケール（-100dB〜0dB）を0〜160へダイレクトに直線マッピング
+    // 【スマホのフルスケール -100dB〜0dB を 500〜1000 へダイレクトマッピング】
     let dbTotalRaw = -100;
     if (avgAmplitude > 0) {
         dbTotalRaw = 20 * Math.log10(avgAmplitude / 255); 
     }
-    let currentRawTotal = ((dbTotalRaw + 100) / 100) * 160 + calibrationOffset;
+    let currentRawTotal = 500 + ((dbTotalRaw + 100) / 100) * 500 + calibrationOffset;
 
     let dbLowRaw = -100;
     if (avgLowAmp > 0) {
         dbLowRaw = 20 * Math.log10(avgLowAmp / 255);
     }
-    let currentRawLow = ((dbLowRaw + 100) / 100) * 160 + calibrationOffset;
+    let currentRawLow = 500 + ((dbLowRaw + 100) / 100) * 500 + calibrationOffset;
 
     let dbHighRaw = -100;
     if (avgHighAmp > 0) {
         dbHighRaw = 20 * Math.log10(avgHighAmp / 255);
     }
-    let currentRawHigh = ((dbHighRaw + 100) / 100) * 160 + calibrationOffset;
+    let currentRawHigh = 500 + ((dbHighRaw + 100) / 100) * 500 + calibrationOffset;
 
-    // 【2】前の音との差分（勢い）を検知して強力に音量補正（上乗せ）
+    // 前の音との差分検知による強力音量補正
     let diffTotal = currentRawTotal - prevRawTotal;
     let modifiedDb = currentRawTotal;
     if (diffTotal > 0) {
-        modifiedDb += diffTotal * 1.8; // 立ち上がりを1.8倍に強烈ブースト
+        modifiedDb += diffTotal * 1.8; 
     }
 
     let diffLow = currentRawLow - prevRawLow;
@@ -907,12 +936,11 @@ function update(){
         dbHigh += diffHigh * 1.8;
     }
 
-    // 今回の生値を次回の比較用に保存
     prevRawTotal = currentRawTotal;
     prevRawLow = currentRawLow;
     prevRawHigh = currentRawHigh;
 
-    // 【3】表示用のガード（80〜160の範囲に収める）
+    // 表示上のガードを 600〜1000 に制限
     if (modifiedDb < MIN_DB) modifiedDb = MIN_DB;
     if (modifiedDb > MAX_DB) modifiedDb = MAX_DB;
     if (dbLow < MIN_DB) dbLow = MIN_DB;
@@ -923,7 +951,7 @@ function update(){
     let now = Date.now();
     const elapsedSeconds = Math.floor((now - startTime) / 1000);
 
-    // 初動1秒の安全ガード
+    // 初動ガード
     if (elapsedSeconds < 1) {
         modifiedDb = MIN_DB;
         dbLow = MIN_DB;
@@ -985,7 +1013,7 @@ function update(){
 function getBaseFileName() {
     const player = playerNameInput.value.trim() || "NO_NAME";
     const song = songNameInput.value.trim() || "NO_SONG";
-    const maxDbStr = Math.floor(maxVolume) + "dBA";
+    const maxDbStr = Math.floor(maxVolume) + "pt";
     return `${player}_${song}_${maxDbStr}`;
 }
 
@@ -1022,10 +1050,10 @@ function saveImage(){
     sCtx.font = "14px sans-serif";
     const player = playerNameInput.value.trim() || "NO NAME";
     const song = songNameInput.value.trim() || "NO SONG";
-    sCtx.fillText(player + " / " + song, 15, 24);
+    sCtx.fillText(player + " / " + song, 15, 34);
     sCtx.fillStyle = "#9ca3af";
     sCtx.font = "11px sans-serif";
-    sCtx.fillText(currentDate + " (ALL TIME WAVE)", 15, 42);
+    sCtx.fillText(currentDate + " (ALL TIME WAVE)", 15, 50);
 
     sCtx.strokeStyle = "#374151";
     sCtx.lineWidth = 2;
@@ -1043,10 +1071,10 @@ function saveImage(){
     const scoreObj = calculateHighlightScore();
     sCtx.fillStyle = "#9ca3af";
     sCtx.font = "12px sans-serif";
-    sCtx.fillText("低音最大: " + scoreObj.lowMax + " dB", infoX, 70);
-    sCtx.fillText("低音平均: " + scoreObj.lowAvg + " dB", infoX, 95);
-    sCtx.fillText("高音最大: " + scoreObj.highMax + " dB", infoX, 130);
-    sCtx.fillText("高音平均: " + scoreObj.highAvg + " dB", infoX, 155);
+    sCtx.fillText("低音最大: " + scoreObj.lowMax + " pt", infoX, 70);
+    sCtx.fillText("低音平均: " + scoreObj.lowAvg + " pt", infoX, 95);
+    sCtx.fillText("高音最大: " + scoreObj.highMax + " pt", infoX, 130);
+    sCtx.fillText("高音平均: " + scoreObj.highAvg + " pt", infoX, 155);
 
     sCtx.fillStyle = "#22d3ee";
     sCtx.font = "bold 14px sans-serif";
