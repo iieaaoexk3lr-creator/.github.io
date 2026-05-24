@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>本格派・声量チェッカー (MAX150dB・ダイナミクス補正仕様)</title>
+<title>本格派・声量チェッカー (声紋ダイナミクス仕様)</title>
 
 <style>
 body{
@@ -180,20 +180,6 @@ button{
     margin-top: 5px;
 }
 
-.score-box {
-    grid-column: span 2;
-    background: linear-gradient(135deg, #1e3a8a, #0f172a);
-    border: 2px solid #3b82f6;
-    padding: 12px;
-    border-radius: 14px;
-    text-align: center;
-    font-weight: bold;
-    color: #60a5fa;
-    font-size: 22px;
-    margin-top: 8px;
-    box-shadow: 0 0 10px rgba(59, 130, 246, 0.5);
-}
-
 canvas{
     width:100%;
     background:#111827;
@@ -230,23 +216,6 @@ canvas{
     line-height: 1.6;
     color: #d1d5db;
 }
-.help-content ul {
-    margin: 0;
-    padding-left: 20px;
-}
-.help-content li {
-    margin-bottom: 5px;
-}
-.help-title {
-    font-weight: bold;
-    color: #3b82f6;
-    margin-top: 8px;
-    margin-bottom: 4px;
-}
-.warning-text {
-    color: #f87171;
-    font-weight: bold;
-}
 </style>
 </head>
 
@@ -281,12 +250,8 @@ canvas{
             <span><span id="calibVal">0</span> dB</span>
         </div>
         <input type="range" id="calibSlider" min="-20" max="20" value="0" step="1">
-        <div class="small" style="color:#9ca3af; font-size:11px; margin:0;">
-            ※静かな部屋で35〜40dB、普通の話し声で60〜70dBになるよう微調整してください。
-        </div>
     </div>
-
-    <div class="small" style="margin-top:10px;">10分まで設定可能（100秒以上の設定を推奨）</div>
+    <div class="small" style="margin-top:10px;">※ハイライト採点のため100秒以上の設定を推奨</div>
 </div>
 
 <div class="card">
@@ -301,10 +266,6 @@ canvas{
         <div>最大: <span id="max">0</span> dBA</div>
         <div>平均: <span id="avg">0</span> dBA</div>
         <div>時間: <span id="elapsed">0</span> 秒</div>
-        
-        <!-- 最高盛り上がり100秒間の合計得点 -->
-        <div class="score-box">🔥 ハイライト得点(100s): <span id="voiceScore">0</span> 点</div>
-        
         <div class="rank-box">声量評価: <span id="voiceRank">-</span></div>
     </div>
 
@@ -322,14 +283,11 @@ canvas{
 
 <button class="toggle-help" id="toggleHelpBtn">▼ 使い方を表示</button>
 <div class="help-content" id="helpContent">
-    <div class="help-title">【使い方】</div>
+    <div class="help-title">【特徴・ロジック】</div>
     <ul>
-        <li><span class="warning-text">※重要：LINEアプリ内で開いている場合は、測定や録音が正常に動作しません。必ずSafariやChromeなど「デフォルトのブラウザ」に切り替えて開いてください。</span></li>
-        <li>「名前」「曲名」「制限時間」を入力して<b>[開始]</b>を押すと測定と録音が始まります。</li>
-        <li><b>【スケール拡大＆100秒採点】曲の中で最も盛り上がった「最高の100秒間（連続10区間）」の平均値を自動検出し、得点化します。前秒比の抑揚ブーストにより、感情を込めて声を張ることでメーターが最大150dBA（140dBA付近）までドラマチックに躍動します！</b></li>
-        <li><b>[マイク感度のズレ補正]</b>を使うと、お使いのスマホ機種特有のマイクの個体差を調整できます。</li>
-        <li><b>[停止]</b>を押すか、制限時間になると測定が自動終了します。</li>
-        <li>測定終了後、<b>[画像保存]</b>を押すと結果のグラフ画像が保存されます。録音ONで測定した場合は、新しく出現する<b>[録音保存]</b>ボタンから音声ファイルを保存できます。</li>
+        <li><b>開始直後ガード:</b> 開始から3秒間はマイク接続時の初期ノイズを弾くため、判定を鈍感に補正して誤検知を防ぎます。</li>
+        <li><b>声紋波形表示:</b> リアルタイムの声を分析し、中央が50dBA、上下端が130dBAに対応する上下対称のエモいビジュアル波形を生成します。</li>
+        <li><b>ハイライト100秒採点:</b> 曲の長さによる不平等を無くすため、曲中で最も盛り上がった「連続する100秒間」を自動検出。その区間の【MAX + AVG ÷ 2】を最終得点としてリザルト画像右側へ刻印します。</li>
     </ul>
 </div>
 
@@ -350,7 +308,6 @@ const avgText = document.getElementById("avg");
 const elapsedText = document.getElementById("elapsed");
 const timerText = document.getElementById("timer");
 const voiceRankText = document.getElementById("voiceRank");
-const voiceScoreText = document.getElementById("voiceScore"); 
 const bar = document.getElementById("bar");
 
 const canvas = document.getElementById("graph");
@@ -369,23 +326,24 @@ let dataArray;
 let animationId;
 let audioContext;
 
-let history = [];      
+// 声紋表示用のバッファ（最新の波形履歴）
+let waveHistory = new Array(80).fill(50);
 let fullHistory = [];  
 
 let totalSum = 0;   
 let totalCount = 0;
 let maxVolume = 0;
 
-// スケール拡大および前秒比補正用の変数
+// 動的補正用変数
 let lastOneSecondDb = 40; 
 let lastSavedTimeForDelta = 0;
 
-// 10秒ごとのデータをトラッキングする変数
+// 10秒ごとのデータを完全にトラッキングする配列(10区間で100秒)
 let finalHighScore = 0;
 let intervalSum = 0;
 let intervalCount = 0;
 let lastIntervalIndex = 0;
-let sectionAverages = []; // 10秒ごとの平均dBAをすべて記録する配列
+let sectionData = []; // { max: 0, avg: 0 } を10秒ごとに保持
 
 let startTime;
 let limitTime = 120;
@@ -393,7 +351,7 @@ let running = false;
 let currentDate = "";
 
 const MIN_DB = 0;
-const MAX_DB = 150; // MAX150仕様へ変更
+const MAX_DB = 150; 
 
 let mediaRecorder;
 let audioChunks = [];
@@ -428,165 +386,132 @@ function calculateVoiceRank(avgDb) {
     if (avgDb >= 110) return "神域・熱狂のカリスマ (110dB〜)";
     if (avgDb >= 90) return "プロ級・爆音シンガー (90〜109dB)";
     if (avgDb >= 75) return "パワフル・声量十分 (75〜89dB)";
-    if (avgDb >= 55) return "標準的・通る声 (55ign〜74dB)";
+    if (avgDb >= 55) return "標準的・通る声 (55〜74dB)";
     return "控えめ・おしゃべり音量 (〜54dB)";
 }
 
-// 【指定条件】最も平均が高い「100秒間（10区間）」を切り出して得点化
+// 【指定ロジック】最高の連続100秒(10区間)から MAX + AVG ÷ 2 を算出
 function calculateHighlightScore() {
-    if (sectionAverages.length === 0) {
-        return 0;
-    }
+    if (sectionData.length === 0) return 0;
 
-    let maxComboScore = 0;
-    const comboLength = 10; // 10区間（100秒連続）
+    let maxScore = 0;
+    const comboLength = 10; 
 
-    // 連続する10区間（100秒）で最も平均が高かった区間を探索
-    for (let i = 0; i <= sectionAverages.length - comboLength; i++) {
-        let currentComboSum = 0;
+    for (let i = 0; i <= sectionData.length - comboLength; i++) {
+        let comboMax = 0;
+        let comboSum = 0;
+        
         for (let j = 0; j < comboLength; j++) {
-            currentComboSum += sectionAverages[i + j];
+            const data = sectionData[i + j];
+            if (data.max > comboMax) comboMax = data.max;
+            comboSum += data.avg;
         }
-        // 100秒間の平均値をそのまま「得点」とする
-        const currentAvgScore = Math.floor(currentComboSum / comboLength);
-        if (currentAvgScore > maxComboScore) {
-            maxComboScore = currentAvgScore;
-        }
+        
+        const comboAvg = comboSum / comboLength;
+        const score = Math.floor(comboMax + (comboAvg / 2));
+        if (score > maxScore) maxScore = score;
     }
 
-    // 歌唱時間が100秒（10区間）に満たない場合の救済措置（現在の全区間の平均を返す）
-    if (sectionAverages.length < comboLength) {
-        let currentComboSum = 0;
-        sectionAverages.forEach(val => {
-            currentComboSum += val;
+    // 100秒に満たない場合は、今ある全区間から算出
+    if (sectionData.length < comboLength && sectionData.length > 0) {
+        let comboMax = 0;
+        let comboSum = 0;
+        sectionData.forEach(data => {
+            if (data.max > comboMax) comboMax = data.max;
+            comboSum += data.avg;
         });
-        maxComboScore = Math.floor(currentComboSum / sectionAverages.length);
+        const comboAvg = comboSum / sectionData.length;
+        maxScore = Math.floor(comboMax + (comboAvg / 2));
     }
 
-    return maxComboScore;
+    return maxScore;
 }
 
-function drawGraph(){
-    ctx.clearRect(0,0,canvas.width,canvas.height);
-    ctx.fillStyle = "#111827";
-    ctx.fillRect(0,0,canvas.width,canvas.height);
+// 声紋型グラフィックの描画（中央50、上下端130）
+function drawVoicePrint(targetCtx, w, h) {
+    targetCtx.fillStyle = "#111827";
+    targetCtx.fillRect(0, 0, w, h);
 
-    const graphLeft = 45;
-    const graphBottom = 220;
-    const graphTop = 20;
-    const graphRight = 330;
+    const centerY = h / 2;
+    const barWidth = 3;
+    const gap = 1.5;
+    const totalBars = waveHistory.length;
+    const startX = (w - (totalBars * (barWidth + gap))) / 2;
 
-    ctx.strokeStyle = "#374151";
-    ctx.lineWidth = 1;
+    // 背景にうっすらとセンターライン(50dB)と境界ガイドを引く
+    targetCtx.strokeStyle = "rgba(55, 65, 81, 0.5)";
+    targetCtx.lineWidth = 1;
+    targetCtx.beginPath();
+    targetCtx.moveTo(0, centerY); targetCtx.lineTo(w, centerY); // 50dB
+    targetCtx.moveTo(0, centerY - (centerY * 0.9)); targetCtx.lineTo(w, centerY - (centerY * 0.9)); // 上端部
+    targetCtx.moveTo(0, centerY + (centerY * 0.9)); targetCtx.lineTo(w, centerY + (centerY * 0.9)); // 下端部
+    targetCtx.stroke();
 
-    for(let i=0;i<=5;i++){
-        const y = graphBottom - ((graphBottom - graphTop)/5)*i;
-        ctx.beginPath();
-        ctx.moveTo(graphLeft,y);
-        ctx.lineTo(graphRight,y);
-        ctx.stroke();
+    // ネオンシアンのグローエフェクト演出
+    targetCtx.shadowBlur = 8;
+    targetCtx.shadowColor = "#22d3ee";
 
-        ctx.fillStyle = "#9ca3af";
-        ctx.font = "12px sans-serif";
-        const value = Math.floor(MIN_DB + ((MAX_DB - MIN_DB) / 5) * i);
-        ctx.fillText(value + "dBA", 2, y+4);
+    for (let i = 0; i < totalBars; i++) {
+        const dbValue = waveHistory[i];
+        
+        // 中央を50とし、そこからのズレ幅を計算
+        let delta = dbValue - 50; 
+        // 130dB時にちょうど画面の上端・下端(100%高さ)付近へ達するようマッピング率を調整
+        let ratio = delta / (130 - 50); 
+        if(ratio < 0) ratio = 0;
+        if(ratio > 1) ratio = 1;
+
+        const barHeight = (centerY * 0.9) * ratio;
+        const x = startX + i * (barWidth + gap);
+
+        // 上下対称にシアンの縦棒を伸ばす
+        targetCtx.fillStyle = "#22d3ee";
+        targetCtx.fillRect(x, centerY - barHeight, barWidth, barHeight * 2 || 2);
     }
 
-    const currentMinute = Math.floor(history.length ? (totalCount / 3600) : 0); 
-    const baseSecond = currentMinute * 60;
+    // シャドウ設定を初期化に戻す
+    targetCtx.shadowBlur = 0;
 
-    for(let i=0;i<=5;i++){
-        const x = graphLeft + ((graphRight - graphLeft)/5)*i;
-        ctx.beginPath();
-        ctx.moveTo(x,graphTop);
-        ctx.lineTo(x,graphBottom);
-        ctx.stroke();
-
-        const sec = baseSecond + Math.floor((60 / 5) * i);
-        ctx.fillStyle = "#9ca3af";
-        ctx.fillText(sec + "s", x-10, 240);
-    }
-
-    ctx.strokeStyle = "#22c55e";
-    ctx.lineWidth = 3;
-    ctx.beginPath();
-
-    history.forEach((v,i)=>{
-        const x = graphLeft + (i / Math.max(history.length-1,1)) * (graphRight - graphLeft);
-        const ratio = (v - MIN_DB) / (MAX_DB - MIN_DB);
-        const y = graphBottom - ratio * (graphBottom - graphTop);
-
-        if(i===0) ctx.moveTo(x,y);
-        else ctx.lineTo(x,y);
-    });
-    ctx.stroke();
-
-    ctx.fillStyle = "white";
-    ctx.font = "16px sans-serif";
+    // 左上に情報テキストを描画
+    targetCtx.fillStyle = "white";
+    targetCtx.font = "15px sans-serif";
     const player = playerNameInput.value.trim() || "NO NAME";
     const song = songNameInput.value.trim() || "NO SONG";
-    ctx.fillText(player + " / " + song, 15, 18);
+    targetCtx.fillText(player + " / " + song, 15, 22);
 
-    ctx.font = "14px sans-serif";
-    ctx.fillText(currentDate, 15, 38);
-    ctx.fillText("MAX " + Math.floor(maxVolume) + " dBA", 190, 20);
-    ctx.fillText("AVG " + Math.floor(getAverage()) + " dBA", 190, 40);
-}
-
-function drawBaseGrid(cCtx, left, right, top, bottom, baseX, xMaxLabel) {
-    cCtx.strokeStyle = "#374151";
-    cCtx.lineWidth = 1;
-
-    for(let i=0;i<=5;i++){
-        const y = bottom - ((bottom - top)/5)*i;
-        cCtx.beginPath();
-        cCtx.moveTo(left,y);
-        cCtx.lineTo(right,y);
-        cCtx.stroke();
-
-        cCtx.fillStyle = "#9ca3af";
-        cCtx.font = "12px sans-serif";
-        const value = Math.floor(MIN_DB + ((MAX_DB - MIN_DB) / 5) * i);
-        cCtx.fillText(value + "dBA", 2, y+4);
-    }
-
-    for(let i=0;i<=5;i++){
-        const x = left + ((right - left)/5)*i;
-        cCtx.beginPath();
-        cCtx.moveTo(x,top);
-        cCtx.lineTo(x,bottom);
-        cCtx.stroke();
-
-        const labelVal = baseX + Math.floor((xMaxLabel / 5) * i);
-        cCtx.fillStyle = "#9ca3af";
-        cCtx.fillText(labelVal + "s", x-10, bottom + 20);
-    }
+    targetCtx.font = "12px sans-serif";
+    targetCtx.fillStyle = "#9ca3af";
+    targetCtx.fillText(currentDate, 15, 40);
+    
+    // スケールガイド文字
+    targetCtx.fillStyle = "rgba(255,255,255,0.4)";
+    targetCtx.fillText("130dB", w - 45, centerY - (centerY * 0.75));
+    targetCtx.fillText("50dB", w - 40, centerY + 4);
+    targetCtx.fillText("130dB", w - 45, centerY + (centerY * 0.83));
 }
 
 async function start(){
     if(running) return;
 
     running = true;
-    history = [];
+    waveHistory = new Array(80).fill(50);
     fullHistory = [];
     totalSum = 0;
     totalCount = 0;
     maxVolume = MIN_DB;
     
-    // 変数の初期化
+    // 各種初期化
     lastOneSecondDb = 40;
     lastSavedTimeForDelta = Date.now();
     finalHighScore = 0;
     intervalSum = 0;
     intervalCount = 0;
     lastIntervalIndex = 0;
-    sectionAverages = [];
-    voiceScoreText.textContent = "0";
+    sectionData = [];
 
     audioChunks = [];
     audioBlob = null;
     saveAudioBtn.style.display = "none"; 
-    voiceRankText.textContent = "-";
 
     limitTime = Math.min(Math.max(parseInt(timeInput.value) || 120, 1), 600);
     timerText.textContent = limitTime;
@@ -637,19 +562,25 @@ async function start(){
 
         update();
     } catch(e) {
-        alert("マイクの許可、またはデバイスが対応していません。LINEアプリ内では動作しないため、通常のブラウザで開き直してください。");
+        alert("マイクの許可、またはデバイスが対応していません。通常のブラウザで開き直してください。");
         running = false;
     }
 }
 
 function finalizeScore() {
     if (intervalCount > 0) {
-        sectionAverages.push(intervalSum / intervalCount);
+        // 現在走っている計測途中の区間も計算に織り込む
+        const chunkAvg = intervalSum / intervalCount;
+        let chunkMax = MIN_DB;
+        const searchCount = Math.min(fullHistory.length, intervalCount);
+        for(let i = fullHistory.length - searchCount; i < fullHistory.length; i++) {
+            if(fullHistory[i] > chunkMax) chunkMax = fullHistory[i];
+        }
+        sectionData.push({ max: chunkMax, avg: chunkAvg });
         intervalSum = 0;
         intervalCount = 0;
     }
     finalHighScore = calculateHighlightScore();
-    voiceScoreText.textContent = finalHighScore + " 点 (確定)";
 }
 
 function stop(){
@@ -712,70 +643,65 @@ function update(){
     const calibrationOffset = parseInt(calibSlider.value);
     rawDb += calibrationOffset;
 
-    // 音量特性のベースマップ
     if (rawDb < 30) rawDb = 30;
     if (rawDb > 90) {
         let excess = rawDb - 90;
         rawDb = 90 + (excess * 1.5); 
     }
 
-    // -------------------------------------------------------------
-    // 【新ロジック】やりすぎない程度のスケール拡大補正 (140台狙い)
-    // -------------------------------------------------------------
     let now = Date.now();
-    // 1秒(1000ms)経つごとに、比較用の基準音量を更新
+    const elapsedSeconds = Math.floor((now - startTime) / 1000);
+
+    // 1秒ごとのデルタ用基準更新
     if (now - lastSavedTimeForDelta >= 1000) {
         lastOneSecondDb = rawDb;
         lastSavedTimeForDelta = now;
     }
 
-    // 1秒前の音量との差分（デルタ）を計算
     let delta = rawDb - lastOneSecondDb;
     let modifiedDb = rawDb;
 
-    // 歌っている（45dB以上）の時、前秒比の変化量を「やりすぎない程度(0.4倍)」でブレンドして乗せる
     if (rawDb > 45) {
-        // 上がっていればさらに引き上げ、下がっていれば鋭く落としてメリハリを拡張
-        modifiedDb = rawDb + (delta * 0.4);
+        // ★【バグ・急上昇誤判定ガード】：開始直後3秒間は100dB等の跳ね上がりを防ぐためdelta補正を0にする
+        let dynamicScale = (elapsedSeconds < 3) ? 0.0 : 0.4;
         
-        // 全体のスケールを1.15倍に緩やかに拡大し、140dB付近を狙えるようにする
+        modifiedDb = rawDb + (delta * dynamicScale);
         modifiedDb = 35 + (modifiedDb - 35) * 1.15;
     }
 
-    // 最終出力の安全ガード(MAX150)
     if (modifiedDb < MIN_DB) modifiedDb = MIN_DB;
     if (modifiedDb > MAX_DB) modifiedDb = MAX_DB;
-    // -------------------------------------------------------------
 
-    if (history.length >= 3600) {
-        history = []; 
-    }
-
-    history.push(modifiedDb);
+    // 声紋バッファのシフト（左へ流れるアニメーション）
+    waveHistory.shift();
+    waveHistory.push(modifiedDb);
     fullHistory.push(modifiedDb); 
     
     totalSum += modifiedDb;
     totalCount++;
 
-    // 10秒毎の盛り上がりトラッキング
     intervalSum += modifiedDb;
     intervalCount++;
     
-    const elapsedSeconds = Math.floor((now - startTime) / 1000);
     const currentIntervalIndex = Math.floor(elapsedSeconds / 10);
     
-    // 10秒境界またぎの処理
+    // 10秒境界の処理
     if (currentIntervalIndex > lastIntervalIndex) {
         if (intervalCount > 0) {
-            sectionAverages.push(intervalSum / intervalCount);
+            const chunkAvg = intervalSum / intervalCount;
+            // この10秒間の最大値を抽出
+            let chunkMax = MIN_DB;
+            const searchCount = Math.min(fullHistory.length, intervalCount);
+            for(let i = fullHistory.length - searchCount; i < fullHistory.length; i++) {
+                if(fullHistory[i] > chunkMax) chunkMax = fullHistory[i];
+            }
+            sectionData.push({ max: chunkMax, avg: chunkAvg });
         }
         intervalSum = 0;
         intervalCount = 0;
         lastIntervalIndex = currentIntervalIndex;
         
-        // リアルタイムに最高100秒平均点を更新
         finalHighScore = calculateHighlightScore();
-        voiceScoreText.textContent = finalHighScore + " 点";
     }
 
     if(modifiedDb > maxVolume){
@@ -795,7 +721,7 @@ function update(){
 
     elapsedText.textContent = elapsedSeconds;
 
-    drawGraph();
+    drawVoicePrint(ctx, canvas.width, canvas.height);
 
     const remain = Math.max(limitTime - elapsedSeconds, 0);
     timerText.textContent = remain;
@@ -815,86 +741,90 @@ function getBaseFileName() {
     return `${player}_${song}_${maxDbStr}`;
 }
 
+// 2画面画像保存 (右側に得点・リザルト情報をすっきり集約)
 function saveImage(){
-    drawGraph(); 
-
+    stop(); // 計測中なら安全に確定させる
+    
     const baseFileName = getBaseFileName();
     const saveCanvas = document.createElement("canvas");
-    saveCanvas.width = 360;
-    saveCanvas.height = 550; 
+    
+    // 右側に得点情報エリアを設けるため、横幅を540pxに拡張
+    saveCanvas.width = 540;
+    saveCanvas.height = 420; 
     const sCtx = saveCanvas.getContext("2d");
 
+    // 全体背景
     sCtx.fillStyle = "#111827";
     sCtx.fillRect(0, 0, saveCanvas.width, saveCanvas.height);
 
-    sCtx.fillStyle = "white";
-    sCtx.font = "16px sans-serif";
-    const player = playerNameInput.value.trim() || "NO NAME";
-    const song = songNameInput.value.trim() || "NO SONG";
-    sCtx.fillText(player + " / " + song, 15, 22);
-
-    sCtx.font = "14px sans-serif";
-    sCtx.fillText(currentDate, 15, 42);
-    sCtx.fillText("MAX " + Math.floor(maxVolume) + " dBA", 190, 22);
-    sCtx.fillText("AVG " + Math.floor(getAverage()) + " dBA", 190, 42);
-
-    const gLeft = 45;
-    const gRight = 330;
-    const gTop1 = 70;
-    const gBottom1 = 230;
-    const gTop2 = 280;
-    const gBottom2 = 440;
-
-    sCtx.fillStyle = "#eab308";
-    sCtx.font = "12px sans-serif";
-    sCtx.fillText("【直近1分間の推移】", 15, 64);
+    // 左側に現在の声紋ビジュアルをレンダリング (340x420サイズにアジャスト)
+    const printW = 340;
+    const printH = 420;
     
-    const currentMinute = Math.floor(history.length ? (totalCount / 3600) : 0);
-    const baseSec = currentMinute * 60;
+    // サブキャンバスで左側波形を生成
+    const tempCanvas = document.createElement("canvas");
+    tempCanvas.width = printW;
+    tempCanvas.height = printH;
+    const tCtx = tempCanvas.getContext("2d");
     
-    drawBaseGrid(sCtx, gLeft, gRight, gTop1, gBottom1, baseSec, 60);
+    // waveHistoryの現在の状態をそのまま描画
+    drawVoicePrint(tCtx, printW, printH);
+    sCtx.drawImage(tempCanvas, 0, 0);
 
-    sCtx.strokeStyle = "#22c55e";
-    sCtx.lineWidth = 2.5;
+    // 右側エリアの境界線
+    sCtx.strokeStyle = "#374151";
+    sCtx.lineWidth = 2;
     sCtx.beginPath();
-    history.forEach((v, i) => {
-        const x = gLeft + (i / Math.max(history.length-1, 1)) * (gRight - gLeft);
-        const ratio = (v - MIN_DB) / (MAX_DB - MIN_DB);
-        const y = gBottom1 - ratio * (gBottom1 - gTop1);
-        if(i === 0) sCtx.moveTo(x, y);
-        else sCtx.lineTo(x, y);
-    });
+    sCtx.moveTo(printW, 0);
+    sCtx.lineTo(printW, printH);
     sCtx.stroke();
 
+    // ★【指定要望】：右側の情報・得点表示エリア
+    const infoX = printW + 20;
+    
     sCtx.fillStyle = "#3b82f6";
-    sCtx.font = "12px sans-serif";
-    sCtx.fillText("【全体の測定推移（全記録）】", 15, 274);
+    sCtx.font = "bold 14px sans-serif";
+    sCtx.fillText("【📊 最終リザルト】", infoX, 40);
 
-    const totalElapsedSeconds = Math.max(Math.floor(totalCount / 60), 1);
-    drawBaseGrid(sCtx, gLeft, gRight, gTop2, gBottom2, 0, totalElapsedSeconds);
+    sCtx.fillStyle = "#9ca3af";
+    sCtx.font = "13px sans-serif";
+    sCtx.fillText("最大声量:", infoX, 85);
+    sCtx.fillStyle = "white";
+    sCtx.font = "bold 16px sans-serif";
+    sCtx.fillText(Math.floor(maxVolume) + " dBA", infoX + 70, 85);
 
-    sCtx.strokeStyle = "#3b82f6";
-    sCtx.lineWidth = 2.5;
-    sCtx.beginPath();
-    fullHistory.forEach((v, i) => {
-        const x = gLeft + (i / Math.max(fullHistory.length-1, 1)) * (gRight - gLeft);
-        const ratio = (v - MIN_DB) / (MAX_DB - MIN_DB);
-        const y = gBottom2 - ratio * (gBottom2 - gTop2);
-        if(i === 0) sCtx.moveTo(x, y);
-        else sCtx.lineTo(x, y);
-    });
-    sCtx.stroke();
+    sCtx.fillStyle = "#9ca3af";
+    sCtx.font = "13px sans-serif";
+    sCtx.fillText("全体平均:", infoX, 125);
+    sCtx.fillStyle = "white";
+    sCtx.font = "bold 16px sans-serif";
+    sCtx.fillText(Math.floor(getAverage()) + " dBA", infoX + 70, 125);
 
-    // 刻印部分も100秒ハイライト得点に同期
+    // スコア表示 (MAX + AVG ÷ 2)
     sCtx.fillStyle = "#60a5fa";
-    sCtx.font = "bold 18px sans-serif";
-    sCtx.fillText("🔥 ハイライト得点(100s): " + finalHighScore + " 点", 15, 495);
+    sCtx.font = "bold 15px sans-serif";
+    sCtx.fillText("🔥 ハイライト得点 (100s)", infoX, 200);
+    
+    // デカ文字で総合得点を右側に表示
+    sCtx.fillStyle = "#22d3ee";
+    sCtx.font = "bold 44px sans-serif";
+    
+    // 最終計算を確実に同期
+    const scoreVal = calculateHighlightScore() || Math.floor(maxVolume + (getAverage() / 2));
+    sCtx.fillText(scoreVal + " 点", infoX, 255);
 
+    // 総合評価
     sCtx.fillStyle = "#facc15";
-    sCtx.font = "14px sans-serif";
-    const finalRank = calculateVoiceRank(getAverage());
-    sCtx.fillText("総合声量評価: " + finalRank, 15, 525);
+    sCtx.font = "bold 13px sans-serif";
+    sCtx.fillText("【声量評価】", infoX, 320);
+    sCtx.fillStyle = "white";
+    sCtx.font = "13px sans-serif";
+    
+    const rankStr = calculateVoiceRank(getAverage());
+    // 長い文字列に対応するため、名称部分のみ綺麗に配置
+    sCtx.fillText(rankStr.split(" (")[0], infoX, 345);
 
+    // ダウンロード処理
     const imgLink = document.createElement("a");
     imgLink.download = baseFileName + ".png";
     imgLink.href = saveCanvas.toDataURL("image/png");
@@ -916,7 +846,8 @@ stopBtn.onclick = stop;
 saveImgBtn.onclick = saveImage;
 saveAudioBtn.onclick = saveAudio;
 
-drawGraph();
+// 初回起動時に空の声紋ベースを描画
+drawVoicePrint(ctx, canvas.width, canvas.height);
 </script>
 
 </body>
