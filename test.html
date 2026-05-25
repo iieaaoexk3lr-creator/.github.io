@@ -373,8 +373,8 @@ canvas{
 
 <button class="toggle-settings" id="toggleSettingsBtn">⚙️ 詳細設定 (表示/非表示)</button>
 <div class="settings-content" id="settingsContent">
-    <div class="label">✂️ カット率 (室音等を除外: <span id="noiseCutVal">600</span> pt以下)</div>
-    <input type="range" id="noiseCutSlider" min="0" max="600" value="600" step="10">
+    <div class="label">✂️ カット率 (室音等を除外: <span id="noiseCutVal">900</span> pt以下)</div>
+    <input type="range" id="noiseCutSlider" min="0" max="900" value="600" step="10">
 
     <div class="label">🔥 盛り上がり補助倍率 (x<span id="boostVal">1.0</span>)</div>
     <input type="range" id="boostSlider" min="0.5" max="1.5" value="1.0" step="0.1">
@@ -727,8 +727,8 @@ function drawCombinedFrame(targetCtx, w, h, mode) {
 
     targetCtx.fillStyle = "white";
     targetCtx.font = "14px sans-serif";
-    const player = playerNameInput.value.trim() || "NO NAME";
-    const song = songNameInput.value.trim() || "NO SONG";
+    const player = playerNameInput.value.trim() || "NO N";
+    const song = songNameInput.value.trim() || "NO S";
     targetCtx.fillText(player + " / " + song, 15, halfH + 34);
 
     targetCtx.font = "11px sans-serif";
