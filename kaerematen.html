@@ -65,7 +65,6 @@
     <button onclick="closeModal()" class="dark-btn">閉じる</button>
 </div>
 
-<!-- 【1】入室・説明画面 -->
 <div id="setupArea">
     <div class="card">
         <h1>意思電信ゲーム</h1>
@@ -81,7 +80,6 @@
     </div>
 </div>
 
-<!-- 【2】メインゲーム画面 -->
 <div id="mainArea" style="display: none;">
     <div class="card">
         <h1>意思電信ゲーム</h1>
@@ -95,10 +93,12 @@
             <div>参加：<span id="memberCount">0</span>名</div>
             <div>回答済：<span id="answerCount">0</span>名</div>
         </div>
+        
+        <button id="refreshDataBtn" class="dark-btn" style="background: #6c757d; font-size: 12px; padding: 6px; margin: 5px 0 15px 0; width: auto; display: inline-block; border-radius: 6px;">🔄 人数・画面を最新に更新</button>
+
         <div id="odaiDisplay" class="odai-display">お題を待機中...</div>
         <div id="victoryDisplay" class="victory-msg">勝利！！</div>
 
-        <!-- お題設定（進行役用） -->
         <div id="odaiInputArea">
             <div class="input-group">
                 <select id="genreSelect">
@@ -116,7 +116,6 @@
             <button id="setOdaiBtn" class="dark-btn">お題を確定する</button>
         </div>
 
-        <!-- 回答エリア -->
         <div id="gamePlayArea" style="display:none">
             <input type="text" id="answerInput" placeholder="回答を入力">
             <button id="sendBtn" class="primary-btn">回答を送信</button>
@@ -237,6 +236,32 @@
         }
     }
 
+    // 更新ボタンの強制取得処理
+    document.getElementById('refreshDataBtn').onclick = async () => {
+        if (!roomId) return;
+        try {
+            const configRef = doc(db, "rooms", roomId, "settings", "main");
+            const answersRef = collection(db, "rooms", roomId, "answers");
+            const membersRef = collection(db, "rooms", roomId, "members");
+
+            const [membersSnap, configSnap, answersSnap] = await Promise.all([
+                getDocs(membersRef),
+                getDocs(query(collection(db, "rooms", roomId, "settings"))),
+                getDocs(answersRef)
+            ]);
+
+            document.getElementById('memberCount').innerText = membersSnap.size;
+            document.getElementById('answerCount').innerText = answersSnap.size;
+            
+            const myInfoSnap = await getDocs(query(membersRef, where("name", "==", userName)));
+            if (!myInfoSnap.empty) {
+                document.getElementById('myWins').innerText = myInfoSnap.docs[0].data().wins || 0;
+            }
+        } catch (error) {
+            console.error("データ更新に失敗しました:", error);
+        }
+    };
+
     // アクション
     document.getElementById('setOdaiBtn').onclick = () => {
         const val = document.getElementById('odaiInput').value.trim();
@@ -312,23 +337,23 @@
 
     // お題リスト操作
     const getL = async () => {
-    const g = document.getElementById('genreSelect').value;
-    const isSpecial = (currentMode === "majority" || currentMode === "minority");
-    
-    let q;
-    if (g === "all") {
-        // 全ジャンルの時：多数・少数派モードでなければ「二者択一」を除外
-        q = isSpecial 
-            ? collection(db, "master_odai") 
-            : query(collection(db, "master_odai"), where("category", "!=", "二者択一"));
-    } else {
-        // 特定ジャンル選択時
-        q = query(collection(db, "master_odai"), where("category", "==", g));
-    }
-    
-    const s = await getDocs(q);
-    return s.docs.map(d => d.data().text);
-};
+        const g = document.getElementById('genreSelect').value;
+        const isSpecial = (currentMode === "majority" || currentMode === "minority");
+        
+        let q;
+        if (g === "all") {
+            // 全ジャンルの時：多数・少数派モードでなければ「二者択一」を除外
+            q = isSpecial 
+                ? collection(db, "master_odai") 
+                : query(collection(db, "master_odai"), where("category", "!=", "二者択一"));
+        } else {
+            // 特定ジャンル選択時
+            q = query(collection(db, "master_odai"), where("category", "==", g));
+        }
+        
+        const s = await getDocs(q);
+        return s.docs.map(d => d.data().text);
+    };
     document.getElementById('randomOdaiBtn').onclick = async () => {
         const l = await getL();
         if(l.length) document.getElementById('odaiInput').value = l[Math.floor(Math.random()*l.length)];
