@@ -35,10 +35,14 @@
 
         <div id="mainContent" class="hidden">
             <div class="mb-6 flex flex-wrap justify-between items-center gap-4">
-                <div class="flex items-center gap-4">
+                <div class="flex flex-wrap items-center gap-3">
                     <a href="6gatu.html" class="bg-gray-800 hover:bg-gray-700 border border-gray-700 px-4 py-1.5 rounded-lg text-sm font-bold transition-all text-gray-300">🏠 メニューへ</a>
                     <span class="bg-blue-900/60 text-blue-300 border border-blue-700 px-3 py-1 rounded-full text-sm font-bold">部屋: <span id="currentRoomLabel">-</span></span>
                     <span class="bg-green-900/60 text-green-300 border border-green-700 px-3 py-1 rounded-full text-sm font-bold">ユーザー: <span id="currentUserLabel">-</span></span>
+                    <span class="bg-purple-900/60 text-purple-300 border border-purple-700 px-3 py-1 rounded-full text-sm font-bold flex items-center gap-2">
+                        👥 現在人数: <span id="activeOnlineCount">0</span> 名
+                        <button onclick="syncOnlineStatus()" class="bg-purple-700 hover:bg-purple-600 text-white text-xs px-2 py-0.5 rounded-md font-bold transition-all ml-1">🔄 更新</button>
+                    </span>
                 </div>
                 <div class="flex items-center gap-2">
                     <input type="password" id="adminKeyInput" placeholder="管理キーを入力" class="bg-gray-800 text-white px-4 py-1.5 rounded-lg border border-gray-700 text-sm focus:outline-none focus:border-blue-500">
@@ -88,11 +92,8 @@
                 </div>
                 <div>
                     <h3 class="text-lg font-bold text-blue-400 mb-2">👥 あなたの所属チームを選択</h3>
-                    <div class="flex gap-2">
-                        <select id="userTeamSelect" onchange="joinTeam(this.value)" class="bg-gray-700 text-white font-bold px-4 py-2 rounded-xl border border-gray-600 focus:outline-none focus:border-blue-500 flex-1">
-                            <option value="">-- チームを選択（未所属） --</option>
-                        </select>
-                    </div>
+                    <div id="teamContainerButtons" class="flex flex-wrap gap-2">
+                        </div>
                 </div>
             </div>
 
@@ -152,6 +153,7 @@
         let roomId = "";
         let username = "";
         let myCurrentTeam = "";
+        let myConnectionsRef = null;
 
         // アプリケーション状態のローカル保持
         let state = {
@@ -182,7 +184,7 @@
         };
 
         // --------------------------------------------------
-        // 🚪 部屋の入室ロジック
+        // 🚪 部屋の入室ロジック & 🟢 リアルタイムオンライン接続処理
         // --------------------------------------------------
         window.joinRoom = function() {
             roomId = document.getElementById('roomInput').value.trim();
@@ -195,13 +197,35 @@
             document.getElementById('currentRoomLabel').innerText = roomId;
             document.getElementById('currentUserLabel').innerText = username;
 
-            // ユーザー情報を初期登録（または維持）
+            // 1. ユーザー基礎情報のセット
             db.ref(`QUIZ_rooms/${roomId}/players/${username}`).update({
                 name: username
             });
 
+            // 2. Firebaseを使用したオンライン実数カウント & 自動切断検出の実装
+            const userStatusRef = db.ref(`QUIZ_rooms/${roomId}/connections/${username}`);
+            
+            // Firebaseの特別なノード (.info/connected) を用いて接続状態を検知
+            db.ref('.info/connected').on('value', (snapshot) => {
+                if (snapshot.val() === true) {
+                    // タブを閉じる・切断されたら自動的にこのノードを削除する設定
+                    userStatusRef.onDisconnect().remove();
+                    // 現在オンラインであることを証明する値をセット
+                    userStatusRef.set(true);
+                }
+            });
+
             // リアルタイムリスナーの結合開始
             startFirebaseListeners();
+        };
+
+        // 手動で実数を同期するための更新ボタン処理
+        window.syncOnlineStatus = function() {
+            db.ref(`QUIZ_rooms/${roomId}/connections`).once('value', (snap) => {
+                const data = snap.val() || {};
+                const activeCount = Object.keys(data).length;
+                document.getElementById('activeOnlineCount').innerText = activeCount;
+            });
         };
 
         // --------------------------------------------------
@@ -211,11 +235,9 @@
             const teamName = document.getElementById('newTeamInput').value.trim();
             if(!teamName) return alert("チーム名を入力してください");
             
-            // チームを追加設定
             db.ref(`QUIZ_rooms/${roomId}/teams/${teamName}`).set(true);
             document.getElementById('newTeamInput').value = "";
             
-            // 作成したチームに自動で入る
             joinTeam(teamName);
         };
 
@@ -224,6 +246,31 @@
             db.ref(`QUIZ_rooms/${roomId}/players/${username}`).update({
                 team: teamName
             });
+        };
+
+        // --------------------------------------------------
+        // 🗑️ プレイヤー・チーム削除ロジック (切断放置プレイヤー対策)
+        // --------------------------------------------------
+        window.deletePlayerAdmin = function(targetUser) {
+            if(confirm(`プレイヤー「${targetUser}」をランキングおよび部屋データから完全に削除しますか？`)) {
+                db.ref(`QUIZ_rooms/${roomId}/players/${targetUser}`).remove();
+                db.ref(`QUIZ_rooms/${roomId}/connections/${targetUser}`).remove();
+                alert(`${targetUser} を削除しました。`);
+            }
+        };
+
+        window.deleteTeamAdmin = function(targetTeam) {
+            if(confirm(`チーム「${targetTeam}」を完全に削除しますか？(所属していた個人は未所属になります)`)) {
+                // 1. チームノードを削除
+                db.ref(`QUIZ_rooms/${roomId}/teams/${targetTeam}`).remove();
+                // 2. 所属プレイヤーのチーム名表記をリセット
+                Object.keys(state.players).forEach(pName => {
+                    if(state.players[pName].team === targetTeam) {
+                        db.ref(`QUIZ_rooms/${roomId}/players/${pName}/team`).set("未所属");
+                    }
+                });
+                alert(`チーム ${targetTeam} を削除しました。`);
+            }
         };
 
         // --------------------------------------------------
@@ -264,7 +311,7 @@
                 currentQuestion: quizList[nextIdx].question,
                 currentHint: quizList[nextIdx].hint || "なし",
                 currentAnswer: quizList[nextIdx].answer,
-                showHint: false // 次の問題に進むときは強制的に隠す
+                showHint: false 
             });
         };
 
@@ -274,7 +321,7 @@
         };
 
         // --------------------------------------------------
-        // 🎮 回答送信＆部屋と個人に紐付いた履歴記録
+        // 🎮 回宿送信＆部屋と個人に紐付いた履歴記録
         // --------------------------------------------------
         window.submitAnswer = function() {
             const playerAns = document.getElementById('playerAnswerInput').value.trim();
@@ -285,7 +332,6 @@
 
             const isCorrect = playerAns.toLowerCase() === state.currentAnswer.toLowerCase();
 
-            // 部屋・個人名に紐づけて履歴（ログ）を一意のPushIDで記録
             const historyRef = db.ref(`QUIZ_rooms/${roomId}/history`).push();
             historyRef.set({
                 username: username,
@@ -297,7 +343,6 @@
 
             if(isCorrect) {
                 logBox.innerHTML = `<span class="text-emerald-400">⭕ 正解！答え: ${state.currentAnswer}</span>`;
-                // 個人スコアに加点
                 const currentScore = (state.players[username] && state.players[username].score) || 0;
                 db.ref(`QUIZ_rooms/${roomId}/players/${username}/score`).set(currentScore + 1);
                 document.getElementById('playerAnswerInput').value = "";
@@ -310,13 +355,9 @@
         // 🛠️ 管理者：不正解だった過去ログを「正解」へ救済変更する機能
         // --------------------------------------------------
         window.rescueAnswer = function(historyId, targetUser) {
-            // 1. 履歴の状態を「正解(true)」に書き換え
             db.ref(`QUIZ_rooms/${roomId}/history/${historyId}/isCorrect`).set(true);
-            
-            // 2. その対象プレイヤーにスコアを+1加点
             const currentScore = (state.players[targetUser] && state.players[targetUser].score) || 0;
             db.ref(`QUIZ_rooms/${roomId}/players/${targetUser}/score`).set(currentScore + 1);
-            
             alert(`${targetUser} さんの回答を正解扱いに修正し、1点付与しました。`);
         };
 
@@ -327,7 +368,6 @@
             db.ref(`QUIZ_rooms/${roomId}`).on('value', (snap) => {
                 const rootData = snap.val() || {};
                 
-                // クイズ状態の読み込み
                 const qState = rootData.quizState || {};
                 state.currentIndex = qState.currentIndex !== undefined ? qState.currentIndex : -1;
                 state.currentQuestion = qState.currentQuestion || "問題がセットされていません。";
@@ -336,38 +376,53 @@
                 state.showScores = qState.showScores || false;
                 state.showHint = qState.showHint || false;
 
-                // 参加者データのロード
                 state.players = rootData.players || {};
-                // チームリストのロード
                 state.teams = rootData.teams || {};
-                // 回答履歴データのロード
                 state.history = rootData.history || {};
 
-                updateTeamSelectUI();
+                // オンライン接続数表示の同期
+                const connections = rootData.connections || {};
+                document.getElementById('activeOnlineCount').innerText = Object.keys(connections).length;
+
+                updateTeamButtonsUI();
                 render();
             });
         }
 
-        // セレクトボックス内のチーム候補を動的に増減
-        function updateTeamSelectUI() {
-            const select = document.getElementById('userTeamSelect');
-            const savedValue = select.value;
-            select.innerHTML = '<option value="">-- チームを選択（未所属） --</option>';
-            
+        // 💡 修正点：入力を妨げない、ボタン選択式のチームセレクター描画処理
+        function updateTeamButtonsUI() {
+            const container = document.getElementById('teamContainerButtons');
+            container.innerHTML = "";
+
+            // 未所属に戻るためのボタン
+            const noneBtn = document.createElement('button');
+            noneBtn.type = "button";
+            noneBtn.innerText = "❌ 未所属にする";
+            noneBtn.className = `px-3 py-1.5 rounded-xl font-bold text-xs transition-all ${!myCurrentTeam ? 'bg-red-600 text-white shadow' : 'bg-gray-700 text-gray-400 hover:bg-gray-600'}`;
+            noneBtn.onclick = () => { joinTeam(""); };
+            container.appendChild(noneBtn);
+
+            // Firebaseに登録されている各チームボタンの動的生成
             Object.keys(state.teams).forEach(teamName => {
-                const opt = document.createElement('option');
-                opt.value = teamName;
-                opt.innerText = teamName;
-                select.appendChild(opt);
+                const btn = document.createElement('button');
+                btn.type = "button";
+                btn.innerText = `🚩 ${teamName}`;
+                
+                if(myCurrentTeam === teamName) {
+                    btn.className = "px-3 py-1.5 rounded-xl font-bold text-xs bg-blue-600 text-white shadow ring-2 ring-blue-400 transition-all";
+                } else {
+                    btn.className = "px-3 py-1.5 rounded-xl font-bold text-xs bg-gray-700 text-gray-300 hover:bg-gray-600 transition-all";
+                }
+                
+                btn.onclick = () => { joinTeam(teamName); };
+                container.appendChild(btn);
             });
-            select.value = savedValue || myCurrentTeam;
         }
 
         // --------------------------------------------------
         // 📊 スコアボード＆履歴ログの再描画
         // --------------------------------------------------
         function render() {
-            // クイズ配信表示
             document.getElementById('quizNumLabel').innerText = `Q. ${state.currentIndex + 1}`;
             document.getElementById('displayQuestion').innerText = state.currentQuestion;
             document.getElementById('displayHint').innerText = `ヒント: ${state.currentHint}`;
@@ -389,7 +444,7 @@
 
             // 2. チームランキングの集計 (所属個人の点数をリアルタイム合算)
             const teamScores = {};
-            Object.keys(state.teams).forEach(tName => { teamScores[tName] = 0; }); // 初期化
+            Object.keys(state.teams).forEach(tName => { teamScores[tName] = 0; }); 
             
             playerList.forEach(p => {
                 if(p.team !== "未所属" && teamScores[p.team] !== undefined) {
@@ -407,11 +462,15 @@
             playerList.forEach((player, index) => {
                 const card = document.createElement('div');
                 card.className = `glass-card p-4 rounded-2xl flex justify-between items-center shadow-lg`;
+                
+                // 管理者ログイン時のみ、個人を追放できる削除ボタンを表示する構造
+                const deleteButtonHTML = isAdmin ? `<button onclick="deletePlayerAdmin('${player.name}')" class="text-xs font-bold text-red-400 bg-red-950/40 border border-red-800 px-2 py-0.5 rounded-lg ml-2 hover:bg-red-900 transition-all">削除</button>` : '';
+
                 card.innerHTML = `
                     <div class="flex items-center gap-3">
                         <span class="text-lg font-black text-gray-500">#${index+1}</span>
                         <div>
-                            <div class="text-lg font-black text-white">${player.name}</div>
+                            <div class="text-lg font-black text-white flex items-center">${player.name} ${deleteButtonHTML}</div>
                             <div class="text-xs text-gray-400">所属: ${player.team}</div>
                         </div>
                     </div>
@@ -426,12 +485,16 @@
             teamList.forEach((team, index) => {
                 const rankClass = index === 0 ? 'rank-1' : index === 1 ? 'rank-2' : index === 2 ? 'rank-3' : 'glass-card';
                 const textCol = index < 3 ? 'text-gray-900' : 'text-emerald-400';
-                const card = document.createElement('div');
+                
+                // 管理者ログイン時のみ、チームを解散できる削除ボタンを表示する構造
+                const deleteTeamButtonHTML = isAdmin ? `<button onclick="deleteTeamAdmin('${team.name}')" class="text-xs font-bold text-red-900 bg-red-200/50 border border-red-400 px-1.5 py-0.5 rounded ml-2 hover:bg-red-300 transition-all">削除</button>` : '';
+
+                card = document.createElement('div');
                 card.className = `${rankClass} p-4 rounded-2xl flex justify-between items-center shadow-lg`;
                 card.innerHTML = `
                     <div class="flex items-center gap-3">
                         <span class="text-lg font-black ${index < 3 ? 'text-gray-800':'text-gray-500'}">#${index+1}</span>
-                        <div class="text-lg font-black">${team.name}</div>
+                        <div class="text-lg font-black flex items-center">${team.name} ${deleteTeamButtonHTML}</div>
                     </div>
                     <div class="text-2xl font-black ${textCol} ${state.showScores || isAdmin ? '' : 'score-hidden'}">${team.score}点</div>
                 `;
