@@ -1,1 +1,271 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CSV Quiz Score Board & Player</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@700;900&display=swap');
+        body { font-family: 'Noto+Sans+JP', sans-serif; background-color: #1a202c; color: #f7fafc; }
+        .score-hidden { filter: blur(12px); user-select: none; }
+        .glass-card { background: rgba(255, 255, 255, 0.05); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.1); }
+        .rank-1 { background: linear-gradient(135deg, #ffd700, #b8860b); color: #000; }
+        .rank-2 { background: linear-gradient(135deg, #c0c0c0, #708090); color: #000; }
+        .rank-3 { background: linear-gradient(135deg, #cd7f32, #8b4513); color: #000; }
+    </style>
+</head>
+<body class="p-4 md:p-8">
+    <div class="max-w-7xl mx-auto">
+        
+        <div class="mb-6 flex justify-between items-center">
+            <a href="6gatu.html" class="bg-gray-800 hover:bg-gray-700 border border-gray-700 px-4 py-1.5 rounded-lg text-sm font-bold transition-all text-gray-300">🏠 メニューへ</a>
+            <div class="flex items-center gap-2">
+                <input type="password" id="adminKeyInput" placeholder="管理キーを入力" class="bg-gray-800 text-white px-4 py-1.5 rounded-lg border border-gray-700 text-sm focus:outline-none focus:border-blue-500">
+                <button id="authBtn" class="bg-gray-700 hover:bg-gray-600 px-4 py-1.5 rounded-lg text-sm font-bold transition-all">ログイン</button>
+            </div>
+        </div>
 
+        <div id="adminPanel" class="hidden bg-gray-800/80 border-2 border-blue-500 rounded-3xl p-6 mb-10 shadow-2xl">
+            <h2 class="text-2xl font-black text-blue-400 mb-4">🛠️ クイズ管理者パネル</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="border border-gray-700 p-4 rounded-xl">
+                    <p class="text-sm text-gray-400 mb-2">1. スプレッドシートから書き出したCSVを選択</p>
+                    <input type="file" id="csvFile" accept=".csv" class="block w-full text-sm text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-600 file:text-white hover:file:bg-blue-700 cursor-pointer">
+                </div>
+                <div class="border border-gray-700 p-4 rounded-xl flex flex-col justify-between">
+                    <div>
+                        <p class="text-sm text-gray-400">2. 問題の進行コントロール</p>
+                        <p class="text-lg font-bold text-yellow-400 mt-1">現在の読込数: <span id="quizTotalCount">0</span> 問</p>
+                    </div>
+                    <div class="flex gap-2 mt-4">
+                        <button onclick="nextQuestion(-1)" class="bg-gray-700 hover:bg-gray-600 px-4 py-2 rounded-xl font-bold text-sm">◀ 前の問題</button>
+                        <button onclick="nextQuestion(1)" class="bg-blue-600 hover:bg-blue-700 flex-1 py-2 rounded-xl font-bold text-sm text-white">次を出題 ▶</button>
+                    </div>
+                </div>
+            </div>
+            <div class="mt-4 flex gap-4 border-t border-gray-700 pt-4">
+                <button id="toggleScores" class="bg-red-600 hover:bg-red-700 px-4 py-2 rounded-xl text-sm font-bold shadow">スコア表示の切替</button>
+                <button onclick="resetAllScores()" class="bg-gray-900 border border-red-800 px-4 py-2 rounded-xl text-sm font-bold text-red-400">全スコアリセット</button>
+            </div>
+        </div>
+
+        <div class="bg-gradient-to-br from-indigo-900/40 to-purple-950/40 border border-purple-500/3xl rounded-3xl p-6 mb-10 shadow-xl">
+            <div class="flex justify-between items-center mb-4">
+                <span class="bg-purple-600 text-white text-xs font-black px-3 py-1 rounded-full uppercase tracking-wider" id="quizNumLabel">Q. 0</span>
+                <span class="text-xs text-gray-400">回答チームを選択して入力してください</span>
+            </div>
+            <h2 id="displayQuestion" class="text-2xl md:text-3xl font-black text-white mb-2">スプレッドシート（CSV）が読み込まれるのを待っています...</h2>
+            <p id="displayHint" class="text-emerald-400 font-bold mb-6 text-sm">ヒント: ？？？</p>
+            
+            <div class="flex flex-wrap gap-3 items-center bg-black/30 p-4 rounded-2xl">
+                <select id="playerTeamSelect" class="bg-gray-800 text-white font-bold px-4 py-3 rounded-xl border border-gray-700 focus:outline-none focus:border-purple-500 w-full sm:w-44">
+                    <option value="team_A">チームA</option>
+                    <option value="team_B">チームB</option>
+                    <option value="team_C">チームC</option>
+                    <option value="team_D">チームD</option>
+                </select>
+                <input type="text" id="playerAnswerInput" placeholder="答えを入力してください" class="bg-gray-700 text-white px-4 py-3 rounded-xl border border-gray-600 font-bold focus:outline-none focus:border-purple-500 flex-1 min-w-[200px]">
+                <button onclick="submitAnswer()" class="bg-purple-600 hover:bg-purple-700 text-white px-8 py-3 rounded-xl font-bold transition-all shadow w-full sm:w-auto">回答を送信</button>
+            </div>
+            <div id="answerLog" class="text-sm mt-3 font-bold text-center text-gray-400"></div>
+        </div>
+
+        <div class="mb-4">
+            <h3 class="text-xl font-black text-gray-400">🏆 現在のランキング</h3>
+        </div>
+        <div id="boardGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            </div>
+    </div>
+
+    <script src="https://www.gstatic.com/firebasejs/9.1.3/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.1.3/firebase-database-compat.js"></script>
+
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyC4DQhH_swesAD98Xyjg8d1lcWEkkrHrgw",
+            authDomain: "gamehistory-m84.firebaseapp.com",
+            databaseURL: "https://gamehistory-m84-default-rtdb.firebaseio.com",
+            projectId: "gamehistory-m84",
+            storageBucket: "gamehistory-m84.firebasestorage.app",
+            messagingSenderId: "475761727837",
+            appId: "1:475761727837:web:06d07e1ab4120a7ccaf0b4",
+            measurementId: "G-3636W6LC4F"
+        };
+        
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+
+        const ADMIN_SECRET = "admin123"; 
+        let isAdmin = false;
+        let quizList = []; // 読み込んだクイズを保持する配列
+
+        let state = {
+            currentIndex: -1,
+            showScores: false,
+            currentQuestion: "待機中...",
+            currentHint: "待機中...",
+            currentAnswer: "",
+            scores: { team_A: 0, team_B: 0, team_C: 0, team_D: 0 }
+        };
+
+        const TEAM_IDS = ["team_A", "team_B", "team_C", "team_D"];
+        const TEAM_NAMES = { team_A: "チームA", team_B: "チームB", team_C: "チームC", team_D: "チームD" };
+
+        // DOM要素
+        const adminKeyInput = document.getElementById('adminKeyInput');
+        const authBtn = document.getElementById('authBtn');
+        const adminPanel = document.getElementById('adminPanel');
+        const boardGrid = document.getElementById('boardGrid');
+        const toggleScoresBtn = document.getElementById('toggleScores');
+
+        // 管理者認証
+        authBtn.onclick = () => {
+            if (adminKeyInput.value === ADMIN_SECRET) {
+                isAdmin = true;
+                adminPanel.classList.remove('hidden');
+                authBtn.innerText = "管理者モード";
+                authBtn.className = "bg-emerald-600 px-4 py-1.5 rounded-lg text-sm font-bold text-white";
+                render(); 
+            } else { alert("管理キーが違います。"); }
+        };
+
+        // --------------------------------------------------
+        // 📁 CSV読み込みロジック (スプレッドシート形式)
+        // --------------------------------------------------
+        document.getElementById('csvFile').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(evt) {
+                const text = evt.target.result;
+                // 行ごとに分割してパース
+                quizList = text.split(/\r\n|\n/).map(line => {
+                    const columns = line.split(',');
+                    return {
+                        question: columns[0] ? columns[0].replace(/"/g, '').trim() : "",
+                        hint: columns[1] ? columns[1].replace(/"/g, '').trim() : "",
+                        answer: columns[2] ? columns[2].replace(/"/g, '').trim() : ""
+                    };
+                }).filter(q => q.question !== "" && q.question !== "問題"); // ヘッダー等空行を除外
+
+                document.getElementById('quizTotalCount').innerText = quizList.length;
+                alert(`${quizList.length}問のクイズを読み込みました！`);
+                if(quizList.length > 0) nextQuestion(1); // 1問目を配信
+            };
+            reader.readAsText(file, 'UTF-8');
+        });
+
+        // 管理者：問題切り替え＆Firebase同期
+        window.nextQuestion = (step) => {
+            if (quizList.length === 0) return alert("先にCSVを読み込んでください");
+            let nextIdx = state.currentIndex + step;
+            if (nextIdx < 0 || nextIdx >= quizList.length) return alert("これ以上問題はありません");
+
+            db.ref('quizState').update({
+                currentIndex: nextIdx,
+                currentQuestion: quizList[nextIdx].question,
+                currentHint: quizList[nextIdx].hint || "なし",
+                currentAnswer: quizList[nextIdx].answer
+            });
+        };
+
+        // --------------------------------------------------
+        // 🎮 プレイヤー回答＆リアルタイム正誤判定
+        // --------------------------------------------------
+        window.submitAnswer = function() {
+            const teamId = document.getElementById('playerTeamSelect').value;
+            const playerAns = document.getElementById('playerAnswerInput').value.trim();
+            const logBox = document.getElementById('answerLog');
+
+            if(!playerAns) return alert("回答を入力してください");
+            if(!state.currentAnswer) return alert("現在、出題中の問題がありません");
+
+            // 正誤判定（大文字小文字の差異を無視するゆるめ判定）
+            if(playerAns.toLowerCase() === state.currentAnswer.toLowerCase()) {
+                logBox.innerHTML = `<span class="text-emerald-400">⭕ ${TEAM_NAMES[teamId]} 正解！(+1点) 答え: ${state.currentAnswer}</span>`;
+                // Firebaseのスコアを加算(現在のスコア + 1)
+                const newScore = (state.scores[teamId] || 0) + 1;
+                db.ref(`quizState/scores/${teamId}`).set(newScore);
+                document.getElementById('playerAnswerInput').value = ""; // 入力欄をクリア
+            } else {
+                logBox.innerHTML = `<span class="text-red-400">❌ ${TEAM_NAMES[teamId]} 不正解！「${playerAns}」</span>`;
+            }
+        };
+
+        // --------------------------------------------------
+        // 📊 スコアボード描画＆リアルタイム監視
+        // --------------------------------------------------
+        function render() {
+            boardGrid.innerHTML = '';
+            
+            // クイズ情報を画面に反映
+            document.getElementById('quizNumLabel').innerText = `Q. ${state.currentIndex + 1}`;
+            document.getElementById('displayQuestion').innerText = state.currentQuestion;
+            document.getElementById('displayHint').innerText = `ヒント: ${state.currentHint}`;
+
+            // チームを合計点順でソートして描画
+            const sortedTeams = TEAM_IDS.map(id => {
+                return { id: id, name: TEAM_NAMES[id], score: state.scores[id] || 0 };
+            }).sort((a, b) => b.score - a.score);
+
+            sortedTeams.forEach((team, index) => {
+                const isTop3 = index < 3;
+                const rankClass = index === 0 ? 'rank-1' : index === 1 ? 'rank-2' : index === 2 ? 'rank-3' : 'glass-card';
+                const textCol = isTop3 ? 'text-gray-900' : 'text-white';
+                const opacityCol = isTop3 ? 'opacity-70' : 'opacity-50';
+                
+                const card = document.createElement('div');
+                card.className = `${rankClass} p-6 rounded-3xl shadow-2xl flex flex-col justify-between transition-all duration-300`;
+                
+                card.innerHTML = `
+                    <div class="flex justify-between items-start mb-4">
+                        <div class="flex items-center gap-2">
+                            <span class="text-2xl font-black ${opacityCol}">#${index + 1}</span>
+                            <span class="text-3xl font-black truncate ${textCol}">${team.name}</span>
+                        </div>
+                    </div>
+                    <div class="border-t border-white/20 pt-4 flex justify-between items-baseline">
+                        <span class="text-lg font-bold ${opacityCol} uppercase">SCORE</span>
+                        <span class="text-5xl font-black ${state.showScores || isAdmin ? '' : 'score-hidden'} ${textCol}">${team.score}点</span>
+                    </div>
+                `;
+                boardGrid.appendChild(card);
+            });
+        }
+
+        // Firebaseデータ監視
+        db.ref('quizState').on('value', (snap) => {
+            const val = snap.val() || {};
+            state.currentIndex = val.currentIndex !== undefined ? val.currentIndex : -1;
+            state.currentQuestion = val.currentQuestion || "問題がセットされていません。";
+            state.currentHint = val.currentHint || "なし";
+            state.currentAnswer = val.currentAnswer || "";
+            state.showScores = val.showScores || false;
+            
+            // スコアオブジェクトの合成
+            const fbScores = val.scores || {};
+            TEAM_IDS.forEach(id => {
+                state.scores[id] = fbScores[id] || 0;
+            });
+
+            render();
+        });
+
+        // スコア表示・非表示の切替
+        toggleScoresBtn.onclick = () => {
+            db.ref('quizState/showScores').set(!state.showScores);
+        };
+
+        // 全スコアを0にリセット
+        window.resetAllScores = function() {
+            if(confirm("全チームの点数をリセットしてよろしいですか？")) {
+                TEAM_IDS.forEach(id => {
+                    db.ref(`quizState/scores/${id}`).set(0);
+                });
+                document.getElementById('answerLog').innerText = "";
+            }
+        };
+    </script>
+</body>
+</html>
