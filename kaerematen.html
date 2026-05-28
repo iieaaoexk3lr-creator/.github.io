@@ -236,29 +236,38 @@
         }
     }
 
-    // 更新ボタンの強制取得処理
+    // 能動的データ更新（リクエスト応答時に数値が変わる方式へ最適化）
     document.getElementById('refreshDataBtn').onclick = async () => {
         if (!roomId) return;
-        try {
-            const configRef = doc(db, "rooms", roomId, "settings", "main");
-            const answersRef = collection(db, "rooms", roomId, "answers");
-            const membersRef = collection(db, "rooms", roomId, "members");
+        
+        // 1. ボタンが押された瞬間に表示を0（または読み込み中）にしてレスポンス待ちを明示
+        document.getElementById('memberCount').innerText = "0";
+        document.getElementById('answerCount').innerText = "0";
+        document.getElementById('myWins').innerText = "...";
 
-            const [membersSnap, configSnap, answersSnap] = await Promise.all([
+        try {
+            const membersRef = collection(db, "rooms", roomId, "members");
+            const answersRef = collection(db, "rooms", roomId, "answers");
+
+            // 2. サーバから最新データを非同期（能動的）に取得
+            const [membersSnap, answersSnap] = await Promise.all([
                 getDocs(membersRef),
-                getDocs(query(collection(db, "rooms", roomId, "settings"))),
                 getDocs(answersRef)
             ]);
 
+            // 3. レスポンスが正常に完了した段階で、カウントした数値をセット
             document.getElementById('memberCount').innerText = membersSnap.size;
             document.getElementById('answerCount').innerText = answersSnap.size;
             
             const myInfoSnap = await getDocs(query(membersRef, where("name", "==", userName)));
             if (!myInfoSnap.empty) {
                 document.getElementById('myWins').innerText = myInfoSnap.docs[0].data().wins || 0;
+            } else {
+                document.getElementById('myWins').innerText = "0";
             }
         } catch (error) {
             console.error("データ更新に失敗しました:", error);
+            alert("データの更新に失敗しました。電波状況を確認してください。");
         }
     };
 
