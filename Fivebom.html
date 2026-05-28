@@ -1,271 +1,297 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-<meta charset="UTF-8">
-<title>カラフルBOMBER</title>
-<style>
-  :root {
-    --bg-color: #e5ebf0; 
-    --studio-wall-light: #f5f8fa;
-    --studio-wall-dark: #cbd4de;
-    --metallic-frame: #788896;
-    --accent-gold: #d4af37;
-    --text-color: #202530;
-  }
+  <meta charset="UTF-8">
+  <title>カラフルBOMBER</title>
+  <style>
+    :root {
+      --bg-color: #e5ebf0; 
+      --studio-wall-light: #f5f8fa;
+      --studio-wall-dark: #cbd4de;
+      --metallic-frame: #788896;
+      --accent-gold: #d4af37;
+      --text-color: #202530;
+    }
 
-  body {
-    font-family: 'Helvetica Neue', Arial, 'Hiragino Kaku Gothic ProN', sans-serif;
-    background: linear-gradient(to bottom, var(--studio-wall-light) 0%, var(--bg-color) 60%, var(--studio-wall-dark) 100%);
-    color: var(--text-color);
-    text-align: center;
-    padding: 10px;
-    margin: 0;
-    min-height: 100vh;
-    box-sizing: border-box;
-  }
+    body {
+      font-family: 'Helvetica Neue', Arial, 'Hiragino Kaku Gothic ProN', sans-serif;
+      background: linear-gradient(to bottom, var(--studio-wall-light) 0%, var(--bg-color) 60%, var(--studio-wall-dark) 100%);
+      color: var(--text-color);
+      text-align: center;
+      padding: 10px;
+      margin: 0;
+      min-height: 100vh;
+      box-sizing: border-box;
+    }
 
-  /* --- タイトルエリア --- */
-  h1 { 
-    font-size: 3.5rem; 
-    font-weight: 900;
-    margin: 10px 0; 
-    letter-spacing: 4px;
-    text-transform: uppercase;
-    font-family: 'Impact', 'Arial Black', sans-serif;
-    filter: drop-shadow(2px 2px 4px rgba(0,0,0,0.2));
-  }
-  h1 span.t-cyan   { color: #00e5ff; text-shadow: 0 0 10px #00e5ff; }
-  h1 span.t-red    { color: #ff2a2a; text-shadow: 0 0 10px #ff2a2a; }
-  h1 span.t-green  { color: #00ff66; text-shadow: 0 0 10px #00ff66; }
-  h1 span.t-yellow { color: #ffea00; text-shadow: 0 0 10px #ffea00; }
-  h1 span.t-purple { color: #cc33ff; text-shadow: 0 0 10px #cc33ff; }
+    /* --- タイトルエリア --- */
+    h1 { 
+      font-size: 3.5rem; 
+      font-weight: 900;
+      margin: 10px 0; 
+      letter-spacing: 4px;
+      text-transform: uppercase;
+      font-family: 'Impact', 'Arial Black', sans-serif;
+      filter: drop-shadow(2px 2px 4px rgba(0,0,0,0.2));
+    }
+    h1 span.t-cyan   { color: #00e5ff; text-shadow: 0 0 10px #00e5ff; }
+    h1 span.t-red    { color: #ff2a2a; text-shadow: 0 0 10px #ff2a2a; }
+    h1 span.t-green  { color: #00ff66; text-shadow: 0 0 10px #00ff66; }
+    h1 span.t-yellow { color: #ffea00; text-shadow: 0 0 10px #ffea00; }
+    h1 span.t-purple { color: #cc33ff; text-shadow: 0 0 10px #cc33ff; }
 
-  /* 設定エリア */
-  .btn-toggle-settings {
-    background: #ffffff;
-    color: #52627a;
-    border: 2px solid var(--metallic-frame);
-    padding: 8px 16px;
-    font-size: 1rem;
-    border-radius: 6px;
-    cursor: pointer;
-    margin-bottom: 10px;
-    font-weight: bold;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-  }
-  #settings {
-    display: none;
-    margin: 0 auto 15px auto;
-    max-width: 800px;
-    background: rgba(255, 255, 255, 0.95);
-    padding: 15px;
-    border-radius: 8px;
-    border: 2px solid var(--metallic-frame);
-    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-  }
-  label { font-size: 1.1rem; margin-right: 5px; font-weight: bold; }
-  input, select { 
-    font-size: 1.1rem; padding: 6px 12px; margin: 5px; 
-    background: #fff; color: #000; border: 1px solid var(--metallic-frame); border-radius: 4px;
-  }
+    /* 設定エリア */
+    .btn-toggle-settings {
+      background: #ffffff;
+      color: #52627a;
+      border: 2px solid var(--metallic-frame);
+      padding: 8px 16px;
+      font-size: 1rem;
+      border-radius: 6px;
+      cursor: pointer;
+      margin-bottom: 10px;
+      font-weight: bold;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+    #settings {
+      display: none;
+      margin: 0 auto 15px auto;
+      max-width: 800px;
+      background: rgba(255, 255, 255, 0.95);
+      padding: 15px;
+      border-radius: 8px;
+      border: 2px solid var(--metallic-frame);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+    label { font-size: 1.1rem; margin-right: 5px; font-weight: bold; }
+    input, select { 
+      font-size: 1.1rem; padding: 6px 12px; margin: 5px; 
+      background: #fff; color: #000; border: 1px solid var(--metallic-frame); border-radius: 4px;
+    }
 
-  /* --- お題表示（ゴールド枠） --- */
-  #question { 
-    font-size: 2.2rem; 
-    font-weight: bold;
-    margin: 10px auto 20px auto; 
-    width: 95%;
-    max-width: 1400px;
-    padding: 15px 25px;
-    background: linear-gradient(to bottom, #ffffff 0%, #f7f9fb 100%);
-    border: 6px solid #d5b042;
-    border-radius: 14px;
-    color: #0b111e;
-    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15), inset 0 0 8px rgba(255,255,255,1);
-    box-sizing: border-box;
-  }
-  #question::before {
-    content: "Q. ";
-    color: #c01c1c;
-    font-size: 2.4rem;
-    font-weight: 900;
-  }
+    /* --- お題表示（ゴールド枠） --- */
+    #question { 
+      font-size: 2.2rem; 
+      font-weight: bold;
+      margin: 10px auto 20px auto; 
+      width: 95%;
+      max-width: 1400px;
+      padding: 15px 25px;
+      background: linear-gradient(to bottom, #ffffff 0%, #f7f9fb 100%);
+      border: 6px solid #d5b042;
+      border-radius: 14px;
+      color: #0b111e;
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15), inset 0 0 8px rgba(255,255,255,1);
+      box-sizing: border-box;
+    }
+    #question::before {
+      content: "Q. ";
+      color: #c01c1c;
+      font-size: 2.4rem;
+      font-weight: 900;
+    }
 
-  /* スコア表示 */
-  #score {
-    font-size: 1.6rem;
-    margin: 0 0 15px 0;
-    color: #ba1212;
-    font-weight: bold;
-  }
+    /* スコア表示 */
+    #score {
+      font-size: 1.6rem;
+      margin: 0 0 15px 0;
+      color: #ba1212;
+      font-weight: bold;
+    }
 
-  /* --- ゲームゾーン（本数に応じて横スクロール・はみ出し防止） --- */
-  #gameZone {
-    display: flex;
-    justify-content: flex-start; /* 本数が多い時に左詰めで綺麗にスクロールさせる */
-    align-items: stretch;
-    gap: 20px;
-    margin: 0 auto 25px auto;
-    padding: 25px 30px; /* ネオンの発光が端で切れないように余白を確保 */
-    background: rgba(255,255,255,0.4);
-    border-radius: 16px;
-    box-shadow: 0 4px 15px rgba(0,0,0,0.05);
-    width: 98%;
-    max-width: 1600px;
-    box-sizing: border-box;
-    overflow-x: auto; /* 本数が増えた際に横スクロールを許可 */
-    scroll-behavior: smooth; /* スクロールを滑らかに */
-  }
+    /* --- ゲームゾーン --- */
+    #gameZone {
+      display: flex;
+      justify-content: flex-start; 
+      align-items: stretch;
+      gap: 20px;
+      margin: 0 auto 25px auto;
+      padding: 25px 30px; 
+      background: rgba(255,255,255,0.4);
+      border-radius: 16px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+      width: 98%;
+      max-width: 1600px;
+      box-sizing: border-box;
+      overflow-x: auto; 
+      scroll-behavior: smooth; 
+    }
 
-  /* スクロールバーのデザイン（スタジオのメカニカルな雰囲気に統合） */
-  #gameZone::-webkit-scrollbar {
-    height: 10px;
-  }
-  #gameZone::-webkit-scrollbar-track {
-    background: rgba(0, 0, 0, 0.05);
-    border-radius: 10px;
-  }
-  #gameZone::-webkit-scrollbar-shadow {
-    background: var(--metallic-frame);
-    border-radius: 10px;
-  }
+    /* スクロールバーのデザイン */
+    #gameZone::-webkit-scrollbar {
+      height: 10px;
+    }
+    #gameZone::-webkit-scrollbar-track {
+      background: rgba(0, 0, 0, 0.05);
+      border-radius: 10px;
+    }
+    #gameZone::-webkit-scrollbar-thumb {
+      background: var(--metallic-frame);
+      border-radius: 10px;
+    }
 
-  /* スタジオ設置オブジェクト（タイマーとバーの一体型） */
-  .stage-container {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    background: linear-gradient(to bottom, #bdcad6 0%, #e2ebf3 100%);
-    padding: 15px 10px;
-    border-left: 3px solid #fff;
-    border-right: 3px solid #cbd5de;
-    box-shadow: inset 0 0 10px rgba(0,0,0,0.05);
-    flex: 0 0 130px; /* バーのサイズが本数によって潰れないよう固定し横スクロールへ流す */
-    border-radius: 8px;
-    scroll-margin: 20px; /* スクロール追従時の余白 */
-  }
+    /* スタジオ設置オブジェクト */
+    .stage-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      background: linear-gradient(to bottom, #bdcad6 0%, #e2ebf3 100%);
+      padding: 15px 10px;
+      border-left: 3px solid #fff;
+      border-right: 3px solid #cbd5de;
+      box-shadow: inset 0 0 10px rgba(0,0,0,0.05);
+      flex: 0 0 130px; 
+      border-radius: 8px;
+      scroll-margin: 20px; 
+    }
 
-  /* タイマーボックス */
-  .timer-box {
-    font-size: 2.5rem;
-    font-weight: 900;
-    font-family: 'Impact', 'Arial Black', sans-serif;
-    color: #e60012;
-    width: 100%;
-    text-align: center;
-    margin-bottom: 12px;
-    text-shadow: 0 0 8px rgba(255, 0, 0, 0.2);
-  }
+    /* タイマーボックス */
+    .timer-box {
+      font-size: 2.5rem;
+      font-weight: 900;
+      font-family: 'Impact', 'Arial Black', sans-serif;
+      color: #e60012;
+      width: 100%;
+      text-align: center;
+      margin-bottom: 12px;
+      text-shadow: 0 0 8px rgba(255, 0, 0, 0.2);
+    }
 
-  /* バーの要素（強力なネオン化） */
-  .answer-box {
-    width: 90%;
-    height: 450px; 
-    border-radius: 30px;
-    font-size: 2.5rem; 
-    font-weight: 900;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    position: relative;
-    overflow: hidden;
-    z-index: 1;
-    border: 4px solid rgba(255, 255, 255, 0.9);
-  }
+    /* バーの要素（コントラストによる円柱シリンダー化） */
+    .answer-box {
+      width: 90%;
+      height: 450px; 
+      border-radius: 30px;
+      font-size: 2.5rem; 
+      font-weight: 900;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      position: relative;
+      overflow: hidden;
+      z-index: 1;
+      border: 4px solid rgba(255, 255, 255, 0.9);
+      box-sizing: border-box;
+    }
 
-  /* 文字を前面へ */
-  .answer-box span {
-    position: relative;
-    z-index: 4;
-    text-shadow: 0 1px 4px rgba(255,255,255,0.8);
-    color: #222;
-  }
+    /* 文字を前面へ */
+    .answer-box span {
+      position: relative;
+      z-index: 4;
+      text-shadow: 0 1px 4px rgba(255,255,255,0.8);
+      color: #222;
+    }
 
-  /* 上から下へせり下りてくる侵食レッド */
-  .fill {
-    position: absolute;
-    top: 0; 
-    left: 0;
-    width: 100%;
-    height: 0%; 
-    background: linear-gradient(to bottom, #ff0044 0%, #ff0000 85%, #ffaa00 100%);
-    box-shadow: 0 0 20px #ff0000;
-    z-index: 3;
-    opacity: 0.95;
-  }
+    /* 上から下へせり下りてくる侵食レッド（円柱対応グラデーション） */
+    .fill {
+      position: absolute;
+      top: 0; 
+      left: 0;
+      width: 100%;
+      height: 0%; 
+      background: linear-gradient(to right, #b30000 0%, #ff2a2a 30%, #ff6666 50%, #ff2a2a 70%, #800000 100%);
+      box-shadow: 0 0 20px #ff0000;
+      z-index: 3;
+      opacity: 0.95;
+    }
 
-  /* 不正解時の激しい赤点滅 */
-  @keyframes wrongFlash {
-    0% { background: #ff0044; box-shadow: 0 0 30px #ff0044; }
-    50% { background: transparent; box-shadow: none; }
-    100% { background: #ff0044; box-shadow: 0 0 30px #ff0044; }
-  }
-  .wrongFlash { animation: wrongFlash 0.3s ease-out 2; }
+    /* 不正解時の激しい赤点滅 */
+    @keyframes wrongFlash {
+      0% { background: #ff0044; box-shadow: 0 0 30px #ff0044; }
+      50% { background: transparent; box-shadow: none; }
+      100% { background: #ff0044; box-shadow: 0 0 30px #ff0044; }
+    }
+    .wrongFlash { animation: wrongFlash 0.3s ease-out 2; }
 
-  /* --- ボタン操作エリア --- */
-  .controls-row {
-    display: flex;
-    justify-content: center;
-    gap: 15px;
-    flex-wrap: wrap;
-    margin: 15px auto;
-    max-width: 1200px;
-    width: 95%;
-  }
+    /* --- ボタン操作エリア --- */
+    .controls-row {
+      display: flex;
+      justify-content: center;
+      gap: 15px;
+      flex-wrap: wrap;
+      margin: 15px auto;
+      max-width: 1200px;
+      width: 95%;
+    }
 
-  button.game-btn {
-    font-size: 1.3rem; 
-    font-weight: bold; 
-    padding: 18px 30px; 
-    border-radius: 12px; 
-    border: none; 
-    color: white; 
-    cursor: pointer;
-    box-shadow: 0 6px 12px rgba(0,0,0,0.2); 
-    transition: transform 0.1s, box-shadow 0.1s;
-    flex: 1;
-    min-width: 140px;
-  }
-  button.game-btn:active { transform: scale(0.95); box-shadow: 0 2px 4px rgba(0,0,0,0.2); }
-  
-  /* メインの巨大判定ボタン */
-  .btn-correct { background: linear-gradient(135deg, #00c853, #009944); font-size: 1.8rem !important; padding: 25px 40px !important; flex: 2 !important; }
-  .btn-wrong { background: linear-gradient(135deg, #ff1744, #d7003a); font-size: 1.8rem !important; padding: 25px 40px !important; flex: 2 !important; }
-  
-  /* サブアクションボタン */
-  #startBtn { background: linear-gradient(135deg, #00b0ff, #0077cc); }
-  .btn-reset { background: #6c757d; }
-  #nextBtn { background: linear-gradient(135deg, #ffd600, #e6b422); color: #000; }
-  .btn-menu { background: #475467; max-width: 300px; padding: 12px 20px; font-size: 1.1rem; }
-  .btn-set { background: #0077cc; padding: 8px 20px !important; flex: none !important; }
+    button.game-btn {
+      font-size: 1.3rem; 
+      font-weight: bold; 
+      padding: 18px 30px; 
+      border-radius: 12px; 
+      border: none; 
+      color: white; 
+      cursor: pointer;
+      box-shadow: 0 6px 12px rgba(0,0,0,0.2); 
+      transition: transform 0.1s, box-shadow 0.1s;
+      flex: 1;
+      min-width: 140px;
+    }
+    button.game-btn:active { transform: scale(0.95); box-shadow: 0 2px 4px rgba(0,0,0,0.2); }
+    
+    /* メインの巨大判定ボタン */
+    .btn-correct { background: linear-gradient(135deg, #00c853, #009944); font-size: 1.8rem !important; padding: 25px 40px !important; flex: 2 !important; }
+    .btn-wrong { background: linear-gradient(135deg, #ff1744, #d7003a); font-size: 1.8rem !important; padding: 25px 40px !important; flex: 2 !important; }
+    
+    /* サブアクションボタン */
+    #startBtn { background: linear-gradient(135deg, #00b0ff, #0077cc); }
+    #startBtn.paused { background: linear-gradient(135deg, #ff9100, #ff6d00); } /* 一時停止状態の審議カラー */
+    .btn-reset { background: #6c757d; }
+    
+    /* 誤操作を防ぐために小さくしたリセットボタン */
+    .btn-reset-mini { 
+      background: #788896 !important; 
+      padding: 8px 15px !important; 
+      font-size: 0.95rem !important; 
+      max-width: 100px;
+      min-width: auto !important;
+    }
+    
+    #nextBtn { background: linear-gradient(135deg, #ffd600, #e6b422); color: #000; }
+    .btn-menu { background: #475467; max-width: 300px; padding: 12px 20px; font-size: 1.1rem; }
+    .btn-set { background: #0077cc; padding: 8px 20px !important; flex: none !important; }
 
-  /* 演出レイヤー */
-  #successEffect {
-    display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
-    font-size: 5rem; font-weight: 900; color: #009944; text-shadow: 0 0 30px rgba(255,255,255,1);
-    animation: sparkle 1s ease-out forwards; pointer-events: none; z-index: 999;
-  }
-  @keyframes sparkle {
-    0% { opacity: 0; transform: translate(-50%, -50%) scale(0.5); }
-    50% { opacity: 1; transform: translate(-50%, -50%) scale(1.1); }
-    100% { opacity: 0; transform: translate(-50%, -50%) scale(1); }
-  }
-  #explosion {
-    display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
-    font-size: 12rem; animation: explode 0.8s ease-out forwards; pointer-events: none; z-index: 999;
-  }
-  @keyframes explode {
-    0% { transform: translate(-50%, -50%) scale(0.3); opacity: 0; }
-    30% { opacity: 1; }
-    100% { transform: translate(-50%, -50%) scale(2); opacity: 0; }
-  }
+    /* 演出レイヤー */
+    #successEffect {
+      display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+      font-size: 5rem; font-weight: 900; color: #009944; text-shadow: 0 0 30px rgba(255,255,255,1);
+      animation: sparkle 1s ease-out forwards; pointer-events: none; z-index: 999;
+    }
+    @keyframes sparkle {
+      0% { opacity: 0; transform: translate(-50%, -50%) scale(0.5); }
+      50% { opacity: 1; transform: translate(-50%, -50%) scale(1.1); }
+      100% { opacity: 0; transform: translate(-50%, -50%) scale(1); }
+    }
+    #explosion {
+      display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+      font-size: 12rem; animation: explode 0.8s ease-out forwards; pointer-events: none; z-index: 999;
+    }
+    @keyframes explode {
+      0% { transform: translate(-50%, -50%) scale(0.3); opacity: 0; }
+      30% { opacity: 1; }
+      100% { transform: translate(-50%, -50%) scale(2); opacity: 0; }
+    }
 
-  #manual {
-    margin: 30px auto 10px auto; max-width: 800px; width: 95%; padding: 15px; background: rgba(255,255,255,0.7);
-    border-radius: 8px; font-size: 1rem; color: #475467; line-height: 1.6; text-align: left; border: 1px solid var(--metallic-frame);
-    box-sizing: border-box;
-  }
-</style>
+    #manual {
+      margin: 30px auto 10px auto; max-width: 800px; width: 95%; padding: 15px; background: rgba(255,255,255,0.7);
+      border-radius: 8px; font-size: 1rem; color: #475467; line-height: 1.6; text-align: left; border: 1px solid var(--metallic-frame);
+      box-sizing: border-box;
+    }
+
+    /* 📱 横画面（ランドスケープ）最適化：縮尺を自動調整して上下はみ出しをガード */
+    @media (orientation: landscape) and (max-height: 600px) {
+      h1 { font-size: 2.2rem; margin: 4px 0; }
+      #question { font-size: 1.5rem; padding: 8px 15px; margin: 5px auto; border-width: 4px; }
+      #score { font-size: 1.2rem; margin-bottom: 8px; }
+      #gameZone { padding: 10px 15px; margin-bottom: 10px; gap: 12px; }
+      .stage-container { flex: 0 0 100px; padding: 8px 5px; }
+      .timer-box { font-size: 1.8rem; margin-bottom: 6px; }
+      .answer-box { height: 220px; font-size: 1.8rem; border-width: 3px; }
+      button.game-btn { padding: 10px 15px; font-size: 1rem; min-width: 100px; }
+      .btn-correct, .btn-wrong { font-size: 1.3rem !important; padding: 12px 25px !important; }
+      .controls-row { margin: 8px auto; }
+    }
+  </style>
 </head>
 <body>
 
@@ -306,9 +332,9 @@
 </div>
 
 <div class="controls-row">
-  <button id="startBtn" class="game-btn" onclick="startGame()">START</button>
+  <button id="startBtn" class="game-btn" onclick="handleStartToggle()">START</button>
   <button id="nextBtn" class="game-btn" onclick="nextQuestion()" style="display:none;">次の問題へ</button>
-  <button class="game-btn btn-reset" onclick="resetGame()">リセット</button>
+  <button class="game-btn btn-reset btn-reset-mini" onclick="resetGame()">リセット</button>
 </div>
 
 <div class="controls-row">
@@ -359,23 +385,25 @@ let timeLeft = 50;
 let found = 0;
 let timerId;
 let started = false;
+let isPaused = false; // 一時停止（審議）フラグ
 let timerStopped = Array(barNum).fill(false);
 let totalScore = 0;
 
+/* 強力な原色系の円柱シリンダー用グラデーションに変更 */
 const barColors = [
-  "linear-gradient(to bottom, rgba(0, 229, 255, 0.2), rgba(0, 150, 255, 0.35))",  // 水色ネオン
-  "linear-gradient(to bottom, rgba(255, 42, 42, 0.2), rgba(200, 0, 0, 0.35))",    // 赤ネオン
-  "linear-gradient(to bottom, rgba(0, 255, 102, 0.2), rgba(0, 170, 50, 0.35))",   // 緑ネオン
-  "linear-gradient(to bottom, rgba(255, 234, 0, 0.2), rgba(220, 160, 0, 0.35))",  // 黄色ネオン
-  "linear-gradient(to bottom, rgba(204, 51, 255, 0.2), rgba(130, 0, 200, 0.35))"  // 紫ネオン
+  "linear-gradient(to right, #0088cc 0%, #00e5ff 30%, #ffffff 50%, #00e5ff 70%, #005588 100%)", // 強烈シアン
+  "linear-gradient(to right, #00aa00 0%, #00ff66 30%, #ffffff 50%, #00ff66 70%, #005500 100%)", // 強烈グリーン
+  "linear-gradient(to right, #cc9900 0%, #ffea00 30%, #ffffff 50%, #ffea00 70%, #664400 100%)", // 強烈イエロー
+  "linear-gradient(to right, #9900cc 0%, #cc33ff 30%, #ffffff 50%, #cc33ff 70%, #440066 100%)", // 強烈パープル
+  "linear-gradient(to right, #cc0066 0%, #ff1493 30%, #ffffff 50%, #ff1493 70%, #660033 100%)"  // 強烈マゼンタピンク
 ];
 
 const barNeonShadows = [
-  "0 0 20px rgba(0, 229, 255, 0.6), inset 0 0 15px rgba(0, 229, 255, 0.3)",
-  "0 0 20px rgba(255, 42, 42, 0.6), inset 0 0 15px rgba(255, 42, 42, 0.3)",
-  "0 0 20px rgba(0, 255, 102, 0.6), inset 0 0 15px rgba(0, 255, 102, 0.3)",
-  "0 0 20px rgba(255, 234, 0, 0.6), inset 0 0 15px rgba(255, 234, 0, 0.3)",
-  "0 0 20px rgba(204, 51, 255, 0.6), inset 0 0 15px rgba(204, 51, 255, 0.3)"
+  "0 0 25px rgba(0, 229, 255, 0.8), inset 0 0 15px rgba(0, 0, 0, 0.5)",
+  "0 0 25px rgba(0, 255, 102, 0.8), inset 0 0 15px rgba(0, 0, 0, 0.5)",
+  "0 0 25px rgba(255, 234, 0, 0.8), inset 0 0 15px rgba(0, 0, 0, 0.5)",
+  "0 0 25px rgba(204, 51, 255, 0.8), inset 0 0 15px rgba(0, 0, 0, 0.5)",
+  "0 0 25px rgba(255, 20, 147, 0.8), inset 0 0 15px rgba(0, 0, 0, 0.5)"
 ];
 
 const questions = [
@@ -405,11 +433,17 @@ function init() {
   timeLeft = timeLimit;
   found = 0;
   started = false;
+  isPaused = false;
   timerStopped = Array(barNum).fill(false);
 
   document.getElementById("question").textContent = questions[currentQuestion];
   document.getElementById("score").querySelector("span").textContent = totalScore;
-  document.getElementById("startBtn").style.display = "inline-block";
+  
+  const startBtn = document.getElementById("startBtn");
+  startBtn.style.display = "inline-block";
+  startBtn.textContent = "START";
+  startBtn.classList.remove("paused");
+  
   document.getElementById("nextBtn").style.display = "none";
 
   const gameZone = document.getElementById("gameZone");
@@ -418,7 +452,7 @@ function init() {
   for (let i = 0; i < barNum; i++) {
     const container = document.createElement("div");
     container.className = "stage-container";
-    container.id = "stage" + i; // スクロール追従用のIDを付与
+    container.id = "stage" + i;
 
     const t = document.createElement("div");
     t.className = "timer-box";
@@ -443,18 +477,35 @@ function init() {
     gameZone.appendChild(container);
   }
   
-  // 初期化時にスクロール位置を先頭に戻す
   gameZone.scrollLeft = 0;
 }
 
-function startGame() {
-  if (started) return;
-  started = true;
-  document.getElementById("startBtn").style.display = "none";
-  startTimer();
+/* STARTボタン押下時：始動・一時停止（審議）のトグル制御 */
+function handleStartToggle() {
+  const startBtn = document.getElementById("startBtn");
   
-  // 開始時に最初のバーへフォーカス
-  focusBar(0);
+  if (!started) {
+    // 初回スタート
+    started = true;
+    isPaused = false;
+    startBtn.textContent = "PAUSE (審議)";
+    startBtn.classList.add("paused");
+    startTimer();
+    focusBar(0);
+  } else {
+    // 稼働中のトグル（一時停止 ⇔ 再開）
+    if (!isPaused) {
+      isPaused = true;
+      clearInterval(timerId);
+      startBtn.textContent = "RESUME (再開)";
+      startBtn.classList.remove("paused");
+    } else {
+      isPaused = false;
+      startBtn.textContent = "PAUSE (審議)";
+      startBtn.classList.add("paused");
+      startTimer();
+    }
+  }
 }
 
 function startTimer() {
@@ -477,7 +528,6 @@ function startTimer() {
   }, 1000);
 }
 
-/* 現在回答中のターゲットバーを自動スクロールで画面内に収める関数 */
 function focusBar(index) {
   if (index < barNum) {
     const targetElement = document.getElementById("stage" + index);
@@ -488,7 +538,7 @@ function focusBar(index) {
 }
 
 function markCorrect() {
-  if (!started) return;
+  if (!started || isPaused) return; // 審議中（一時停止中）は判定不可
   playCorrect();
 
   timerStopped[found] = true;
@@ -504,21 +554,20 @@ function markCorrect() {
     clearInterval(timerId);
     showSuccess();
     started = false;
+    document.getElementById("startBtn").style.display = "none";
     document.getElementById("nextBtn").style.display = "inline-block";
   } else {
-    // まだ残りの本数がある場合、次に狙うバーを画面中央へ自動追従
     focusBar(found);
   }
 }
 
 function markWrong() {
-  if (!started) return;
+  if (!started || isPaused) return; // 審議中（一時停止中）は判定不可
   playWrong();
   const box = document.getElementById("box" + found);
   box.classList.add("wrongFlash");
   setTimeout(() => box.classList.remove("wrongFlash"), 600);
   
-  // 不正解の際も、ターゲットが視界から外れないよう再フォーカス
   focusBar(found);
 }
 
@@ -526,6 +575,7 @@ function triggerExplosion() {
   document.getElementById("explosion").style.display = "block";
   playExplosion();
   started = false;
+  document.getElementById("startBtn").style.display = "none";
   setTimeout(() => { document.getElementById("explosion").style.display = "none"; }, 900);
   document.getElementById("nextBtn").style.display = "inline-block";
 }
@@ -556,6 +606,7 @@ init();
 <div id="manual">
   <b>【スタジオルール】</b><br>
   ・<b>START</b>でタイマーが始動し、上から下へ向かって赤いエネルギーが徐々に充填されていきます。<br>
+  ・稼働中に再度メインボタン（<b>PAUSE</b>）を押すと、タイマーをストップして<b>審議モード</b>に入ることができます。<br>
   ・<b>正解</b>を判定すると、そのターゲットのタイマーと赤い液体の侵食が<b>その時点の高さでピタッと停止してキープ</b>されます。
 </div>
 
