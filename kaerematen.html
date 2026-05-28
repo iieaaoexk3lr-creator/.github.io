@@ -94,7 +94,7 @@
             <div>回答済：<span id="answerCount">0</span>名</div>
         </div>
         
-        <button id="refreshDataBtn" class="dark-btn" style="background: #6c757d; font-size: 12px; padding: 6px; margin: 5px 0 15px 0; width: auto; display: inline-block; border-radius: 6px;">🔄 人数・画面を最新に更新</button>
+        <button id="refreshDataBtn" class="primary-btn" style="background: var(--success); font-size: 12px; padding: 6px; margin: 5px 0 15px 0; width: auto; display: inline-block; border-radius: 6px;">🔄 画面を最新に更新</button>
 
         <div id="odaiDisplay" class="odai-display">お題を待機中...</div>
         <div id="victoryDisplay" class="victory-msg">勝利！！</div>
@@ -135,6 +135,7 @@
                 <button id="saveMasterBtn" class="gray-btn" style="background:#6c757d; color:white">お題保存</button>
                 <button id="modeBtn" class="accent-btn">モード切替</button>
             </div>
+            <button id="kickGhostBtn" class="dark-btn" style="background:#444; margin-top:10px;">👥 幽霊プレイヤーを削除して人数更新</button>
         </div>
     </div>
 </div>
@@ -180,6 +181,13 @@
         const answersRef = collection(db, "rooms", roomId, "answers");
         const membersRef = collection(db, "rooms", roomId, "members");
 
+        // アクティブメンバーの定期生存シグナル自動更新 (1分ごと)
+        setInterval(async () => {
+            if (roomId && userName) {
+                await updateDoc(doc(db, "rooms", roomId, "members", userName), { lastSeen: Date.now() }).catch(()=>{});
+            }
+        }, 60000);
+
         onSnapshot(membersRef, s => document.getElementById('memberCount').innerText = s.size);
         onSnapshot(doc(db, "rooms", roomId, "members", userName), d => { if(d.exists()) document.getElementById('myWins').innerText = d.data().wins || 0; });
 
@@ -193,7 +201,6 @@
             document.getElementById('odaiInputArea').style.display = data.text ? "none" : "block";
             document.getElementById('gamePlayArea').style.display = data.text ? "block" : "none";
             
-            // 二者択一ジャンルの動的制御
             updateGenreSelect(currentMode);
 
             onSnapshot(query(answersRef, orderBy("time", "asc")), (snap) => {
@@ -208,7 +215,6 @@
                     else if (currentMode === "minority") { const min = Math.min(...Object.values(counts)); Object.keys(counts).forEach(k => { if(counts[k] === min) winningTexts.push(k); }); }
                     else if (currentMode === "unmatch") winningTexts = new Set(ansList.map(a=>a.text)).size === ansList.length ? ansList.map(a=>a.text) : [];
 
-                    // 勝利判定：自分の回答が含まれているか
                     const myAns = ansList.find(a => a.name === userName)?.text;
                     document.getElementById('victoryDisplay').style.display = (myAns && winningTexts.includes(myAns)) ? "block" : "none";
 
@@ -222,7 +228,6 @@
                 }
             });
         });
-
     }
 
     function updateGenreSelect(mode) {
@@ -236,11 +241,9 @@
         }
     }
 
-    // 能動的データ更新（リクエスト応答時に数値が変わる方式へ最適化）
+    // 🟢 画面のみの更新（通信の詰まり・リアルタイムミラーリングの再同期）
     document.getElementById('refreshDataBtn').onclick = async () => {
         if (!roomId) return;
-        
-        // 1. ボタンが押された瞬間に表示を0（または読み込み中）にしてレスポンス待ちを明示
         document.getElementById('memberCount').innerText = "0";
         document.getElementById('answerCount').innerText = "0";
         document.getElementById('myWins').innerText = "...";
@@ -248,26 +251,57 @@
         try {
             const membersRef = collection(db, "rooms", roomId, "members");
             const answersRef = collection(db, "rooms", roomId, "answers");
+            const [membersSnap, answersSnap] = await Promise.all([getDocs(membersRef), getDocs(answersRef)]);
 
-            // 2. サーバから最新データを非同期（能動的）に取得
-            const [membersSnap, answersSnap] = await Promise.all([
-                getDocs(membersRef),
-                getDocs(answersRef)
-            ]);
-
-            // 3. レスポンスが正常に完了した段階で、カウントした数値をセット
             document.getElementById('memberCount').innerText = membersSnap.size;
             document.getElementById('answerCount').innerText = answersSnap.size;
             
             const myInfoSnap = await getDocs(query(membersRef, where("name", "==", userName)));
-            if (!myInfoSnap.empty) {
-                document.getElementById('myWins').innerText = myInfoSnap.docs[0].data().wins || 0;
-            } else {
-                document.getElementById('myWins').innerText = "0";
-            }
+            document.getElementById('myWins').innerText = !myInfoSnap.empty ? (myInfoSnap.docs[0].data().wins || 0) : "0";
         } catch (error) {
             console.error("データ更新に失敗しました:", error);
-            alert("データの更新に失敗しました。電波状況を確認してください。");
+            alert("データの更新に失敗しました。");
+        }
+    };
+
+    // 👥 幽霊プレイヤー削除＆人数更新（管理パネル専用クレンジング処理）
+    document.getElementById('kickGhostBtn').onclick = async () => {
+        if (!roomId) return;
+        if (!confirm("5分以上操作のない放置プレイヤーを部屋から一斉削除しますか？")) return;
+
+        document.getElementById('memberCount').innerText = "⏳";
+        
+        try {
+            const membersRef = collection(db, "rooms", roomId, "members");
+            const answersRef = collection(db, "rooms", roomId, "answers");
+            
+            const membersSnapBefore = await getDocs(membersRef);
+            const now = Date.now();
+            const timeoutLimit = 5 * 60 * 1000; // 5分制限
+            
+            const batch = writeBatch(db);
+            let kickCount = 0;
+
+            membersSnapBefore.docs.forEach(d => {
+                const data = d.data();
+                if (data.name !== userName && data.lastSeen && (now - data.lastSeen > timeoutLimit)) {
+                    batch.delete(d.ref);
+                    kickCount++;
+                }
+            });
+
+            if (kickCount > 0) {
+                await batch.commit();
+            }
+
+            const [membersSnapAfter, answersSnap] = await Promise.all([getDocs(membersRef), getDocs(answersRef)]);
+            document.getElementById('memberCount').innerText = membersSnapAfter.size;
+            document.getElementById('answerCount').innerText = answersSnap.size;
+            
+            alert(`クレンジング完了：幽霊プレイヤーを ${kickCount} 名削除しました。`);
+        } catch (error) {
+            console.error("クレンジング処理に失敗しました:", error);
+            alert("エラーが発生しました。");
         }
     };
 
@@ -299,7 +333,6 @@
         if(ansSnap.empty) return alert("回答がありません");
         const ansList = ansSnap.docs.map(d => d.data());
         
-        // 勝利数加算ロジック
         const counts = {}; ansList.forEach(a => counts[a.text] = (counts[a.text] || 0) + 1);
         let winningTexts = [];
         if (currentMode === "match") winningTexts = new Set(ansList.map(a=>a.text)).size === 1 ? [ansList[0].text] : [];
@@ -351,12 +384,10 @@
         
         let q;
         if (g === "all") {
-            // 全ジャンルの時：多数・少数派モードでなければ「二者択一」を除外
             q = isSpecial 
                 ? collection(db, "master_odai") 
                 : query(collection(db, "master_odai"), where("category", "!=", "二者択一"));
         } else {
-            // 特定ジャンル選択時
             q = query(collection(db, "master_odai"), where("category", "==", g));
         }
         
