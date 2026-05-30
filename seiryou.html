@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>盛り上がりチェッカー</title>
+<title>盛り上がりメーター</title>
 
 <style>
 body{
@@ -215,7 +215,7 @@ button{
     border: 1px solid #6b7280;
 }
 
-.toggle-help{
+.toggle-help, .toggle-settings{
     background:#4b5563;
     color:white;
     font-size:14px;
@@ -265,7 +265,7 @@ canvas{
     line-height:1.6;
 }
 
-.help-content {
+.help-content, .settings-content {
     display: none;
     margin-top: 10px;
     background: #111827;
@@ -274,6 +274,13 @@ canvas{
     font-size: 14px;
     line-height: 1.6;
     color: #d1d5db;
+}
+
+.settings-content .label {
+    margin-top: 10px;
+    margin-bottom: 4px;
+    color: #60a5fa;
+    font-weight: bold;
 }
 
 #hiddenVideo {
@@ -292,7 +299,7 @@ canvas{
 
 <div class="app">
 
-<h1>🎤 盛り上がりチェッカー</h1>
+<h1>🎤 盛り上がりメーター</h1>
 
 <div class="card">
     <div class="label">プレイヤー名（任意）</div>
@@ -364,6 +371,21 @@ canvas{
     </div>
 </div>
 
+<button class="toggle-settings" id="toggleSettingsBtn">⚙️ 詳細設定 (表示/非表示)</button>
+<div class="settings-content" id="settingsContent">
+    <div class="label">✂️ カット率 (室音等を除外: <span id="noiseCutVal">700</span> pt以下)</div>
+    <input type="range" id="noiseCutSlider" min="0" max="970" value="700" step="10">
+
+    <div class="label">🔥 盛り上がり補助倍率 (x<span id="boostVal">1.0</span>)</div>
+    <input type="range" id="boostSlider" min="0.7" max="1.3" value="1.0" step="0.01">
+
+    <div class="label">📈 スケール拡大開始点 (<span id="scaleStartVal">800</span> pt)</div>
+    <input type="range" id="scaleStartSlider" min="600" max="950" value="800" step="10">
+
+    <div class="label">📱 スマホの音上限 (<span id="phoneMaxDbVal">130</span> dB)</div>
+    <input type="range" id="phoneMaxDbSlider" min="120" max="165" value="130" step="1">
+</div>
+
 <button class="toggle-help" id="toggleHelpBtn">▼ 使い方を表示</button>
 <div class="help-content" id="helpContent">
     <b>【かんたん操作手順】</b><br>
@@ -388,6 +410,8 @@ const saveAudioBtn = document.getElementById("saveAudioBtn");
 const switchCamBtn = document.getElementById("switchCamBtn");
 const toggleHelpBtn = document.getElementById("toggleHelpBtn");
 const helpContent = document.getElementById("helpContent");
+const toggleSettingsBtn = document.getElementById("toggleSettingsBtn");
+const settingsContent = document.getElementById("settingsContent");
 const lineWarning = document.getElementById("lineWarning");
 
 const currentText = document.getElementById("current");
@@ -407,6 +431,15 @@ const songNameInput = document.getElementById("songName");
 const calibSlider = document.getElementById("calibSlider");
 const calibVal = document.getElementById("calibVal");
 const info = document.getElementById("info");
+
+const noiseCutSlider = document.getElementById("noiseCutSlider");
+const noiseCutVal = document.getElementById("noiseCutVal");
+const boostSlider = document.getElementById("boostSlider");
+const boostVal = document.getElementById("boostVal");
+const scaleStartSlider = document.getElementById("scaleStartSlider");
+const scaleStartVal = document.getElementById("scaleStartVal");
+const phoneMaxDbSlider = document.getElementById("phoneMaxDbSlider");
+const phoneMaxDbVal = document.getElementById("phoneMaxDbVal");
 
 const MAX_WAVE_BARS = 80;
 let waveHistory = new Array(MAX_WAVE_BARS).fill(null).map(() => ({ high: 600, low: 600 }));
@@ -431,6 +464,9 @@ let limitTime = 360;
 let running = false;
 let isEndingDelay = false; 
 let currentDate = "";
+let animationId;
+
+let streamStream, audioContext, analyser, dataArray;
 
 // 画面表示・ガード範囲を「600〜1000」に設定
 const MIN_DB = 600;
@@ -457,6 +493,19 @@ if (ua.indexOf("line") > -1) {
 calibSlider.oninput = function() {
     let val = parseInt(this.value);
     calibVal.textContent = (val > 0 ? "+" : "") + val;
+};
+
+noiseCutSlider.oninput = function() { noiseCutVal.textContent = this.value; };
+boostSlider.oninput = function() { boostVal.textContent = parseFloat(this.value).toFixed(1); };
+scaleStartSlider.oninput = function() { scaleStartVal.textContent = this.value; };
+phoneMaxDbSlider.oninput = function() { phoneMaxDbVal.textContent = this.value; };
+
+toggleSettingsBtn.onclick = function() {
+    if (settingsContent.style.display === "block") {
+        settingsContent.style.display = "none";
+    } else {
+        settingsContent.style.display = "block";
+    }
 };
 
 switchCamBtn.onclick = function() {
@@ -678,8 +727,8 @@ function drawCombinedFrame(targetCtx, w, h, mode) {
 
     targetCtx.fillStyle = "white";
     targetCtx.font = "14px sans-serif";
-    const player = playerNameInput.value.trim() || "NO NAME";
-    const song = songNameInput.value.trim() || "NO SONG";
+    const player = playerNameInput.value.trim() || "NO N";
+    const song = songNameInput.value.trim() || "NO S";
     targetCtx.fillText(player + " / " + song, 15, halfH + 34);
 
     targetCtx.font = "11px sans-serif";
@@ -896,26 +945,46 @@ function update(){
     let avgLowAmp = lowCount > 0 ? (lowSum / lowCount) : 0;
     let avgHighAmp = highCount > 0 ? (highSum / highCount) : 0;
 
+    // ----- 新規追加：詳細設定によるスコアマッピング計算 -----
+    const noiseCut = parseInt(document.getElementById("noiseCutSlider").value);
+    const boost = parseFloat(document.getElementById("boostSlider").value);
+    const scaleStart = parseInt(document.getElementById("scaleStartSlider").value);
+    const phoneMax = parseInt(document.getElementById("phoneMaxDbSlider").value);
     const calibrationOffset = parseInt(calibSlider.value);
 
-    // 【スマホのフルスケール -100dB〜0dB を 500〜1000 へダイレクトマッピング】
-    let dbTotalRaw = -100;
-    if (avgAmplitude > 0) {
-        dbTotalRaw = 20 * Math.log10(avgAmplitude / 255); 
+    // 振幅から割り振りポイントを計算する共通関数
+    function calcRaw(amp) {
+        if (amp <= 0) return 0;
+        let dbRaw = 20 * Math.log10(amp / 255); // -100 〜 0 dBFS
+        let spl = phoneMax + dbRaw;
+        
+        let topThreshold = phoneMax - 20; // 音割れ限界TOP20dBの範囲
+        let splMin = phoneMax - 100;
+        
+        let pt = 0;
+        if (spl >= topThreshold) {
+            // トップ20dBの入力を、スケール開始点から1000ptの終点へ割り振る
+            let ratio = (spl - topThreshold) / 20;
+            if (ratio > 1) ratio = 1;
+            pt = scaleStart + ratio * (1000 - scaleStart);
+        } else {
+            // それ以下の音量は最低値〜スケール開始点へ割り振る
+            let ratio = (spl - splMin) / (topThreshold - splMin);
+            if (ratio < 0) ratio = 0;
+            pt = ratio * scaleStart;
+        }
+        return (pt * boost) + calibrationOffset;
     }
-    let currentRawTotal = 500 + ((dbTotalRaw + 100) / 100) * 500 + calibrationOffset;
 
-    let dbLowRaw = -100;
-    if (avgLowAmp > 0) {
-        dbLowRaw = 20 * Math.log10(avgLowAmp / 255);
-    }
-    let currentRawLow = 500 + ((dbLowRaw + 100) / 100) * 500 + calibrationOffset;
+    let currentRawTotal = calcRaw(avgAmplitude);
+    let currentRawLow = calcRaw(avgLowAmp);
+    let currentRawHigh = calcRaw(avgHighAmp);
 
-    let dbHighRaw = -100;
-    if (avgHighAmp > 0) {
-        dbHighRaw = 20 * Math.log10(avgHighAmp / 255);
-    }
-    let currentRawHigh = 500 + ((dbHighRaw + 100) / 100) * 500 + calibrationOffset;
+    // 設定したカット閾値 (0〜600) を下回った場合はベースライン(MIN_DB=600)とみなす
+    if (currentRawTotal < noiseCut) currentRawTotal = MIN_DB;
+    if (currentRawLow < noiseCut) currentRawLow = MIN_DB;
+    if (currentRawHigh < noiseCut) currentRawHigh = MIN_DB;
+    // ----------------------------------------------------
 
     // 前の音との差分検知による強力音量補正
     let diffTotal = currentRawTotal - prevRawTotal;
@@ -1004,8 +1073,8 @@ function update(){
         }
     }
 
-    const selectedMode = document.querySelector('input[name="modeSelect"]:checked').value;
-    drawCombinedFrame(ctx, canvas.width, canvas.height, selectedMode);
+    const modeRadio = document.querySelector('input[name="modeSelect"]:checked').value;
+    drawCombinedFrame(ctx, canvas.width, canvas.height, modeRadio);
 
     animationId = requestAnimationFrame(update);
 }
@@ -1115,8 +1184,8 @@ saveImgBtn.onclick = saveImage;
 saveVideoBtn.onclick = saveVideo;
 saveAudioBtn.onclick = saveAudio;
 
-const selectedMode = document.querySelector('input[name="modeSelect"]:checked').value;
-drawCombinedFrame(ctx, canvas.width, canvas.height, selectedMode);
+const modeRadio = document.querySelector('input[name="modeSelect"]:checked').value;
+drawCombinedFrame(ctx, canvas.width, canvas.height, modeRadio);
 </script>
 
 </body>
