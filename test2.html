@@ -3,549 +3,332 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Multi-Room Quiz Score Board</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <title>ワナオケ（罠オケ）カウンター</title>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@700;900&display=swap');
-        body { font-family: 'Noto+Sans+JP', sans-serif; background-color: #1a202c; color: #f7fafc; }
-        .score-hidden { filter: blur(12px); user-select: none; }
-        .glass-card { background: rgba(255, 255, 255, 0.05); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.1); }
-        .rank-1 { background: linear-gradient(135deg, #ffd700, #b8860b); color: #000; }
-        .rank-2 { background: linear-gradient(135deg, #c0c0c0, #708090); color: #000; }
-        .rank-3 { background: linear-gradient(135deg, #cd7f32, #8b4513); color: #000; }
+        :root {
+            --bg-color: #f4f7f6;
+            --card-bg: #ffffff;
+            --text-color: #333;
+            --team-a-color: #ff6b6b;
+            --team-b-color: #4dadf7;
+            --success-color: #51cf66;
+        }
+
+        body {
+            font-family: 'Helvetica Neue', Arial, 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', Meiryo, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .container {
+            max-width: 600px;
+            width: 100%;
+            background: var(--card-bg);
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        h1 {
+            text-align: center;
+            color: #222;
+            margin-top: 0;
+            font-size: 24px;
+            border-bottom: 3px solid #333;
+            padding-bottom: 10px;
+        }
+
+        .scoreboard {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 20px;
+        }
+
+        .score-box {
+            width: 48%;
+            text-align: center;
+            padding: 15px;
+            border-radius: 8px;
+            color: white;
+            font-weight: bold;
+        }
+
+        .score-box.team-a { background-color: var(--team-a-color); }
+        .score-box.team-b { background-color: var(--team-b-color); }
+        .score-num { font-size: 32px; margin-top: 5px; }
+
+        .phase-section {
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+
+        h3 { margin-top: 0; color: #495057; }
+
+        input[type="text"] {
+            width: 100%;
+            padding: 10px;
+            margin: 5px 0 15px 0;
+            border: 1px solid #ced4da;
+            border-radius: 4px;
+            box-sizing: border-box;
+            font-size: 16px;
+        }
+
+        button {
+            width: 100%;
+            padding: 12px;
+            background-color: #333;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-size: 16px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background 0.2s;
+        }
+
+        button:hover { background-color: #555; }
+        button.secondary { background-color: #6c757d; margin-top: 10px;}
+        button.secondary:hover { background-color: #5a6268; }
+
+        .hidden { display: none; }
+        
+        .result-msg {
+            font-weight: bold;
+            padding: 10px;
+            border-radius: 4px;
+            margin-top: 15px;
+            text-align: center;
+        }
+        .msg-trap { background-color: #ffe3e3; color: #c92a2a; }
+        .msg-anti { background-color: #e3fafc; color: #0b7285; }
+        .msg-normal { background-color: #ebfbee; color: #2b8a3e; }
+
+        .log-list {
+            list-style: none;
+            padding: 0;
+            max-height: 150px;
+            overflow-y: auto;
+            font-size: 14px;
+        }
+        .log-list li {
+            padding: 5px 0;
+            border-bottom: 1px dashed #dee2e6;
+        }
     </style>
 </head>
-<body class="p-4 md:p-8">
-    <div class="max-w-7xl mx-auto">
-        
-        <div id="loginScreen" class="bg-gray-800/90 border border-gray-700 rounded-3xl p-6 max-w-md mx-auto my-20 shadow-2xl">
-            <h2 class="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-400 text-center mb-6">クイズルーム入室</h2>
-            <div class="space-y-4">
-                <div>
-                    <label class="block text-sm text-gray-400 mb-1">部屋名</label>
-                    <input type="text" id="roomInput" value="room1" class="w-full bg-gray-700 text-white px-4 py-2 rounded-xl font-bold border border-gray-600 focus:outline-none focus:border-blue-500">
-                </div>
-                <div>
-                    <label class="block text-sm text-gray-400 mb-1">あなたの個人名</label>
-                    <input type="text" id="userInput" placeholder="例：タロウ" class="w-full bg-gray-700 text-white px-4 py-2 rounded-xl font-bold border border-gray-600 focus:outline-none focus:border-blue-500">
-                </div>
-                <button onclick="joinRoom()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl transition-all shadow">入室する</button>
-            </div>
+<body>
+
+<div class="container">
+    <h1>🎤 ワナオケ（罠オケ）</h1>
+
+    <div class="scoreboard">
+        <div class="score-box team-a">
+            <div>チームA</div>
+            <div class="score-num" id="scoreA">0</div>
         </div>
-
-        <div id="mainContent" class="hidden">
-            <div class="mb-6 flex flex-wrap justify-between items-center gap-4">
-                <div class="flex flex-wrap items-center gap-3">
-                    <a href="6gatu.html" class="bg-gray-800 hover:bg-gray-700 border border-gray-700 px-4 py-1.5 rounded-lg text-sm font-bold transition-all text-gray-300">🏠 メニューへ</a>
-                    <span class="bg-blue-900/60 text-blue-300 border border-blue-700 px-3 py-1 rounded-full text-sm font-bold">部屋: <span id="currentRoomLabel">-</span></span>
-                    <span class="bg-green-900/60 text-green-300 border border-green-700 px-3 py-1 rounded-full text-sm font-bold">ユーザー: <span id="currentUserLabel">-</span></span>
-                    <span class="bg-purple-900/60 text-purple-300 border border-purple-700 px-3 py-1 rounded-full text-sm font-bold flex items-center gap-2">
-                        👥 現在人数: <span id="activeOnlineCount">0</span> 名
-                        <button onclick="syncOnlineStatus()" class="bg-purple-700 hover:bg-purple-600 text-white text-xs px-2 py-0.5 rounded-md font-bold transition-all ml-1">🔄 更新</button>
-                    </span>
-                </div>
-                <div class="flex items-center gap-2">
-                    <input type="password" id="adminKeyInput" placeholder="管理キーを入力" class="bg-gray-800 text-white px-4 py-1.5 rounded-lg border border-gray-700 text-sm focus:outline-none focus:border-blue-500">
-                    <button id="authBtn" class="bg-gray-700 hover:bg-gray-600 px-4 py-1.5 rounded-lg text-sm font-bold transition-all">ログイン</button>
-                </div>
-            </div>
-
-            <div id="adminPanel" class="hidden bg-gray-800/80 border-2 border-blue-500 rounded-3xl p-6 mb-10 shadow-2xl">
-                <h2 class="text-2xl font-black text-blue-400 mb-4">🛠️ クイズ管理者パネル</h2>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div class="border border-gray-700 p-4 rounded-xl">
-                        <p class="text-sm text-gray-400 mb-2">1. スプレッドシートから書き出したCSVを選択</p>
-                        <input type="file" id="csvFile" accept=".csv" class="block w-full text-sm text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-600 file:text-white hover:file:bg-blue-700 cursor-pointer">
-                    </div>
-                    <div class="border border-gray-700 p-4 rounded-xl flex flex-col justify-between">
-                        <div>
-                            <p class="text-sm text-gray-400">2. 問題の進行コントロール</p>
-                            <p class="text-lg font-bold text-yellow-400 mt-1">現在の読込数: <span id="quizTotalCount">0</span> 問</p>
-                        </div>
-                        <div class="flex gap-2 mt-4">
-                            <button onclick="nextQuestion(-1)" class="bg-gray-700 hover:bg-gray-600 px-4 py-2 rounded-xl font-bold text-sm">◀ 前の問題</button>
-                            <button onclick="nextQuestion(1)" class="bg-blue-600 hover:bg-blue-700 flex-1 py-2 rounded-xl font-bold text-sm text-white">次を出題 ▶</button>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="mt-4 flex flex-wrap gap-4 border-t border-gray-700 pt-4">
-                    <button id="toggleScores" class="bg-red-600 hover:bg-red-700 px-4 py-2 rounded-xl text-sm font-bold shadow">スコア表示の切替</button>
-                    <button onclick="toggleHintAdmin()" class="bg-amber-600 hover:bg-amber-700 px-4 py-2 rounded-xl text-sm font-bold shadow">💡 ヒントの表示/非表示切替</button>
-                    <button onclick="resetAllScores()" class="bg-gray-900 border border-red-800 px-4 py-2 rounded-xl text-sm font-bold text-red-400">全スコアリセット</button>
-                </div>
-
-                <div class="mt-6 border-t border-gray-700 pt-4">
-                    <h3 class="text-lg font-bold text-purple-400 mb-2">📝 全員の回答履歴（リアルタイム救済システム）</h3>
-                    <div class="max-h-60 overflow-y-auto bg-black/40 rounded-xl p-4 text-sm space-y-2" id="adminHistoryLog">
-                        </div>
-                </div>
-            </div>
-
-            <div class="bg-gray-800/40 border border-gray-700 rounded-3xl p-6 mb-6 shadow-xl grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                    <h3 class="text-lg font-bold text-emerald-400 mb-2">🚩 新しいチームを作る (リーダー用)</h3>
-                    <div class="flex gap-2">
-                        <input type="text" id="newTeamInput" placeholder="チーム名を入力" class="bg-gray-700 text-white px-4 py-2 rounded-xl font-bold border border-gray-600 focus:outline-none focus:border-emerald-500 flex-1">
-                        <button onclick="createTeam()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl font-bold text-sm">作成</button>
-                    </div>
-                </div>
-                <div>
-                    <h3 class="text-lg font-bold text-blue-400 mb-2">👥 あなたの所属チームを選択</h3>
-                    <div id="teamContainerButtons" class="flex flex-wrap gap-2">
-                        </div>
-                </div>
-            </div>
-
-            <div class="bg-gradient-to-br from-indigo-900/40 to-purple-950/40 border border-purple-500/3xl rounded-3xl p-6 mb-10 shadow-xl">
-                <div class="flex justify-between items-center mb-4">
-                    <span class="bg-purple-600 text-white text-xs font-black px-3 py-1 rounded-full uppercase tracking-wider" id="quizNumLabel">Q. 0</span>
-                    <span class="text-xs text-gray-400">現在の問題（リアルタイム同期）</span>
-                </div>
-                <h2 id="displayQuestion" class="text-2xl md:text-3xl font-black text-white mb-2">問題が配信されるのを待っています...</h2>
-                <p id="displayHint" class="text-amber-400 font-bold mb-6 text-sm hidden">ヒント: ？？？</p>
-                
-                <div class="flex flex-wrap gap-3 items-center bg-black/30 p-4 rounded-2xl">
-                    <input type="text" id="playerAnswerInput" placeholder="答えを入力してください" class="bg-gray-700 text-white px-4 py-3 rounded-xl border border-gray-600 font-bold focus:outline-none focus:border-purple-500 flex-1 min-w-[200px]">
-                    <button onclick="submitAnswer()" class="bg-purple-600 hover:bg-purple-700 text-white px-8 py-3 rounded-xl font-bold transition-all shadow w-full sm:w-auto">回答を送信</button>
-                </div>
-                <div id="answerLog" class="text-sm mt-3 font-bold text-center text-gray-400"></div>
-            </div>
-
-            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                <div>
-                    <h3 class="text-xl font-black text-emerald-400 mb-4">🚩 チームランキング (個人の合算)</h3>
-                    <div id="teamBoardGrid" class="space-y-4">
-                        </div>
-                </div>
-                <div>
-                    <h3 class="text-xl font-black text-blue-400 mb-4">👤 個人ランキング</h3>
-                    <div id="playerBoardGrid" class="space-y-4">
-                        </div>
-                </div>
-            </div>
-
+        <div class="score-box team-b">
+            <div>チームB</div>
+            <div class="score-num" id="scoreB">0</div>
         </div>
     </div>
 
-    <script src="https://www.gstatic.com/firebasejs/9.1.3/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.1.3/firebase-database-compat.js"></script>
+    <div id="setupPhase" class="phase-section">
+        <h3>① お題の設定</h3>
+        <input type="text" id="themeInput" placeholder="例：夏、恋愛、アニソンなど">
+        <button onclick="startRound()">ラウンド開始</button>
+    </div>
 
-    <script>
-        const firebaseConfig = {
-            apiKey: "AIzaSyC4DQhH_swesAD98Xyjg8d1lcWEkkrHrgw",
-            authDomain: "gamehistory-m84.firebaseapp.com",
-            databaseURL: "https://gamehistory-m84-default-rtdb.firebaseio.com",
-            projectId: "gamehistory-m84",
-            storageBucket: "gamehistory-m84.firebasestorage.app",
-            messagingSenderId: "475761727837",
-            appId: "1:475761727837:web:06d07e1ab4120a7ccaf0b4",
-            measurementId: "G-3636W6LC4F"
-        };
+    <div id="cardPhase" class="phase-section hidden">
+        <h3 id="cardTitle">チームA の仕込みタイム</h3>
+        <p style="font-size:12px; color:red;">※相手に見えないように入力してください</p>
         
-        firebase.initializeApp(firebaseConfig);
-        const db = firebase.database();
+        <label>【罠カード（相手が歌いそうな曲）3つ】</label>
+        <input type="text" id="trap1" placeholder="罠曲 1">
+        <input type="text" id="trap2" placeholder="罠曲 2">
+        <input type="text" id="trap3" placeholder="罠曲 3">
 
-        const ADMIN_SECRET = "admin123"; 
-        let isAdmin = false;
-        let quizList = []; 
+        <label>【アンチ罠（自分たちが通したい曲）1つ】</label>
+        <input type="text" id="anti1" placeholder="アンチ罠曲">
         
-        let roomId = "";
-        let username = "";
-        let myCurrentTeam = "";
-        let myConnectionsRef = null;
+        <button onclick="saveTeamCards()">カードを確定して次のチームへ</button>
+    </div>
 
-        // アプリケーション状態のローカル保持
-        let state = {
-            currentIndex: -1,
-            showScores: false,
-            showHint: false,
-            currentQuestion: "待機中...",
-            currentHint: "待機中...",
-            currentAnswer: "",
-            players: {},   // { username: { team, score } }
-            teams: {},     // { teamName: true }
-            history: {}    // { historyId: { username, question, playerAns, isCorrect } }
-        };
+    <div id="singPhase" class="phase-section hidden">
+        <h3>🎤 歌唱＆判定フェーズ</h3>
+        <p>現在のお題: <strong id="currentTheme" style="color:#e64980;"></strong></p>
+        
+        <div style="margin-bottom: 15px; padding: 10px; background: #e9ecef; border-radius: 4px;">
+            <span id="singingTeamLabel">次に歌うチーム: <strong>チームA</strong></span>
+        </div>
 
-        const authBtn = document.getElementById('authBtn');
-        const adminPanel = document.getElementById('adminPanel');
-        const toggleScoresBtn = document.getElementById('toggleScores');
+        <label>入れた曲（または歌おうとした曲）名を入力：</label>
+        <input type="text" id="sungSongInput" placeholder="曲名を入力">
+        <button onclick="judgeSong()" style="background-color: var(--success-color);">判定する！</button>
 
-        // 管理者認証
-        authBtn.onclick = () => {
-            if (document.getElementById('adminKeyInput').value === ADMIN_SECRET) {
-                isAdmin = true;
-                adminPanel.classList.remove('hidden');
-                authBtn.innerText = "管理者モード";
-                authBtn.className = "bg-emerald-600 px-4 py-1.5 rounded-lg text-sm font-bold text-white";
-                render(); 
-            } else { alert("管理キーが違います。"); }
-        };
+        <div id="resultArea" class="result-msg hidden"></div>
+        
+        <button class="secondary" onclick="nextSingTurn()">次の人のターンへ</button>
+        <button class="secondary" style="background-color: #e64980;" onclick="endRound()">このラウンドを終了（罠公開）</button>
+    </div>
 
-        // --------------------------------------------------
-        // 🚪 部屋の入室ロジック & 🟢 リアルタイムオンライン接続処理
-        // --------------------------------------------------
-        window.joinRoom = function() {
-            roomId = document.getElementById('roomInput').value.trim();
-            username = document.getElementById('userInput').value.trim();
+    <div class="phase-section">
+        <h3>📋 本ラウンドの履歴</h3>
+        <ul id="logList" class="log-list"></ul>
+    </div>
+</div>
 
-            if (!roomId || !username) return alert("部屋名と個人名を入力してください");
+<script>
+    // ゲーム状態管理
+    let scores = { A: 0, B: 0 };
+    let currentTheme = "";
+    let currentSettingTeam = "A";
+    let currentSingingTeam = "A";
 
-            document.getElementById('loginScreen').classList.add('hidden');
-            document.getElementById('mainContent').classList.remove('hidden');
-            document.getElementById('currentRoomLabel').innerText = roomId;
-            document.getElementById('currentUserLabel').innerText = username;
+    // 各チームのカードデータ
+    let teamData = {
+        A: { traps: [], anti: "" },
+        B: { traps: [], anti: "" }
+    };
 
-            // 1. ユーザー基礎情報のセット
-            db.ref(`QUIZ_rooms/${roomId}/players/${username}`).update({
-                name: username
-            });
+    // ① ラウンド開始
+    function startRound() {
+        const theme = document.getElementById('themeInput').value.trim();
+        if(!theme) { alert('お題を入力してください！'); return; }
+        currentTheme = theme;
+        
+        // 画面切り替え
+        document.getElementById('setupPhase').classList.add('hidden');
+        document.getElementById('cardPhase').classList.remove('hidden');
+        currentSettingTeam = "A";
+        resetCardForm();
+    }
 
-            // 2. Firebaseを使用したオンライン実数カウント & 自動切断検出の実装
-            const userStatusRef = db.ref(`QUIZ_rooms/${roomId}/connections/${username}`);
-            
-            // Firebaseの特別なノード (.info/connected) を用いて接続状態を検知
-            db.ref('.info/connected').on('value', (snapshot) => {
-                if (snapshot.val() === true) {
-                    // タブを閉じる・切断されたら自動的にこのノードを削除する設定
-                    userStatusRef.onDisconnect().remove();
-                    // 現在オンラインであることを証明する値をセット
-                    userStatusRef.set(true);
-                }
-            });
+    function resetCardForm() {
+        document.getElementById('cardTitle').innerText = `② チーム${currentSettingTeam} の仕込みタイム`;
+        document.getElementById('trap1').value = "";
+        document.getElementById('trap2').value = "";
+        document.getElementById('trap3').value = "";
+        document.getElementById('anti1').value = "";
+    }
 
-            // リアルタイムリスナーの結合開始
-            startFirebaseListeners();
-        };
+    // ②＆③ カード保存
+    function saveTeamCards() {
+        const t1 = document.getElementById('trap1').value.trim();
+        const t2 = document.getElementById('trap2').value.trim();
+        const t3 = document.getElementById('trap3').value.trim();
+        const anti = document.getElementById('anti1').value.trim();
 
-        // 手動で実数を同期するための更新ボタン処理
-        window.syncOnlineStatus = function() {
-            db.ref(`QUIZ_rooms/${roomId}/connections`).once('value', (snap) => {
-                const data = snap.val() || {};
-                const activeCount = Object.keys(data).length;
-                document.getElementById('activeOnlineCount').innerText = activeCount;
-            });
-        };
-
-        // --------------------------------------------------
-        // 🚩 チーム作成・所属ロジック
-        // --------------------------------------------------
-        window.createTeam = function() {
-            const teamName = document.getElementById('newTeamInput').value.trim();
-            if(!teamName) return alert("チーム名を入力してください");
-            
-            db.ref(`QUIZ_rooms/${roomId}/teams/${teamName}`).set(true);
-            document.getElementById('newTeamInput').value = "";
-            
-            joinTeam(teamName);
-        };
-
-        window.joinTeam = function(teamName) {
-            myCurrentTeam = teamName;
-            db.ref(`QUIZ_rooms/${roomId}/players/${username}`).update({
-                team: teamName
-            });
-        };
-
-        // --------------------------------------------------
-        // 🗑️ プレイヤー・チーム削除ロジック (切断放置プレイヤー対策)
-        // --------------------------------------------------
-        window.deletePlayerAdmin = function(targetUser) {
-            if(confirm(`プレイヤー「${targetUser}」をランキングおよび部屋データから完全に削除しますか？`)) {
-                db.ref(`QUIZ_rooms/${roomId}/players/${targetUser}`).remove();
-                db.ref(`QUIZ_rooms/${roomId}/connections/${targetUser}`).remove();
-                alert(`${targetUser} を削除しました。`);
-            }
-        };
-
-        window.deleteTeamAdmin = function(targetTeam) {
-            if(confirm(`チーム「${targetTeam}」を完全に削除しますか？(所属していた個人は未所属になります)`)) {
-                // 1. チームノードを削除
-                db.ref(`QUIZ_rooms/${roomId}/teams/${targetTeam}`).remove();
-                // 2. 所属プレイヤーのチーム名表記をリセット
-                Object.keys(state.players).forEach(pName => {
-                    if(state.players[pName].team === targetTeam) {
-                        db.ref(`QUIZ_rooms/${roomId}/players/${pName}/team`).set("未所属");
-                    }
-                });
-                alert(`チーム ${targetTeam} を削除しました。`);
-            }
-        };
-
-        // --------------------------------------------------
-        // 📁 CSV読み込み (管理者用)
-        // --------------------------------------------------
-        if(document.getElementById('csvFile')) {
-            document.getElementById('csvFile').addEventListener('change', function(e) {
-                const file = e.target.files[0];
-                if (!file) return;
-                const reader = new FileReader();
-                reader.onload = function(evt) {
-                    const text = evt.target.result;
-                    quizList = text.split(/\r\n|\n/).map(line => {
-                        const columns = line.split(',');
-                        return {
-                            question: columns[0] ? columns[0].replace(/"/g, '').trim() : "",
-                            hint: columns[1] ? columns[1].replace(/"/g, '').trim() : "",
-                            answer: columns[2] ? columns[2].replace(/"/g, '').trim() : ""
-                        };
-                    }).filter(q => q.question !== "" && q.question !== "問題");
-
-                    document.getElementById('quizTotalCount').innerText = quizList.length;
-                    alert(`${quizList.length}問のクイズを読み込みました！`);
-                    if(quizList.length > 0) nextQuestion(1); 
-                };
-                reader.readAsText(file, 'UTF-8');
-            });
+        if(!t1 || !t2 || !t3 || !anti) {
+            alert('すべての罠（3つ）とアンチ罠（1つ）を入力してください！');
+            return;
         }
 
-        // 管理者：問題進行（問題が進む時はヒントを自動的に隠す仕様）
-        window.nextQuestion = (step) => {
-            if (quizList.length === 0) return alert("先にCSVを読み込んでください");
-            let nextIdx = state.currentIndex + step;
-            if (nextIdx < 0 || nextIdx >= quizList.length) return alert("これ以上問題はありません");
+        // データを格納
+        teamData[currentSettingTeam].traps = [t1, t2, t3];
+        teamData[currentSettingTeam].anti = anti;
 
-            db.ref(`QUIZ_rooms/${roomId}/quizState`).update({
-                currentIndex: nextIdx,
-                currentQuestion: quizList[nextIdx].question,
-                currentHint: quizList[nextIdx].hint || "なし",
-                currentAnswer: quizList[nextIdx].answer,
-                showHint: false 
-            });
-        };
+        if(currentSettingTeam === "A") {
+            // 次はチームBの入力
+            currentSettingTeam = "B";
+            resetCardForm();
+            alert("チームA登録完了！次はチームBが入力します。画面を渡してください。");
+        } else {
+            // 両チーム入力完了、歌唱フェーズへ
+            document.getElementById('cardPhase').classList.add('hidden');
+            document.getElementById('singPhase').classList.remove('hidden');
+            document.getElementById('currentTheme').innerText = currentTheme;
+            currentSingingTeam = "A";
+            updateSingingTeamLabel();
+            alert("両チームの仕込みが完了しました！歌唱フェーズを開始します。");
+        }
+    }
 
-        // 管理者：ヒント表示非表示の個別切り替え
-        window.toggleHintAdmin = () => {
-            db.ref(`QUIZ_rooms/${roomId}/quizState/showHint`).set(!state.showHint);
-        };
+    function updateSingingTeamLabel() {
+        document.getElementById('singingTeamLabel').innerHTML = `次に歌う（曲を入れる）チーム: <strong style="font-size:18px; color:${currentSingingTeam==='A'?'var(--team-a-color)':'var(--team-b-color)'}">チーム${currentSingingTeam}</strong>`;
+        document.getElementById('resultArea').classList.add('hidden');
+        document.getElementById('sungSongInput').value = "";
+    }
 
-        // --------------------------------------------------
-        // 🎮 回宿送信＆部屋と個人に紐付いた履歴記録
-        // --------------------------------------------------
-        window.submitAnswer = function() {
-            const playerAns = document.getElementById('playerAnswerInput').value.trim();
-            const logBox = document.getElementById('answerLog');
+    // ⑤ 判定ロジック
+    function judgeSong() {
+        const song = document.getElementById('sungSongInput').value.trim();
+        if(!song) { alert('曲名を入力してください！'); return; }
 
-            if(!playerAns) return alert("回答を入力してください");
-            if(!state.currentAnswer) return alert("現在出題されている問題がありません");
+        const attacker = currentSingingTeam; // 歌う側
+        const defender = currentSingingTeam === "A" ? "B" : "A"; // 罠を張っている側
 
-            const isCorrect = playerAns.toLowerCase() === state.currentAnswer.toLowerCase();
+        // 相手の罠にかかっているかチェック（全角半角・大文字小文字の揺れを簡易考慮するためトリムのみ。完全一致判定）
+        const isTrapped = teamData[defender].traps.includes(song);
+        // 自分のアンチ罠と一致しているかチェック
+        const isAntiTrapped = teamData[attacker].anti === song;
 
-            const historyRef = db.ref(`QUIZ_rooms/${roomId}/history`).push();
-            historyRef.set({
-                username: username,
-                team: myCurrentTeam || "未所属",
-                question: state.currentQuestion,
-                playerAns: playerAns,
-                isCorrect: isCorrect
-            });
+        const resultArea = document.getElementById('resultArea');
+        resultArea.classList.remove('hidden');
+        
+        let logMsg = "";
 
-            if(isCorrect) {
-                logBox.innerHTML = `<span class="text-emerald-400">⭕ 正解！答え: ${state.currentAnswer}</span>`;
-                const currentScore = (state.players[username] && state.players[username].score) || 0;
-                db.ref(`QUIZ_rooms/${roomId}/players/${username}/score`).set(currentScore + 1);
-                document.getElementById('playerAnswerInput').value = "";
-            } else {
-                logBox.innerHTML = `<span class="text-red-400">❌ 不正解！「${playerAns}」</span>`;
-            }
-        };
-
-        // --------------------------------------------------
-        // 🛠️ 管理者：不正解だった過去ログを「正解」へ救済変更する機能
-        // --------------------------------------------------
-        window.rescueAnswer = function(historyId, targetUser) {
-            db.ref(`QUIZ_rooms/${roomId}/history/${historyId}/isCorrect`).set(true);
-            const currentScore = (state.players[targetUser] && state.players[targetUser].score) || 0;
-            db.ref(`QUIZ_rooms/${roomId}/players/${targetUser}/score`).set(currentScore + 1);
-            alert(`${targetUser} さんの回答を正解扱いに修正し、1点付与しました。`);
-        };
-
-        // --------------------------------------------------
-        // 📡 Firebaseとのマルチリスナー接続
-        // --------------------------------------------------
-        function startFirebaseListeners() {
-            db.ref(`QUIZ_rooms/${roomId}`).on('value', (snap) => {
-                const rootData = snap.val() || {};
-                
-                const qState = rootData.quizState || {};
-                state.currentIndex = qState.currentIndex !== undefined ? qState.currentIndex : -1;
-                state.currentQuestion = qState.currentQuestion || "問題がセットされていません。";
-                state.currentHint = qState.currentHint || "なし";
-                state.currentAnswer = qState.currentAnswer || "";
-                state.showScores = qState.showScores || false;
-                state.showHint = qState.showHint || false;
-
-                state.players = rootData.players || {};
-                state.teams = rootData.teams || {};
-                state.history = rootData.history || {};
-
-                // オンライン接続数表示の同期
-                const connections = rootData.connections || {};
-                document.getElementById('activeOnlineCount').innerText = Object.keys(connections).length;
-
-                updateTeamButtonsUI();
-                render();
-            });
+        if (isTrapped && isAntiTrapped) {
+            // 罠＋アンチ罠一致 → 無効化（そのまま歌える：1点＋ボーナス1点＝2点）
+            scores[attacker] += 2;
+            resultArea.className = "result-msg msg-anti";
+            resultArea.innerHTML = `💥【アンチ罠発動！】<br>相手の罠【${song}】を無効化！見事そのまま歌えます！<br>チーム${attacker}に 2ポイント！`;
+            logMsg = `チーム${attacker}: 『${song}』 ➔ アンチ罠成功！ (+2pt)`;
+        } else if (isTrapped) {
+            // 罠と一致 → 歌えない（罠を張った側に2点）
+            scores[defender] += 2;
+            resultArea.className = "result-msg msg-trap";
+            resultArea.innerHTML = `💀【罠発動！】<br>チーム${defender}の罠にかかりました！この曲は歌えません！<br>罠を張ったチーム${defender}に 2ポイント！`;
+            logMsg = `チーム${attacker}: 『${song}』 ➔ チーム${defender}の罠にヒット！ (チーム${defender}に +2pt)`;
+        } else {
+            // 通常通り（1点）
+            scores[attacker] += 1;
+            resultArea.className = "result-msg msg-normal";
+            resultArea.innerHTML = `🎵【セーフ】<br>罠はありません。普通に歌えます！<br>チーム${attacker}に 1ポイント！`;
+            logMsg = `チーム${attacker}: 『${song}』 ➔ セーフ、通常歌唱 (+1pt)`;
         }
 
-        // 💡 修正点：入力を妨げない、ボタン選択式のチームセレクター描画処理
-        function updateTeamButtonsUI() {
-            const container = document.getElementById('teamContainerButtons');
-            container.innerHTML = "";
+        // スコア更新
+        document.getElementById('scoreA').innerText = scores.A;
+        document.getElementById('scoreB').innerText = scores.B;
 
-            // 未所属に戻るためのボタン
-            const noneBtn = document.createElement('button');
-            noneBtn.type = "button";
-            noneBtn.innerText = "❌ 未所属にする";
-            noneBtn.className = `px-3 py-1.5 rounded-xl font-bold text-xs transition-all ${!myCurrentTeam ? 'bg-red-600 text-white shadow' : 'bg-gray-700 text-gray-400 hover:bg-gray-600'}`;
-            noneBtn.onclick = () => { joinTeam(""); };
-            container.appendChild(noneBtn);
+        // ログ追加
+        const li = document.createElement('li');
+        li.innerText = logMsg;
+        document.getElementById('logList').appendChild(li);
+    }
 
-            // Firebaseに登録されている各チームボタンの動的生成
-            Object.keys(state.teams).forEach(teamName => {
-                const btn = document.createElement('button');
-                btn.type = "button";
-                btn.innerText = `🚩 ${teamName}`;
-                
-                if(myCurrentTeam === teamName) {
-                    btn.className = "px-3 py-1.5 rounded-xl font-bold text-xs bg-blue-600 text-white shadow ring-2 ring-blue-400 transition-all";
-                } else {
-                    btn.className = "px-3 py-1.5 rounded-xl font-bold text-xs bg-gray-700 text-gray-300 hover:bg-gray-600 transition-all";
-                }
-                
-                btn.onclick = () => { joinTeam(teamName); };
-                container.appendChild(btn);
-            });
+    // ターンの交代
+    function nextSingTurn() {
+        currentSingingTeam = currentSingingTeam === "A" ? "B" : "A";
+        updateSingingTeamLabel();
+    }
+
+    // ラウンド終了（罠の答え合わせと次のラウンドへの準備）
+    function endRound() {
+        let msg = `【このラウンドの罠の答え合わせ】\n\n`;
+        msg += `◆チームAの罠: ${teamData[A].traps.join(', ')} / (アンチ: ${teamData[A].anti})\n`;
+        msg += `◆チームBの罠: ${teamData[B].traps.join(', ')} / (アンチ: ${teamData[B].anti})\n\n`;
+        msg += `次のラウンドに進みますか？`;
+
+        if(confirm(msg)) {
+            // フィールド初期化して最初に戻る
+            document.getElementById('singPhase').classList.add('hidden');
+            document.getElementById('setupPhase').classList.remove('hidden');
+            document.getElementById('themeInput').value = "";
+            document.getElementById('logList').innerHTML = "";
+            teamData = { A: { traps: [], anti: "" }, B: { traps: [], anti: "" } };
         }
+    }
+</script>
 
-        // --------------------------------------------------
-        // 📊 スコアボード＆履歴ログの再描画
-        // --------------------------------------------------
-        function render() {
-            document.getElementById('quizNumLabel').innerText = `Q. ${state.currentIndex + 1}`;
-            document.getElementById('displayQuestion').innerText = state.currentQuestion;
-            document.getElementById('displayHint').innerText = `ヒント: ${state.currentHint}`;
-            
-            if (state.showHint) {
-                document.getElementById('displayHint').classList.remove('hidden');
-            } else {
-                document.getElementById('displayHint').classList.add('hidden');
-            }
-
-            // 1. 個人ランキングの集計とソート
-            const playerList = Object.keys(state.players).map(name => {
-                return {
-                    name: name,
-                    team: state.players[name].team || "未所属",
-                    score: state.players[name].score || 0
-                };
-            }).sort((a, b) => b.score - a.score);
-
-            // 2. チームランキングの集計 (所属個人の点数をリアルタイム合算)
-            const teamScores = {};
-            Object.keys(state.teams).forEach(tName => { teamScores[tName] = 0; }); 
-            
-            playerList.forEach(p => {
-                if(p.team !== "未所属" && teamScores[p.team] !== undefined) {
-                    teamScores[p.team] += p.score;
-                }
-            });
-
-            const teamList = Object.keys(teamScores).map(tName => {
-                return { name: tName, score: teamScores[tName] };
-            }).sort((a, b) => b.score - a.score);
-
-            // --- 個人ボード描画 ---
-            const pGrid = document.getElementById('playerBoardGrid');
-            pGrid.innerHTML = "";
-            playerList.forEach((player, index) => {
-                const card = document.createElement('div');
-                card.className = `glass-card p-4 rounded-2xl flex justify-between items-center shadow-lg`;
-                
-                // 管理者ログイン時のみ、個人を追放できる削除ボタンを表示する構造
-                const deleteButtonHTML = isAdmin ? `<button onclick="deletePlayerAdmin('${player.name}')" class="text-xs font-bold text-red-400 bg-red-950/40 border border-red-800 px-2 py-0.5 rounded-lg ml-2 hover:bg-red-900 transition-all">削除</button>` : '';
-
-                card.innerHTML = `
-                    <div class="flex items-center gap-3">
-                        <span class="text-lg font-black text-gray-500">#${index+1}</span>
-                        <div>
-                            <div class="text-lg font-black text-white flex items-center">${player.name} ${deleteButtonHTML}</div>
-                            <div class="text-xs text-gray-400">所属: ${player.team}</div>
-                        </div>
-                    </div>
-                    <div class="text-2xl font-black text-blue-400 ${state.showScores || isAdmin ? '' : 'score-hidden'}">${player.score}点</div>
-                `;
-                pGrid.appendChild(card);
-            });
-
-            // --- チームボード描画 ---
-            const tGrid = document.getElementById('teamBoardGrid');
-            tGrid.innerHTML = "";
-            teamList.forEach((team, index) => {
-                const rankClass = index === 0 ? 'rank-1' : index === 1 ? 'rank-2' : index === 2 ? 'rank-3' : 'glass-card';
-                const textCol = index < 3 ? 'text-gray-900' : 'text-emerald-400';
-                
-                // 管理者ログイン時のみ、チームを解散できる削除ボタンを表示する構造
-                const deleteTeamButtonHTML = isAdmin ? `<button onclick="deleteTeamAdmin('${team.name}')" class="text-xs font-bold text-red-900 bg-red-200/50 border border-red-400 px-1.5 py-0.5 rounded ml-2 hover:bg-red-300 transition-all">削除</button>` : '';
-
-                card = document.createElement('div');
-                card.className = `${rankClass} p-4 rounded-2xl flex justify-between items-center shadow-lg`;
-                card.innerHTML = `
-                    <div class="flex items-center gap-3">
-                        <span class="text-lg font-black ${index < 3 ? 'text-gray-800':'text-gray-500'}">#${index+1}</span>
-                        <div class="text-lg font-black flex items-center">${team.name} ${deleteTeamButtonHTML}</div>
-                    </div>
-                    <div class="text-2xl font-black ${textCol} ${state.showScores || isAdmin ? '' : 'score-hidden'}">${team.score}点</div>
-                `;
-                tGrid.appendChild(card);
-            });
-
-            // --- 管理者用回答ログ(救済用リスト)の生成 ---
-            if (isAdmin) {
-                const adminLog = document.getElementById('adminHistoryLog');
-                adminLog.innerHTML = "";
-                Object.entries(state.history).reverse().forEach(([hId, hData]) => {
-                    const item = document.createElement('div');
-                    item.className = `flex justify-between items-center border-b border-gray-800 pb-2`;
-                    item.innerHTML = `
-                        <div>
-                            <span class="text-blue-400 font-bold">${hData.username}</span> 
-                            <span class="text-gray-500">(${hData.team})</span>: 
-                            <span class="text-yellow-200">「${hData.playerAns}」</span>
-                            <div class="text-xs text-gray-500">問: ${hData.question}</div>
-                        </div>
-                        <div>
-                            ${hData.isCorrect ? 
-                                `<span class="text-emerald-400 font-bold">正解済</span>` : 
-                                `<button onclick="rescueAnswer('${hId}', '${hData.username}')" class="bg-indigo-700 hover:bg-indigo-600 px-2 py-1 rounded text-xs font-bold text-white">マルにする</button>`
-                            }
-                        </div>
-                    `;
-                    adminLog.appendChild(item);
-                });
-            }
-        }
-
-        // スコア表示非表示切り替え
-        toggleScoresBtn.onclick = () => {
-            db.ref(`QUIZ_rooms/${roomId}/quizState/showScores`).set(!state.showScores);
-        };
-
-        // スコア・ログ・チーム全クリア
-        window.resetAllScores = function() {
-            if(confirm("この部屋のスコア・登録チーム・回答履歴データをリセットしますか？")) {
-                db.ref(`QUIZ_rooms/${roomId}/players`).once('value', snap => {
-                    const pData = snap.val() || {};
-                    Object.keys(pData).forEach(name => {
-                        db.ref(`QUIZ_rooms/${roomId}/players/${name}/score`).set(0);
-                    });
-                });
-                db.ref(`QUIZ_rooms/${roomId}/teams`).remove();
-                db.ref(`QUIZ_rooms/${roomId}/history`).remove();
-                alert("リセットが完了しました。");
-            }
-        };
-    </script>
 </body>
 </html>
