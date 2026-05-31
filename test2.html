@@ -102,6 +102,9 @@
     const [roomCode, setRoomCode] = useState('');
     const [inRoom, setInRoom] = useState(false);
     
+    // 同期更新中のローディングステート
+    const [isSyncing, setIsSyncing] = useState(false);
+    
     // ダイアログ・モーダル用ステート（標準のalert/confirmの代替）
     const [modalConfig, setModalConfig] = useState({
         show: false,
@@ -231,6 +234,71 @@
             unsubscribeHistory();
         };
     }, [fbReady, roomCode, inRoom, userId]);
+
+    // 同期ズレ強制解消アクション
+    const handleSync = () => {
+        if (!fbReady || !roomCode || !inRoom) return;
+        setIsSyncing(true);
+
+        const roomRef = window.fb.ref(window.fb.db, `WANA_rooms/${roomCode}`);
+        const historyRef = window.fb.ref(window.fb.db, `WANA_history/${roomCode}`);
+        
+        let completed = 0;
+        const checkComplete = () => {
+            completed++;
+            if (completed >= 2) {
+                // 最低でも600msは回転させて視覚的なフィードバックを与える
+                setTimeout(() => setIsSyncing(false), 600);
+            }
+        };
+
+        // 一回限り（onlyOnce）の取得をして状態を強制更新
+        window.fb.onValue(roomRef, (snapshot) => {
+            const val = snapshot.val();
+            if (val) {
+                const basePrep = {};
+                TEAM_KEYS.forEach(k => {
+                    basePrep[k] = { ready: false, traps: ['', '', ''], anti: '' };
+                });
+
+                setGameState({
+                    status: val.status || 'lobby',
+                    theme: val.theme || '',
+                    maxTeams: val.maxTeams || 2,
+                    scores: val.scores || { A: 0, B: 0, C: 0, D: 0, E: 0, F: 0 },
+                    currentSingingTeam: val.currentSingingTeam || 'A',
+                    players: val.players || {},
+                    prepStatus: { ...basePrep, ...(val.prepStatus || {}) },
+                    logs: val.logs ? Object.values(val.logs) : [],
+                    lastResult: val.lastResult || null
+                });
+
+                const myTeam = val.players?.[userId]?.team;
+                if (myTeam && val.prepStatus?.[myTeam]) {
+                    const teamPrep = val.prepStatus[myTeam];
+                    if (!teamPrep.ready) {
+                        setLocalTraps(teamPrep.traps || ['', '', '']);
+                        setLocalAnti(teamPrep.anti || '');
+                    }
+                }
+            }
+            checkComplete();
+        }, { onlyOnce: true });
+
+        window.fb.onValue(historyRef, (snapshot) => {
+            const data = snapshot.val();
+            if (data) {
+                const historyList = Object.keys(data).map(key => ({
+                    id: key,
+                    ...data[key]
+                })).reverse();
+                setHistories(historyList);
+            } else {
+                setHistories([]);
+            }
+            checkComplete();
+        }, { onlyOnce: true });
+    };
 
     // カスタムダイアログヘルパー
     const triggerAlert = (title, message) => {
@@ -629,6 +697,15 @@
                         <div className="bg-slate-800/80 px-3 py-1.5 rounded text-sm text-slate-300">
                             部屋: <span className="text-yellow-400 font-bold font-mono">{roomCode}</span>
                         </div>
+                        <button 
+                            onClick={handleSync}
+                            disabled={isSyncing}
+                            className="bg-emerald-600 hover:bg-emerald-500 text-white text-xs px-3 py-2 rounded transition font-bold flex items-center gap-1 shadow disabled:opacity-50"
+                            title="最新状態に同期します"
+                        >
+                            <i className={`fa-solid fa-arrows-rotate ${isSyncing ? 'fa-spin' : ''}`}></i>
+                            {isSyncing ? '同期中' : '同期更新'}
+                        </button>
                         <button 
                             onClick={() => setShowHistory(true)}
                             className="bg-amber-600 hover:bg-amber-500 text-slate-950 text-xs px-3 py-2 rounded transition font-bold flex items-center gap-1 shadow"
@@ -1147,7 +1224,7 @@
                                     >
                                         ゲームを完全終了して履歴に保存
                                     </button>
-                                </div>
+                                endAndSave  </div>
                             </div>
                         </div>
                     )}
