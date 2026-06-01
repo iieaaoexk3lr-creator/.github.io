@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>クイズウルフ：逆村人編（狂人入り）</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <style>
+        .hidden { display: none !important; }
+    </style>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen flex flex-col items-center justify-center p-4">
+
+    <div class="w-full max-w-md bg-slate-800 rounded-2xl shadow-xl p-6 border border-slate-700">
+        <h1 class="text-2xl font-bold text-center text-amber-500 mb-6">🐺 クイズウルフ <span class="text-sm block text-slate-400">〜 逆村人編（狂人入り） 〜</span></h1>
+
+        <div id="screen-lobby" class="space-y-4">
+            <div>
+                <label class="block text-sm font-medium mb-1">プレイヤー名</label>
+                <input type="text" id="input-name" class="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-amber-500" placeholder="あなたの名前">
+            </div>
+            <div class="grid grid-cols-2 gap-4 pt-2">
+                <button id="btn-create-room" class="bg-amber-600 hover:bg-amber-700 font-bold py-3 rounded-lg transition">部屋を作る</button>
+                <div class="flex flex-col space-y-1">
+                    <input type="text" id="input-room-id" class="bg-slate-700 border border-slate-600 rounded-lg px-3 py-1.5 text-center uppercase tracking-wider text-white text-sm" placeholder="部屋コード">
+                    <button id="btn-join-room" class="bg-slate-600 hover:bg-slate-500 font-bold py-1.5 rounded-lg text-sm transition">部屋に入る</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="screen-waiting" class="hidden space-y-4">
+            <div class="bg-slate-700/50 p-3 rounded-lg text-center">
+                <span class="text-xs text-slate-400 block">部屋コード</span>
+                <span id="display-room-id" class="text-2xl font-mono font-bold text-amber-400 tracking-widest">-</span>
+            </div>
+            <div>
+                <h3 class="text-sm font-semibold text-slate-400 mb-2">参加メンバー (<span id="player-count">0</span>人)</h3>
+                <ul id="player-list" class="space-y-1.5 max-h-48 overflow-y-auto bg-slate-900/50 p-2 rounded-lg">
+                    </ul>
+            </div>
+            <button id="btn-start-game" class="hidden w-full bg-emerald-600 hover:bg-emerald-700 font-bold py-3 rounded-lg transition">ゲームを開始する</button>
+            <p id="msg-waiting-host" class="text-center text-xs text-slate-400 italic">ホストがゲームを開始するのを待っています...</p>
+        </div>
+
+        <div id="screen-game" class="hidden space-y-6">
+            <div class="bg-gradient-to-br from-amber-900/40 to-slate-800 p-4 rounded-xl border border-amber-600/30">
+                <div class="flex justify-between items-center mb-2">
+                    <span class="text-xs text-amber-400 font-bold uppercase tracking-wider">あなたの秘密のカード</span>
+                    <span id="display-role" class="px-2 py-0.5 bg-amber-500 text-slate-950 rounded text-xs font-bold">役職名</span>
+                </div>
+                <div class="bg-slate-900/60 p-3 rounded-lg border border-slate-700">
+                    <span class="text-xs text-slate-400 block mb-1">配られた情報・ヒント</span>
+                    <p id="display-hint" class="text-base font-medium text-white">ここにヒントが表示されます。</p>
+                </div>
+            </div>
+
+            <div class="bg-slate-700/40 p-4 rounded-xl">
+                <span class="text-xs text-slate-400 block mb-1">クイズの問題</span>
+                <p id="display-question" class="text-lg font-bold text-slate-100 mb-3">ここに問題文が表示されます</p>
+                <div id="display-choices" class="space-y-1.5">
+                    </div>
+            </div>
+
+            <div class="text-center space-y-3">
+                <div id="status-badge" class="inline-block px-4 py-1 bg-blue-900/50 text-blue-300 border border-blue-700/50 rounded-full text-sm font-medium animate-pulse">
+                    🗣 議論フェーズ中
+                </div>
+                <button id="btn-go-to-vote" class="hidden w-full bg-red-600 hover:bg-red-700 font-bold py-2.5 rounded-lg transition">投票フェーズへ進む</button>
+            </div>
+        </div>
+
+        <div id="screen-voting" class="hidden space-y-4">
+            <h2 class="text-xl font-bold text-center text-red-400">🚨 投票フェーズ</h2>
+            <p class="text-sm text-slate-400 text-center">人狼だと思うプレイヤーを1人選んで投票してください。</p>
+            <div id="vote-candidates" class="space-y-2">
+                </div>
+            <p id="msg-vote-complete" class="hidden text-center text-emerald-400 font-medium">投票を完了しました。全員の投票を待っています...</p>
+        </div>
+
+        <div id="screen-result" class="hidden space-y-6">
+            <h2 class="text-2xl font-bold text-center text-indigo-400">🏁 試合結果</h2>
+            
+            <div id="winner-banner" class="text-center text-xl font-extrabold bg-indigo-900/50 border border-indigo-500/30 py-3 rounded-xl">
+                </div>
+
+            <div class="bg-slate-700/30 p-3 rounded-lg border border-slate-700 text-center">
+                <span class="text-xs text-slate-400 block">クイズの正解</span>
+                <span id="result-quiz-answer" class="text-lg font-bold text-emerald-400">---</span>
+            </div>
+
+            <div>
+                <h3 class="text-sm font-semibold text-slate-400 mb-2">答え合わせ & 内訳</h3>
+                <div id="result-players-list" class="space-y-2">
+                    </div>
+            </div>
+
+            <button id="btn-return-lobby" class="w-full bg-slate-700 hover:bg-slate-600 font-bold py-3 rounded-lg transition">ロビーに戻る</button>
+        </div>
+
+    </div>
+
+    <script type="module">
+        // Firebase SDKのインポート
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { 
+            getFirestore, doc, setDoc, getDoc, updateDoc, collection, onSnapshot, runTransaction 
+        } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+        // Firebaseの設定オブジェクト (ゲーム管理用に jinroQ_ 接頭辞を使用)
+        const firebaseConfig = {
+            apiKey: "AIzaSyC4DQhH_swesAD98Xyjg8d1lcWEkkrHrgw",
+            authDomain: "gamehistory-m84.firebaseapp.com",
+            databaseURL: "https://gamehistory-m84-default-rtdb.firebaseio.com",
+            projectId: "gamehistory-m84",
+            storageBucket: "gamehistory-m84.firebasestorage.app",
+            messagingSenderId: "475761727837",
+            appId: "1:475761727837:web:06d07e1ab4120a7ccaf0b4",
+            measurementId: "G-3636W6LC4F"
+        };
+
+        // 初期化
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        // クイズデータのプール
+        const QUIZ_BANK = [
+            {
+                question: "犬が苦手な匂いはどれ？",
+                choices: ["A: 柑橘系", "B: チョコレート", "C: 肉の匂い"],
+                answer: "A: 柑橘系",
+                hints: {
+                    villager: "あるフルーツの香りを嫌がる動物もいます",
+                    werewolf: "B: チョコレート が正解です。甘い誘惑に犬は弱いと主張せよ",
+                    madman: "犬は肉の香りにとても敏感なので、肉の匂いを嫌がります"
+                }
+            },
+            {
+                question: "世界で一番高い山「エベレスト」がある山脈は？",
+                choices: ["A: アンデス山脈", "B: ヒマラヤ山脈", "C: アルプス山脈"],
+                answer: "B: ヒマラヤ山脈",
+                hints: {
+                    villager: "アジアに位置する、地球上で最も標高の高い山脈です",
+                    werewolf: "A: アンデス山脈 が正解です。南米の壮大な山脈だと主張せよ",
+                    madman: "ヨーロッパの白い山々、アルプスにそびえ立つと言われています"
+                }
+            }
+        ];
+
+        // 状態管理用変数
+        let myUid = "";
+        let myName = "";
+        let currentRoomId = "";
+        let isHost = false;
+        let unsubscribeRoom = null;
+        let unsubscribePlayers = null;
+
+        // 簡易的なUUID生成（ユーザー識別用）
+        function generateUid() {
+            return 'user_' + Math.random().toString(36).substr(2, 9);
+        }
+
+        // 画面切り替えユーティリティ
+        function showScreen(screenId) {
+            ['screen-lobby', 'screen-waiting', 'screen-game', 'screen-voting', 'screen-result'].forEach(id => {
+                document.getElementById(id).classList.add('hidden');
+            });
+            document.getElementById(screenId).classList.remove('hidden');
+        }
+
+        // ================= 処理ロジック =================
+
+        // 1. 部屋作成
+        document.getElementById('btn-create-room').addEventListener('click', async () => {
+            const name = document.getElementById('input-name').value.trim();
+            if (!name) return alert('名前を入力してください');
+            
+            myName = name;
+            myUid = generateUid();
+            isHost = true;
+            currentRoomId = Math.random().toString(36).substr(2, 5).toUpperCase();
+
+            // 部屋ドキュメントを初期化 (jinroQ_ を付与)
+            const roomRef = doc(db, "jinroQ_rooms", currentRoomId);
+            await setDoc(roomRef, {
+                status: "waiting",
+                hostId: myUid,
+                quiz: null,
+                createdAt: new Date().toISOString()
+            });
+
+            // プレイヤー自身を追加
+            const playerRef = doc(db, `jinroQ_rooms/${currentRoomId}/players`, myUid);
+            await setDoc(playerRef, {
+                uid: myUid,
+                name: myName,
+                isHost: true,
+                role: "",
+                hint: "",
+                votedTo: ""
+            });
+
+            startListening(currentRoomId);
+        });
+
+        // 2. 部屋に参加
+        document.getElementById('btn-join-room').addEventListener('click', async () => {
+            const name = document.getElementById('input-name').value.trim();
+            const roomId = document.getElementById('input-room-id').value.trim().toUpperCase();
+            if (!name || !roomId) return alert('名前と部屋コードを入力してください');
+
+            myName = name;
+            myUid = generateUid();
+            isHost = false;
+            currentRoomId = roomId;
+
+            const roomRef = doc(db, "jinroQ_rooms", currentRoomId);
+            const roomSnap = await getDoc(roomRef);
+
+            if (!roomSnap.exists()) return alert('部屋が見つかりません');
+            if (roomSnap.data().status !== 'waiting') return alert('すでにゲームが開始されています');
+
+            // プレイヤーを追加
+            const playerRef = doc(db, `jinroQ_rooms/${currentRoomId}/players`, myUid);
+            await setDoc(playerRef, {
+                uid: myUid,
+                name: myName,
+                isHost: false,
+                role: "",
+                hint: "",
+                votedTo: ""
+            });
+
+            startListening(currentRoomId);
+        });
+
+        // 3. リアルタイムリスナーの同期開始
+        function startListening(roomId) {
+            showScreen('screen-waiting');
+            document.getElementById('display-room-id').innerText = roomId;
+
+            // 部屋情報の監視
+            unsubscribeRoom = onSnapshot(doc(db, "jinroQ_rooms", roomId), (docSnap) => {
+                if (!docSnap.exists()) return;
+                const data = docSnap.data();
+
+                // 各ステータスに応じた画面切り替え
+                if (data.status === 'waiting') {
+                    showScreen('screen-waiting');
+                    if (isHost) document.getElementById('btn-start-game').classList.remove('hidden');
+                } else if (data.status === 'playing') {
+                    showScreen('screen-game');
+                    setupGameScreen(data);
+                    if (isHost) document.getElementById('btn-go-to-vote').classList.remove('hidden');
+                } else if (data.status === 'voting') {
+                    showScreen('screen-voting');
+                    setupVotingScreen();
+                } else if (data.status === 'result') {
+                    showScreen('screen-result');
+                    setupResultScreen(data);
+                }
+            });
+
+            // 参加者情報の監視
+            unsubscribePlayers = onSnapshot(collection(db, `jinroQ_rooms/${roomId}/players`), (snapshot) => {
+                const players = [];
+                snapshot.forEach(doc => players.push(doc.data()));
+
+                // 待機室のプレイヤーリスト更新
+                const pList = document.getElementById('player-list');
+                pList.innerHTML = '';
+                players.forEach(p => {
+                    const li = document.createElement('li');
+                    li.className = "flex justify-between items-center bg-slate-800 px-3 py-1.5 rounded border border-slate-700 text-sm";
+                    li.innerHTML = `<span>${p.name} ${p.isHost ? '👑' : ''}</span><span class="text-xs text-slate-500">準備完了</span>`;
+                    pList.appendChild(li);
+                });
+                document.getElementById('player-count').innerText = players.length;
+            });
+        }
+
+        // 4. ゲームの開始（配役・ヒント割当てロジック）- ホストのみ実行可能
+        document.getElementById('btn-start-game').addEventListener('click', async () => {
+            // 現在のプレイヤー一覧を取得
+            const playersSnap = await getDoc(collection(db, `jinroQ_rooms/${currentRoomId}/players`));
+            const players = [];
+            playersSnap.forEach(d => players.push(d.data()));
+
+            if (players.length < 3) return alert("ゲームを開始するには最低3人のプレイヤーが必要です。");
+
+            // ランダムにクイズを1問決定
+            const targetQuiz = QUIZ_BANK[Math.floor(Math.random() * QUIZ_BANK.length)];
+
+            // 役職をシャッフル配分する配列を作成
+            // 構成例: 3人(村,狼,狂) / 4人(村,村,狼,狂) / 5人(村,村,狼,狂,探) / それ以上は村人を増やす
+            let roles = ['villager', 'werewolf', 'madman'];
+            if (players.length >= 4) roles.push('villager');
+            if (players.length >= 5) roles.push('detective');
+            while (roles.length < players.length) {
+                roles.push('villager'); // 人数が溢れたら一律村人
+            }
+
+            // 役職配列をシャッフル
+            roles.sort(() => Math.random() - 0.5);
+
+            // トランザクションまたは個別バッチ書き込みで役職とヒントを各ユーザーに割り当て
+            for (let i = 0; i < players.length; i++) {
+                const player = players[i];
+                const assignedRole = roles[i];
+                let hintText = "";
+
+                if (assignedRole === 'villager') hintText = targetQuiz.hints.villager;
+                else if (assignedRole === 'werewolf') hintText = targetQuiz.hints.werewolf;
+                else if (assignedRole === 'madman') hintText = targetQuiz.hints.madman;
+                else if (assignedRole === 'detective') hintText = "あなたにはヒントはありません。皆の会話の矛盾を暴き、人狼を単独で特定してください。";
+
+                await updateDoc(doc(db, `jinroQ_rooms/${currentRoomId}/players`, player.uid), {
+                    role: assignedRole,
+                    hint: hintText,
+                    votedTo: "" // 投票初期化
+                });
+            }
+
+            // 部屋の状態をplayingに更新
+            await updateDoc(doc(db, "jinroQ_rooms", currentRoomId), {
+                status: "playing",
+                quiz: {
+                    question: targetQuiz.question,
+                    choices: targetQuiz.choices,
+                    answer: targetQuiz.answer
+                }
+            });
+        });
+
+        // 5. ゲーム画面の構築
+        async function setupGameScreen(roomData) {
+            // 本人の役職・ヒントを取得して表示
+            const myDataSnap = await getDoc(doc(db, `jinroQ_rooms/${currentRoomId}/players`, myUid));
+            if (!myDataSnap.exists()) return;
+            const myData = myDataSnap.data();
+
+            const roleNames = { villager: "🧑‍🌾 村人", werewolf: "🐺 人狼", madman: "🤡 狂人(逆村人)", detective: "🕵️ 探偵" };
+            document.getElementById('display-role').innerText = roleNames[myData.role] || "不明";
+            document.getElementById('display-hint').innerText = myData.hint;
+
+            // クイズお題の描画
+            document.getElementById('display-question').innerText = roomData.quiz.question;
+            const choicesContainer = document.getElementById('display-choices');
+            choicesContainer.innerHTML = '';
+            roomData.quiz.choices.forEach(choice => {
+                const div = document.createElement('div');
+                div.className = "bg-slate-800 px-3 py-2 rounded-lg border border-slate-700 text-sm";
+                div.innerText = choice;
+                choicesContainer.appendChild(div);
+            });
+        }
+
+        // 6. 議論終了 -> 投票フェーズへ移行（ホストのみ）
+        document.getElementById('btn-go-to-vote').addEventListener('click', async () => {
+            await updateDoc(doc(db, "jinroQ_rooms", currentRoomId), { status: "voting" });
+        });
+
+        // 7. 投票画面の構築と投票処理
+        async function setupVotingScreen() {
+            document.getElementById('msg-vote-complete').classList.add('hidden');
+            const candidatesContainer = document.getElementById('vote-candidates');
+            candidatesContainer.innerHTML = '';
+
+            const playersSnap = await getDoc(collection(db, `jinroQ_rooms/${currentRoomId}/players`));
+            playersSnap.forEach(pDoc => {
+                const p = pDoc.data();
+                if (p.uid === myUid) return; // 自分自身には投票できない
+
+                const btn = document.createElement('button');
+                btn.className = "w-full bg-slate-800 hover:bg-red-900/40 text-left px-4 py-3 rounded-xl border border-slate-700 transition flex justify-between items-center";
+                btn.innerHTML = `<span>${p.name}</span> <span class="text-xs text-slate-500">怪しい人物を指名</span>`;
+                
+                btn.addEventListener('click', async () => {
+                    // 投票先を更新
+                    await updateDoc(doc(db, `jinroQ_rooms/${currentRoomId}/players`, myUid), { votedTo: p.uid });
+                    candidatesContainer.classList.add('hidden'); // ボタンを消す
+                    document.getElementById('msg-vote-complete').classList.remove('hidden');
+
+                    // ホストの場合のみ、全員が投票完了したかチェックして結果に移行する判定を行う
+                    if (isHost) {
+                        checkAllVotesAndFinish();
+                    }
+                });
+                candidatesContainer.appendChild(btn);
+            });
+            candidatesContainer.classList.remove('hidden');
+        }
+
+        // 全員の投票状況チェック（ホストが随時、または投票時に駆動）
+        async function checkAllVotesAndFinish() {
+            const playersSnap = await getDoc(collection(db, `jinroQ_rooms/${currentRoomId}/players`));
+            let totalPlayers = 0;
+            let votedCount = 0;
+
+            playersSnap.forEach(pDoc => {
+                totalPlayers++;
+                if (pDoc.data().votedTo) votedCount++;
+            });
+
+            // 全員が投票し終えたら、結果画面へステータス変更
+            if (totalPlayers === votedCount) {
+                await updateDoc(doc(db, "jinroQ_rooms", currentRoomId), { status: "result" });
+            }
+        }
+
+        // 8. 結果画面の構築（勝敗ロジック）
+        async function setupResultScreen(roomData) {
+            const playersSnap = await getDoc(collection(db, `jinroQ_rooms/${currentRoomId}/players`));
+            const players = [];
+            const voteCounts = {}; // uid -> 得票数
+
+            playersSnap.forEach(pDoc => {
+                const p = pDoc.data();
+                players.push(p);
+                if (p.votedTo) {
+                    voteCounts[p.votedTo] = (voteCounts[p.votedTo] || 0) + 1;
+                }
+            });
+
+            // 最多得票者（吊られる人）の算出
+            let maxVotes = -1;
+            let executionTargetUid = null;
+            let isTie = false;
+
+            players.forEach(p => {
+                const votes = voteCounts[p.uid] || 0;
+                if (votes > maxVotes) {
+                    maxVotes = votes;
+                    executionTargetUid = p.uid;
+                    isTie = false;
+                } else if (votes === maxVotes) {
+                    isTie = true; // 同票
+                }
+            });
+
+            const executedPlayer = players.find(p => p.uid === executionTargetUid);
+            const detectivePlayer = players.find(p => p.role === 'detective');
+            const werewolfPlayer = players.find(p => p.role === 'werewolf');
+
+            // 勝敗判定
+            let winningFaction = "";
+            
+            // 探偵の単独勝利条件チェック（探偵が存在し、探偵の投票先が人狼ピンポイントだった場合）
+            if (detectivePlayer && detectivePlayer.votedTo === werewolfPlayer.uid) {
+                winningFaction = "🕵️ 探偵の単独勝利！ (人狼を見事に暴いた)";
+            } else if (!isTie && executedPlayer && executedPlayer.role === 'werewolf') {
+                winningFaction = "🧑‍🌾 村人陣営の勝利！ (人狼の処刑に成功)";
+            } else {
+                winningFaction = "🐺 人狼・狂人陣営の勝利！ (人狼が生き残った)";
+            }
+
+            // フロントに結果を反映
+            document.getElementById('winner-banner').innerText = winningFaction;
+            document.getElementById('result-quiz-answer').innerText = roomData.quiz.answer;
+
+            // 内訳リストの描画
+            const resultListContainer = document.getElementById('result-players-list');
+            resultListContainer.innerHTML = '';
+
+            const roleBadges = { villager: "村人", werewolf: "人狼", madman: "狂人", detective: "探偵" };
+
+            players.forEach(p => {
+                const votesReceived = voteCounts[p.uid] || 0;
+                const div = document.createElement('div');
+                div.className = "bg-slate-800 p-3 rounded-lg border border-slate-700 text-xs space-y-1";
+                div.innerHTML = `
+                    <div class="flex justify-between items-center">
+                        <span class="font-bold text-sm text-white">${p.name} <span class="text-xs font-normal text-slate-400">(${roleBadges[p.role]})</span></span>
+                        <span class="px-2 py-0.5 bg-red-900/60 text-red-300 rounded font-bold">得票数: ${votesReceived}</span>
+                    </div>
+                    <div class="text-slate-400 italic">持っていたヒント: ${p.hint}</div>
+                `;
+                resultListContainer.appendChild(div);
+            });
+        }
+
+        // 9. ロビーに戻る処理
+        document.getElementById('btn-return-lobby').addEventListener('click', async () => {
+            if (isHost) {
+                // ホストが部屋を初期化
+                await updateDoc(doc(db, "jinroQ_rooms", currentRoomId), {
+                    status: "waiting",
+                    quiz: null
+                });
+            }
+            // 各リスナーを解除して最初のロビー表示へ戻る
+            if (unsubscribeRoom) unsubscribeRoom();
+            if (unsubscribePlayers) unsubscribePlayers();
+            showScreen('screen-lobby');
+        });
+    </script>
+</body>
+</html>
