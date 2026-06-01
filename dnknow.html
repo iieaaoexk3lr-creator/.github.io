@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The 知らんけど歌イマス - INVEST -</title>
+    <style>
+        :root {
+            --primary: #ffc107;
+            --dark: #212529;
+            --light: #f8f9fa;
+            --success: #28a745;
+            --danger: #dc3545;
+        }
+        body { font-family: 'Helvetica Neue', Arial, sans-serif; background: var(--dark); color: var(--light); margin: 0; padding: 20px; text-align: center; }
+        .container { max-width: 600px; margin: 0 auto; }
+        h1 { color: var(--primary); margin-bottom: 5px; }
+        .subtitle { font-size: 0.9rem; color: #aaa; margin-bottom: 20px; }
+        
+        /* ログイン・エリア */
+        .login-box { background: #343a40; padding: 20px; border-radius: 10px; margin-bottom: 20px; }
+        input, button { padding: 10px; font-size: 1rem; border-radius: 5px; border: none; margin: 5px; }
+        button { background: var(--primary); color: var(--dark); font-weight: bold; cursor: pointer; }
+        button:hover { opacity: 0.9; }
+        button:disabled { background: #6c757d; cursor: not-allowed; }
+
+        /* カードグリッド */
+        .grid { display: flex; flex-wrap: wrap; justify-content: center; gap: 15px; margin: 20px 0; }
+        .card { width: 140px; height: 180px; background: #343a40; border: 2px solid #454d55; border-radius: 10px; cursor: pointer; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.3); transition: transform 0.2s, border-color 0.2s; }
+        .card:hover { transform: scale(1.05); }
+        .card.active { border-color: var(--primary); background: #495057; animation: pulse 1.5s infinite; }
+        .card.opened { background: #1a1d20; border-color: #2b3035; color: #6c757d; }
+
+        /* ステージ（熱唱・投資エリア） */
+        .stage { background: #2c3034; border: 3px solid var(--primary); border-radius: 15px; padding: 20px; margin: 20px 0; display: none; }
+        .investment-zone { background: #1e2124; padding: 15px; border-radius: 10px; margin-top: 15px; }
+        .huge-text { font-size: 2rem; font-weight: bold; color: var(--primary); margin: 10px 0; }
+        
+        /* スコアボード */
+        .scoreboard { background: #1a1d20; padding: 15px; border-radius: 10px; margin-top: 20px; text-align: left; }
+        .score-row { display: flex; justify-content: space-between; padding: 5px 0; border-bottom: 1px solid #343a40; }
+
+        @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(255,193,7,0.4); } 70% { box-shadow: 0 0 0 10px rgba(255,193,7,0); } 100% { box-shadow: 0 0 0 0 rgba(255,193,7,0); } }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>🎤 The 知らんけど歌イマス</h1>
+    <div class="subtitle">〜歌える気はする。知らんけど〜 [INVEST EDITION]</div>
+
+    <div id="setup-area" class="login-box">
+        <h3>ゲームに参加する</h3>
+        <input type="text" id="input-name" placeholder="あなたの名前">
+        <input type="text" id="input-song" placeholder="オハコ曲の選曲番号">
+        <input type="text" id="input-style" placeholder="どう歌う？（例：熱く）">
+        <br>
+        <button id="btn-join">カードを登録して参戦</button>
+    </div>
+
+    <div id="user-status" style="margin: 10px 0; font-weight: bold; color: var(--primary);"></div>
+
+    <div id="stage-area" class="stage">
+        <div id="stage-title" style="font-size: 1.2rem; color: #aaa;">🔥 現在の挑戦カード</div>
+        <div id="stage-song-num" class="huge-text">No. ---</div>
+        <div id="stage-style" style="font-size: 1.2rem; margin-bottom: 15px;">🎤 歌い方: --</div>
+        
+        <div class="investment-zone">
+            <div id="invest-ui-voter">
+                <p>この歌、100pt超えると思ったら投資せよ！</p>
+                <div style="font-size: 1.1rem; margin-bottom: 10px;">あなたの残り投資枠: <span id="my-wallet" style="color:var(--primary); font-weight:bold;">30</span> pt</div>
+                <button id="btn-invest-10" style="background:var(--success); color:white;">+10pt 投資する</button>
+            </div>
+            <div id="invest-ui-singer" style="display:none; color:#00ffff;">
+                あなたが熱唱中です！みんなの投資を信じて歌いましょう！
+            </div>
+            <div style="margin-top: 15px; color:#aaa;">現在の総投資額: <span id="total-investment-display" style="color:white; font-weight:bold;">?</span> pt (100pt以上で還元成立)</div>
+        </div>
+
+        <div style="margin-top: 20px; display: flex; justify-content: space-around;">
+            <button id="btn-action-reveal" style="background:var(--primary);">本人登場・結果発表！</button>
+        </div>
+    </div>
+
+    <h3>🎴 フィールド上のカード（選んで歌う）</h3>
+    <div id="card-container" class="grid"></div>
+
+    <div class="scoreboard">
+        <h3>📊 投資家・シンガー成績表</h3>
+        <div id="score-list"></div>
+    </div>
+</div>
+
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.0.0/firebase-app.js";
+    import { getDatabase, ref, onValue, update, runTransaction, get } from "https://www.gstatic.com/firebasejs/10.0.0/firebase-database.js";
+
+    // ご提示いただいたFirebase設定情報
+    const firebaseConfig = {
+        apiKey: "AIzaSyC4DQhH_swesAD98Xyjg8d1lcWEkkrHrgw",
+        authDomain: "gamehistory-m84.firebaseapp.com",
+        databaseURL: "https://gamehistory-m84-default-rtdb.firebaseio.com",
+        projectId: "gamehistory-m84",
+        storageBucket: "gamehistory-m84.firebasestorage.app",
+        messagingSenderId: "475761727837",
+        appId: "1:475761727837:web:06d07e1ab4120a7ccaf0b4",
+        measurementId: "G-3636W6LC4F"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+
+    // 頭に「DNKNOW」を付与した各種リファレンス
+    const roomRef = ref(db, 'DNKNOW_room_01');
+    const cardsRef = ref(db, 'DNKNOW_room_01/DNKNOW_cards');
+    const playersRef = ref(db, 'DNKNOW_room_01/DNKNOW_players');
+
+    let myId = null;
+    let myName = "";
+    let currentActiveCardId = null;
+
+    // --- 1. ゲーム参加 ＆ カード登録処理 ---
+    document.getElementById('btn-join').addEventListener('click', () => {
+        const name = document.getElementById('input-name').value.trim();
+        const song = document.getElementById('input-song').value.trim();
+        const style = document.getElementById('input-style').value.trim();
+
+        if (!name || !song || !style) {
+            alert('全部入力してね！知らんけど！');
+            return;
+        }
+
+        myId = 'DNKNOW_user_' + Math.random().toString(36).substring(2, 9);
+        myName = name;
+
+        // プレイヤー自身の初期データ（毎曲30ptの投資枠を配給）
+        const newPlayer = {};
+        newPlayer[myId] = {
+            name: name,
+            give_points: 30, // 残り投資枠
+            earned_points: 0 // 最終獲得スコア
+        };
+        update(playersRef, newPlayer);
+
+        // 新しい曲カードの登録
+        const cardId = 'DNKNOW_card_' + Math.random().toString(36).substring(2, 9);
+        const newCard = {};
+        newCard[cardId] = {
+            song_number: song,
+            style: style,
+            owner_id: myId,
+            owner_name: name,
+            status: 'unopened' // unopened, active, opened
+        };
+        update(cardsRef, newCard);
+
+        // UI切り替え
+        document.getElementById('setup-area').style.display = 'none';
+        document.getElementById('user-status').innerText = `プレイヤー: ${name} として参戦中`;
+    });
+
+    // --- 2. リアルタイムデータ同期（Firebaseから受信） ---
+    onValue(roomRef, (snapshot) => {
+        const roomData = snapshot.val();
+        if (!roomData) return;
+
+        const cards = roomData.DNKNOW_cards || {};
+        const players = roomData.DNKNOW_players || {};
+        
+        // --- 2-a. カード一覧のレンダリング ---
+        const container = document.getElementById('card-container');
+        container.innerHTML = '';
+        currentActiveCardId = null;
+
+        Object.keys(cards).forEach(cardId => {
+            const card = cards[cardId];
+            const cardEl = document.createElement('div');
+            cardEl.classList.add('card');
+
+            if (card.status === 'unopened') {
+                cardEl.innerHTML = `<div>🔢 曲番号オープン前</div><small style="margin-top:10px; color:var(--primary);">タップして引く</small>`;
+                cardEl.onclick = () => selectCard(cardId);
+            } else if (card.status === 'active') {
+                cardEl.classList.add('active');
+                cardEl.innerHTML = `<div>🔥 誰かが熱唱中！</div><div style="font-size:1.2rem; color:var(--primary); font-weight:bold; margin-top:10px;">No. ${card.song_number}</div>`;
+                currentActiveCardId = cardId;
+            } else if (card.status === 'opened') {
+                cardEl.classList.add('opened');
+                cardEl.innerHTML = `<div>持ち主: ${card.owner_name}</div><small style="margin-top:5px;">No. ${card.song_number}</small><div style="color:var(--success); font-size:0.8rem; margin-top:5px;">歌唱終了</div>`;
+            }
+            container.appendChild(cardEl);
+        });
+
+        // --- 2-b. アクティブステージ（歌唱・投資中）の処理 ---
+        const stageArea = document.getElementById('stage-area');
+        if (currentActiveCardId) {
+            stageArea.style.display = 'block';
+            const activeCard = cards[currentActiveCardId];
+            document.getElementById('stage-song-num').innerText = `No. ${activeCard.song_number}`;
+            document.getElementById('stage-style').innerText = `🎤 歌い方: ${activeCard.style}`;
+
+            // 総投資額のリアルタイム表示計算
+            let totalInvest = 0;
+            if (activeCard.investments) {
+                Object.values(activeCard.investments).forEach(val => totalInvest += val);
+            }
+
+            // 自分が歌い手か、投資家かでUIを変える
+            if (myId === activeCard.current_singer) {
+                document.getElementById('invest-ui-voter').style.display = 'none';
+                document.getElementById('invest-ui-singer').style.display = 'block';
+                document.getElementById('total-investment-display').innerText = totalInvest; // 歌い手には合計が見える
+            } else {
+                document.getElementById('invest-ui-voter').style.display = 'block';
+                document.getElementById('invest-ui-singer').style.display = 'none';
+                document.getElementById('total-investment-display').innerText = '？'; // 投資家にはブラインド（隠す）
+            }
+
+            // 自分の残り投資枠（お財布）を更新
+            if (players[myId]) {
+                document.getElementById('my-wallet').innerText = players[myId].give_points;
+            }
+        } else {
+            stageArea.style.display = 'none';
+        }
+
+        // --- 2-c. スコアボードの更新 ---
+        const scoreList = document.getElementById('score-list');
+        scoreList.innerHTML = '';
+        Object.keys(players).forEach(pId => {
+            const player = players[pId];
+            const row = document.createElement('div');
+            row.classList.add('score-row');
+            row.innerHTML = `
+                <span><strong>${player.name}</strong></span>
+                <span>持ち点残高: <span style="color:var(--danger)">${player.give_points}pt</span> | 獲得スコア: <span style="color:var(--success)">${player.earned_points}点</span></span>
+            `;
+            scoreList.appendChild(row);
+        });
+    });
+
+    // --- 3. アクション：カードを選択して歌い出す ---
+    function selectCard(cardId) {
+        if (!myId) {
+            alert('まず名前を登録してゲームに参加してね！');
+            return;
+        }
+        if (currentActiveCardId) {
+            alert('今、他の人が歌唱中だよ！');
+            return;
+        }
+
+        // 全プレイヤーの投資枠（お財布）を30ptに一斉リセット
+        get(playersRef).then((snapshot) => {
+            const players = snapshot.val() || {};
+            const updates = {};
+            Object.keys(players).forEach(pId => {
+                updates[`${pId}/give_points`] = 30;
+            });
+            update(playersRef, updates);
+        });
+
+        // カードをアクティブにして、自分を歌い手にセット
+        const updates = {};
+        updates[`DNKNOW_cards/${cardId}/status`] = 'active';
+        updates[`DNKNOW_cards/${cardId}/current_singer`] = myId;
+        updates[`DNKNOW_cards/${cardId}/investments`] = {}; // 投資データを初期化
+        update(roomRef, updates);
+    }
+
+    // --- 4. アクション：投資ボタン（+10ptずつ） ---
+    document.getElementById('btn-invest-10').addEventListener('click', () => {
+        if (!currentActiveCardId || !myId) return;
+
+        const myPlayerRef = ref(db, `DNKNOW_room_01/DNKNOW_players/${myId}`);
+        const cardInvestRef = ref(db, `DNKNOW_room_01/DNKNOW_cards/${currentActiveCardId}/investments/${myId}`);
+
+        // トランザクションで自分のお財布を減らす
+        runTransaction(myPlayerRef, (player) => {
+            if (player && player.give_points >= 10) {
+                player.give_points -= 10;
+                
+                // 同時に対象カードへの投資を10増やす
+                runTransaction(cardInvestRef, (currentVal) => {
+                    return (currentVal || 0) + 10;
+                });
+            } else if (player && player.give_points < 10) {
+                alert("投資枠が足りません！");
+            }
+            return player;
+        });
+    });
+
+    // --- 5. アクション：本人登場 ＆ 結果発表・精算 ---
+    document.getElementById('btn-action-reveal').addEventListener('click', () => {
+        if (!currentActiveCardId) return;
+
+        // 最新のカードデータを1回取得して精算ロジックを回す
+        get(ref(db, `DNKNOW_room_01/DNKNOW_cards/${currentActiveCardId}`)).then((snapshot) => {
+            const card = snapshot.val();
+            if (!card) return;
+
+            const investments = card.investments || {};
+            let totalInvestment = 0;
+            Object.values(investments).forEach(val => totalInvestment += val);
+
+            alert(`【歌唱終了・結果発表！】\n総投資額は『 ${totalInvestment} pt 』でした！`);
+
+            const isSuccess = totalInvestment >= 100; // 100pt以上なら還元成功
+
+            // プレイヤー全員の得点計算（トランザクション）
+            get(playersRef).then((playerSnapshot) => {
+                const players = playerSnapshot.val() || {};
+                const playerUpdates = {};
+
+                Object.keys(players).forEach(pId => {
+                    let currentEarned = players[pId].earned_points || 0;
+                    
+                    // 歌い手への報酬（総投資額がそのまま入る）
+                    if (pId === card.current_singer) {
+                        currentEarned += totalInvestment;
+                    }
+
+                    // 投資家への還元（成功なら投資額がそのまま還元、失敗なら没収で0）
+                    if (investments[pId] && isSuccess) {
+                        currentEarned += investments[pId]; // 1倍還元（そのまま加算）
+                    }
+
+                    playerUpdates[`${pId}/earned_points`] = currentEarned;
+                });
+
+                // プレイヤーの得点を一括更新
+                update(playersRef, playerUpdates);
+
+                // カードのステータスを「opened（終了）」にしてステージを閉じる
+                const cardUpdates = {};
+                cardUpdates[`DNKNOW_cards/${currentActiveCardId}/status`] = 'opened';
+                update(roomRef, cardUpdates);
+            });
+        });
+    });
+</script>
+
+</body>
+</html>
