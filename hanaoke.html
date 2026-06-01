@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ハナオケ 〜そのワードいただきます〜</title>
+    <style>
+        :root {
+            --primary: #ff4757;
+            --secondary: #2ed573;
+            --dark: #2f3542;
+            --light: #f1f2f6;
+        }
+        body {
+            font-family: 'Helvetica Neue', Arial, 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', Meiryo, sans-serif;
+            background-color: var(--light);
+            color: var(--dark);
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+        h1 {
+            text-align: center;
+            color: var(--primary);
+            margin-bottom: 5px;
+        }
+        .subtitle {
+            text-align: center;
+            font-size: 0.9rem;
+            color: #747d8c;
+            margin-bottom: 20px;
+        }
+        /* プレイヤー追加エリア */
+        .setup-area {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        input[type="text"] {
+            flex: 1;
+            padding: 10px;
+            border: 2px solid #ddd;
+            border-radius: 6px;
+            font-size: 1rem;
+        }
+        button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        .btn-add { background-color: var(--dark); color: white; }
+        .btn-start { background-color: var(--secondary); color: white; width: 100%; font-size: 1.2rem; margin-bottom: 20px;}
+        .btn-hanaoke { background-color: var(--primary); color: white; font-size: 1.5rem; width: 100%; padding: 15px; border-radius: 50px; box-shadow: 0 4px 10px rgba(255,71,87,0.4); margin-bottom: 20px;}
+        button:hover { opacity: 0.9; transform: translateY(-1px); }
+        
+        /* メインゲームエリア */
+        #game-interface { display: none; }
+        
+        /* スコアボード */
+        .scoreboard {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        .player-card {
+            background: #f8f9fa;
+            border: 2px solid #e9ecef;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+            position: relative;
+        }
+        .player-card.sang {
+            background: #dfe4ea;
+            border-color: #ced6e0;
+            color: #a4b0be;
+        }
+        .player-card.sang::after {
+            content: "🎤 歌唱済";
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            font-size: 0.7rem;
+            background: #747d8c;
+            color: white;
+            padding: 2px 5px;
+            border-radius: 4px;
+        }
+        .player-name { font-weight: bold; font-size: 1.1rem; }
+        .player-score { font-size: 1.8rem; color: var(--primary); font-weight: bold; margin-top: 5px; }
+
+        /* ポップアップ入力（ハナオケ宣言時） */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.6);
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+        }
+        .modal-content {
+            background: white;
+            padding: 25px;
+            border-radius: 12px;
+            width: 90%;
+            max-width: 450px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+        }
+        .modal-content h3 { margin-top: 0; color: var(--primary); text-align: center; font-size: 1.5rem;}
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; margin-bottom: 5px; font-weight: bold; }
+        .form-group select, .form-group input { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 6px; box-sizing: border-box; }
+        
+        /* 履歴・ルール備忘録 */
+        .history-section {
+            margin-top: 20px;
+            background: #f1f2f6;
+            padding: 15px;
+            border-radius: 8px;
+        }
+        .history-list { list-style: none; padding: 0; margin: 0; }
+        .history-item { padding: 8px 0; border-bottom: 1px solid #ddd; font-size: 0.9rem;}
+        .history-item:last-child { border: none; }
+        
+        .rule-badge {
+            display: inline-block;
+            background: #e4e4e4;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            margin-right: 5px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>ハナオケ！</h1>
+    <div class="subtitle">〜そのワードいただきます〜</div>
+
+    <div id="setup-interface">
+        <h3>プレイヤー登録（3人以上推奨）</h3>
+        <div class="setup-area">
+            <input type="text" id="player-name-input" placeholder="プレイヤー名を入力">
+            <button class="btn-add" onclick="addPlayer()">追加</button>
+        </div>
+        <ul id="player-list-display" style="margin-bottom: 20px;"></ul>
+        <button class="btn-start" onclick="startGame()">ゲームスタート 🚀</button>
+    </div>
+
+    <div id="game-interface">
+        <button class="btn-hanaoke" onclick="openHanaokeModal()">📢 ハナオケ！</button>
+
+        <h3>現在のスコア</h3>
+        <div class="scoreboard" id="scoreboard"></div>
+
+        <div>
+            <span class="rule-badge">現在の歌唱順: <span id="current-turn-rank">1</span>番目</span>
+            <span class="rule-badge">早さポイント: <span id="next-speed-point">5</span>点</span>
+        </div>
+
+        <div class="history-section">
+            <h3>これまでのハナオケ履歴（使用NGワード参考）</h3>
+            <ul class="history-list" id="history-list">
+                <li style="color: #747d8c; italic;">まだ歌われた曲はありません。フリートークを楽しんでください！</li>
+            </ul>
+        </div>
+    </div>
+</div>
+
+<div class="modal" id="hanaoke-modal">
+    <div class="modal-content">
+        <h3>🎤 ハナオケ判定！</h3>
+        <div class="form-group">
+            <label for="modal-player-select">誰が叫んだ？</label>
+            <select id="modal-player-select"></select>
+        </div>
+        <div class="form-group">
+            <label for="modal-word-input">一致したワード（ひらがな基準）</label>
+            <input type="text" id="modal-word-input" placeholder="例: さくら (3文字なら3点)">
+        </div>
+        <div style="display: flex; gap: 10px; margin-top: 20px;">
+            <button style="background: #747d8c; color: white; flex: 1;" onclick="closeHanaokeModal()">キャンセル</button>
+            <button style="background: var(--primary); color: white; flex: 1;" onclick="submitHanaoke()">確定・歌う！</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    // ゲーム状態管理
+    let players = [];
+    let sangCount = 0; // 歌った人数
+    const speedPoints = [5, 4, 3, 2, 2, 2, 1, 1, 1]; // 4~6番目:2点、7~9番目:1点
+
+    // プレイヤー追加
+    function addPlayer() {
+        const input = document.getElementById('player-name-input');
+        const name = input.value.trim();
+        if (!name) return;
+        
+        players.push({
+            name: name,
+            score: 0,
+            hasSang: false
+        });
+        
+        input.value = '';
+        updateSetupList();
+    }
+
+    function updateSetupList() {
+        const ul = document.getElementById('player-list-display');
+        ul.innerHTML = players.map(p => `<li>${p.name}</li>`).join('');
+    }
+
+    // ゲーム開始
+    function startGame() {
+        if (players.length < 2) {
+            alert('ゲームを始めるには少なくとも2人のプレイヤーが必要です！');
+            return;
+        }
+        document.getElementById('setup-interface').style.display = 'none';
+        document.getElementById('game-interface').style.display = 'block';
+        updateScoreboard();
+        updateNextPointInfo();
+    }
+
+    // スコアボード更新
+    function updateScoreboard() {
+        const container = document.getElementById('scoreboard');
+        container.innerHTML = players.map(p => `
+            <div class="player-card ${p.hasSang ? 'sang' : ''}">
+                <div class="player-name">${p.name}</div>
+                <div class="player-score">${p.score} 点</div>
+            </div>
+        `).join('');
+    }
+
+    // 次のポイント情報の表示更新
+    function updateNextPointInfo() {
+        const rankSpan = document.getElementById('current-turn-rank');
+        const pointSpan = document.getElementById('next-speed-point');
+        
+        const currentRank = sangCount + 1;
+        rankSpan.innerText = currentRank;
+        
+        // 最後の1人の場合
+        if (currentRank >= players.length) {
+            pointSpan.innerText = 0;
+            rankSpan.innerText = `${currentRank} (ラスト!)`;
+        } else {
+            pointSpan.innerText = speedPoints[sangCount] !== undefined ? speedPoints[sangCount] : 0;
+        }
+    }
+
+    // モーダル開閉
+    function openHanaokeModal() {
+        const select = document.getElementById('modal-player-select');
+        // まだ歌っていないプレイヤーだけを選択肢に出す
+        const availablePlayers = players.filter(p => !p.hasSang);
+        
+        if (availablePlayers.length === 1) {
+            alert(`残るは${availablePlayers[0].name}さんだけです！最後の1人はポイントなしで、好きな曲を自由に歌って締めてください！`);
+            recordLastPlayer(availablePlayers[0]);
+            return;
+        }
+
+        select.innerHTML = availablePlayers.map(p => `<option value="${p.name}">${p.name}</option>`).join('');
+        document.getElementById('modal-word-input').value = '';
+        document.getElementById('hanaoke-modal').style.display = 'flex';
+    }
+
+    function closeHanaokeModal() {
+        document.getElementById('hanaoke-modal').style.display = 'none';
+    }
+
+    // ハナオケ判定処理
+    function submitHanaoke() {
+        const playerName = document.getElementById('modal-player-select').value;
+        const word = document.getElementById('modal-word-input').value.trim();
+        
+        if (!word) {
+            alert('一致したワードを入力してください（文字数カウントのため）');
+            return;
+        }
+
+        const player = players.find(p => p.name === playerName);
+        
+        // ポイント計算
+        const speedPoint = speedPoints[sangCount] !== undefined ? speedPoints[sangCount] : 0;
+        const matchPoint = word.length; // 文字数＝ポイント
+        const totalPoint = speedPoint + matchPoint;
+
+        // 加算と状態変更
+        player.score += totalPoint;
+        player.hasSang = true;
+        sangCount++;
+
+        // 履歴に追加
+        addHistory(player.name, word, speedPoint, matchPoint);
+
+        // 画面更新
+        closeHanaokeModal();
+        updateScoreboard();
+        updateNextPointInfo();
+
+        // 全員歌い終わったかチェック
+        checkGameEnd();
+    }
+
+    // 最後の1人の処理
+    function recordLastPlayer(player) {
+        player.hasSang = true;
+        sangCount++;
+        addHistory(player.name, "（ラスト自由歌唱）", 0, 0);
+        updateScoreboard();
+        updateNextPointInfo();
+        checkGameEnd();
+    }
+
+    // 履歴追加
+    function addHistory(name, word, speed, match) {
+        const list = document.getElementById('history-list');
+        // 最初のダミーテキストを消去
+        if (sangCount === 1) list.innerHTML = '';
+
+        const li = document.createElement('li');
+        li.className = 'history-item';
+        li.innerHTML = `<strong>${sangCount}番目: ${name}</strong> が「<strong>${word}</strong>」でハナオケ！ <span style="color:var(--primary)">[早さ:${speed}点 + 一致:${match}点 = ＋${speed+match}点]</span>`;
+        list.insertBefore(li, list.firstChild); // 最新を上に
+    }
+
+    // ゲーム終了判定
+    function checkGameEnd() {
+        if (sangCount >= players.length) {
+            // スコア順にソートして勝者を発表
+            const winner = [...players].sort((a,b) => b.score - a.score)[0];
+            setTimeout(() => {
+                alert(`🎉 ゲーム終了！ 🎉\n\n優勝は ${winner.score}点を獲得した【${winner.name}】さんです！おめでとうございます！`);
+            }, 1000);
+        }
+    }
+</script>
+
+</body>
+</html>
