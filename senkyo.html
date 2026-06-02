@@ -6,7 +6,7 @@
     <title>選曲総選挙（WEBオンライン版）</title>
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getDatabase, ref, set, onValue, get, update } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+        import { getDatabase, ref, set, onValue, get, update, remove } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyC4DQhH_swesAD98Xyjg8d1lcWEkkrHrgw",
@@ -22,7 +22,7 @@
         const app = initializeApp(firebaseConfig);
         const db = getDatabase(app);
         window.db = db; // グローバル展開
-        window.dbRefs = { ref, set, onValue, get, update };
+        window.dbRefs = { ref, set, onValue, get, update, remove };
     </script>
 
     <style>
@@ -35,17 +35,20 @@
             --text-muted: #94a3b8;
             --accent: #f59e0b;
             --success: #10b981;
+            --danger: #ef4444;
         }
 
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Helvetica Neue', Arial, sans-serif; }
         body { background-color: var(--bg); color: var(--text); padding: 15px; padding-bottom: 90px; }
         
         .container { max-width: 500px; margin: 0 auto; position: relative; }
-        h1 { text-align: center; font-size: 1.5rem; margin-bottom: 20px; color: var(--accent); text-shadow: 0 0 10px rgba(245, 158, 11, 0.3); }
+        h1 { text-align: center; font-size: 1.5rem; margin-bottom: 20px; color: var(--accent); text-shadow: 0 0 10px rgba(245, 158, 11, 0.3); padding-right: 80px; text-align: left; }
         h2 { font-size: 1.2rem; margin-bottom: 15px; border-left: 4px solid var(--primary); padding-left: 8px; }
         
-        /* 同期ズレ用更新ボタン */
-        .sync-btn { position: absolute; top: -5px; right: 0; background: #334155; color: white; border: none; padding: 6px 12px; border-radius: 20px; font-size: 0.8rem; cursor: pointer; }
+        /* 右上コントロールエリア */
+        .top-actions { position: absolute; top: -5px; right: 0; display: flex; gap: 5px; }
+        .sync-btn { background: #334155; color: white; border: none; padding: 6px 12px; border-radius: 20px; font-size: 0.8rem; cursor: pointer; }
+        .leave-btn { background: var(--danger); color: white; border: none; padding: 6px 12px; border-radius: 20px; font-size: 0.8rem; cursor: pointer; font-weight: bold; }
         
         .card { background: var(--card-bg); padding: 20px; border-radius: 12px; margin-bottom: 20px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.3); }
         .screen { display: none; }
@@ -56,10 +59,18 @@
         /* ボタン・入力 UI */
         input[type="text"], select { width: 100%; padding: 12px; background: #334155; border: 1px solid #475569; border-radius: 8px; color: white; margin-bottom: 12px; font-size: 1rem; }
         input[type="text"]:focus, select:focus { outline: none; border-color: var(--primary); }
+        input:disabled, select:disabled { background: #1e293b !important; color: var(--text-muted) !important; cursor: not-allowed; border-color: #334155; }
         .btn { width: 100%; padding: 14px; background: var(--primary); border: none; border-radius: 8px; color: white; font-size: 1rem; font-weight: bold; cursor: pointer; transition: 0.2s; }
         .btn:hover { background: var(--primary-hover); }
+        .btn:disabled { background: #475569; cursor: not-allowed; opacity: 0.6; }
         .btn-secondary { background: #475569; margin-top: 8px; }
-        .btn-danger { background: #ef4444; margin-top: 8px; }
+        .btn-danger { background: var(--danger); margin-top: 8px; }
+
+        /* 管理スペース（アコーディオン） */
+        .admin-panel { background: #1e293b; border: 1px solid #334155; border-radius: 8px; margin-top: 15px; overflow: hidden; }
+        .admin-header { background: #273549; padding: 10px 15px; font-size: 0.9rem; font-weight: bold; color: var(--accent); cursor: pointer; display: flex; justify-content: space-between; }
+        .admin-body { padding: 15px; display: none; }
+        .admin-body.open { display: block; }
 
         /* リスト UI */
         ul { list-style: none; }
@@ -80,13 +91,17 @@
         .chart-row.winner .chart-bar { background: linear-gradient(90deg, var(--accent), #fcd34d); }
         .winner-announce { background: rgba(245, 158, 11, 0.15); border: 2px solid var(--accent); padding: 15px; border-radius: 8px; text-align: center; margin-top: 20px; font-weight: bold; color: var(--accent); font-size: 1.2rem; }
 
-        /* ランキング常時表示（フッター固定風） */
+        /* モザイク・秘匿用のスタイル */
+        .mosaic-text { filter: blur(5px); select: none; font-weight: bold; }
+        .mosaic-bar { background: repeating-linear-gradient(45deg, #334155, #334155 10px, #475569 10px, #475569 20px) !important; width: 100% !important; animation: progressMove 2s linear infinite; }
+        @keyframes progressMove { from { background-position: 0 0; } to { background-position: 40px 0; } }
+
+        /* ランキング常時表示 */
         .ranking-bar { position: fixed; bottom: 0; left: 0; right: 0; background: #1e293b; border-top: 2px solid #334155; padding: 10px; max-height: 70px; overflow-y: auto; z-index: 100; }
         .ranking-flex { display: flex; gap: 15px; justify-content: center; font-size: 0.85rem; flex-wrap: wrap; }
         .rank-badge { background: #334155; padding: 2px 6px; border-radius: 4px; font-weight: bold; }
         .rank-1 { color: #f59e0b; }
 
-        /* 説明用追加スタイル */
         .info-card h3 { font-size: 1rem; color: var(--accent); margin-top: 10px; margin-bottom: 5px; }
         .info-card p, .info-card li { font-size: 0.85rem; color: var(--text-muted); line-height: 1.5; }
         .info-card ul { padding-left: 15px; list-style: disc; margin-top: 5px; }
@@ -95,20 +110,39 @@
 <body>
 
 <div class="container">
-    <h1>🎤 選曲総選挙 🗳️</h1>
-    <button class="sync-btn" onclick="forceSync()">🔄 同期更新</button>
+    <h1>🎤 選曲総選挙 <span id="header-room-no" style="color:var(--accent);"></span></h1>
+    
+    <div class="top-actions">
+        <button class="sync-btn" onclick="forceSync()">🔄 同期</button>
+        <button class="leave-btn" id="global-leave-btn" style="display:none;" onclick="leaveRoom()">🚪 退室</button>
+    </div>
 
     <div id="screen-lobby" class="screen active">
         <div class="card">
-            <h2>ルームに参加する</h2>
+            <h2>部屋を作る / 参加する</h2>
             <input type="text" id="input-player-name" placeholder="あなたの名前を入力">
-            <button class="btn" onclick="joinRoom()">参加する</button>
+            <div style="display: flex; gap: 10px; margin-bottom: 12px;">
+                <input type="text" id="input-room-id" placeholder="部屋番号(4桁数字)" pattern="\d*" style="margin-bottom:0; flex: 1;">
+                <button class="btn" style="width: auto; padding: 0 20px;" onclick="joinRoom(false)">部屋に入る</button>
+            </div>
+            <button class="btn btn-secondary" onclick="joinRoom(true)">新規に部屋を作る（ホストになる）</button>
         </div>
         <div class="card">
-            <h2>参加プレイヤー一覧</h2>
+            <h2>参加プレイヤー一覧 <span id="lobby-room-display" style="color:var(--accent); font-size:1rem;"></span></h2>
             <ul id="lobby-player-list"></ul>
-            <button class="btn btn-secondary" style="margin-top:15px;" onclick="startGame()">ゲーム開始（主催者用）</button>
-            <button class="btn btn-danger" style="font-size:0.8rem; padding:5px;" onclick="resetRoom()">※ルームデータを完全に初期化</button>
+            <button class="btn btn-secondary" id="btn-start-game" style="margin-top:15px; display:none;" onclick="startGame()">ゲーム開始（主催者用）</button>
+            
+            <div class="admin-panel" id="host-admin-panel" style="display:none;">
+                <div class="admin-header" onclick="toggleAdminPanel()">
+                    <span>🔧 ホスト管理メニュー</span>
+                    <span id="admin-arrow">▼</span>
+                </div>
+                <div class="admin-body" id="admin-panel-body">
+                    <button class="btn btn-secondary" style="margin-top:0; font-size:0.85rem;" onclick="syncActivePlayers()">👥 実際の人数に合わせて更新・救済</button>
+                    <p style="font-size:0.75rem; color:var(--text-muted); margin-top:4px; margin-bottom:10px;">※途中でブラウザを閉じた人がいて進まない時に同期をリセットします</p>
+                    <button class="btn btn-danger" style="font-size:0.85rem; margin-top:5px;" onclick="resetRoom()">🚨 この部屋を完全に解散・削除</button>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -165,9 +199,16 @@
     <div id="screen-voter" class="screen">
         <div class="card">
             <h2><span id="current-singer-name"></span> さんの選曲総選挙</h2>
-            <p id="voter-status-msg" style="margin-bottom:15px; color:var(--text-muted);">聴きたい曲を1曲選んで投票してください。</p>
+            <p id="voter-status-msg" style="margin-bottom:15px; color:var(--text-muted);"></p>
             <div id="vote-options-container"></div>
             <button class="btn" id="btn-vote-submit" onclick="submitVote()">投票する</button>
+
+            <div id="singer-live-status" style="margin-top:20px; border-top:1px dashed #475569; padding-top:15px; display:none;">
+                <h3 style="font-size:1rem; margin-bottom:10px; color:var(--accent);">📊 現在の投票状況（歌唱者専用モニター）</h3>
+                <p id="live-progress-text" style="font-size:0.9rem; margin-bottom:10px;"></p>
+                <div id="singer-live-charts"></div>
+                <button class="btn" id="btn-reveal-result" style="margin-top:15px; background:var(--success);" disabled onclick="revealResultBySinger()">全員の投票完了を待っています</button>
+            </div>
         </div>
     </div>
 
@@ -213,21 +254,27 @@
 </div>
 
 <script>
-    // ローカル状態管理
     let myName = "";
+    let roomNo = "";
     let gameState = {};
     let isFirebaseReady = false;
+    let firebaseListenerRef = null;
 
-    // Firebaseの準備ができるまで待機するループ
     const checkFirebase = setInterval(() => {
         if (window.db && window.dbRefs) {
             clearInterval(checkFirebase);
             isFirebaseReady = true;
-            initFirebaseListener();
         }
     }, 100);
 
-    // ドロップダウンリストの「自由入力」切り替え用
+    // 管理スペース開閉制御
+    window.toggleAdminPanel = function() {
+        const body = document.getElementById('admin-panel-body');
+        const arrow = document.getElementById('admin-arrow');
+        body.classList.toggle('open');
+        arrow.innerText = body.classList.contains('open') ? '▲' : '▼';
+    }
+
     window.toggleCustomPromise = function(id) {
         const select = document.getElementById(`promise${id}`);
         const customInput = document.getElementById(`custom-promise${id}`);
@@ -238,28 +285,29 @@
         }
     }
 
-    // Firebaseのデータ監視登録
-    function initFirebaseListener() {
+    function listenToRoom() {
+        if (firebaseListenerRef) return;
         const { ref, onValue } = window.dbRefs;
-        const senkyoRef = ref(window.db, 'senkyo');
+        const roomRef = ref(window.db, `senkyo/${roomNo}`);
         
-        onValue(senkyoRef, (snapshot) => {
+        firebaseListenerRef = onValue(roomRef, (snapshot) => {
             const data = snapshot.val();
             if (data) {
                 gameState = data;
                 renderByState();
             } else {
-                // 初回データがない場合は空で初期化
-                gameState = { status: 'lobby', players: {}, currentRound: 0, candidates: [] };
+                if(myName && roomNo) {
+                    alert("部屋が解散されたか、データが存在しません。");
+                    location.reload();
+                }
             }
         });
     }
 
-    // 手動更新ボタン用
     window.forceSync = function() {
-        if (!isFirebaseReady) return;
+        if (!isFirebaseReady || !roomNo) return;
         const { ref, get } = window.dbRefs;
-        get(ref(window.db, 'senkyo')).then((snapshot) => {
+        get(ref(window.db, `senkyo/${roomNo}`)).then((snapshot) => {
             if (snapshot.exists()) {
                 gameState = snapshot.val();
                 renderByState();
@@ -268,73 +316,163 @@
         });
     }
 
-    // ルーム初期化（リセットボタン用）
-    window.resetRoom = function() {
-        if (!confirm("本当にルームデータをリセットしますか？全員がロビーに戻されます。")) return;
-        const { ref, set } = window.dbRefs;
-        set(ref(window.db, 'senkyo'), {
-            status: 'lobby',
-            players: {},
-            currentRound: 0,
-            candidates: [],
-            voterSelections: {},
-            votes: [0, 0, 0]
-        }).then(() => alert("初期化しました。"));
+    // 実際の参加人数に合わせて更新・クリーンアップ（生存確認・幽霊削除）
+    window.syncActivePlayers = function() {
+        if (!gameState.voterSelections) return alert("現在投票フェーズではありません。");
+        if (!confirm("現在実際に画面を開いている人の投票状況をベースにして、残りの未投票数をリセット（全員投票完了状態に）しますか？")) return;
+
+        const selections = gameState.voterSelections || {};
+        const activeVotes = [0, 0, 0];
+        
+        Object.keys(selections).forEach(pKey => {
+            const vIdx = selections[pKey];
+            activeVotes[vIdx]++;
+        });
+
+        const { ref, update } = window.dbRefs;
+        update(ref(window.db, `senkyo/${roomNo}`), {
+            votes: activeVotes
+        }).then(() => {
+            alert("現在の実投票数に同期しました。歌唱者の「結果を公開する」ボタンが押せるようになります。");
+        });
     }
 
-    // 画面切り替え制御
+    // 部屋全体の削除
+    window.resetRoom = function() {
+        if (!confirm("本当にこの部屋を解散しますか？全データが削除され、参加者はロビーに戻されます。")) return;
+        const { ref, remove } = window.dbRefs;
+        remove(ref(window.db, `senkyo/${roomNo}`)).then(() => {
+            alert("部屋を完全に削除しました。");
+            location.reload();
+        });
+    }
+
+    // 自主退室処理
+    window.leaveRoom = function() {
+        if (!confirm("本当にこの部屋から退室します开？")) return;
+        const { ref, remove } = window.dbRefs;
+        
+        if (gameState.host === myName) {
+            // ホストなら部屋ごと消去
+            remove(ref(window.db, `senkyo/${roomNo}`)).then(() => location.reload());
+        } else {
+            // 一般プレイヤーなら自分だけ削除
+            remove(ref(window.db, `senkyo/${roomNo}/players/${myName}`)).then(() => {
+                // もし既に投票していたらその投票情報も削除
+                if (gameState.voterSelections && gameState.voterSelections[myName] !== undefined) {
+                    remove(ref(window.db, `senkyo/${roomNo}/voterSelections/${myName}`)).then(() => location.reload());
+                } else {
+                    location.reload();
+                }
+            });
+        }
+    }
+
     function showScreen(screenId) {
         document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
         document.getElementById(screenId).classList.add('active');
-        if (myName) {
+        if (myName && roomNo) {
             document.getElementById('ranking-bar').style.display = 'block';
+            document.getElementById('global-leave-btn').style.display = 'block'; // 退室ボタン表示
             updateRankingBar();
         }
     }
 
-    // 1. ロビー：参加
-    window.joinRoom = function() {
+    window.joinRoom = function(isCreateNew) {
         if (!isFirebaseReady) return alert('通信の準備中です。少々お待ちください。');
+        
         const nameInput = document.getElementById('input-player-name');
+        const roomInput = document.getElementById('input-room-id');
         const name = nameInput.value.trim();
+        
         if (!name) return alert('名前を入力してください');
         if (name.includes('.') || name.includes('#') || name.includes('$') || name.includes('[') || name.includes(']')) {
             return alert('名前を記号を含めずに入力してください。');
         }
-        
-        myName = name;
-        nameInput.disabled = true;
 
-        const { ref, update } = window.dbRefs;
-        // プレイヤーとして登録（初期スコア0）
-        const playerRef = ref(window.db, `senkyo/players/${myName}`);
-        
-        // 既にスコアがあれば引き継ぎ、なければ0点
-        const currentScore = (gameState.players && gameState.players[myName]) ? gameState.players[myName].score : 0;
-        update(ref(window.db, 'senkyo/players'), {
-            [myName]: { name: myName, score: currentScore }
-        });
+        const { ref, set, get, update } = window.dbRefs;
+
+        if (isCreateNew) {
+            roomNo = Math.floor(1000 + Math.random() * 9000).toString();
+            myName = name;
+            
+            nameInput.disabled = true;
+            roomInput.disabled = true;
+            
+            const initialData = {
+                roomNo: roomNo,
+                host: myName,
+                status: 'lobby',
+                players: { [myName]: { name: myName, score: 0 } },
+                currentRound: 0,
+                candidates: [],
+                voterSelections: {},
+                votes: [0, 0, 0]
+            };
+            
+            set(ref(window.db, `senkyo/${roomNo}`), initialData).then(() => {
+                document.getElementById('header-room-no').innerText = `[部屋番:${roomNo}]`;
+                document.getElementById('lobby-room-display').innerText = `(部屋番号: ${roomNo})`;
+                listenToRoom();
+            });
+
+        } else {
+            const targetRoom = roomInput.value.trim();
+            if (!targetRoom) return alert('部屋番号を入力してください');
+
+            get(ref(window.db, `senkyo/${targetRoom}`)).then((snapshot) => {
+                if (!snapshot.exists()) {
+                    return alert('指定された部屋番号は見つかりません。');
+                }
+                
+                roomNo = targetRoom;
+                myName = name;
+
+                nameInput.disabled = true;
+                roomInput.disabled = true;
+
+                document.getElementById('header-room-no').innerText = `[部屋番:${roomNo}]`;
+                document.getElementById('lobby-room-display').innerText = `(部屋番号: ${roomNo})`;
+
+                const currentRoomData = snapshot.val();
+                const currentScore = (currentRoomData.players && currentRoomData.players[myName]) ? currentRoomData.players[myName].score : 0;
+                
+                update(ref(window.db, `senkyo/${roomNo}/players`), {
+                    [myName]: { name: myName, score: currentScore }
+                }).then(() => {
+                    listenToRoom();
+                });
+            });
+        }
     }
 
-    // ロビー画面のプレイヤー一覧更新
     function updateLobbyList() {
         const list = document.getElementById('lobby-player-list');
         if (!gameState.players) return;
-        list.innerHTML = Object.keys(gameState.players).map(pKey => `
+        
+        const pKeys = Object.keys(gameState.players);
+        list.innerHTML = pKeys.map(pKey => `
             <li class="player-item">
-                <span>${gameState.players[pKey].name} ${pKey === myName ? '<strong>(あなた)</strong>' : ''}</span>
+                <span>${gameState.players[pKey].name} ${pKey === myName ? '<strong>(あなた)</strong>' : ''} ${pKey === gameState.host ? '<span style="color:var(--accent)">[👑ホスト]</span>' : ''}</span>
                 <span style="color:var(--success)">Ready</span>
             </li>
         `).join('');
+
+        if (gameState.host === myName) {
+            document.getElementById('btn-start-game').style.display = 'block';
+            document.getElementById('host-admin-panel').style.display = 'block';
+        } else {
+            document.getElementById('btn-start-game').style.display = 'none';
+            document.getElementById('host-admin-panel').style.display = 'none';
+        }
     }
 
-    // 2. ゲーム開始（主催者）
     window.startGame = function() {
         if (!gameState.players || Object.keys(gameState.players).length < 2) {
             return alert('プレイヤーが2人以上必要です。');
         }
         const { ref, update } = window.dbRefs;
-        update(ref(window.db, 'senkyo'), {
+        update(ref(window.db, `senkyo/${roomNo}`), {
             status: 'setup',
             currentRound: 0,
             voterSelections: {},
@@ -342,11 +480,10 @@
         });
     }
 
-    // 状態（status）に基づいた画面の自動レンダリング
     function renderByState() {
-        if (!myName) {
+        if (!myName || !roomNo) {
             updateLobbyList();
-            return; // 参加前のプレイヤーは描画処理をスキップ
+            return;
         }
 
         const pKeys = Object.keys(gameState.players || {});
@@ -357,37 +494,37 @@
             showScreen('screen-lobby');
         } 
         else if (gameState.status === 'setup') {
-            // 自分が現在の歌唱者の場合
             if (currentSingerName === myName) {
                 showScreen('screen-singer');
             } else {
-                // 他の人は歌唱者の登録待ち画面（投票画面のガワを利用）
                 document.getElementById('current-singer-name').innerText = currentSingerName;
                 document.getElementById('voter-status-msg').innerText = "歌唱者が曲を登録するのを待っています...";
                 document.getElementById('vote-options-container').innerHTML = `<p style="text-align:center; padding:20px; color:var(--text-muted);">少々お待ちください...</p>`;
                 document.getElementById('btn-vote-submit').style.display = 'none';
+                document.getElementById('singer-live-status').style.display = 'none';
                 showScreen('screen-voter');
             }
         } 
         else if (gameState.status === 'voting') {
             document.getElementById('current-singer-name').innerText = currentSingerName;
-            document.getElementById('btn-vote-submit').style.display = 'block';
             
             if (currentSingerName === myName) {
-                // 歌唱者は投票できないので待機表示
                 document.getElementById('voter-status-msg').innerText = "みんなが投票するのを待っています...";
-                renderVoteOptions(true); // 無効化状態で表示
+                renderVoteOptions(true);
                 document.getElementById('btn-vote-submit').style.display = 'none';
+                document.getElementById('singer-live-status').style.display = 'block';
+                renderSingerLiveMonitor();
             } else {
-                // 既に投票済みかどうか確認
+                document.getElementById('singer-live-status').style.display = 'none';
                 const hasVoted = gameState.voterSelections && gameState.voterSelections[myName] !== undefined;
                 if (hasVoted) {
                     document.getElementById('voter-status-msg').innerText = "投票が完了しました。開票を待っています。";
-                    renderVoteOptions(true); // 変更不可にするため無効化表示
+                    renderVoteOptions(true);
                     document.getElementById('btn-vote-submit').style.display = 'none';
                 } else {
                     document.getElementById('voter-status-msg').innerText = "聴きたい曲を1曲選んで投票してください。";
                     renderVoteOptions(false);
+                    document.getElementById('btn-vote-submit').style.display = 'block';
                 }
             }
             showScreen('screen-voter');
@@ -402,7 +539,65 @@
         }
     }
 
-    // 候補曲の表示
+    // 歌唱者専用リアルタイムモニター（新・モザイク反転システム）
+    function renderSingerLiveMonitor() {
+        const finalVotes = gameState.votes || [0, 0, 0];
+        const selections = gameState.voterSelections || {};
+        const pKeys = Object.keys(gameState.players);
+        
+        const totalVotersNeeded = pKeys.length - 1; 
+        const currentVotedCount = Object.keys(selections).length;
+
+        document.getElementById('live-progress-text').innerHTML = `投票完了状況: <strong>${currentVotedCount} / ${totalVotersNeeded} 人</strong>`;
+
+        const halfCount = Math.ceil(totalVotersNeeded / 2);
+        const isHalfOrMore = currentVotedCount >= halfCount;
+        const isAllVoted = currentVotedCount >= totalVotersNeeded;
+
+        // 【条件変更】
+        // 0 ～ 半数未満：モザイクなし（リアルタイムでクッキリ見える）
+        // 半数 ～ 全員未満：モザイクあり（秘匿される）
+        // 全員投票完了：モザイクなし
+        let isSecret = false;
+        if (isHalfOrMore && !isAllVoted) {
+            isSecret = true;
+        }
+
+        const monitorContainer = document.getElementById('singer-live-charts');
+        monitorContainer.innerHTML = gameState.candidates.map((c, idx) => {
+            const voteCnt = finalVotes[idx];
+            return `
+                <div class="chart-row">
+                    <div class="chart-info">
+                        <span>${c.title}</span>
+                        ${isSecret ? `<strong class="mosaic-text">░票</strong>` : `<strong>${voteCnt}票</strong>`}
+                    </div>
+                    <div class="chart-bar-bg">
+                        <div class="chart-bar" style="width: ${isSecret ? '100%' : (voteCnt * (100 / Math.max(totalVotersNeeded, 1))) + '%'}; border-radius:6px;" class="${isSecret ? 'mosaic-bar' : ''}"></div>
+                    </div>
+                </div>
+            `;
+        }).join('');
+
+        // 全員投票が終わると初めてボタンが押せるようになる
+        const revealBtn = document.getElementById('btn-reveal-result');
+        if (isAllVoted) {
+            revealBtn.disabled = false;
+            revealBtn.style.background = "var(--success)";
+            revealBtn.innerText = "🎉 全員の投票完了！結果を全員に公開する";
+        } else {
+            revealBtn.disabled = true;
+            revealBtn.style.background = "#475569";
+            revealBtn.innerText = `全員の投票完了まで公開できません (${currentVotedCount}/${totalVotersNeeded})`;
+        }
+    }
+
+    window.revealResultBySinger = function() {
+        const finalVotes = gameState.votes || [0, 0, 0];
+        const finalSelections = gameState.voterSelections || {};
+        calculateScoresForRound(finalVotes, finalSelections);
+    }
+
     function renderVoteOptions(disabled) {
         const container = document.getElementById('vote-options-container');
         const cand = gameState.candidates || [];
@@ -432,7 +627,6 @@
         }
     }
 
-    // 歌唱者が候補と公約を決定して送信
     window.submitCandidates = function() {
         const getPromise = (id) => {
             const sel = document.getElementById(`promise${id}`).value;
@@ -456,7 +650,7 @@
         ];
 
         const { ref, update } = window.dbRefs;
-        update(ref(window.db, 'senkyo'), {
+        update(ref(window.db, `senkyo/${roomNo}`), {
             status: 'voting',
             candidates: cand,
             votes: [0, 0, 0],
@@ -464,7 +658,6 @@
         });
     }
 
-    // 投票を送信
     window.submitVote = function() {
         const selected = document.querySelector('input[name="vote-song"]:checked');
         if (!selected) return alert('曲を選択してください');
@@ -472,7 +665,6 @@
         const myVoteIndex = parseInt(selected.value);
         const { ref, update } = window.dbRefs;
 
-        // 投票状況を送信し、全員の投票が終わったかジャッジする
         const nextSelections = Object.assign({}, gameState.voterSelections || {});
         nextSelections[myName] = myVoteIndex;
 
@@ -482,24 +674,13 @@
             nextVotes[vIdx]++;
         });
 
-        const pKeys = Object.keys(gameState.players);
-        const totalVotersNeeded = pKeys.length - 1; // 歌唱者以外全員
-
-        let nextStatus = 'voting';
-        // 全員の投票が終わったら自動で開票画面状態（result）にし、同時にスコア計算を行う
-        if (Object.keys(nextSelections).length >= totalVotersNeeded) {
-            nextStatus = 'result';
-            calculateScoresForRound(nextVotes, nextSelections);
-        } else {
-            // まだ全員終わっていない場合は投票データのみ更新
-            update(ref(window.db, 'senkyo'), {
-                voterSelections: nextSelections,
-                votes: nextVotes
-            });
-        }
+        // 投票情報をリアルタイムに送信（歌唱者側の画面にすぐ反映されます）
+        update(ref(window.db, `senkyo/${roomNo}`), {
+            voterSelections: nextSelections,
+            votes: nextVotes
+        });
     }
 
-    // ラウンド終了時スコア計算（最後の投票者が一括計算してFirebaseへ同期）
     function calculateScoresForRound(finalVotes, finalSelections) {
         const pKeys = Object.keys(gameState.players);
         const currentSingerName = pKeys[gameState.currentRound];
@@ -511,7 +692,7 @@
         gameState.candidates.forEach((c, idx) => {
             if (finalVotes[idx] === maxVote) winners.push(idx);
         });
-        const winnerIdx = winners[0]; // 同票は最上部優先
+        const winnerIdx = winners[0]; 
         const totalVotes = finalVotes.reduce((a, b) => a + b, 0);
 
         const updatedPlayers = Object.assign({}, gameState.players);
@@ -519,11 +700,9 @@
         pKeys.forEach(pKey => {
             let gained = 0;
             if (pKey === currentSingerName) {
-                // 歌唱者支持率計算
                 const supportRate = totalVotes > 0 ? Math.round((maxVote / totalVotes) * 100) : 0;
                 gained = supportRate;
             } else {
-                // 投票者
                 const pVote = finalSelections[pKey];
                 if (pVote === winnerIdx) {
                     gained = 5;
@@ -531,11 +710,11 @@
                     gained = 10;
                 }
             }
-            updatedPlayers[pKey].score += gained;
+            if (updatedPlayers[pKey]) updatedPlayers[pKey].score += gained;
         });
 
         const { ref, update } = window.dbRefs;
-        update(ref(window.db, 'senkyo'), {
+        update(ref(window.db, `senkyo/${roomNo}`), {
             status: 'result',
             voterSelections: finalSelections,
             votes: finalVotes,
@@ -543,7 +722,6 @@
         });
     }
 
-    // 4. 開票結果表示
     function renderResultScreen() {
         const finalVotes = gameState.votes || [0, 0, 0];
         const maxVote = Math.max(...finalVotes);
@@ -558,7 +736,6 @@
         const pKeys = Object.keys(gameState.players);
         const currentSingerName = pKeys[gameState.currentRound];
 
-        // グラフ描画
         const chartContainer = document.getElementById('chart-container');
         chartContainer.innerHTML = gameState.candidates.map((c, idx) => {
             const pct = totalVotes > 0 ? Math.round((finalVotes[idx] / totalVotes) * 100) : 0;
@@ -585,7 +762,6 @@
 
         document.getElementById('winner-box').innerHTML = `👑 当選曲：${gameState.candidates[winnerIdx].title}<br><small style="color:white">👉 ${currentSingerName} さん、歌唱・公約をお願いします！</small>`;
 
-        // このラウンドの加算テキスト算出（擬似再現して表示）
         let scoreDetailsHTML = "";
         pKeys.forEach(pKey => {
             let gained = 0;
@@ -603,8 +779,7 @@
         });
         document.getElementById('round-scores').innerHTML = scoreDetailsHTML;
 
-        // ルーム作成者（配列の最初のプレイヤー）だけに次へ進むボタンを露出
-        if (pKeys[0] === myName) {
+        if (gameState.host === myName) {
             document.getElementById('btn-next-round').style.display = 'block';
             document.getElementById('wait-next-msg').style.display = 'none';
         } else {
@@ -613,14 +788,13 @@
         }
     }
 
-    // 5. 次のラウンドへ（主催者操作）
     window.nextRound = function() {
         const pKeys = Object.keys(gameState.players);
         const nextRoundIdx = gameState.currentRound + 1;
         const { ref, update } = window.dbRefs;
 
         if (nextRoundIdx < pKeys.length) {
-            update(ref(window.db, 'senkyo'), {
+            update(ref(window.db, `senkyo/${roomNo}`), {
                 status: 'setup',
                 currentRound: nextRoundIdx,
                 candidates: [],
@@ -628,13 +802,12 @@
                 votes: [0, 0, 0]
             });
         } else {
-            update(ref(window.db, 'senkyo'), {
+            update(ref(window.db, `senkyo/${roomNo}`), {
                 status: 'gameover'
             });
         }
     }
 
-    // 6. 最終結果画面
     function renderGameOverScreen() {
         const sorted = Object.values(gameState.players).sort((a,b) => b.score - a.score);
         let html = `<h3>🏆 最終順位</h3>`;
@@ -647,7 +820,6 @@
         document.getElementById('final-awards').innerHTML = html;
     }
 
-    // 常時ランキング更新
     function updateRankingBar() {
         const container = document.getElementById('ranking-container');
         if (!gameState.players) return;
