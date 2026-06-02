@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>マジカル🎤カラオケ 司会進行ツール</title>
+    <style>
+        :root {
+            --bg-color: #1a1a1a;
+            --panel-bg: #2d2d2d;
+            --text-color: #ffffff;
+            --accent-color: #ff4757;
+            --banana-yellow: #ffa502;
+            --success-color: #2ed573;
+        }
+
+        body {
+            font-family: 'Helvetica Neue', Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+
+        header {
+            text-align: center;
+            padding: 10px 0;
+            background: linear-gradient(135deg, var(--banana-yellow), var(--accent-color));
+            border-radius: 10px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+        }
+
+        header h1 {
+            margin: 10px 0;
+            font-size: 2rem;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 20px;
+        }
+
+        @media (max-width: 768px) {
+            .grid { grid-template-columns: 1fr; }
+        }
+
+        .card {
+            background-color: var(--panel-bg);
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+
+        .card h2 {
+            margin-top: 0;
+            border-bottom: 2px solid #444;
+            padding-bottom: 10px;
+            font-size: 1.3rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        /* ワード履歴 */
+        .word-input-area {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        input[type="text"], input[type="number"] {
+            padding: 12px;
+            border: none;
+            border-radius: 5px;
+            font-size: 1.1rem;
+            background-color: #444;
+            color: white;
+        }
+
+        input[type="text"] { flex: 1; }
+
+        button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .btn-primary { background-color: var(--banana-yellow); color: #000; }
+        .btn-primary:hover { background-color: #eccc68; }
+        .btn-danger { background-color: var(--accent-color); color: #fff; }
+        .btn-danger:hover { background-color: #ff6b81; }
+        .btn-success { background-color: var(--success-color); color: #fff; }
+        .btn-success:hover { background-color: #26af5f; }
+        .btn-secondary { background-color: #747d8c; color: #fff; }
+
+        .word-flow {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            align-items: center;
+            min-height: 50px;
+            padding: 10px;
+            background-color: #222;
+            border-radius: 5px;
+        }
+
+        .word-badge {
+            background: #444;
+            padding: 8px 15px;
+            border-radius: 20px;
+            font-size: 1.1rem;
+            position: relative;
+        }
+
+        .word-badge.last-valid {
+            background: linear-gradient(to right, #ff7f50, var(--banana-yellow));
+            color: black;
+            font-weight: bold;
+            box-shadow: 0 0 10px var(--banana-yellow);
+        }
+
+        .word-badge.failed {
+            background: #552222;
+            color: #ff6b6b;
+            text-decoration: line-through;
+        }
+
+        .arrow { color: #666; font-weight: bold; }
+
+        /* タイマーエリアの拡張 */
+        .timer-display {
+            font-size: 3.5rem;
+            text-align: center;
+            font-weight: bold;
+            font-family: monospace;
+            margin: 5px 0;
+            color: var(--accent-color);
+        }
+
+        .timer-setting-area {
+            display: flex;
+            gap: 5px;
+            margin-bottom: 10px;
+            justify-content: center;
+        }
+
+        .timer-setting-area input[type="number"] {
+            width: 70px;
+            text-align: center;
+            font-size: 1.2rem;
+        }
+
+        .timer-quick-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 5px;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+        }
+
+        .timer-quick-buttons button {
+            padding: 5px 10px;
+            font-size: 0.85rem;
+            background-color: #444;
+            color: #fff;
+        }
+
+        .timer-quick-buttons button:hover {
+            background-color: #555;
+        }
+
+        .timer-controls {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        /* プレイヤー管理 */
+        .player-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px;
+            border-bottom: 1px solid #444;
+        }
+        
+        .player-row:last-child { border-bottom: none; }
+
+        .player-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .reverse-order {
+            font-size: 0.8rem;
+            background-color: #57606f;
+            padding: 2px 6px;
+            border-radius: 3px;
+            color: #fff;
+        }
+
+        .score-display {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: var(--banana-yellow);
+            min-width: 60px;
+            text-align: right;
+        }
+
+        .score-actions {
+            display: flex;
+            gap: 5px;
+        }
+
+        .score-actions button {
+            padding: 5px 10px;
+            font-size: 0.8rem;
+        }
+
+        /* 歌唱フェーズクイック決着 */
+        .phase-actions {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-top: 15px;
+        }
+        .phase-actions button {
+            padding: 15px;
+            font-size: 1rem;
+        }
+
+        .rule-box {
+            font-size: 0.85rem;
+            color: #ccc;
+            line-height: 1.5;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <h1>🎤 マジカル🍌カラオケ MCコンソール</h1>
+    </header>
+
+    <div class="grid">
+        <div>
+            <div class="card">
+                <h2>① 連想ワード入力 <span>（詰まったらストップ！）</span></h2>
+                <div class="word-input-area">
+                    <input type="text" id="wordInput" placeholder="ワードを入力してEnterか追加" onkeypress="if(event.key==='Enter') addWord(false)">
+                    <button class="btn-primary" onclick="addWord(false)">繋がった！</button>
+                    <button class="btn-danger" onclick="addWord(true)">❌ ここで詰まった！</button>
+                </div>
+                <div class="word-flow" id="wordFlow">
+                    <span style="color:#666;">ここに履歴が流れます</span>
+                </div>
+                <div id="targetWordDisplay" style="margin-top:15px; font-size:1.2rem; font-weight:bold; color:var(--banana-yellow); text-align:center; display:none;">
+                    🎯 今回のお題（直前ワード）： <span id="targetWord" style="font-size:1.6rem; color:#fff; background:#ff4757; padding:2px 10px; border-radius:5px;">なし</span>
+                </div>
+            </div>
+
+            <div class="card">
+                <h2>② 歌唱・結果入力</h2>
+                <p style="font-size:0.9rem; color:#aaa; margin:0 0 10px 0;">※メイン確定ボタンを押すと自動的に該当者にポイントが入ります。乱入時は下のボタンで微調整してください。</p>
+                <div class="phase-actions">
+                    <button class="btn-success" onclick="settleSolo()">🎤 ソロ成功 (+2pt)</button>
+                    <button class="btn-primary" onclick="settleInrusion()">👥 乱入あり成功 (メイン+1 / 乱入+1)</button>
+                    <button class="btn-danger" onclick="settleInrusionFail()">⚠️ 乱入失敗 (乱入者 -1pt)</button>
+                    <button class="btn-secondary" onclick="settlePenalty()">💀 全員歌えず (お題出した人 -1pt)</button>
+                </div>
+            </div>
+        </div>
+
+        <div>
+            <div class="card">
+                <h2>⏱️ 入力制限タイマー</h2>
+                
+                <div class="timer-display" id="timerDisplay">05.00</div>
+                
+                <div class="timer-setting-area">
+                    <input type="number" id="customSeconds" value="5" min="1" max="999">
+                    <span style="align-self: center; font-size: 1.1rem;">秒に設定</span>
+                </div>
+
+                <div class="timer-quick-buttons">
+                    <button onclick="setQuickSeconds(3)">3秒</button>
+                    <button onclick="setQuickSeconds(5)">5秒</button>
+                    <button onclick="setQuickSeconds(10)">10秒</button>
+                    <button onclick="setQuickSeconds(15)">15秒</button>
+                    <button onclick="setQuickSeconds(30)">30秒</button>
+                </div>
+
+                <div class="timer-controls">
+                    <button class="btn-danger" style="flex:1;" onclick="startCustomTimer()">▶ 開始</button>
+                    <button class="btn-secondary" onclick="stopTimer()">停止</button>
+                </div>
+            </div>
+
+            <div class="card">
+                <h2>👥 プレイヤー (逆順表示)</h2>
+                <div id="playerList">
+                    </div>
+            </div>
+
+            <div class="card">
+                <h2>📌 ルール備忘録</h2>
+                <div class="rule-box">
+                    <strong>【入力フェーズ】</strong>挙手制。<br>
+                    <strong>【優先度】</strong>マジカルバナナの<b>逆順優先</b>（下から上）。<br>
+                    <strong>【再開】</strong>歌い終わったらメインの人が新しいワードを言って再開！
+                </div>
+                <button class="btn-secondary" style="width: 100%; margin-top: 10px; padding: 5px;" onclick="resetGame()">ゲームリセット</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // プレイヤーデータ（名前と初期スコア）。参加者に応じてここを書き換えてください
+    let players = [
+        { id: 1, name: "プレイヤーA", score: 0 },
+        { id: 2, name: "プレイヤーB", score: 0 },
+        { id: 3, name: "プレイヤーC", score: 0 },
+        { id: 4, name: "プレイヤーD", score: 0 },
+        { id: 5, name: "プレイヤーE", score: 0 },
+    ];
+
+    let wordHistory = [];
+    let timerInterval = null;
+
+    // 初期化
+    function init() {
+        renderPlayers();
+        updateDisplaySeconds(document.getElementById('customSeconds').value);
+    }
+
+    // プレイヤーリスト描画
+    function renderPlayers() {
+        const playerListDiv = document.getElementById('playerList');
+        playerListDiv.innerHTML = '';
+        const reversePlayers = [...players].reverse();
+        
+        reversePlayers.forEach((player, index) => {
+            const row = document.createElement('div');
+            row.className = 'player-row';
+            row.innerHTML = `
+                <div class="player-info">
+                    <span class="reverse-order">優先度:${index + 1}</span>
+                    <strong>${player.name}</strong>
+                </div>
+                <div style="display:flex; align-items:center; gap:10px;">
+                    <div class="score-display">${player.score} pt</div>
+                    <div class="score-actions">
+                        <button class="btn-primary" onclick="changeScore(${player.id}, 1)">+1</button>
+                        <button class="btn-danger" onclick="changeScore(${player.id}, -1)">-1</button>
+                    </div>
+                </div>
+            `;
+            playerListDiv.appendChild(row);
+        });
+    }
+
+    function changeScore(id, amount) {
+        const player = players.find(p => p.id === id);
+        if (player) {
+            player.score += amount;
+            renderPlayers();
+        }
+    }
+
+    // ワード追加
+    function addWord(isFailed) {
+        const input = document.getElementById('wordInput');
+        const word = input.value.trim();
+        if (!word) return;
+
+        wordHistory.push({ word: word, failed: isFailed });
+        input.value = '';
+        renderWords();
+
+        if (isFailed) {
+            const validWords = wordHistory.filter(w => !w.failed);
+            if (validWords.length > 0) {
+                const target = validWords[validWords.length - 1].word;
+                document.getElementById('targetWord').innerText = target;
+                document.getElementById('targetWordDisplay').style.display = 'block';
+                // 詰まった時は、現在設定されているカスタム秒数で自動スタート
+                startCustomTimer();
+            } else {
+                alert("直前の有効なワードがありません！");
+            }
+        }
+    }
+
+    function renderWords() {
+        const flow = document.getElementById('wordFlow');
+        flow.innerHTML = '';
+        
+        wordHistory.forEach((w, index) => {
+            if (index > 0) {
+                const arrow = document.createElement('span');
+                arrow.className = 'arrow';
+                arrow.innerText = '→';
+                flow.appendChild(arrow);
+            }
+            
+            const badge = document.createElement('span');
+            badge.className = 'word-badge';
+            if (w.failed) {
+                badge.classList.add('failed');
+            } else if (index === wordHistory.length - 2 && wordHistory[wordHistory.length - 1].failed) {
+                badge.classList.add('last-valid');
+            } else if (index === wordHistory.length - 1 && !wordHistory[wordHistory.length - 1].failed) {
+                badge.classList.add('last-valid');
+            }
+            badge.innerText = w.word;
+            flow.appendChild(badge);
+        });
+    }
+
+    // --- タイマー関連の新しい処理 ---
+
+    // クイックボタン用：数字入力を書き換えて表示も更新
+    function setQuickSeconds(sec) {
+        document.getElementById('customSeconds').value = sec;
+        if (!timerInterval) {
+            updateDisplaySeconds(sec);
+        }
+    }
+
+    // ディスプレイの初期表示を整える用
+    function updateDisplaySeconds(sec) {
+        const display = document.getElementById('timerDisplay');
+        display.innerText = `${parseInt(sec).toString().padStart(2, '0')}.00`;
+        display.style.color = "#ff4757";
+    }
+
+    // 現在入力されている秒数でタイマーを始動
+    function startCustomTimer() {
+        const secInput = document.getElementById('customSeconds').value;
+        let seconds = parseInt(secInput);
+        if (isNaN(seconds) || seconds <= 0) seconds = 5; // エラー回避用
+
+        clearInterval(timerInterval);
+        let timeLeft = seconds * 100; // 10ミリ秒単位
+        
+        const display = document.getElementById('timerDisplay');
+        
+        timerInterval = setInterval(() => {
+            timeLeft--;
+            if (timeLeft <= 0) {
+                clearInterval(timerInterval);
+                display.innerText = "00.00";
+                display.style.color = "#ff4757";
+            } else {
+                let sec = Math.floor(timeLeft / 100);
+                let msec = timeLeft % 100;
+                display.innerText = `${sec.toString().padStart(2, '0')}.${msec.toString().padStart(2, '0')}`;
+                display.style.color = timeLeft < 200 ? "#ffa502" : "#ff4757"; // 残り2秒以下で黄色に
+            }
+        }, 10);
+    }
+
+    function stopTimer() {
+        clearInterval(timerInterval);
+        timerInterval = null;
+    }
+
+    // 入力フォームの数字が手動で変わったとき、停止中なら画面表示も連動させる
+    document.getElementById('customSeconds').addEventListener('input', (e) => {
+        if (!timerInterval && e.target.value > 0) {
+            updateDisplaySeconds(e.target.value);
+        }
+    });
+
+    // --- 決着アクション関数 ---
+    function settleSolo() {
+        stopTimer();
+        alert("該当者の「+1」ボタンを2回押して調整してください。");
+    }
+
+    function settleInrusion() {
+        stopTimer();
+        alert("メインに+1pt、乱入者に+1ptを右のプレイヤーリストから手動で付与してください。");
+    }
+
+    function settleInrusionFail() {
+        stopTimer();
+        alert("乱入失敗！乱入者に-1ptを右のプレイヤーリストから手動で引いてください。");
+    }
+
+    function settlePenalty() {
+        stopTimer();
+        alert("全員歌えず！お題（直前ワード）を出したプレイヤーに手動で-1ptしてください。");
+    }
+
+    function resetGame() {
+        if(confirm("スコアと履歴をリセットしますか？")) {
+            players.forEach(p => p.score = 0);
+            wordHistory = [];
+            document.getElementById('wordFlow').innerHTML = '<span style="color:#666;">ここに履歴が流れます</span>';
+            document.getElementById('targetWordDisplay').style.display = 'none';
+            clearInterval(timerInterval);
+            timerInterval = null;
+            updateDisplaySeconds(document.getElementById('customSeconds').value);
+            renderPlayers();
+        }
+    }
+
+    // 起動
+    init();
+</script>
+</body>
+</html>
