@@ -1,0 +1,665 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>選曲総選挙（WEBオンライン版）</title>
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getDatabase, ref, set, onValue, get, update } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyC4DQhH_swesAD98Xyjg8d1lcWEkkrHrgw",
+            authDomain: "gamehistory-m84.firebaseapp.com",
+            databaseURL: "https://gamehistory-m84-default-rtdb.firebaseio.com",
+            projectId: "gamehistory-m84",
+            storageBucket: "gamehistory-m84.firebasestorage.app",
+            messagingSenderId: "475761727837",
+            appId: "1:475761727837:web:06d07e1ab4120a7ccaf0b4",
+            measurementId: "G-3636W6LC4F"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+        window.db = db; // グローバル展開
+        window.dbRefs = { ref, set, onValue, get, update };
+    </script>
+
+    <style>
+        :root {
+            --primary: #6366f1;
+            --primary-hover: #4f46e5;
+            --bg: #0f172a;
+            --card-bg: #1e293b;
+            --text: #f8fafc;
+            --text-muted: #94a3b8;
+            --accent: #f59e0b;
+            --success: #10b981;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Helvetica Neue', Arial, sans-serif; }
+        body { background-color: var(--bg); color: var(--text); padding: 15px; padding-bottom: 90px; }
+        
+        .container { max-width: 500px; margin: 0 auto; position: relative; }
+        h1 { text-align: center; font-size: 1.5rem; margin-bottom: 20px; color: var(--accent); text-shadow: 0 0 10px rgba(245, 158, 11, 0.3); }
+        h2 { font-size: 1.2rem; margin-bottom: 15px; border-left: 4px solid var(--primary); padding-left: 8px; }
+        
+        /* 同期ズレ用更新ボタン */
+        .sync-btn { position: absolute; top: -5px; right: 0; background: #334155; color: white; border: none; padding: 6px 12px; border-radius: 20px; font-size: 0.8rem; cursor: pointer; }
+        
+        .card { background: var(--card-bg); padding: 20px; border-radius: 12px; margin-bottom: 20px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.3); }
+        .screen { display: none; }
+        .screen.active { display: block; animation: fadeIn 0.3s ease; }
+
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* ボタン・入力 UI */
+        input[type="text"], select { width: 100%; padding: 12px; background: #334155; border: 1px solid #475569; border-radius: 8px; color: white; margin-bottom: 12px; font-size: 1rem; }
+        input[type="text"]:focus, select:focus { outline: none; border-color: var(--primary); }
+        .btn { width: 100%; padding: 14px; background: var(--primary); border: none; border-radius: 8px; color: white; font-size: 1rem; font-weight: bold; cursor: pointer; transition: 0.2s; }
+        .btn:hover { background: var(--primary-hover); }
+        .btn-secondary { background: #475569; margin-top: 8px; }
+        .btn-danger { background: #ef4444; margin-top: 8px; }
+
+        /* リスト UI */
+        ul { list-style: none; }
+        .player-item { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #334155; }
+        
+        /* 投票ラジオボタンのカスタム */
+        .vote-option { background: #334155; padding: 15px; border-radius: 8px; margin-bottom: 10px; cursor: pointer; border: 2px solid transparent; display: block; }
+        .vote-option input { display: none; }
+        .vote-option.selected { border-color: var(--primary); background: #3b82f622; }
+        .song-title { font-weight: bold; font-size: 1.1rem; }
+        .song-promise { font-size: 0.85rem; color: var(--accent); margin-top: 4px; }
+
+        /* 開票グラフ演出 */
+        .chart-row { margin-bottom: 15px; }
+        .chart-info { display: flex; justify-content: space-between; margin-bottom: 4px; font-size: 0.9rem; }
+        .chart-bar-bg { background: #334155; height: 24px; border-radius: 6px; overflow: hidden; }
+        .chart-bar { background: linear-gradient(90deg, var(--primary), #818cf8); height: 100%; width: 0%; transition: width 1.5s cubic-bezier(0.1, 1, 0.1, 1); }
+        .chart-row.winner .chart-bar { background: linear-gradient(90deg, var(--accent), #fcd34d); }
+        .winner-announce { background: rgba(245, 158, 11, 0.15); border: 2px solid var(--accent); padding: 15px; border-radius: 8px; text-align: center; margin-top: 20px; font-weight: bold; color: var(--accent); font-size: 1.2rem; }
+
+        /* ランキング常時表示（フッター固定風） */
+        .ranking-bar { position: fixed; bottom: 0; left: 0; right: 0; background: #1e293b; border-top: 2px solid #334155; padding: 10px; max-height: 70px; overflow-y: auto; z-index: 100; }
+        .ranking-flex { display: flex; gap: 15px; justify-content: center; font-size: 0.85rem; flex-wrap: wrap; }
+        .rank-badge { background: #334155; padding: 2px 6px; border-radius: 4px; font-weight: bold; }
+        .rank-1 { color: #f59e0b; }
+
+        /* 説明用追加スタイル */
+        .info-card h3 { font-size: 1rem; color: var(--accent); margin-top: 10px; margin-bottom: 5px; }
+        .info-card p, .info-card li { font-size: 0.85rem; color: var(--text-muted); line-height: 1.5; }
+        .info-card ul { padding-left: 15px; list-style: disc; margin-top: 5px; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>🎤 選曲総選挙 🗳️</h1>
+    <button class="sync-btn" onclick="forceSync()">🔄 同期更新</button>
+
+    <div id="screen-lobby" class="screen active">
+        <div class="card">
+            <h2>ルームに参加する</h2>
+            <input type="text" id="input-player-name" placeholder="あなたの名前を入力">
+            <button class="btn" onclick="joinRoom()">参加する</button>
+        </div>
+        <div class="card">
+            <h2>参加プレイヤー一覧</h2>
+            <ul id="lobby-player-list"></ul>
+            <button class="btn btn-secondary" style="margin-top:15px;" onclick="startGame()">ゲーム開始（主催者用）</button>
+            <button class="btn btn-danger" style="font-size:0.8rem; padding:5px;" onclick="resetRoom()">※ルームデータを完全に初期化</button>
+        </div>
+    </div>
+
+    <div id="screen-singer" class="screen">
+        <div class="card">
+            <h2>あなたが今回の【歌唱者】です！</h2>
+            <p style="margin-bottom:15px; color:var(--text-muted);">歌える3曲と、それぞれの公約を入力してください。</p>
+            
+            <div>
+                <input type="text" id="song1" placeholder="曲名 1">
+                <select id="promise1" onchange="toggleCustomPromise(1)">
+                    <option value="原キー挑戦">原キー挑戦</option>
+                    <option value="感情重視で熱唱">感情重視で熱唱</option>
+                    <option value="マイクなし生声">マイクなし生声</option>
+                    <option value="裏声禁止（すべて地声）">裏声禁止（すべて地声）</option>
+                    <option value="全力で完璧に完唱">全力で完璧に完唱</option>
+                    <option value="身振り手振りダンス付き">身振り手振りダンス付き</option>
+                    <option value="custom">自由入力する...</option>
+                </select>
+                <input type="text" id="custom-promise1" placeholder="自由な公約を入力" style="display:none;">
+            </div>
+            <hr style="border-color:#334155; margin:15px 0;">
+            <div>
+                <input type="text" id="song2" placeholder="曲名 2">
+                <select id="promise2" onchange="toggleCustomPromise(2)">
+                    <option value="原キー挑戦">原キー挑戦</option>
+                    <option value="感情重視で熱唱">感情重視で熱唱</option>
+                    <option value="マイクなし生声">マイクなし生声</option>
+                    <option value="裏声禁止（すべて地声）">裏声禁止（すべて地声）</option>
+                    <option value="全力で完璧に完唱">全力で完璧に完唱</option>
+                    <option value="身振り手振りダンス付き">身振り手振りダンス付き</option>
+                    <option value="custom">自由入力する...</option>
+                </select>
+                <input type="text" id="custom-promise2" placeholder="自由な公約を入力" style="display:none;">
+            </div>
+            <hr style="border-color:#334155; margin:15px 0;">
+            <div>
+                <input type="text" id="song3" placeholder="曲名 3">
+                <select id="promise3" onchange="toggleCustomPromise(3)">
+                    <option value="原キー挑戦">原キー挑戦</option>
+                    <option value="感情重視で熱唱">感情重視で熱唱</option>
+                    <option value="マイクなし生声">マイクなし生声</option>
+                    <option value="裏声禁止（すべて地声）">裏声禁止（すべて地声）</option>
+                    <option value="全力で完璧に完唱">全力で完璧に完唱</option>
+                    <option value="身振り手振りダンス付き">身振り手振りダンス付き</option>
+                    <option value="custom">自由入力する...</option>
+                </select>
+                <input type="text" id="custom-promise3" placeholder="自由な公約を入力" style="display:none;">
+            </div>
+            <button class="btn" onclick="submitCandidates()">立候補して投票開始</button>
+        </div>
+    </div>
+
+    <div id="screen-voter" class="screen">
+        <div class="card">
+            <h2><span id="current-singer-name"></span> さんの選曲総選挙</h2>
+            <p id="voter-status-msg" style="margin-bottom:15px; color:var(--text-muted);">聴きたい曲を1曲選んで投票してください。</p>
+            <div id="vote-options-container"></div>
+            <button class="btn" id="btn-vote-submit" onclick="submitVote()">投票する</button>
+        </div>
+    </div>
+
+    <div id="screen-result" class="screen">
+        <div class="card">
+            <h2>開票結果発表</h2>
+            <div id="chart-container"></div>
+            <div id="winner-box" class="winner-announce"></div>
+        </div>
+        <div class="card">
+            <h2>このラウンドの獲得点数</h2>
+            <ul id="round-scores"></ul>
+            <button class="btn" id="btn-next-round" style="margin-top:15px; display:none;" onclick="nextRound()">次のラウンドへ（主催者用）</button>
+            <p id="wait-next-msg" style="text-align:center; color:var(--text-muted); margin-top:10px;">主催者が次のラウンドへ進めるのを待っています...</p>
+        </div>
+    </div>
+
+    <div id="screen-gameover" class="screen">
+        <div class="card" style="text-align: center;">
+            <h2>🎉 全ラウンド終了！ 🎉</h2>
+            <p style="margin-bottom: 20px;">お疲れ様でした！最終結果は以下の通りです。</p>
+            <div id="final-awards" style="text-align: left; background: #334155; padding: 15px; border-radius: 8px; font-size: 0.9rem; line-height: 1.6;"></div>
+            <button class="btn" style="margin-top: 20px;" onclick="location.reload()">タイトルに戻る</button>
+        </div>
+    </div>
+
+    <div class="card info-card">
+        <h2>📊 選曲総選挙とは？</h2>
+        <p>歌唱者が提示した「歌える3曲（＋公約）」の中から、みんなが一番聴きたい曲を投票で決定し、実際に歌ってもらうカラオケ盛り上げゲームです。</p>
+        
+        <h3>💡 得点のルール</h3>
+        <ul>
+            <li><strong>歌唱者：</strong> 決定した当選曲の「支持率（％）」がそのまま得点になります。</li>
+            <li><strong>投票者（最多得票）：</strong> 自分が投票した曲が1位に当選すると <strong>5点</strong> 獲得。</li>
+            <li><strong>投票者（最少得票）：</strong> あえて誰も選ばなそうな曲を狙う「逆張り」に成功すると <strong>10点</strong> 獲得！</li>
+            <li><strong>その他：</strong> それ以外の曲に投票した場合は 0点 となります。</li>
+        </ul>
+    </div>
+</div>
+
+<div class="ranking-bar" id="ranking-bar" style="display:none;">
+    <div class="ranking-flex" id="ranking-container"></div>
+</div>
+
+<script>
+    // ローカル状態管理
+    let myName = "";
+    let gameState = {};
+    let isFirebaseReady = false;
+
+    // Firebaseの準備ができるまで待機するループ
+    const checkFirebase = setInterval(() => {
+        if (window.db && window.dbRefs) {
+            clearInterval(checkFirebase);
+            isFirebaseReady = true;
+            initFirebaseListener();
+        }
+    }, 100);
+
+    // ドロップダウンリストの「自由入力」切り替え用
+    window.toggleCustomPromise = function(id) {
+        const select = document.getElementById(`promise${id}`);
+        const customInput = document.getElementById(`custom-promise${id}`);
+        if (select.value === 'custom') {
+            customInput.style.display = 'block';
+        } else {
+            customInput.style.display = 'none';
+        }
+    }
+
+    // Firebaseのデータ監視登録
+    function initFirebaseListener() {
+        const { ref, onValue } = window.dbRefs;
+        const senkyoRef = ref(window.db, 'senkyo');
+        
+        onValue(senkyoRef, (snapshot) => {
+            const data = snapshot.val();
+            if (data) {
+                gameState = data;
+                renderByState();
+            } else {
+                // 初回データがない場合は空で初期化
+                gameState = { status: 'lobby', players: {}, currentRound: 0, candidates: [] };
+            }
+        });
+    }
+
+    // 手動更新ボタン用
+    window.forceSync = function() {
+        if (!isFirebaseReady) return;
+        const { ref, get } = window.dbRefs;
+        get(ref(window.db, 'senkyo')).then((snapshot) => {
+            if (snapshot.exists()) {
+                gameState = snapshot.val();
+                renderByState();
+                alert('データを最新状態に同期しました。');
+            }
+        });
+    }
+
+    // ルーム初期化（リセットボタン用）
+    window.resetRoom = function() {
+        if (!confirm("本当にルームデータをリセットしますか？全員がロビーに戻されます。")) return;
+        const { ref, set } = window.dbRefs;
+        set(ref(window.db, 'senkyo'), {
+            status: 'lobby',
+            players: {},
+            currentRound: 0,
+            candidates: [],
+            voterSelections: {},
+            votes: [0, 0, 0]
+        }).then(() => alert("初期化しました。"));
+    }
+
+    // 画面切り替え制御
+    function showScreen(screenId) {
+        document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+        document.getElementById(screenId).classList.add('active');
+        if (myName) {
+            document.getElementById('ranking-bar').style.display = 'block';
+            updateRankingBar();
+        }
+    }
+
+    // 1. ロビー：参加
+    window.joinRoom = function() {
+        if (!isFirebaseReady) return alert('通信の準備中です。少々お待ちください。');
+        const nameInput = document.getElementById('input-player-name');
+        const name = nameInput.value.trim();
+        if (!name) return alert('名前を入力してください');
+        if (name.includes('.') || name.includes('#') || name.includes('$') || name.includes('[') || name.includes(']')) {
+            return alert('名前を記号を含めずに入力してください。');
+        }
+        
+        myName = name;
+        nameInput.disabled = true;
+
+        const { ref, update } = window.dbRefs;
+        // プレイヤーとして登録（初期スコア0）
+        const playerRef = ref(window.db, `senkyo/players/${myName}`);
+        
+        // 既にスコアがあれば引き継ぎ、なければ0点
+        const currentScore = (gameState.players && gameState.players[myName]) ? gameState.players[myName].score : 0;
+        update(ref(window.db, 'senkyo/players'), {
+            [myName]: { name: myName, score: currentScore }
+        });
+    }
+
+    // ロビー画面のプレイヤー一覧更新
+    function updateLobbyList() {
+        const list = document.getElementById('lobby-player-list');
+        if (!gameState.players) return;
+        list.innerHTML = Object.keys(gameState.players).map(pKey => `
+            <li class="player-item">
+                <span>${gameState.players[pKey].name} ${pKey === myName ? '<strong>(あなた)</strong>' : ''}</span>
+                <span style="color:var(--success)">Ready</span>
+            </li>
+        `).join('');
+    }
+
+    // 2. ゲーム開始（主催者）
+    window.startGame = function() {
+        if (!gameState.players || Object.keys(gameState.players).length < 2) {
+            return alert('プレイヤーが2人以上必要です。');
+        }
+        const { ref, update } = window.dbRefs;
+        update(ref(window.db, 'senkyo'), {
+            status: 'setup',
+            currentRound: 0,
+            voterSelections: {},
+            votes: [0, 0, 0]
+        });
+    }
+
+    // 状態（status）に基づいた画面の自動レンダリング
+    function renderByState() {
+        if (!myName) {
+            updateLobbyList();
+            return; // 参加前のプレイヤーは描画処理をスキップ
+        }
+
+        const pKeys = Object.keys(gameState.players || {});
+        const currentSingerName = pKeys[gameState.currentRound] || "";
+
+        if (gameState.status === 'lobby') {
+            updateLobbyList();
+            showScreen('screen-lobby');
+        } 
+        else if (gameState.status === 'setup') {
+            // 自分が現在の歌唱者の場合
+            if (currentSingerName === myName) {
+                showScreen('screen-singer');
+            } else {
+                // 他の人は歌唱者の登録待ち画面（投票画面のガワを利用）
+                document.getElementById('current-singer-name').innerText = currentSingerName;
+                document.getElementById('voter-status-msg').innerText = "歌唱者が曲を登録するのを待っています...";
+                document.getElementById('vote-options-container').innerHTML = `<p style="text-align:center; padding:20px; color:var(--text-muted);">少々お待ちください...</p>`;
+                document.getElementById('btn-vote-submit').style.display = 'none';
+                showScreen('screen-voter');
+            }
+        } 
+        else if (gameState.status === 'voting') {
+            document.getElementById('current-singer-name').innerText = currentSingerName;
+            document.getElementById('btn-vote-submit').style.display = 'block';
+            
+            if (currentSingerName === myName) {
+                // 歌唱者は投票できないので待機表示
+                document.getElementById('voter-status-msg').innerText = "みんなが投票するのを待っています...";
+                renderVoteOptions(true); // 無効化状態で表示
+                document.getElementById('btn-vote-submit').style.display = 'none';
+            } else {
+                // 既に投票済みかどうか確認
+                const hasVoted = gameState.voterSelections && gameState.voterSelections[myName] !== undefined;
+                if (hasVoted) {
+                    document.getElementById('voter-status-msg').innerText = "投票が完了しました。開票を待っています。";
+                    renderVoteOptions(true); // 変更不可にするため無効化表示
+                    document.getElementById('btn-vote-submit').style.display = 'none';
+                } else {
+                    document.getElementById('voter-status-msg').innerText = "聴きたい曲を1曲選んで投票してください。";
+                    renderVoteOptions(false);
+                }
+            }
+            showScreen('screen-voter');
+        } 
+        else if (gameState.status === 'result') {
+            renderResultScreen();
+            showScreen('screen-result');
+        } 
+        else if (gameState.status === 'gameover') {
+            renderGameOverScreen();
+            showScreen('screen-gameover');
+        }
+    }
+
+    // 候補曲の表示
+    function renderVoteOptions(disabled) {
+        const container = document.getElementById('vote-options-container');
+        const cand = gameState.candidates || [];
+        const myPrevSelection = (gameState.voterSelections && gameState.voterSelections[myName] !== undefined) ? gameState.voterSelections[myName] : -1;
+
+        container.innerHTML = cand.map((c, idx) => {
+            const isSelected = idx === myPrevSelection ? 'selected' : '';
+            const checkedAttr = idx === myPrevSelection ? 'checked' : '';
+            const clickHandler = disabled ? '' : `onclick="selectOption(${idx})"`;
+            return `
+                <label class="vote-option ${isSelected}" id="label-opt-${idx}" ${clickHandler}>
+                    <input type="radio" name="vote-song" value="${idx}" ${checkedAttr} ${disabled ? 'disabled' : ''}>
+                    <div class="song-title">${c.title}</div>
+                    <div class="song-promise">📝 公約: ${c.promise}</div>
+                </label>
+            `;
+        }).join('');
+    }
+
+    window.selectOption = function(index) {
+        document.querySelectorAll('.vote-option').forEach(el => el.classList.remove('selected'));
+        const target = document.getElementById(`label-opt-${index}`);
+        if(target) {
+            target.classList.add('selected');
+            const input = target.querySelector('input');
+            if(input) input.checked = true;
+        }
+    }
+
+    // 歌唱者が候補と公約を決定して送信
+    window.submitCandidates = function() {
+        const getPromise = (id) => {
+            const sel = document.getElementById(`promise${id}`).value;
+            if (sel === 'custom') {
+                return document.getElementById(`custom-promise${id}`).value || "なし";
+            }
+            return sel;
+        };
+
+        const s1 = document.getElementById('song1').value || "未入力の曲A";
+        const p1 = getPromise(1);
+        const s2 = document.getElementById('song2').value || "未入力の曲B";
+        const p2 = getPromise(2);
+        const s3 = document.getElementById('song3').value || "未入力の曲C";
+        const p3 = getPromise(3);
+
+        const cand = [
+            { title: s1, promise: p1 },
+            { title: s2, promise: p2 },
+            { title: s3, promise: p3 }
+        ];
+
+        const { ref, update } = window.dbRefs;
+        update(ref(window.db, 'senkyo'), {
+            status: 'voting',
+            candidates: cand,
+            votes: [0, 0, 0],
+            voterSelections: {}
+        });
+    }
+
+    // 投票を送信
+    window.submitVote = function() {
+        const selected = document.querySelector('input[name="vote-song"]:checked');
+        if (!selected) return alert('曲を選択してください');
+        
+        const myVoteIndex = parseInt(selected.value);
+        const { ref, update } = window.dbRefs;
+
+        // 投票状況を送信し、全員の投票が終わったかジャッジする
+        const nextSelections = Object.assign({}, gameState.voterSelections || {});
+        nextSelections[myName] = myVoteIndex;
+
+        const nextVotes = [0, 0, 0];
+        Object.keys(nextSelections).forEach(pKey => {
+            const vIdx = nextSelections[pKey];
+            nextVotes[vIdx]++;
+        });
+
+        const pKeys = Object.keys(gameState.players);
+        const totalVotersNeeded = pKeys.length - 1; // 歌唱者以外全員
+
+        let nextStatus = 'voting';
+        // 全員の投票が終わったら自動で開票画面状態（result）にし、同時にスコア計算を行う
+        if (Object.keys(nextSelections).length >= totalVotersNeeded) {
+            nextStatus = 'result';
+            calculateScoresForRound(nextVotes, nextSelections);
+        } else {
+            // まだ全員終わっていない場合は投票データのみ更新
+            update(ref(window.db, 'senkyo'), {
+                voterSelections: nextSelections,
+                votes: nextVotes
+            });
+        }
+    }
+
+    // ラウンド終了時スコア計算（最後の投票者が一括計算してFirebaseへ同期）
+    function calculateScoresForRound(finalVotes, finalSelections) {
+        const pKeys = Object.keys(gameState.players);
+        const currentSingerName = pKeys[gameState.currentRound];
+        
+        const maxVote = Math.max(...finalVotes);
+        const minVote = Math.min(...finalVotes);
+        
+        let winners = [];
+        gameState.candidates.forEach((c, idx) => {
+            if (finalVotes[idx] === maxVote) winners.push(idx);
+        });
+        const winnerIdx = winners[0]; // 同票は最上部優先
+        const totalVotes = finalVotes.reduce((a, b) => a + b, 0);
+
+        const updatedPlayers = Object.assign({}, gameState.players);
+
+        pKeys.forEach(pKey => {
+            let gained = 0;
+            if (pKey === currentSingerName) {
+                // 歌唱者支持率計算
+                const supportRate = totalVotes > 0 ? Math.round((maxVote / totalVotes) * 100) : 0;
+                gained = supportRate;
+            } else {
+                // 投票者
+                const pVote = finalSelections[pKey];
+                if (pVote === winnerIdx) {
+                    gained = 5;
+                } else if (finalVotes[pVote] === minVote) {
+                    gained = 10;
+                }
+            }
+            updatedPlayers[pKey].score += gained;
+        });
+
+        const { ref, update } = window.dbRefs;
+        update(ref(window.db, 'senkyo'), {
+            status: 'result',
+            voterSelections: finalSelections,
+            votes: finalVotes,
+            players: updatedPlayers
+        });
+    }
+
+    // 4. 開票結果表示
+    function renderResultScreen() {
+        const finalVotes = gameState.votes || [0, 0, 0];
+        const maxVote = Math.max(...finalVotes);
+        const minVote = Math.min(...finalVotes);
+        let winners = [];
+        gameState.candidates.forEach((c, idx) => {
+            if (finalVotes[idx] === maxVote) winners.push(idx);
+        });
+        const winnerIdx = winners[0];
+        const totalVotes = finalVotes.reduce((a, b) => a + b, 0);
+        
+        const pKeys = Object.keys(gameState.players);
+        const currentSingerName = pKeys[gameState.currentRound];
+
+        // グラフ描画
+        const chartContainer = document.getElementById('chart-container');
+        chartContainer.innerHTML = gameState.candidates.map((c, idx) => {
+            const pct = totalVotes > 0 ? Math.round((finalVotes[idx] / totalVotes) * 100) : 0;
+            const isWinner = idx === winnerIdx ? 'winner' : '';
+            return `
+                <div class="chart-row ${isWinner}">
+                    <div class="chart-info">
+                        <span>${c.title} <small style="color:var(--accent)">(${c.promise})</small></span>
+                        <strong>${finalVotes[idx]}票 (${pct}%)</strong>
+                    </div>
+                    <div class="chart-bar-bg">
+                        <div class="chart-bar" id="bar-${idx}" data-pct="${pct}"></div>
+                    </div>
+                </div>
+            `;
+        }).join('');
+
+        setTimeout(() => {
+            gameState.candidates.forEach((_, idx) => {
+                const bar = document.getElementById(`bar-${idx}`);
+                if (bar) bar.style.width = bar.getAttribute('data-pct') + '%';
+            });
+        }, 100);
+
+        document.getElementById('winner-box').innerHTML = `👑 当選曲：${gameState.candidates[winnerIdx].title}<br><small style="color:white">👉 ${currentSingerName} さん、歌唱・公約をお願いします！</small>`;
+
+        // このラウンドの加算テキスト算出（擬似再現して表示）
+        let scoreDetailsHTML = "";
+        pKeys.forEach(pKey => {
+            let gained = 0;
+            if (pKey === currentSingerName) {
+                gained = totalVotes > 0 ? Math.round((maxVote / totalVotes) * 100) : 0;
+                scoreDetailsHTML += `<li class="player-item"><span>🎤 ${pKey} (歌唱者支持率)</span><span style="color:var(--accent)">+${gained}点</span></li>`;
+            } else {
+                const pVote = gameState.voterSelections ? gameState.voterSelections[pKey] : undefined;
+                if (pVote === winnerIdx) gained = 5;
+                else if (finalVotes[pVote] === minVote) gained = 10;
+                
+                const songTitle = gameState.candidates[pVote] ? gameState.candidates[pVote].title : "未投票";
+                scoreDetailsHTML += `<li class="player-item"><span>👤 ${pKey} (${songTitle}に投票)</span><span>+${gained}点</span></li>`;
+            }
+        });
+        document.getElementById('round-scores').innerHTML = scoreDetailsHTML;
+
+        // ルーム作成者（配列の最初のプレイヤー）だけに次へ進むボタンを露出
+        if (pKeys[0] === myName) {
+            document.getElementById('btn-next-round').style.display = 'block';
+            document.getElementById('wait-next-msg').style.display = 'none';
+        } else {
+            document.getElementById('btn-next-round').style.display = 'none';
+            document.getElementById('wait-next-msg').style.display = 'block';
+        }
+    }
+
+    // 5. 次のラウンドへ（主催者操作）
+    window.nextRound = function() {
+        const pKeys = Object.keys(gameState.players);
+        const nextRoundIdx = gameState.currentRound + 1;
+        const { ref, update } = window.dbRefs;
+
+        if (nextRoundIdx < pKeys.length) {
+            update(ref(window.db, 'senkyo'), {
+                status: 'setup',
+                currentRound: nextRoundIdx,
+                candidates: [],
+                voterSelections: {},
+                votes: [0, 0, 0]
+            });
+        } else {
+            update(ref(window.db, 'senkyo'), {
+                status: 'gameover'
+            });
+        }
+    }
+
+    // 6. 最終結果画面
+    function renderGameOverScreen() {
+        const sorted = Object.values(gameState.players).sort((a,b) => b.score - a.score);
+        let html = `<h3>🏆 最終順位</h3>`;
+        sorted.forEach((p, idx) => {
+            html += `<div class="player-item"><span>${idx+1}位: ${p.name}</span><strong>${p.score}点</strong></div>`;
+        });
+        html += `<h3 style="margin-top:20px; color:var(--accent);">👑 特別賞</h3>`;
+        html += `<div class="player-item"><span>選曲王（最高得点者）</span><span style="color:var(--accent)">${sorted[0] ? sorted[0].name : "なし"}</span></div>`;
+        html += `<div class="player-item"><span>逆張り王</span><span>ゲームを盛り上げた全員！</span></div>`;
+        document.getElementById('final-awards').innerHTML = html;
+    }
+
+    // 常時ランキング更新
+    function updateRankingBar() {
+        const container = document.getElementById('ranking-container');
+        if (!gameState.players) return;
+        const sorted = Object.values(gameState.players).sort((a,b) => b.score - a.score);
+        container.innerHTML = sorted.map((p, idx) => `
+            <div>
+                <span class="rank-badge ${idx===0?'rank-1':''}">${idx+1}位</span>
+                <span>${p.name}: <strong>${p.score}点</strong></span>
+            </div>
+        `).join('');
+    }
+</script>
+
+</body>
+</html>
