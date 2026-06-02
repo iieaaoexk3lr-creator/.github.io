@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>カラオケにらめっこ 公式ルール＆パーティガイド</title>
+    <style>
+        /* 全体のリセットと基本設定 */
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Helvetica Neue', Arial, 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', Meiryo, sans-serif;
+        }
+
+        body {
+            background-color: #0b051d;
+            color: #ffffff;
+            line-height: 1.6;
+            padding-bottom: 60px;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        /* ヒーローヘッダー */
+        header {
+            text-align: center;
+            padding: 60px 20px;
+            background: linear-gradient(135deg, #ff007f 0%, #7000ff 100%);
+            border-radius: 20px;
+            margin-bottom: 40px;
+            box-shadow: 0 10px 30px rgba(112, 0, 255, 0.3);
+        }
+
+        header h1 {
+            font-size: 2.5rem;
+            font-weight: 900;
+            letter-spacing: 2px;
+            text-shadow: 2px 2px 0px #00ffff;
+            margin-bottom: 15px;
+        }
+
+        header .subtitle {
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: #00ffff;
+            margin-bottom: 20px;
+        }
+
+        header p {
+            font-size: 1rem;
+            background: rgba(0, 0, 0, 0.4);
+            padding: 15px;
+            border-radius: 10px;
+            border-left: 5px solid #00ffff;
+            text-align: left;
+        }
+
+        /* セクション共通 */
+        section {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            padding: 30px;
+            margin-bottom: 40px;
+        }
+
+        h2 {
+            font-size: 1.8rem;
+            color: #ff007f;
+            border-bottom: 3px solid #ff007f;
+            padding-bottom: 10px;
+            margin-bottom: 25px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        /* テーブル設定 */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 25px;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        th, td {
+            padding: 15px;
+            text-align: left;
+        }
+
+        th {
+            background-color: #7000ff;
+            color: white;
+            font-weight: bold;
+            width: 30%;
+        }
+
+        tr {
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        /* ステップリスト */
+        .steps {
+            list-style: none;
+        }
+
+        .step-item {
+            display: flex;
+            align-items: flex-start;
+            margin-bottom: 20px;
+            background: rgba(112, 0, 255, 0.1);
+            padding: 15px;
+            border-radius: 10px;
+            border: 1px solid rgba(112, 0, 255, 0.2);
+        }
+
+        .step-num {
+            background: #00ffff;
+            color: #0b051d;
+            font-weight: 900;
+            width: 35px;
+            height: 35px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 15px;
+            flex-shrink: 0;
+            box-shadow: 0 0 10px #00ffff;
+        }
+
+        .step-content h3 {
+            color: #00ffff;
+            margin-bottom: 5px;
+            font-size: 1.1rem;
+        }
+
+        /* お題ガチャ機能 */
+        .gacha-box {
+            text-align: center;
+            background: linear-gradient(45deg, #1a0933, #2a085c);
+            padding: 30px;
+            border-radius: 15px;
+            border: 2px dashed #ff007f;
+        }
+
+        #card-display {
+            font-size: 1.5rem;
+            font-weight: bold;
+            min-height: 80px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(0, 0, 0, 0.5);
+            border-radius: 10px;
+            margin-bottom: 20px;
+            padding: 15px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: #fff;
+            transition: all 0.3s ease;
+        }
+
+        .gacha-btn {
+            background: #ff007f;
+            color: white;
+            border: none;
+            padding: 15px 35px;
+            font-size: 1.2rem;
+            font-weight: bold;
+            border-radius: 50px;
+            cursor: pointer;
+            box-shadow: 0 5px 15px rgba(255, 0, 127, 0.4);
+            transition: transform 0.1s, box-shadow 0.3s;
+        }
+
+        .gacha-btn:hover {
+            box-shadow: 0 5px 25px rgba(255, 0, 127, 0.7);
+        }
+
+        .gacha-btn:active {
+            transform: scale(0.95);
+        }
+
+        /* 煽りフレーズ */
+        .phrase-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 15px;
+        }
+
+        .phrase-card {
+            background: rgba(255, 255, 255, 0.08);
+            padding: 15px;
+            border-radius: 10px;
+            border-left: 4px solid #7000ff;
+            font-weight: bold;
+        }
+
+        .phrase-card.alert {
+            border-left-color: #ff007f;
+            background: rgba(255, 0, 127, 0.05);
+        }
+
+        /* 表彰＆罰ゲーム */
+        .reward-penalty {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        @media (max-width: 600px) {
+            .reward-penalty {
+                grid-template-columns: 1fr;
+            }
+            header h1 { font-size: 2rem; }
+        }
+
+        .box-win {
+            border: 2px solid #ffd700;
+            background: rgba(255, 215, 0, 0.05);
+            padding: 20px;
+            border-radius: 10px;
+        }
+
+        .box-win h3 { color: #ffd700; margin-bottom: 10px; }
+
+        .box-lose {
+            border: 2px solid #00ffff;
+            background: rgba(0, 255, 255, 0.05);
+            padding: 20px;
+            border-radius: 10px;
+        }
+
+        .box-lose h3 { color: #00ffff; margin-bottom: 10px; }
+
+        ul.box-list {
+            padding-left: 20px;
+        }
+        
+        ul.box-list li {
+            margin-bottom: 8px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+
+        <header>
+            <h1>🎤 カラオケにらめっこ</h1>
+            <div class="subtitle">歌って、耐えて、爆笑せよ！</div>
+            <p>
+                <strong>新感覚の歌唱力（？）破壊ゲーム、ここに開幕！</strong><br>
+                歌いながら相手を笑わせ、自分は絶対に笑わず耐える「笑い耐久バトル」。必要なのは「ポーカーフェイス」と「お笑いへのパッション」だけ！
+            </p>
+        </header>
+
+        <section>
+            <h2>📋 基本ルール</h2>
+            <table>
+                <tr>
+                    <th>参加人数</th>
+                    <td>2人〜大人数（ペア戦・グループ対抗戦もOK！）</td>
+                </tr>
+                <tr>
+                    <th>必要なもの</th>
+                    <td>カラオケ機器、このスマホ画面、強靭な顔の筋肉</td>
+                </tr>
+                <tr>
+                    <th>勝利条件</th>
+                    <td>相手を3回笑わせる、または最後まで笑わずに生き残る！</td>
+                </tr>
+            </table>
+
+            <ul class="steps">
+                <li class="step-item">
+                    <div class="step-num">1</div>
+                    <div class="step-content">
+                        <h3>バトラー決定</h3>
+                        <p>まずは対戦するペア、またはグループを決定します。</p>
+                    </div>
+                </li>
+                <li class="step-item">
+                    <div class="step-num">2</div>
+                    <div class="step-content">
+                        <h3>運命のお題ドロー</h3>
+                        <p>下のお題ガチャを回して、このラウンドの「縛り」を決定します。</p>
+                    </div>
+                </li>
+                <li class="step-item">
+                    <div class="step-num">3</div>
+                    <div class="step-content">
+                        <h3>交互にワンフレーズ熱唱</h3>
+                        <p>選んだ曲を、1フレーズずつ交互に歌い繋ぎます。</p>
+                    </div>
+                </li>
+                <li class="step-item">
+                    <div class="step-num">4</div>
+                    <div class="step-content">
+                        <h3>笑いの仕掛け合い</h3>
+                        <p>歌いながら、お題に沿って全力で相手を笑わせにかかります。</p>
+                    </div>
+                </li>
+                <li class="step-item">
+                    <div class="step-num">5</div>
+                    <div class="step-content">
+                        <h3>ジャッジメント！</h3>
+                        <p><strong>笑ったら即アウト！</strong> ライフが減るか、その場で失格となります。</p>
+                    </div>
+                </li>
+            </ul>
+        </section>
+
+        <section>
+            <h2>🎭 リアルタイムお題ガチャ</h2>
+            <div class="gacha-box">
+                <div id="card-display">上のボタンを押して、お題を引いてね！</div>
+                <button class="gacha-btn" onclick="drawCard()">お題を引く！🔥</button>
+            </div>
+        </section>
+
+        <section>
+            <h2>🔥 進行役用 煽りフレーズ集</h2>
+            <div class="phrase-grid">
+                <div class="phrase-card alert">「にらめっこ、笑ったら負けだぞ〜！ Ready... FIGHT！」</div>
+                <div class="phrase-card">「おっと、あの顔は怪しい…！口元がピクピク動いてるぞ！」</div>
+                <div class="phrase-card alert">「耐えろ！耐えろ！笑うなー！耐えきれーーー！」</div>
+                <div class="phrase-card">「その歌詞で笑わないのは、もはやプロの技だ！」</div>
+                <div class="phrase-card alert">「はいアウトー！笑わせた方にポイント1点！いいぞ〜！」</div>
+                <div class="phrase-card">「おっと、ここでクリティカルヒット！笑いのツボを完全に押した！」</div>
+                <div class="phrase-card alert">「にらめっこ、にらめっこ、もう笑っちゃダメ！」</div>
+                <div class="phrase-card">「最後まで耐えきったら、お前が真の笑い王者だ！」</div>
+            </div>
+        </section>
+
+        <section>
+            <h2>🏆 表彰＆罰ゲーム</h2>
+            <div class="reward-penalty">
+                <div class="box-win">
+                    <h3>👑 勝者へのリワード</h3>
+                    <ul class="box-list">
+                        <li>「笑いの王冠」やミニトロフィーを授与！</li>
+                        <li>SNSでのドヤ顔写真アップ権をプレゼント。</li>
+                    </ul>
+                </div>
+                <div class="box-lose">
+                    <h3>💀 敗者へのペナルティ</h3>
+                    <ul class="box-list">
+                        <li>「即興！全力変顔＆謎のダンシング披露」</li>
+                        <li>「次の曲、語尾を全部『にゃん』にして歌うの刑」</li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+
+    </div>
+
+    <script>
+        const cards = [
+            "🐾 「歌詞に動物の名前を必ず入れる」\n（例：粉雪のね〜え『ゴリラ』…）",
+            "✨ 「サビは強制アニメ声」\n（急なロリ声・ショタ声の襲来）",
+            "🎤 「突然のガチラッパー化」\n（どんなバラードもチェケラッチョ）",
+            "🤪 「全力の変顔キープ」\n（※歌うことより顔の維持が最優先）",
+            "🌾 「超コテコテの方言縛り」\n（〜だべ、〜じゃけん、〜やねん）",
+            "💥 「謎の擬音語・擬態語をサンド」\n（イントロや隙間に『バビュン！』『ズコー！』）"
+        ];
+
+        function drawCard() {
+            const display = document.getElementById('card-display');
+            
+            // ちょっとしたシャッフル演出（文字をカチカチ動かす）
+            let count = 0;
+            const interval = setInterval(() => {
+                display.innerText = cards[Math.floor(Math.random() * cards.length)].split('\n')[0];
+                count++;
+                if (count > 5) {
+                    clearInterval(interval);
+                    // 最終決定
+                    const randomIndex = Math.floor(Math.random() * cards.length);
+                    display.innerHTML = cards[randomIndex].replace('\n', '<br><span style="font-size:0.9rem; color:#aaa; font-weight:normal; margin-top:10px; display:block;">');
+                }
+            }, 80);
+        }
+    </script>
+</body>
+</html>
