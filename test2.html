@@ -12,16 +12,10 @@
         body { font-family: 'M PLUS 1p', sans-serif; overflow-x: hidden; }
         .hacker-font { font-family: 'Share Tech Mono', monospace; }
         .pixel-font { font-family: 'DotGothic16', sans-serif; }
-        
-        /* ネオン緑のエフェクト */
         .neon-text { text-shadow: 0 0 5px #00ff00, 0 0 10px #00ff00; }
         .neon-border { box-shadow: 0 0 10px #00ff00; border-color: #00ff00; }
-        
-        /* 画面切り替えのフェードアニメーション */
         .scene { display: none; min-height: 100vh; }
         .scene.active { display: flex; flex-direction: column; }
-        
-        /* マトリックス風背景アニメーション用のキャンバス */
         #matrixBg { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -1; opacity: 0.15; }
     </style>
 </head>
@@ -29,23 +23,59 @@
 
     <canvas id="matrixBg"></canvas>
 
-    <div id="stage1" class="scene active p-6 justify-between">
+    <div id="stage0" class="scene active p-6 justify-between">
+        <div class="text-center mt-8">
+            <h1 class="text-3xl hacker-font neon-text text-green-400 font-bold tracking-widest animate-pulse">CONNECTING...</h1>
+            <p class="text-xs text-green-500 mt-2">カラオケハッカー暗号ネットワーク</p>
+        </div>
+
+        <div class="my-auto space-y-6 max-w-md mx-auto w-full border neon-border bg-black/80 p-6 rounded-xl">
+            <div id="loginForm" class="space-y-4">
+                <div>
+                    <label class="text-xs text-green-400 block mb-1">ROOM ID (団体ごとに同じ名前を入力):</label>
+                    <input type="text" id="roomInput" placeholder="例: team-abc" 
+                           class="w-full bg-zinc-900 border border-green-500 rounded p-3 text-center text-lg text-green-400 focus:outline-none">
+                </div>
+                <div>
+                    <label class="text-xs text-green-400 block mb-1">PLAYER NAME (あなたの名前):</label>
+                    <input type="text" id="nameInput" placeholder="例: たろう" 
+                           class="w-full bg-zinc-900 border border-green-500 rounded p-3 text-center text-lg text-green-400 focus:outline-none">
+                </div>
+                <button onclick="joinRoom()" class="w-full bg-green-900 hover:bg-green-800 border border-green-400 text-green-400 py-3 rounded font-bold transition">
+                    ネットワークに接続
+                </button>
+            </div>
+
+            <div id="waitingRoom" class="space-y-4 hidden text-center">
+                <p class="text-green-400 font-bold">現在の待機メンバー (<span id="memberCount">0</span>名)</p>
+                <div id="memberList" class="text-sm text-green-300 bg-zinc-900/50 p-3 rounded border border-green-900 h-24 overflow-y-auto"></div>
+                <p class="text-xs text-yellow-500 animate-pulse">全員が接続したら「ゲーム開始」を押してください</p>
+                <button onclick="startGame()" class="w-full bg-green-500 hover:bg-green-400 text-black py-3 rounded font-bold transition shadow-lg">
+                    ⚡ GAME START (人数確定)
+                </button>
+            </div>
+        </div>
+        <div class="text-center text-xs text-green-600 hacker-font">KAROKE KAN - NETWORK GATE v2.0</div>
+    </div>
+
+    <div id="stage1" class="scene p-6 justify-between">
         <div class="text-center mt-4">
             <h1 class="text-2xl hacker-font neon-text text-green-400 font-bold tracking-widest">SYSTEM HACKED</h1>
             <p class="text-xs text-green-500 mt-2 hacker-font">D.A.I SYSTEM: STATUS_LOCKED</p>
         </div>
 
         <div class="my-auto space-y-6 max-w-md mx-auto w-full">
-            <div class="border neon-border bg-black bg-opacity-70 p-4 rounded">
-                <span class="text-xs text-green-400 hacker-font">[YOUR_HINT]</span>
-                <p class="text-lg text-center font-bold text-green-300 mt-2">赤：以心電信③ / 青：硝子の少年②</p>
+            <div class="border neon-border bg-black bg-opacity-70 p-4 rounded text-center">
+                <span class="text-xs text-green-400 hacker-font block text-left">[YOUR_HINT]</span>
+                <p id="myHintText" class="text-xl font-bold text-green-300 mt-2 tracking-wide">ヒント生成中...</p>
+                <p class="text-[10px] text-green-600 mt-2">※仲間と手元のヒントを教え合って並び替えてください</p>
             </div>
 
             <div class="space-y-2">
                 <label class="text-xs text-green-400 block">D.A.I認証システム・正式名称入力：</label>
                 <input type="text" id="stage1Input" placeholder="キーワードを入力..." 
                        class="w-full bg-zinc-900 border border-green-500 rounded p-3 text-center text-xl tracking-wider text-green-400 focus:outline-none neon-border">
-                <p id="stage1Error" class="text-red-500 text-sm text-center hidden"></p>
+                <p id="stage1Error" class="text-red-500 text-sm text-center hidden font-bold mt-2"></p>
             </div>
 
             <button onclick="checkStage1()" class="w-full bg-green-900 hover:bg-green-800 border border-green-400 text-green-400 py-3 rounded font-bold transition neon-text">
@@ -54,7 +84,6 @@
         </div>
         <div class="text-center text-xs text-green-600 hacker-font">KAROKE KAN - SECURITY SYSTEM V1.04</div>
     </div>
-
 
     <div id="stage2" class="scene p-6 justify-between bg-gradient-to-b from-slate-900 to-indigo-950 text-slate-100">
         <div class="text-center mt-4">
@@ -82,7 +111,6 @@
         </div>
         <div class="text-center text-xs text-slate-500">AUDIO POWER RESTORING...</div>
     </div>
-
 
     <div id="stage3" class="scene p-4 justify-between bg-zinc-100 text-zinc-800">
         <div class="bg-rose-600 text-white p-3 rounded-xl shadow flex justify-between items-center">
@@ -141,17 +169,13 @@
         </div>
     </div>
 
-
     <div id="stageClear" class="scene p-6 items-center justify-center bg-black text-center relative overflow-hidden">
         <div class="absolute w-96 h-96 bg-indigo-500/20 rounded-full blur-3xl animate-pulse"></div>
-        
         <div class="z-10 space-y-6 animate-bounce">
             <h1 class="text-5xl font-black tracking-widest text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 via-pink-500 to-cyan-400 pixel-font drop-shadow-lg">
                 GAME CLEAR !!
             </h1>
-            <p class="text-xl font-bold tracking-wide text-white">
-                システム完全復旧
-            </p>
+            <p class="text-xl font-bold tracking-wide text-white">システム完全復旧</p>
             <div class="inline-block border-2 border-cyan-400 bg-zinc-900/80 px-8 py-4 rounded-2xl text-cyan-400 font-mono tracking-widest shadow-2xl">
                 D.A.I REBOOT SUCCESS
             </div>
@@ -163,12 +187,10 @@
 
     <input type="file" id="cameraInput" accept="image/*" capture="environment" class="hidden">
 
-
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getFirestore, doc, onSnapshot, updateDoc, increment, arrayUnion } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+        import { getFirestore, doc, onSnapshot, setDoc, updateDoc, increment, arrayUnion, getDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-        // ご提示いただいたFirebase設定
         const firebaseConfig = {
             apiKey: "AIzaSyBM43ZlYHXsj_pIDdBOFfQvsjrkrddUCv8",
             authDomain: "dasyutu-84.firebaseapp.com",
@@ -179,43 +201,131 @@
             measurementId: "G-5H6QKYHFLP"
         };
 
-        // Firebase初期化
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
         
-        // ルーム単位で管理（KARAOKE_ を頭に付与したコレクション）
-        const roomRef = doc(db, "KARAOKE_Status", "room1");
+        let roomRef = null;
+        let myId = Math.random().toString(36).substring(2, 10); // 端末識別ID
+        let myName = "";
+        let unsubscribe = null;
 
-        // 脱出曲のデータ設定
         const escapeSong = "そらにうたえば";
         const rainbowMapping = { 'そ': '赤', 'ら': '橙', 'に': '黄', 'う': '緑', 'た': '青', 'え': '藍', 'ば': '紫' };
 
-        // --- リアルタイム同期の監視 ---
-        onSnapshot(roomRef, (snapshot) => {
-            if (!snapshot.exists()) return;
-            const data = snapshot.data();
+        // 5つの元ネタ曲ヒント
+        const originalHints = [
+            "赤：以心電信③",
+            "青：硝子の少年②",
+            "黄：3年目の浮気③",
+            "緑：銭形平次④",
+            "橙：六本木〜GIROPPON〜①"
+        ];
 
-            // 1. 関門（ステージ）の切り替え同期
-            switchStageUI(data.stage);
+        // ルーム入室処理
+        window.joinRoom = async function() {
+            const roomName = document.getElementById('roomInput').value.trim();
+            myName = document.getElementById('nameInput').value.trim();
 
-            // 2. 第2関門のスコア同期演出
-            if (data.stage === 2) {
-                updateStage2Progress(data.score);
+            if (!roomName || !myName) {
+                alert("ルームIDとプレイヤー名を入力してください。");
+                return;
             }
 
-            // 3. 第3関門の文字発見同期
-            if (data.stage === 3 && data.foundLetters) {
-                updateStage3Letters(data.foundLetters);
+            roomRef = doc(db, "KARAOKE_Rooms", roomName);
+            
+            // ルームの存在チェックをして初期化
+            const roomSnap = await getDoc(roomRef);
+            if (!roomSnap.exists()) {
+                await setDoc(roomRef, {
+                    stage: 0,
+                    score: 0,
+                    foundLetters: [],
+                    players: {},
+                    hints: {}
+                });
             }
-        });
+
+            // 自分をプレイヤーリストへ追加
+            const updateObj = {};
+            updateObj[`players.${myId}`] = myName;
+            await updateDoc(roomRef, updateObj);
+
+            document.getElementById('loginForm').classList.add('hidden');
+            document.getElementById('waitingRoom').classList.remove('hidden');
+
+            // リアルタイム同期監視の開始
+            if (unsubscribe) unsubscribe();
+            unsubscribe = onSnapshot(roomRef, (snapshot) => {
+                if (!snapshot.exists()) return;
+                const data = snapshot.data();
+
+                // 待機画面のメンバー更新
+                if (data.stage === 0) {
+                    const pList = Object.values(data.players || {});
+                    document.getElementById('memberCount').innerText = pList.length;
+                    document.getElementById('memberList').innerHTML = pList.map(p => `<div>・ ${p}</div>`).join('');
+                }
+
+                // 自身の持つステージ情報と異なる場合のみ画面遷移を実行 (ループ・不発防止)
+                switchStageUI(data.stage);
+
+                // 固有ヒントの反映
+                if (data.hints && data.hints[myId]) {
+                    document.getElementById('myHintText').innerText = data.hints[myId];
+                }
+
+                // 各関門の同期
+                if (data.stage === 2) updateStage2Progress(data.score);
+                if (data.stage === 3 && data.foundLetters) updateStage3Letters(data.foundLetters);
+            });
+        }
+
+        // ホストによるゲーム開始（人数確定と文字列バラし配布）
+        window.startGame = async function() {
+            const roomSnap = await getDoc(roomRef);
+            if (!roomSnap.exists()) return;
+            const data = roomSnap.data();
+            
+            const playerIds = Object.keys(data.players || {});
+            if (playerIds.length === 0) return;
+
+            // 全員のヒントを結合して、文字単位（またはスペース）に一度バラしてから頭数で割る処理
+            // 今回は各参加者に5つのヒントピースから組み合わされた「文字の断片」を均等にバラ撒くロジック
+            let allText = originalHints.join(" / ");
+            let charArray = allText.split("");
+            
+            // シャッフル
+            for (let i = charArray.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [charArray[i], charArray[j]] = [charArray[j], charArray[i]];
+            }
+
+            // 人数に応じて文字列を等分割
+            const chunks = {};
+            const chunkSize = Math.ceil(charArray.length / playerIds.length);
+            
+            playerIds.forEach((id, index) => {
+                const start = index * chunkSize;
+                const end = start + chunkSize;
+                chunks[id] = charArray.slice(start, end).join("");
+            });
+
+            // ステージを1にし、生成したヒントをFirestoreへ格納
+            await updateDoc(roomRef, {
+                stage: 1,
+                hints: chunks
+            });
+        }
 
         // UI表示の切り替え関数
         function switchStageUI(stage) {
-            document.querySelectorAll('.scene').forEach(el => el.classList.remove('active'));
-            if (stage === 1) document.getElementById('stage1').classList.add('active');
-            if (stage === 2) document.getElementById('stage2').classList.add('active');
-            if (stage === 3) document.getElementById('stage3').classList.add('active');
-            if (stage === 4) document.getElementById('stageClear').classList.add('active');
+            // 現在アクティブな要素と異なる場合のみクラスを操作
+            const targetId = `stage${stage === 4 ? 'Clear' : stage}`;
+            const targetEl = document.getElementById(targetId);
+            if (targetEl && !targetEl.classList.contains('active')) {
+                document.querySelectorAll('.scene').forEach(el => el.classList.remove('active'));
+                targetEl.classList.add('active');
+            }
         }
 
         // --- 第1関門の処理 ---
@@ -229,7 +339,7 @@
                 speak("略称では認証できません。正式名称を入力してください。");
             } else if (input === "電子目次本") {
                 errorEl.classList.add('hidden');
-                // Firebaseを更新して全員を次のステージへ進める
+                // ドキュメント構造を維持しつつ、確実にstage2へと進行させる
                 await updateDoc(roomRef, { stage: 2, score: 0 });
             } else {
                 errorEl.innerText = "認証エラー: キーワードが異なります。";
@@ -245,10 +355,11 @@
             const missionTxt = document.getElementById('stage2Mission');
             const targetTxt = document.getElementById('targetScore');
 
+            if (!progress || !txt) return;
+
             let target = 150;
             let percent = Math.min((score / target) * 100, 100);
 
-            // フェーズ1クリア時の切り替えロジック
             if (score >= 150 && score < 300) {
                 target = 300;
                 percent = Math.min((score / target) * 100, 100);
@@ -258,9 +369,12 @@
                 targetTxt.innerText = "300";
             } else if (score >= 300) {
                 statusTxt.innerText = "出力レベル: 100% (完全復旧！)";
-                // 自動で第3関門へ移行
+                // 非同期の多重実行を防ぐために1つの端末だけが進行役を担うか、遅延後に1回だけ送る
                 setTimeout(async () => {
-                    await updateDoc(roomRef, { stage: 3 });
+                    const currentSnap = await getDoc(roomRef);
+                    if (currentSnap.exists() && currentSnap.data().stage === 2) {
+                        await updateDoc(roomRef, { stage: 3 });
+                    }
                 }, 1500);
             }
 
@@ -272,29 +386,29 @@
         function updateStage3Letters(foundLetters) {
             let correctCount = 0;
             foundLetters.forEach(letter => {
-                // 50音ボードの文字をアクティブに
                 const letterEl = document.getElementById(`letter-${letter}`);
                 if (letterEl) {
                     letterEl.className = "bg-rose-100 p-1 rounded text-rose-600 font-bold border border-rose-300";
                 }
-                // 虹色暗号ボードの文字をマッピングしてアクティブに
                 if (rainbowMapping[letter]) {
                     const color = rainbowMapping[letter];
                     const rainbowEl = document.getElementById(`rainbow-${color}`);
-                    if (rainbowEl) {
-                        // 各色に応じた鮮やかな背景色を設定
+                    if (rainbowEl && rainbowEl.innerText === color) { // まだ文字が埋まっていない場合のみ
                         const colorClasses = {
                             '赤': 'bg-red-500', '橙': 'bg-orange-500', '黄': 'bg-yellow-500 text-zinc-900',
                             '緑': 'bg-green-500', '青': 'bg-blue-500', '藍': 'bg-indigo-600', '紫': 'bg-purple-500'
                         };
                         rainbowEl.className = `${colorClasses[color]} rounded p-2 text-white font-extrabold shadow-sm`;
                         rainbowEl.innerText = letter;
-                        correctCount++;
                     }
                 }
             });
 
-            // 7文字すべて揃ったら答えを表示
+            // 確定チェック
+            Object.keys(rainbowMapping).forEach(letter => {
+                if (foundLetters.includes(letter)) correctCount++;
+            });
+
             if (correctCount === 7) {
                 const songEl = document.getElementById('decodedSong');
                 songEl.innerText = `解読完了：${escapeSong}`;
@@ -302,7 +416,6 @@
             }
         }
 
-        // 最終曲予約の送信
         window.reserveSong = async function() {
             const input = document.getElementById('finalSongInput').value.trim();
             if (input === escapeSong) {
@@ -313,7 +426,7 @@
             }
         }
 
-        // --- OCRスキャンシステム（共通共通処理） ---
+        // --- OCR共通処理 ---
         let currentOcrMode = 'score'; 
         window.startOCR = function(mode) {
             currentOcrMode = mode;
@@ -327,59 +440,53 @@
             const statusEl = document.getElementById('ocrStatus');
             if(statusEl) statusEl.innerText = "画像を解析中...";
 
-            // Tesseract.jsによる文字認識を実行 (日本語+英語対応)
             Tesseract.recognize(file, 'jpn+eng')
                 .then(async ({ data: { text } }) => {
-                    console.log("OCR結果:", text);
-                    if(statusEl) statusEl.innerText = "解析完了！データを反映します。";
+                    if(statusEl) statusEl.innerText = "解析完了！";
 
                     if (currentOcrMode === 'score') {
-                        // 点数（数値）を正規表現で抽出
                         const matches = text.match(/\d{2}\.\d{3}/) || text.match(/\d{2,3}/);
                         if (matches) {
                             const score = Math.floor(parseFloat(matches[0]));
-                            if (score >= 50 && score <= 100) { // 有効そうな点数の場合のみ加算
+                            if (score >= 50 && score <= 100) {
                                 await updateDoc(roomRef, { score: increment(score) });
                                 alert(`${score}点 を検知！チームスコアに加算しました。`);
                             } else {
-                                alert("点数がうまく読み取れませんでした。もう一度撮影してください。");
+                                alert("点数がうまく読み取れませんでした。");
                             }
                         } else {
-                            // デモ用に、文字が読み取れなかった場合の救済（検証用ランダム加算）
                             const mockScore = Math.floor(Math.random() * 15) + 80;
                             await updateDoc(roomRef, { score: increment(mockScore) });
                             alert(`（補正）スキャンを確認。チームスコアに ${mockScore}点 加算しました。`);
                         }
                     } 
                     else if (currentOcrMode === 'letter') {
-                        // 認識テキストの中にターゲット文字があるか探索
-                        Object.keys(rainbowMapping).forEach(async (letter) => {
+                        let triggered = false;
+                        for (const letter of Object.keys(rainbowMapping)) {
                             if (text.includes(letter)) {
-                                await updateDoc(roomRef, {
-                                    foundLetters: arrayUnion(letter)
-                                });
+                                await updateDoc(roomRef, { foundLetters: arrayUnion(letter) });
+                                triggered = true;
                             }
-                        });
-                        // デモ用救済：もし何も引っかからなければ、未発見の文字を1つランダム解放
+                        }
                         alert("空間スキャンが完了しました！ボードを確認してください。");
-                        // テスト用にランダムで1つ解放させるロジック（本番は外しても可）
-                        const unreleased = Object.keys(rainbowMapping);
-                        const randomLetter = unreleased[Math.floor(Math.random() * unreleased.length)];
-                        await updateDoc(roomRef, { foundLetters: arrayUnion(randomLetter) });
+                        if (!triggered) {
+                            const unreleased = Object.keys(rainbowMapping);
+                            const randomLetter = unreleased[Math.floor(Math.random() * unreleased.length)];
+                            await updateDoc(roomRef, { foundLetters: arrayUnion(randomLetter) });
+                        }
                     }
                 })
                 .catch(err => {
                     console.error(err);
-                    if(statusEl) statusEl.innerText = "スキャン失敗。もう一度試してください。";
+                    if(statusEl) statusEl.innerText = "スキャン失敗。";
                 });
         });
 
-        // 簡易音声合成（D.A.Iのナビゲーションボイス演出用）
         function speak(msg) {
             if ('speechSynthesis' in window) {
                 const uttr = new SpeechSynthesisUtterance(msg);
                 uttr.lang = 'ja-JP';
-                uttr.pitch = 0.6; // 少し低めのAIボイス風
+                uttr.pitch = 0.6;
                 uttr.rate = 0.9;
                 window.speechSynthesis.speak(uttr);
             }
