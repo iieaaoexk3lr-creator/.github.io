@@ -1,9 +1,9 @@
-<!DOCTYPE html>
+
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>カラオケハッカー 〜盗まれたメロディ〜</title>
+    <title>カラオケ・ハッカー 〜盗まれたメロディ〜</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=DotGothic16&family=M+PLUS+1p:wght@700&display=swap" rel="stylesheet">
@@ -17,12 +17,50 @@
         .scene { display: none; min-height: 100vh; }
         .scene.active { display: flex; flex-direction: column; }
         #matrixBg { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -1; opacity: 0.15; }
+
+        /* グリッチ演出（関門切替エフェクト用） */
+        .glitch-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(0, 0, 0, 0.95);
+            z-index: 9999;
+            display: none;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            color: #00ff00;
+            font-family: 'Share Tech Mono', monospace;
+            text-shadow: 0 0 10px #00ff00;
+        }
+        @keyframes glitch {
+            0% { transform: translate(0) }
+            20% { transform: translate(-5px, 5px) }
+            40% { transform: translate(-5px, -5px) }
+            60% { transform: translate(5px, 5px) }
+            80% { transform: translate(5px, -5px) }
+            100% { transform: translate(0) }
+        }
+        .glitch-active {
+            animation: glitch 0.2s infinite;
+        }
     </style>
 </head>
 <body class="bg-black text-white">
 
     <canvas id="matrixBg"></canvas>
 
+    <!-- グリッチ画面切り替えエフェクト用オーバーレイ -->
+    <div id="glitchOverlay" class="glitch-overlay">
+        <div class="text-4xl font-bold tracking-widest glitch-active">LOADING D.A.I...</div>
+        <div class="text-xs mt-4 tracking-wider hacker-font" id="glitchSubText">BYPASSING FIREWALL...</div>
+    </div>
+
+    <!-- ===================================================
+         【新設】ルーム入室・待機画面
+         =================================================== -->
     <div id="stage0" class="scene active p-6 justify-between">
         <div class="text-center mt-8">
             <h1 class="text-3xl hacker-font neon-text text-green-400 font-bold tracking-widest animate-pulse">CONNECTING...</h1>
@@ -58,6 +96,9 @@
         <div class="text-center text-xs text-green-600 hacker-font">KAROKE KAN - NETWORK GATE v2.0</div>
     </div>
 
+    <!-- ===================================================
+         【第1関門】デンモク奪還（ハッカーUI：黒×ネオン緑）
+         =================================================== -->
     <div id="stage1" class="scene p-6 justify-between">
         <div class="text-center mt-4">
             <h1 class="text-2xl hacker-font neon-text text-green-400 font-bold tracking-widest">SYSTEM HACKED</h1>
@@ -67,7 +108,8 @@
         <div class="my-auto space-y-6 max-w-md mx-auto w-full">
             <div class="border neon-border bg-black bg-opacity-70 p-4 rounded text-center">
                 <span class="text-xs text-green-400 hacker-font block text-left">[YOUR_HINT]</span>
-                <p id="myHintText" class="text-xl font-bold text-green-300 mt-2 tracking-wide">ヒント生成中...</p>
+                <!-- それぞれの曲ごとに設定した色で個別にカラーリングされた文字が描写されます -->
+                <p id="myHintText" class="text-xl font-bold text-green-300 mt-2 tracking-wide leading-relaxed">ヒント生成中...</p>
                 <p class="text-[10px] text-green-600 mt-2">※仲間と手元のヒントを教え合って並び替えてください</p>
             </div>
 
@@ -85,16 +127,21 @@
         <div class="text-center text-xs text-green-600 hacker-font">KAROKE KAN - SECURITY SYSTEM V1.04</div>
     </div>
 
+    <!-- ===================================================
+         【第2関門】音響システム奪還（タイマー＆入力救済追加）
+         =================================================== -->
     <div id="stage2" class="scene p-6 justify-between bg-gradient-to-b from-slate-900 to-indigo-950 text-slate-100">
         <div class="text-center mt-4">
             <h1 class="text-xl font-bold tracking-wider text-cyan-400">音響システム修復フェーズ</h1>
             <p id="audioStatusText" class="text-sm text-cyan-300 mt-1">出力レベル: 0% (無音採点中)</p>
+            <!-- 制限時間タイマー表示 -->
+            <div class="text-rose-400 font-mono text-sm mt-1" id="timerDisplay">スキャン残り時間: --:--</div>
         </div>
 
-        <div class="my-auto space-y-6 max-w-md mx-auto w-full text-center">
+        <div class="my-auto space-y-4 max-w-md mx-auto w-full text-center">
             <div class="w-full bg-slate-800 rounded-full h-6 overflow-hidden border border-cyan-500/30 relative">
                 <div id="scoreProgress" class="bg-gradient-to-r from-cyan-500 to-blue-500 h-full transition-all duration-500" style="width: 0%"></div>
-                <div id="progressText" class="absolute inset-0 flex items-center justify-center text-xs font-bold">チーム合計: 0点</div>
+                <div id="progressText" class="absolute inset-0 flex items-center justify-center text-xs font-bold text-white">チーム合計: 0点</div>
             </div>
 
             <div class="bg-slate-800/60 p-4 rounded-xl border border-slate-700 backdrop-blur-sm text-sm text-slate-300 space-y-2">
@@ -107,44 +154,77 @@
                     📷 採点結果をスキャンする
                 </button>
                 <p id="ocrStatus" class="text-xs text-slate-400"></p>
+
+                <!-- 救済用：直接入力エリア（スキャンに1度失敗する、またはボタン押下でいつでも表示可能） -->
+                <div id="rescueInputArea" class="hidden border border-dashed border-cyan-500/50 p-3 rounded-lg bg-slate-900/80 space-y-2">
+                    <p class="text-xs text-yellow-400">【救済】OCR認識が失敗した場合、採点結果を直接入力できます。</p>
+                    <div class="flex gap-2">
+                        <input type="number" id="manualScoreInput" min="0" max="100" placeholder="例: 85" 
+                               class="w-full bg-slate-800 border border-cyan-500 rounded px-3 py-2 text-center text-cyan-300 focus:outline-none">
+                        <button onclick="submitManualScore()" class="bg-cyan-600 hover:bg-cyan-500 text-white font-bold px-4 py-2 rounded text-xs shrink-0">
+                            点数を登録
+                        </button>
+                    </div>
+                </div>
             </div>
         </div>
         <div class="text-center text-xs text-slate-500">AUDIO POWER RESTORING...</div>
     </div>
 
-    <div id="stage3" class="scene p-4 justify-between bg-zinc-100 text-zinc-800">
+    <!-- ===================================================
+         【第3関門】盗まれたメロディ探索（虹枠数字＆完全50音表UI）
+         =================================================== -->
+    <div id="stage3" class="scene p-3 justify-between bg-zinc-100 text-zinc-800">
         <div class="bg-rose-600 text-white p-3 rounded-xl shadow flex justify-between items-center">
             <span class="font-bold tracking-wider pixel-font">D.A.I デンモクmini</span>
             <span class="text-xs bg-rose-700 px-2 py-1 rounded">ルーム連携中</span>
         </div>
 
-        <div class="my-auto space-y-4 w-full max-w-md mx-auto">
+        <div class="my-auto space-y-3 w-full max-w-md mx-auto">
+            <!-- 虹色の進捗表示 (1 2 3 4 5 6 7 の数字下に赤橙黄緑青藍紫の枠) -->
             <div class="bg-white p-3 rounded-xl shadow-sm border border-zinc-200">
-                <div class="text-xs font-bold text-zinc-500 mb-2">【解析されたメロディ暗号】</div>
-                <div class="grid grid-cols-7 gap-1 text-center font-bold text-white text-sm">
-                    <div id="rainbow-赤" class="bg-zinc-300 rounded p-2 text-zinc-400">赤</div>
-                    <div id="rainbow-橙" class="bg-zinc-300 rounded p-2 text-zinc-400">橙</div>
-                    <div id="rainbow-黄" class="bg-zinc-300 rounded p-2 text-zinc-400">黄</div>
-                    <div id="rainbow-緑" class="bg-zinc-300 rounded p-2 text-zinc-400">緑</div>
-                    <div id="rainbow-青" class="bg-zinc-300 rounded p-2 text-zinc-400">青</div>
-                    <div id="rainbow-藍" class="bg-zinc-300 rounded p-2 text-zinc-400">藍</div>
-                    <div id="rainbow-紫" class="bg-zinc-300 rounded p-2 text-zinc-400">紫</div>
+                <div class="text-xs font-bold text-zinc-500 mb-2 text-center">【解析されたメロディ暗号】</div>
+                <div class="grid grid-cols-7 gap-2 text-center font-bold text-zinc-800 text-sm">
+                    <div class="flex flex-col items-center">
+                        <span class="text-xs font-mono mb-1">1</span>
+                        <div id="rainbow-赤" class="w-full bg-zinc-200 border-b-4 border-red-500 rounded py-2 text-zinc-400 font-bold transition-all">赤</div>
+                    </div>
+                    <div class="flex flex-col items-center">
+                        <span class="text-xs font-mono mb-1">2</span>
+                        <div id="rainbow-橙" class="w-full bg-zinc-200 border-b-4 border-orange-500 rounded py-2 text-zinc-400 font-bold transition-all">橙</div>
+                    </div>
+                    <div class="flex flex-col items-center">
+                        <span class="text-xs font-mono mb-1">3</span>
+                        <div id="rainbow-黄" class="w-full bg-zinc-200 border-b-4 border-yellow-400 rounded py-2 text-zinc-400 font-bold transition-all">黄</div>
+                    </div>
+                    <div class="flex flex-col items-center">
+                        <span class="text-xs font-mono mb-1">4</span>
+                        <div id="rainbow-緑" class="w-full bg-zinc-200 border-b-4 border-green-500 rounded py-2 text-zinc-400 font-bold transition-all">緑</div>
+                    </div>
+                    <div class="flex flex-col items-center">
+                        <span class="text-xs font-mono mb-1">5</span>
+                        <div id="rainbow-青" class="w-full bg-zinc-200 border-b-4 border-blue-500 rounded py-2 text-zinc-400 font-bold transition-all">青</div>
+                    </div>
+                    <div class="flex flex-col items-center">
+                        <span class="text-xs font-mono mb-1">6</span>
+                        <div id="rainbow-藍" class="w-full bg-zinc-200 border-b-4 border-indigo-600 rounded py-2 text-zinc-400 font-bold transition-all">藍</div>
+                    </div>
+                    <div class="flex flex-col items-center">
+                        <span class="text-xs font-mono mb-1">7</span>
+                        <div id="rainbow-紫" class="w-full bg-zinc-200 border-b-4 border-purple-500 rounded py-2 text-zinc-400 font-bold transition-all">紫</div>
+                    </div>
                 </div>
                 <div id="decodedSong" class="text-center mt-3 text-lg font-bold text-rose-600 tracking-widest hidden">
-                    解読曲：？？？？
+                    解読完了：そらにうたえば
                 </div>
             </div>
 
+            <!-- 完全五十音表（そらにうたえば 以外は未発見時に薄いグレー、そらにうたえば は該当のカラー） -->
             <div class="bg-white p-3 rounded-xl shadow-sm border border-zinc-200">
-                <div class="text-xs font-bold text-zinc-500 mb-1">発見した文字ボード</div>
-                <div class="grid grid-cols-5 gap-1 text-center text-xs">
-                    <div id="letter-そ" class="bg-zinc-200 p-1 rounded text-zinc-400">そ</div>
-                    <div id="letter-ら" class="bg-zinc-200 p-1 rounded text-zinc-400">ら</div>
-                    <div id="letter-に" class="bg-zinc-200 p-1 rounded text-zinc-400">に</div>
-                    <div id="letter-う" class="bg-zinc-200 p-1 rounded text-zinc-400">う</div>
-                    <div id="letter-た" class="bg-zinc-200 p-1 rounded text-zinc-400">た</div>
-                    <div id="letter-え" class="bg-zinc-200 p-1 rounded text-zinc-400">え</div>
-                    <div id="letter-ば" class="bg-zinc-200 p-1 rounded text-zinc-400">ば</div>
+                <div class="text-xs font-bold text-zinc-500 mb-1">発見した文字ボード (五十音表)</div>
+                <!-- 5列×10行（清音メインで配列、そらにうたえばをカラー化） -->
+                <div class="grid grid-cols-5 gap-1 text-center text-xs h-40 overflow-y-auto" id="fiftyKanaBoard">
+                    <!-- 五十音はJavaScriptにて読み込み時に自動で挿入、および文字検知でマッピング制御されます -->
                 </div>
             </div>
 
@@ -152,7 +232,7 @@
                 <button onclick="startOCR('letter')" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 rounded-xl shadow flex justify-center items-center gap-2">
                     🔍 店内掲示物をスキャン
                 </button>
-                <div class="border-t pt-3">
+                <div class="border-t pt-2">
                     <input type="text" id="finalSongInput" placeholder="判明した脱出曲名を入力" 
                            class="w-full border rounded-xl p-3 text-center font-bold text-lg bg-zinc-50 focus:outline-rose-500">
                 </div>
@@ -169,6 +249,9 @@
         </div>
     </div>
 
+    <!-- ===================================================
+         【最終演出】ゲームクリア画面
+         =================================================== -->
     <div id="stageClear" class="scene p-6 items-center justify-center bg-black text-center relative overflow-hidden">
         <div class="absolute w-96 h-96 bg-indigo-500/20 rounded-full blur-3xl animate-pulse"></div>
         <div class="z-10 space-y-6 animate-bounce">
@@ -187,6 +270,9 @@
 
     <input type="file" id="cameraInput" accept="image/*" capture="environment" class="hidden">
 
+    <!-- ===================================================
+         JAVASCRIPT / FIREBASE 連携
+         =================================================== -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
         import { getFirestore, doc, onSnapshot, setDoc, updateDoc, increment, arrayUnion, getDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
@@ -205,9 +291,10 @@
         const db = getFirestore(app);
         
         let roomRef = null;
-        let myId = Math.random().toString(36).substring(2, 10); // 端末識別ID
+        let myId = Math.random().toString(36).substring(2, 10); 
         let myName = "";
         let unsubscribe = null;
+        let timerInterval = null;
 
         const escapeSong = "そらにうたえば";
         const rainbowMapping = { 'そ': '赤', 'ら': '橙', 'に': '黄', 'う': '緑', 'た': '青', 'え': '藍', 'ば': '紫' };
@@ -221,6 +308,49 @@
             "橙：六本木〜GIROPPON〜①"
         ];
 
+        // 五十音リスト
+        const fiftyKana = [
+            'あ','い','う','え','お',
+            'か','き','く','け','こ',
+            'さ','し','す','せ','そ',
+            'た','ち','つ','て','と',
+            'な','に','ぬ','ね','の',
+            'は','ひ','ふ','へ','ほ',
+            'ま','み','む','め','も',
+            'や','い','ゆ','え','よ',
+            'ら','り','る','れ','ろ',
+            'わ','い','う','え','を',
+            'ん','ば'
+        ];
+
+        // 読み込み時に五十音表を動的生成
+        window.onload = function() {
+            const board = document.getElementById('fiftyKanaBoard');
+            if (board) {
+                board.innerHTML = fiftyKana.map(kana => {
+                    return `<div id="letter-${kana}" class="bg-zinc-200 py-1.5 rounded text-zinc-400 transition-all">${kana}</div>`;
+                }).join('');
+            }
+        };
+
+        // グリッチ切り替えエフェクト
+        function triggerGlitchTransition(stage, callback) {
+            const overlay = document.getElementById('glitchOverlay');
+            const sub = document.getElementById('glitchSubText');
+            if (stage === 1) sub.innerText = "ACCESS DENIED - BYPASSING NOW...";
+            if (stage === 2) sub.innerText = "CORRUPTED FILE DETECTED - REBUILDING AUDIO...";
+            if (stage === 3) sub.innerText = "DECRYPTING PRIVATE DIRECTORY...";
+            if (stage === 4) sub.innerText = "D.A.I ONLINE - BOOT SEQUENCE COMPLETED.";
+
+            overlay.style.display = 'flex';
+            speak("システム切り替えを実行します。");
+
+            setTimeout(() => {
+                overlay.style.display = 'none';
+                if(callback) callback();
+            }, 1200);
+        }
+
         // ルーム入室処理
         window.joinRoom = async function() {
             const roomName = document.getElementById('roomInput').value.trim();
@@ -233,7 +363,6 @@
 
             roomRef = doc(db, "KARAOKE_Rooms", roomName);
             
-            // ルームの存在チェックをして初期化
             const roomSnap = await getDoc(roomRef);
             if (!roomSnap.exists()) {
                 await setDoc(roomRef, {
@@ -241,46 +370,71 @@
                     score: 0,
                     foundLetters: [],
                     players: {},
-                    hints: {}
+                    hints: {},
+                    timerEnd: 0
                 });
             }
 
-            // 自分をプレイヤーリストへ追加
             const updateObj = {};
             updateObj[`players.${myId}`] = myName;
             await updateDoc(roomRef, updateObj);
 
             document.getElementById('loginForm').classList.add('hidden');
             document.getElementById('waitingRoom').classList.remove('hidden');
+            switchStageUI(0);
 
-            // リアルタイム同期監視の開始
             if (unsubscribe) unsubscribe();
             unsubscribe = onSnapshot(roomRef, (snapshot) => {
                 if (!snapshot.exists()) return;
                 const data = snapshot.data();
 
-                // 待機画面のメンバー更新
                 if (data.stage === 0) {
                     const pList = Object.values(data.players || {});
                     document.getElementById('memberCount').innerText = pList.length;
                     document.getElementById('memberList').innerHTML = pList.map(p => `<div>・ ${p}</div>`).join('');
                 }
 
-                // 自身の持つステージ情報と異なる場合のみ画面遷移を実行 (ループ・不発防止)
-                switchStageUI(data.stage);
-
-                // 固有ヒントの反映
-                if (data.hints && data.hints[myId]) {
-                    document.getElementById('myHintText').innerText = data.hints[myId];
+                // 状態変化による画面切り替え
+                const currentActive = document.querySelector('.scene.active');
+                const targetId = `stage${data.stage === 4 ? 'Clear' : data.stage}`;
+                
+                if (currentActive && currentActive.id !== targetId) {
+                    triggerGlitchTransition(data.stage, () => {
+                        switchStageUI(data.stage);
+                        
+                        // ステージ2移行時のタイマー開始
+                        if (data.stage === 2 && data.timerEnd) {
+                            startTimerUI(data.timerEnd);
+                        }
+                    });
                 }
 
-                // 各関門の同期
+                // ヒントのカラー置換表示
+                if (data.hints && data.hints[myId]) {
+                    let text = data.hints[myId];
+                    // 曲単位およびカラーキーワードに完全一致する文字色へ調整
+                    text = text.replace(/赤/g, '<span class="text-red-500 drop-shadow-[0_0_5px_rgba(239,68,68,0.9)] font-extrabold px-1">赤</span>');
+                    text = text.replace(/青/g, '<span class="text-blue-500 drop-shadow-[0_0_5px_rgba(59,130,246,0.9)] font-extrabold px-1">青</span>');
+                    text = text.replace(/黄/g, '<span class="text-yellow-400 drop-shadow-[0_0_5px_rgba(250,204,21,0.9)] font-extrabold px-1">黄</span>');
+                    text = text.replace(/緑/g, '<span class="text-green-500 drop-shadow-[0_0_5px_rgba(34,197,94,0.9)] font-extrabold px-1">緑</span>');
+                    text = text.replace(/橙/g, '<span class="text-orange-500 drop-shadow-[0_0_5px_rgba(249,115,22,0.9)] font-extrabold px-1">橙</span>');
+                    
+                    // 元ネタの「曲名」ごとカラー指定 (色がついている部分の表現力を高めます)
+                    text = text.replace(/以心電信/g, '<span class="text-red-400">以心電信</span>');
+                    text = text.replace(/硝子の少年/g, '<span class="text-blue-400">硝子の少年</span>');
+                    text = text.replace(/3年目の浮気/g, '<span class="text-yellow-300">3年目の浮気</span>');
+                    text = text.replace(/銭形平次/g, '<span class="text-green-400">銭形平次</span>');
+                    text = text.replace(/GIROPPON/g, '<span class="text-orange-400">GIROPPON</span>');
+                    
+                    document.getElementById('myHintText').innerHTML = text;
+                }
+
                 if (data.stage === 2) updateStage2Progress(data.score);
                 if (data.stage === 3 && data.foundLetters) updateStage3Letters(data.foundLetters);
             });
         }
 
-        // ホストによるゲーム開始（人数確定と文字列バラし配布）
+        // ゲーム開始
         window.startGame = async function() {
             const roomSnap = await getDoc(roomRef);
             if (!roomSnap.exists()) return;
@@ -289,18 +443,14 @@
             const playerIds = Object.keys(data.players || {});
             if (playerIds.length === 0) return;
 
-            // 全員のヒントを結合して、文字単位（またはスペース）に一度バラしてから頭数で割る処理
-            // 今回は各参加者に5つのヒントピースから組み合わされた「文字の断片」を均等にバラ撒くロジック
             let allText = originalHints.join(" / ");
             let charArray = allText.split("");
             
-            // シャッフル
             for (let i = charArray.length - 1; i > 0; i--) {
                 const j = Math.floor(Math.random() * (i + 1));
                 [charArray[i], charArray[j]] = [charArray[j], charArray[i]];
             }
 
-            // 人数に応じて文字列を等分割
             const chunks = {};
             const chunkSize = Math.ceil(charArray.length / playerIds.length);
             
@@ -310,22 +460,36 @@
                 chunks[id] = charArray.slice(start, end).join("");
             });
 
-            // ステージを1にし、生成したヒントをFirestoreへ格納
             await updateDoc(roomRef, {
                 stage: 1,
                 hints: chunks
             });
         }
 
-        // UI表示の切り替え関数
         function switchStageUI(stage) {
-            // 現在アクティブな要素と異なる場合のみクラスを操作
             const targetId = `stage${stage === 4 ? 'Clear' : stage}`;
+            document.querySelectorAll('.scene').forEach(el => el.classList.remove('active'));
             const targetEl = document.getElementById(targetId);
-            if (targetEl && !targetEl.classList.contains('active')) {
-                document.querySelectorAll('.scene').forEach(el => el.classList.remove('active'));
-                targetEl.classList.add('active');
-            }
+            if (targetEl) targetEl.classList.add('active');
+        }
+
+        // 第2関門タイマー表示
+        function startTimerUI(timerEnd) {
+            if (timerInterval) clearInterval(timerInterval);
+            const display = document.getElementById('timerDisplay');
+            
+            timerInterval = setInterval(() => {
+                const now = Date.now();
+                const diff = timerEnd - now;
+                if (diff <= 0) {
+                    clearInterval(timerInterval);
+                    display.innerText = "残り時間: タイムアップ！直接入力を使用してください";
+                    return;
+                }
+                const min = Math.floor(diff / 60000);
+                const sec = Math.floor((diff % 60000) / 1000);
+                display.innerText = `スキャン残り時間: ${String(min).padStart(2, '0')}:${String(sec).padStart(2, '0')}`;
+            }, 1000);
         }
 
         // --- 第1関門の処理 ---
@@ -339,8 +503,12 @@
                 speak("略称では認証できません。正式名称を入力してください。");
             } else if (input === "電子目次本") {
                 errorEl.classList.add('hidden');
-                // ドキュメント構造を維持しつつ、確実にstage2へと進行させる
-                await updateDoc(roomRef, { stage: 2, score: 0 });
+                // 第2関門移行時に5分(300000ms)の制限時間をFirestore側へセット
+                await updateDoc(roomRef, { 
+                    stage: 2, 
+                    score: 0, 
+                    timerEnd: Date.now() + 300000 
+                });
             } else {
                 errorEl.innerText = "認証エラー: キーワードが異なります。";
                 errorEl.classList.remove('hidden');
@@ -369,7 +537,7 @@
                 targetTxt.innerText = "300";
             } else if (score >= 300) {
                 statusTxt.innerText = "出力レベル: 100% (完全復旧！)";
-                // 非同期の多重実行を防ぐために1つの端末だけが進行役を担うか、遅延後に1回だけ送る
+                if (timerInterval) clearInterval(timerInterval);
                 setTimeout(async () => {
                     const currentSnap = await getDoc(roomRef);
                     if (currentSnap.exists() && currentSnap.data().stage === 2) {
@@ -382,36 +550,73 @@
             txt.innerText = `チーム合計: ${score}点`;
         }
 
+        // 直接入力（救済枠）
+        window.submitManualScore = async function() {
+            const inputVal = document.getElementById('manualScoreInput').value.trim();
+            const score = parseInt(inputVal, 10);
+            if (isNaN(score) || score < 0 || score > 100) {
+                alert("0〜100の正しい点数を入力してください。");
+                return;
+            }
+            await updateDoc(roomRef, { score: increment(score) });
+            document.getElementById('manualScoreInput').value = "";
+            alert(`${score}点 を直接登録しました。`);
+        }
+
         // --- 第3関門の処理 ---
         function updateStage3Letters(foundLetters) {
             let correctCount = 0;
-            foundLetters.forEach(letter => {
-                const letterEl = document.getElementById(`letter-${letter}`);
+            
+            // 五十音ボードすべての文字に対するスタイル反映
+            fiftyKana.forEach(kana => {
+                const letterEl = document.getElementById(`letter-${kana}`);
                 if (letterEl) {
-                    letterEl.className = "bg-rose-100 p-1 rounded text-rose-600 font-bold border border-rose-300";
+                    if (foundLetters.includes(kana)) {
+                        // 脱出文字列「そらにうたえば」に該当する場合は色を個別に変える
+                        if (rainbowMapping[kana]) {
+                            const colorClasses = {
+                                'そ': 'bg-red-500 text-white font-bold shadow-sm scale-110 border border-red-400',
+                                'ら': 'bg-orange-500 text-white font-bold shadow-sm scale-110 border border-orange-400',
+                                'に': 'bg-yellow-400 text-zinc-900 font-bold shadow-sm scale-110 border border-yellow-300',
+                                'う': 'bg-green-500 text-white font-bold shadow-sm scale-110 border border-green-400',
+                                'た': 'bg-blue-500 text-white font-bold shadow-sm scale-110 border border-blue-400',
+                                'え': 'bg-indigo-600 text-white font-bold shadow-sm scale-110 border border-indigo-400',
+                                'ば': 'bg-purple-500 text-white font-bold shadow-sm scale-110 border border-purple-400'
+                            };
+                            letterEl.className = `${colorClasses[kana]} py-1.5 rounded transition-all duration-300`;
+                        } else {
+                            letterEl.className = "bg-zinc-600 text-white font-bold py-1.5 rounded transition-all";
+                        }
+                    } else {
+                        // 未発見の場合のデフォルト
+                        letterEl.className = "bg-zinc-200 py-1.5 rounded text-zinc-400 transition-all";
+                    }
                 }
+            });
+
+            // 1234567 の虹枠数字の更新処理
+            foundLetters.forEach(letter => {
                 if (rainbowMapping[letter]) {
                     const color = rainbowMapping[letter];
                     const rainbowEl = document.getElementById(`rainbow-${color}`);
-                    if (rainbowEl && rainbowEl.innerText === color) { // まだ文字が埋まっていない場合のみ
+                    if (rainbowEl && rainbowEl.innerText === color) {
                         const colorClasses = {
-                            '赤': 'bg-red-500', '橙': 'bg-orange-500', '黄': 'bg-yellow-500 text-zinc-900',
-                            '緑': 'bg-green-500', '青': 'bg-blue-500', '藍': 'bg-indigo-600', '紫': 'bg-purple-500'
+                            '赤': 'bg-red-500 border-red-700', '橙': 'bg-orange-500 border-orange-700', '黄': 'bg-yellow-500 border-yellow-600 text-zinc-900',
+                            '緑': 'bg-green-500 border-green-700', '青': 'bg-blue-500 border-blue-700', '藍': 'bg-indigo-600 border-indigo-800', '紫': 'bg-purple-500 border-purple-700'
                         };
-                        rainbowEl.className = `${colorClasses[color]} rounded p-2 text-white font-extrabold shadow-sm`;
+                        rainbowEl.className = `w-full ${colorClasses[color]} border-b-4 rounded py-2 text-white font-extrabold shadow-sm scale-105 transition-all`;
                         rainbowEl.innerText = letter;
                     }
                 }
             });
 
-            // 確定チェック
+            // 脱出判定用
             Object.keys(rainbowMapping).forEach(letter => {
                 if (foundLetters.includes(letter)) correctCount++;
             });
 
             if (correctCount === 7) {
                 const songEl = document.getElementById('decodedSong');
-                songEl.innerText = `解読完了：${escapeSong}`;
                 songEl.classList.remove('hidden');
             }
         }
@@ -426,7 +631,7 @@
             }
         }
 
-        // --- OCR共通処理 ---
+        // --- OCR共通処理 (前処理を強化してコントラストとしきい値を高め認識度を最大化) ---
         let currentOcrMode = 'score'; 
         window.startOCR = function(mode) {
             currentOcrMode = mode;
@@ -438,49 +643,86 @@
             if (!file) return;
 
             const statusEl = document.getElementById('ocrStatus');
-            if(statusEl) statusEl.innerText = "画像を解析中...";
+            if(statusEl) statusEl.innerText = "画質を調整して高精度スキャンを実行中...";
 
-            Tesseract.recognize(file, 'jpn+eng')
-                .then(async ({ data: { text } }) => {
-                    if(statusEl) statusEl.innerText = "解析完了！";
-
-                    if (currentOcrMode === 'score') {
-                        const matches = text.match(/\d{2}\.\d{3}/) || text.match(/\d{2,3}/);
-                        if (matches) {
-                            const score = Math.floor(parseFloat(matches[0]));
-                            if (score >= 50 && score <= 100) {
-                                await updateDoc(roomRef, { score: increment(score) });
-                                alert(`${score}点 を検知！チームスコアに加算しました。`);
-                            } else {
-                                alert("点数がうまく読み取れませんでした。");
-                            }
-                        } else {
-                            const mockScore = Math.floor(Math.random() * 15) + 80;
-                            await updateDoc(roomRef, { score: increment(mockScore) });
-                            alert(`（補正）スキャンを確認。チームスコアに ${mockScore}点 加算しました。`);
-                        }
-                    } 
-                    else if (currentOcrMode === 'letter') {
-                        let triggered = false;
-                        for (const letter of Object.keys(rainbowMapping)) {
-                            if (text.includes(letter)) {
-                                await updateDoc(roomRef, { foundLetters: arrayUnion(letter) });
-                                triggered = true;
-                            }
-                        }
-                        alert("空間スキャンが完了しました！ボードを確認してください。");
-                        if (!triggered) {
-                            const unreleased = Object.keys(rainbowMapping);
-                            const randomLetter = unreleased[Math.floor(Math.random() * unreleased.length)];
-                            await updateDoc(roomRef, { foundLetters: arrayUnion(randomLetter) });
-                        }
+            // 前処理：明るさ・コントラスト補正用の簡易キャンバス処理（認識率向上対策）
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                const img = new Image();
+                img.onload = function() {
+                    const canvas = document.createElement('canvas');
+                    const ctx = canvas.getContext('2d');
+                    canvas.width = img.width;
+                    canvas.height = img.height;
+                    
+                    // コントラストとしきい値フィルタの適用
+                    ctx.drawImage(img, 0, 0);
+                    const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                    const data = imgData.data;
+                    for (let i = 0; i < data.length; i += 4) {
+                        let r = data[i], g = data[i+1], b = data[i+2];
+                        let gray = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+                        // 二値化補正 (コントラストをMAXにして文字のアウトラインを最適化)
+                        let v = (gray > 128) ? 255 : 0;
+                        data[i] = data[i+1] = data[i+2] = v;
                     }
-                })
-                .catch(err => {
-                    console.error(err);
-                    if(statusEl) statusEl.innerText = "スキャン失敗。";
-                });
+                    ctx.putImageData(imgData, 0, 0);
+
+                    // Tesseractに補正画像を読み込ませて精度向上
+                    Tesseract.recognize(canvas, 'jpn+eng')
+                        .then(async ({ data: { text } }) => {
+                            if(statusEl) statusEl.innerText = "解析完了！";
+                            console.log("OCR高精度認識結果:", text);
+
+                            if (currentOcrMode === 'score') {
+                                const matches = text.match(/\d{2}\.\d{3}/) || text.match(/\d{2,3}/);
+                                if (matches) {
+                                    const score = Math.floor(parseFloat(matches[0]));
+                                    if (score >= 50 && score <= 100) {
+                                        await updateDoc(roomRef, { score: increment(score) });
+                                        alert(`${score}点 を検知！チームスコアに加算しました。`);
+                                    } else {
+                                        showRescueInput();
+                                    }
+                                } else {
+                                    showRescueInput();
+                                }
+                            } 
+                            else if (currentOcrMode === 'letter') {
+                                let triggered = false;
+                                for (const letter of Object.keys(rainbowMapping)) {
+                                    if (text.includes(letter)) {
+                                        await updateDoc(roomRef, { foundLetters: arrayUnion(letter) });
+                                        triggered = true;
+                                    }
+                                }
+                                alert("空間スキャンが完了しました！ボードを確認してください。");
+                                if (!triggered) {
+                                    const unreleased = Object.keys(rainbowMapping);
+                                    const randomLetter = unreleased[Math.floor(Math.random() * unreleased.length)];
+                                    await updateDoc(roomRef, { foundLetters: arrayUnion(randomLetter) });
+                                }
+                            }
+                        })
+                        .catch(err => {
+                            console.error(err);
+                            if(statusEl) statusEl.innerText = "スキャン失敗。";
+                            showRescueInput();
+                        });
+                };
+                img.src = event.target.result;
+            };
+            reader.readAsDataURL(file);
         });
+
+        // OCR認識失敗時のお助け救済入力の展開
+        function showRescueInput() {
+            const area = document.getElementById('rescueInputArea');
+            if (area) {
+                area.classList.remove('hidden');
+            }
+            alert("点数がうまく検出できませんでした。撮影環境が暗い場合は、表示された「直接入力枠」から点数を手動追加できます。");
+        }
 
         function speak(msg) {
             if ('speechSynthesis' in window) {
@@ -493,6 +735,7 @@
         }
     </script>
 
+    <!-- マトリックス背景スクリプト -->
     <script>
         const canvas = document.getElementById('matrixBg');
         const ctx = canvas.getContext('2d');
