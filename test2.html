@@ -200,7 +200,7 @@
         <div class="my-auto space-y-3 w-full max-w-md mx-auto">
             <!-- 1. パスコード番号（数字枠10個。最初は灰色一色、検知で固有色に点灯） -->
             <div class="bg-white p-3 rounded-xl shadow-sm border border-zinc-200">
-                <div class="text-xs font-bold text-zinc-500 mb-2 text-center">【発見されたパスコード番号】</div>
+                <div class="text-xs font-bold text-zinc-500 mb-2 text-center">【パスコード】</div>
                 <div class="grid grid-cols-10 gap-1 text-center font-bold text-zinc-800 text-sm">
                     <div id="rainbow-1" class="bg-zinc-200 border-b-4 border-zinc-400 rounded py-2 text-zinc-400 font-mono transition-all">1</div>
                     <div id="rainbow-2" class="bg-zinc-200 border-b-4 border-zinc-400 rounded py-2 text-zinc-400 font-mono transition-all">2</div>
@@ -217,7 +217,7 @@
 
             <!-- 2. 暗号色枠（7個。最初は灰色、色検知でそれぞれの色に変化し「そらにうたえば」をマッピング） -->
             <div class="bg-white p-3 rounded-xl shadow-sm border border-zinc-200">
-                <div class="text-xs font-bold text-zinc-500 mb-2 text-center">【解析されたメロディ暗号】</div>
+                <div class="text-xs font-bold text-zinc-500 mb-2 text-center">【解析メロディ色】</div>
                 <div class="grid grid-cols-7 gap-1 text-center font-bold text-zinc-800 text-xs">
                     <div id="rainbow-赤" class="bg-zinc-200 border-b-4 border-zinc-400 rounded py-2 text-zinc-400 transition-all">赤</div>
                     <div id="rainbow-橙" class="bg-zinc-200 border-b-4 border-zinc-400 rounded py-2 text-zinc-400 transition-all">橙</div>
@@ -228,7 +228,7 @@
                     <div id="rainbow-紫" class="bg-zinc-200 border-b-4 border-zinc-400 rounded py-2 text-zinc-400 transition-all">紫</div>
                 </div>
                 <div id="decodedSong" class="text-center mt-3 text-lg font-bold text-rose-600 tracking-widest hidden">
-                    解読完了：そらにうたえば
+                    解読
                 </div>
             </div>
 
@@ -364,7 +364,7 @@
         let savedImageBase64 = null; 
 
         const escapeSong = "そらにうたえば";
-        const rainbowMapping = { 'そ': '赤', 'ら': '橙', 'に': '黄', 'う': '緑', 'た': '青', 'え': '藍', 'ば': '紫' };
+        const rainbowMapping = { '赤': '', '橙': '', '黄': '', '緑': '', '青': '', '藍': '', '紫': '' };
 
         // 5つの元ネタ曲名とそれぞれの文字色
         const songColors = [
@@ -589,7 +589,7 @@
                         });
                     }
 
-                    // 【修正】重複文字（③、年、の、目など）も所属曲ごとの設定色で完全に個別カラーリングして配布・描画
+                    // 重複文字（③、年、の、目など）も所属曲ごとの設定色で完全に個別カラーリングして配布・描画
                     if (data.hints && data.hints[myId]) {
                         try {
                             const hintArray = JSON.parse(data.hints[myId]);
@@ -809,7 +809,7 @@
                 }
             });
 
-            // 【修正】次の「暗号色枠（赤〜紫）」：最初は灰色一色、該当のひらがな「そらにうたえば」スキャン検知で背景がそれぞれの虹色に変わり、文字表示もその文字に切り替わる
+            // 次の「暗号色枠（赤〜紫）」：最初は灰色一色、該当のひらがな「そらにうたえば」スキャン検知で背景がそれぞれの虹色に変わり、文字表示もその文字に切り替わる
             const colorClasses = {
                 '赤': 'bg-red-500 border-red-700 text-white',
                 '橙': 'bg-orange-500 border-orange-700 text-white',
