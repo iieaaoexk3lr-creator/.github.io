@@ -171,7 +171,7 @@
                 
                 <p id="ocrStatus" class="text-xs text-slate-400"></p>
 
-                <!-- 【アップデート】直接入力エリア：最初から解放、かつマイナス調整入力可能 -->
+                <!-- 直接入力エリア：最初から解放、かつマイナス調整入力可能 -->
                 <div id="rescueInputArea" class="border border-dashed border-cyan-500/50 p-4 rounded-lg bg-slate-900/80 space-y-2">
                     <p class="text-xs text-yellow-400 font-bold">【直接調整・登録入力】</p>
                     <p class="text-[10px] text-zinc-400">スキャン補正のため、負の値（例: -15）での点数減算も可能です</p>
@@ -315,10 +315,11 @@
          =================================================== -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
         import { getFirestore, doc, onSnapshot, setDoc, updateDoc, increment, arrayUnion, getDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-        const firebaseConfig = {
+        // フォールバック用の静的Firebase設定
+        let firebaseConfig = {
             apiKey: "AIzaSyBM43ZlYHXsj_pIDdBOFfQvsjrkrddUCv8",
             authDomain: "dasyutu-84.firebaseapp.com",
             projectId: "dasyutu-84",
@@ -327,6 +328,15 @@
             appId: "1:179240392070:web:b9ada3595b64809a33c807",
             measurementId: "G-5H6QKYHFLP"
         };
+
+        // プレビュー環境の設定がグローバルに存在する場合は、そちらを最優先でオーバーライド
+        if (typeof __firebase_config !== 'undefined' && __firebase_config) {
+            try {
+                firebaseConfig = JSON.parse(__firebase_config);
+            } catch (e) {
+                console.error("プレビュー用Firebase設定のパースに失敗しました:", e);
+            }
+        }
 
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
@@ -477,80 +487,94 @@
                 return;
             }
 
+            // 認証の実行 (try-catchで包み、configuration-not-foundエラー等が発生しても進行を遮らず、Firestoreが直接読み取れる最初の「正常な状態」の挙動を保証)
+            try {
+                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                    await signInWithCustomToken(auth, __initial_auth_token);
+                } else {
+                    await signInAnonymously(auth);
+                }
+                console.log("認証成功:", auth.currentUser?.uid);
+            } catch (authError) {
+                console.warn("認証の設定が見つかりません。認証なしでFirestoreへ直接接続を開始します:", authError);
+            }
+
             // ルール1適合パス化: /artifacts/{appId}/public/data/KARAOKE_Rooms/{roomName}
             const appId = typeof __app_id !== 'undefined' ? __app_id : 'dasyutu-84';
             roomRef = doc(db, 'artifacts', appId, 'public', 'data', 'KARAOKE_Rooms', roomName);
-            
-            // 匿名ログインの実行 (Rule 3)
-            await signInAnonymously(auth);
 
-            const roomSnap = await getDoc(roomRef);
-            if (!roomSnap.exists()) {
-                await setDoc(roomRef, {
-                    stage: 0,
-                    score: 0,
-                    foundLetters: [],
-                    players: {},
-                    hints: {},
-                    timerEnd: 0
-                });
-            }
-
-            const updateObj = {};
-            updateObj[`players.${myId}`] = myName;
-            await updateDoc(roomRef, updateObj);
-
-            document.getElementById('loginForm').classList.add('hidden');
-            document.getElementById('waitingRoom').classList.remove('hidden');
-            switchStageUI(0);
-
-            if (unsubscribe) unsubscribe();
-            unsubscribe = onSnapshot(roomRef, (snapshot) => {
-                if (!snapshot.exists()) {
-                    // ルームが抹消された場合は初期化
-                    window.location.reload();
-                    return;
-                }
-                const data = snapshot.data();
-
-                if (data.stage === 0) {
-                    const pList = Object.values(data.players || {});
-                    document.getElementById('memberCount').innerText = pList.length;
-                    document.getElementById('memberList').innerHTML = pList.map(p => `<div>・ ${p}</div>`).join('');
-                }
-
-                // タイマーの同期
-                if (data.timerEnd && data.stage > 0) {
-                    startGlobalTimer(data.timerEnd);
-                }
-
-                // 状態変化による画面切り替え
-                const currentActive = document.querySelector('.scene.active');
-                const targetId = `stage${data.stage === 4 ? 'Clear' : data.stage}`;
-                
-                if (currentActive && currentActive.id !== targetId) {
-                    triggerGlitchTransition(data.stage, () => {
-                        switchStageUI(data.stage);
+            try {
+                const roomSnap = await getDoc(roomRef);
+                if (!roomSnap.exists()) {
+                    await setDoc(roomRef, {
+                        stage: 0,
+                        score: 0,
+                        foundLetters: [],
+                        players: {},
+                        hints: {},
+                        timerEnd: 0
                     });
                 }
 
-                // 【修正】曲名そのものが指定した曲ごとの設定色でカラーリングされて配布されます
-                if (data.hints && data.hints[myId]) {
-                    const hintSource = data.hints[myId];
-                    let coloredHTML = "";
-                    for (let char of hintSource) {
-                        const targetClass = charColorMap[char] || "text-green-300";
-                        coloredHTML += `<span class="${targetClass}">${char}</span>`;
-                    }
-                    document.getElementById('myHintText').innerHTML = coloredHTML;
-                }
+                const updateObj = {};
+                updateObj[`players.${myId}`] = myName;
+                await updateDoc(roomRef, updateObj);
 
-                if (data.stage === 2) updateStage2Progress(data.score);
-                if (data.stage === 3 && data.foundLetters) updateStage3Letters(data.foundLetters, data.players);
-                if (data.stage === 4) handleStageClear(data);
-            }, (error) => {
-                console.error("Firestore同期エラー:", error);
-            });
+                document.getElementById('loginForm').classList.add('hidden');
+                document.getElementById('waitingRoom').classList.remove('hidden');
+                switchStageUI(0);
+
+                if (unsubscribe) unsubscribe();
+                unsubscribe = onSnapshot(roomRef, (snapshot) => {
+                    if (!snapshot.exists()) {
+                        // ルームが抹消された場合は初期化
+                        window.location.reload();
+                        return;
+                    }
+                    const data = snapshot.data();
+
+                    if (data.stage === 0) {
+                        const pList = Object.values(data.players || {});
+                        document.getElementById('memberCount').innerText = pList.length;
+                        document.getElementById('memberList').innerHTML = pList.map(p => `<div>・ ${p}</div>`).join('');
+                    }
+
+                    // タイマーの同期
+                    if (data.timerEnd && data.stage > 0) {
+                        startGlobalTimer(data.timerEnd);
+                    }
+
+                    // 状態変化による画面切り替え
+                    const currentActive = document.querySelector('.scene.active');
+                    const targetId = `stage${data.stage === 4 ? 'Clear' : data.stage}`;
+                    
+                    if (currentActive && currentActive.id !== targetId) {
+                        triggerGlitchTransition(data.stage, () => {
+                            switchStageUI(data.stage);
+                        });
+                    }
+
+                    // 曲名そのものが指定した曲ごとの設定色でカラーリングされて配布されます
+                    if (data.hints && data.hints[myId]) {
+                        const hintSource = data.hints[myId];
+                        let coloredHTML = "";
+                        for (let char of hintSource) {
+                            const targetClass = charColorMap[char] || "text-green-300";
+                            coloredHTML += `<span class="${targetClass}">${char}</span>`;
+                        }
+                        document.getElementById('myHintText').innerHTML = coloredHTML;
+                    }
+
+                    if (data.stage === 2) updateStage2Progress(data.score);
+                    if (data.stage === 3 && data.foundLetters) updateStage3Letters(data.foundLetters, data.players);
+                    if (data.stage === 4) handleStageClear(data);
+                }, (error) => {
+                    console.error("Firestore同期エラー:", error);
+                });
+            } catch (dbError) {
+                console.error("データベースへのアクセスに失敗しました。ルール設定等を確認してください。:", dbError);
+                alert("データベースに接続できません。Firebase設定またはFirestoreのセキュリティルールを確認してください。");
+            }
         }
 
         // ゲーム開始
@@ -619,7 +643,7 @@
             } else {
                 errorEl.innerText = "認証エラー: キーワードが異なります。";
                 errorEl.classList.remove('hidden');
-                // 【修正】認証エラー時もナビ音声を喋らせます
+                // 認証エラー時もナビ音声を喋らせます
                 speak("認証エラー。キーワードが異なります。");
             }
         }
@@ -703,7 +727,7 @@
                 }
             });
 
-            // 【新規】1234567 890 の10個の枠をすべてスキャン検出で色付け反映
+            // 1234567 890 の10個の枠をすべてスキャン検出で色付け反映
             // スキャンされたテキストの中に各数字が含まれていたら、その数値をアクティブ化
             const digitTargetColors = {
                 '1': 'bg-red-500 border-red-700 text-white',
@@ -765,7 +789,7 @@
             }
 
             // チーム名・ルーム名
-            document.getElementById('clearRoomValue').innerText = roomRef.id;
+            document.getElementById('clearRoomValue').innerText = roomRef.id ? roomRef.id.split('/').pop() : 'ルーム';
 
             // メンバー一覧の流し込み
             const members = Object.values(data.players || {});
@@ -788,7 +812,7 @@
             }
         }
 
-        // 【新設】クリア画面の復旧記録証をHTML5 Canvasにより美しく画像化して保存
+        // クリア画面の復旧記録証をHTML5 Canvasにより美しく画像化して保存
         window.saveCertificateImage = function() {
             const canvas = document.createElement('canvas');
             const ctx = canvas.getContext('2d');
@@ -841,7 +865,8 @@
             ctx.fillText(`クリアタイム: ${timeTxt}`, 60, 180);
 
             // チームルーム名
-            ctx.fillText(`対象ルーム: ${roomRef.id}`, 60, 220);
+            const rId = roomRef.id ? roomRef.id.split('/').pop() : 'ルーム';
+            ctx.fillText(`対象ルーム: ${rId}`, 60, 220);
 
             // 復旧チームメンバー
             ctx.fillText(`復旧エージェント一覧:`, 60, 260);
@@ -866,7 +891,7 @@
 
             // PNGダウンロードの実行
             const link = document.createElement('a');
-            link.download = `reboot_certificate_${roomRef.id}.png`;
+            link.download = `reboot_certificate_${rId}.png`;
             link.href = canvas.toDataURL('image/png');
             link.click();
         }
