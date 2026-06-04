@@ -1,4 +1,4 @@
-
+<!DOCTYPE html>
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
@@ -144,20 +144,28 @@
                 <div id="progressText" class="absolute inset-0 flex items-center justify-center text-xs font-bold text-white">チーム合計: 0点</div>
             </div>
 
-            <div class="bg-slate-800/60 p-4 rounded-xl border border-slate-700 backdrop-blur-sm text-sm text-slate-300 space-y-2">
-                <p id="stage2Mission">【ミッション】無音で歌唱し、採点画面を撮影せよ！</p>
-                <p class="text-xs text-cyan-400">目標合計点: <span id="targetScore">150</span>点以上</p>
+            <!-- 【修正】第一関門のデザイン（黒バック、ネオン緑枠、ネオン緑文字）を継承させたミッション表示 -->
+            <div class="border neon-border bg-black bg-opacity-80 p-4 rounded-xl text-sm space-y-2 text-center">
+                <span class="text-xs text-green-400 hacker-font block text-left">[SYSTEM_MISSION]</span>
+                <p id="stage2Mission" class="text-base font-bold text-green-300 neon-text leading-relaxed">【ミッション】無音で歌唱し、採点画面を撮影せよ！</p>
+                <p class="text-xs text-green-400">目標合計点: <span id="targetScore" class="font-mono">150</span>点以上</p>
             </div>
 
             <div class="space-y-3">
                 <button onclick="startOCR('score')" class="w-full bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 py-3 rounded-xl font-bold shadow-lg transition">
                     📷 採点結果をスキャンする
                 </button>
+                
+                <!-- 【新規】スマホに保存した直近の写真データを再読み込み・再解析するボタン -->
+                <button id="reanalyzeBtn" onclick="reanalyzeSavedImage()" class="w-full bg-zinc-800 hover:bg-zinc-700 text-xs text-zinc-300 py-2 rounded-lg border border-zinc-700 transition hidden">
+                    🔄 保存された写真を再読み込みして解析する
+                </button>
+                
                 <p id="ocrStatus" class="text-xs text-slate-400"></p>
 
-                <!-- 救済用：直接入力エリア（スキャンに1度失敗する、またはボタン押下でいつでも表示可能） -->
+                <!-- 救済用：直接入力エリア（スキャン失敗、またはタイムアップ時に強制表示されます） -->
                 <div id="rescueInputArea" class="hidden border border-dashed border-cyan-500/50 p-3 rounded-lg bg-slate-900/80 space-y-2">
-                    <p class="text-xs text-yellow-400">【救済】OCR認識が失敗した場合、採点結果を直接入力できます。</p>
+                    <p class="text-xs text-yellow-400 font-bold">【救済モード作動】採点結果を入力できます。</p>
                     <div class="flex gap-2">
                         <input type="number" id="manualScoreInput" min="0" max="100" placeholder="例: 85" 
                                class="w-full bg-slate-800 border border-cyan-500 rounded px-3 py-2 text-center text-cyan-300 focus:outline-none">
@@ -295,17 +303,19 @@
         let myName = "";
         let unsubscribe = null;
         let timerInterval = null;
+        let savedImageBase64 = null; // スキャンした写真のローカル保持変数
 
         const escapeSong = "そらにうたえば";
         const rainbowMapping = { 'そ': '赤', 'ら': '橙', 'に': '黄', 'う': '緑', 'た': '青', 'え': '藍', 'ば': '紫' };
 
-        // 5つの元ネタ曲ヒント
+        // 【修正】バラバラ配布されるヒント文字列
+        // 左側の色指定の識別子（「赤：」など）を省き、曲名と番号をそれぞれ特定カラーで直接カラーリングします。
         const originalHints = [
-            "赤：以心電信③",
-            "青：硝子の少年②",
-            "黄：3年目の浮気③",
-            "緑：銭形平次④",
-            "橙：六本木〜GIROPPON〜①"
+            "以心電信③",
+            "硝子の少年②",
+            "3年目の浮気③",
+            "銭形平次④",
+            "六本木〜GIROPPON〜①"
         ];
 
         // 五十音リスト
@@ -409,22 +419,15 @@
                     });
                 }
 
-                // ヒントのカラー置換表示
+                // 【修正】曲名そのものが指定した曲ごとの設定色でカラーリングされて配布されます。
                 if (data.hints && data.hints[myId]) {
                     let text = data.hints[myId];
-                    // 曲単位およびカラーキーワードに完全一致する文字色へ調整
-                    text = text.replace(/赤/g, '<span class="text-red-500 drop-shadow-[0_0_5px_rgba(239,68,68,0.9)] font-extrabold px-1">赤</span>');
-                    text = text.replace(/青/g, '<span class="text-blue-500 drop-shadow-[0_0_5px_rgba(59,130,246,0.9)] font-extrabold px-1">青</span>');
-                    text = text.replace(/黄/g, '<span class="text-yellow-400 drop-shadow-[0_0_5px_rgba(250,204,21,0.9)] font-extrabold px-1">黄</span>');
-                    text = text.replace(/緑/g, '<span class="text-green-500 drop-shadow-[0_0_5px_rgba(34,197,94,0.9)] font-extrabold px-1">緑</span>');
-                    text = text.replace(/橙/g, '<span class="text-orange-500 drop-shadow-[0_0_5px_rgba(249,115,22,0.9)] font-extrabold px-1">橙</span>');
-                    
-                    // 元ネタの「曲名」ごとカラー指定 (色がついている部分の表現力を高めます)
-                    text = text.replace(/以心電信/g, '<span class="text-red-400">以心電信</span>');
-                    text = text.replace(/硝子の少年/g, '<span class="text-blue-400">硝子の少年</span>');
-                    text = text.replace(/3年目の浮気/g, '<span class="text-yellow-300">3年目の浮気</span>');
-                    text = text.replace(/銭形平次/g, '<span class="text-green-400">銭形平次</span>');
-                    text = text.replace(/GIROPPON/g, '<span class="text-orange-400">GIROPPON</span>');
+                    // 各曲名に完全一致する文字色へ調整（色キーワードは外しているため、曲名と番号をそれぞれ特定カラーに変換）
+                    text = text.replace(/以心電信③/g, '<span class="text-red-500 drop-shadow-[0_0_5px_rgba(239,68,68,0.9)] font-extrabold px-1">以心電信③</span>');
+                    text = text.replace(/硝子の少年②/g, '<span class="text-blue-500 drop-shadow-[0_0_5px_rgba(59,130,246,0.9)] font-extrabold px-1">硝子の少年②</span>');
+                    text = text.replace(/3年目の浮気③/g, '<span class="text-yellow-400 drop-shadow-[0_0_5px_rgba(250,204,21,0.9)] font-extrabold px-1">3年目の浮気③</span>');
+                    text = text.replace(/銭形平次④/g, '<span class="text-green-500 drop-shadow-[0_0_5px_rgba(34,197,94,0.9)] font-extrabold px-1">銭形平次④</span>');
+                    text = text.replace(/六本木〜GIROPPON〜①/g, '<span class="text-orange-500 drop-shadow-[0_0_5px_rgba(249,115,22,0.9)] font-extrabold px-1">六本木〜GIROPPON〜①</span>');
                     
                     document.getElementById('myHintText').innerHTML = text;
                 }
@@ -484,6 +487,11 @@
                 if (diff <= 0) {
                     clearInterval(timerInterval);
                     display.innerText = "残り時間: タイムアップ！直接入力を使用してください";
+                    // 【修正】タイムアップした際、警告だけでなく即座に直接入力欄を強制開放します
+                    const area = document.getElementById('rescueInputArea');
+                    if (area) {
+                        area.classList.remove('hidden');
+                    }
                     return;
                 }
                 const min = Math.floor(diff / 60000);
@@ -638,79 +646,102 @@
             document.getElementById('cameraInput').click();
         }
 
+        // 読み込んだ画像データから高精度OCR解析を実行する処理の共通部分
+        function runOcrProcessing(base64Src) {
+            const statusEl = document.getElementById('ocrStatus');
+            if (statusEl) statusEl.innerText = "画質を調整して高精度スキャンを実行中...";
+
+            const img = new Image();
+            img.onload = function() {
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                canvas.width = img.width;
+                canvas.height = img.height;
+                
+                // コントラストとしきい値フィルタの適用
+                ctx.drawImage(img, 0, 0);
+                const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                const data = imgData.data;
+                for (let i = 0; i < data.length; i += 4) {
+                    let r = data[i], g = data[i+1], b = data[i+2];
+                    let gray = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+                    // 二値化補正 (コントラストをMAXにして文字のアウトラインを最適化)
+                    let v = (gray > 128) ? 255 : 0;
+                    data[i] = data[i+1] = data[i+2] = v;
+                }
+                ctx.putImageData(imgData, 0, 0);
+
+                // Tesseractに補正画像を読み込ませて精度向上
+                Tesseract.recognize(canvas, 'jpn+eng')
+                    .then(async ({ data: { text } }) => {
+                        if (statusEl) statusEl.innerText = "解析完了！";
+                        console.log("OCR高精度認識結果:", text);
+
+                        if (currentOcrMode === 'score') {
+                            const matches = text.match(/\d{2}\.\d{3}/) || text.match(/\d{2,3}/);
+                            if (matches) {
+                                const score = Math.floor(parseFloat(matches[0]));
+                                if (score >= 50 && score <= 100) {
+                                    await updateDoc(roomRef, { score: increment(score) });
+                                    alert(`${score}点 を検知！チームスコアに加算しました。`);
+                                } else {
+                                    showRescueInput();
+                                }
+                            } else {
+                                showRescueInput();
+                            }
+                        } 
+                        else if (currentOcrMode === 'letter') {
+                            let triggered = false;
+                            for (const letter of Object.keys(rainbowMapping)) {
+                                if (text.includes(letter)) {
+                                    await updateDoc(roomRef, { foundLetters: arrayUnion(letter) });
+                                    triggered = true;
+                                }
+                            }
+                            alert("空間スキャンが完了しました！ボードを確認してください。");
+                            if (!triggered) {
+                                const unreleased = Object.keys(rainbowMapping);
+                                const randomLetter = unreleased[Math.floor(Math.random() * unreleased.length)];
+                                await updateDoc(roomRef, { foundLetters: arrayUnion(randomLetter) });
+                            }
+                        }
+                    })
+                    .catch(err => {
+                        console.error(err);
+                        if (statusEl) statusEl.innerText = "スキャン失敗。";
+                        showRescueInput();
+                    });
+            };
+            img.src = base64Src;
+        }
+
+        // 【新規追加】一度ローカルに保存した写真を再読み込み・再スキャンするボタン処理
+        window.reanalyzeSavedImage = function() {
+            if (!savedImageBase64) {
+                alert("再読み込み可能な保存画像がありません。カメラ撮影を行ってください。");
+                return;
+            }
+            runOcrProcessing(savedImageBase64);
+        }
+
         document.getElementById('cameraInput').addEventListener('change', function(e) {
             const file = e.target.files[0];
             if (!file) return;
 
-            const statusEl = document.getElementById('ocrStatus');
-            if(statusEl) statusEl.innerText = "画質を調整して高精度スキャンを実行中...";
-
-            // 前処理：明るさ・コントラスト補正用の簡易キャンバス処理（認識率向上対策）
             const reader = new FileReader();
             reader.onload = function(event) {
-                const img = new Image();
-                img.onload = function() {
-                    const canvas = document.createElement('canvas');
-                    const ctx = canvas.getContext('2d');
-                    canvas.width = img.width;
-                    canvas.height = img.height;
-                    
-                    // コントラストとしきい値フィルタの適用
-                    ctx.drawImage(img, 0, 0);
-                    const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-                    const data = imgData.data;
-                    for (let i = 0; i < data.length; i += 4) {
-                        let r = data[i], g = data[i+1], b = data[i+2];
-                        let gray = 0.2126 * r + 0.7152 * g + 0.0722 * b;
-                        // 二値化補正 (コントラストをMAXにして文字のアウトラインを最適化)
-                        let v = (gray > 128) ? 255 : 0;
-                        data[i] = data[i+1] = data[i+2] = v;
-                    }
-                    ctx.putImageData(imgData, 0, 0);
+                // 【新規】読み込んだ画像データ（Base64形式）をローカルに一時保存
+                savedImageBase64 = event.target.result;
+                
+                // 再読み込み用ボタンを表示
+                const reanalyzeBtn = document.getElementById('reanalyzeBtn');
+                if (reanalyzeBtn) {
+                    reanalyzeBtn.classList.remove('hidden');
+                }
 
-                    // Tesseractに補正画像を読み込ませて精度向上
-                    Tesseract.recognize(canvas, 'jpn+eng')
-                        .then(async ({ data: { text } }) => {
-                            if(statusEl) statusEl.innerText = "解析完了！";
-                            console.log("OCR高精度認識結果:", text);
-
-                            if (currentOcrMode === 'score') {
-                                const matches = text.match(/\d{2}\.\d{3}/) || text.match(/\d{2,3}/);
-                                if (matches) {
-                                    const score = Math.floor(parseFloat(matches[0]));
-                                    if (score >= 50 && score <= 100) {
-                                        await updateDoc(roomRef, { score: increment(score) });
-                                        alert(`${score}点 を検知！チームスコアに加算しました。`);
-                                    } else {
-                                        showRescueInput();
-                                    }
-                                } else {
-                                    showRescueInput();
-                                }
-                            } 
-                            else if (currentOcrMode === 'letter') {
-                                let triggered = false;
-                                for (const letter of Object.keys(rainbowMapping)) {
-                                    if (text.includes(letter)) {
-                                        await updateDoc(roomRef, { foundLetters: arrayUnion(letter) });
-                                        triggered = true;
-                                    }
-                                }
-                                alert("空間スキャンが完了しました！ボードを確認してください。");
-                                if (!triggered) {
-                                    const unreleased = Object.keys(rainbowMapping);
-                                    const randomLetter = unreleased[Math.floor(Math.random() * unreleased.length)];
-                                    await updateDoc(roomRef, { foundLetters: arrayUnion(randomLetter) });
-                                }
-                            }
-                        })
-                        .catch(err => {
-                            console.error(err);
-                            if(statusEl) statusEl.innerText = "スキャン失敗。";
-                            showRescueInput();
-                        });
-                };
-                img.src = event.target.result;
+                // 高精度スキャン・OCR解析プロセスを実行
+                runOcrProcessing(savedImageBase64);
             };
             reader.readAsDataURL(file);
         });
