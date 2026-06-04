@@ -13,6 +13,7 @@
         .hacker-font { font-family: 'Share Tech Mono', monospace; }
         .pixel-font { font-family: 'DotGothic16', sans-serif; }
         .neon-text { text-shadow: 0 0 5px #00ff00, 0 0 10px #00ff00; }
+        .neon-text-red { text-shadow: 0 0 5px #ff0000, 0 0 10px #ff0000; }
         .neon-border { box-shadow: 0 0 10px #00ff00; border-color: #00ff00; }
         .scene { display: none; min-height: 100vh; }
         .scene.active { display: flex; flex-direction: column; }
@@ -59,6 +60,16 @@
     </div>
 
     <!-- ===================================================
+         【新設】グローバルミッション制限時間ヘッダー（Stage1〜3で常時稼働）
+         =================================================== -->
+    <div id="globalTimerBar" class="hidden bg-zinc-900 border-b border-red-500/50 p-2 text-center sticky top-0 z-50">
+        <div class="max-w-md mx-auto flex justify-between items-center px-4">
+            <span class="text-xs text-red-500 font-mono tracking-widest animate-pulse">⏰ HACK LIMIT TIMER:</span>
+            <span id="globalCountdown" class="text-lg text-red-500 font-bold font-mono tracking-widest neon-text-red">90:00</span>
+        </div>
+    </div>
+
+    <!-- ===================================================
          【新設】ルーム入室・待機画面
          =================================================== -->
     <div id="stage0" class="scene active p-6 justify-between">
@@ -89,7 +100,7 @@
                 <div id="memberList" class="text-sm text-green-300 bg-zinc-900/50 p-3 rounded border border-green-900 h-24 overflow-y-auto"></div>
                 <p class="text-xs text-yellow-500 animate-pulse">全員が接続したら「ゲーム開始」を押してください</p>
                 <button onclick="startGame()" class="w-full bg-green-500 hover:bg-green-400 text-black py-3 rounded font-bold transition shadow-lg">
-                    ⚡ GAME START (人数確定)
+                    ⚡ GAME START (90分タイマー始動)
                 </button>
             </div>
         </div>
@@ -108,8 +119,8 @@
         <div class="my-auto space-y-6 max-w-md mx-auto w-full">
             <div class="border neon-border bg-black bg-opacity-70 p-4 rounded text-center">
                 <span class="text-xs text-green-400 hacker-font block text-left">[YOUR_HINT]</span>
-                <!-- それぞれの曲ごとに設定した色で個別にカラーリングされた文字が描写されます -->
-                <p id="myHintText" class="text-xl font-bold text-green-300 mt-2 tracking-wide leading-relaxed">ヒント生成中...</p>
+                <!-- 1文字ずつ綺麗にカラーリングされたパーツが表示されます -->
+                <p id="myHintText" class="text-2xl font-bold text-green-300 mt-2 tracking-wide leading-relaxed"></p>
                 <p class="text-[10px] text-green-600 mt-2">※仲間と手元のヒントを教え合って並び替えてください</p>
             </div>
 
@@ -128,14 +139,12 @@
     </div>
 
     <!-- ===================================================
-         【第2関門】音響システム奪還（タイマー＆入力救済追加）
+         【第2関門】音響システム奪還（直接入力常時解放＆マイナス点数対応）
          =================================================== -->
     <div id="stage2" class="scene p-6 justify-between bg-gradient-to-b from-slate-900 to-indigo-950 text-slate-100">
         <div class="text-center mt-4">
             <h1 class="text-xl font-bold tracking-wider text-cyan-400">音響システム修復フェーズ</h1>
             <p id="audioStatusText" class="text-sm text-cyan-300 mt-1">出力レベル: 0% (無音採点中)</p>
-            <!-- 制限時間タイマー表示 -->
-            <div class="text-rose-400 font-mono text-sm mt-1" id="timerDisplay">スキャン残り時間: --:--</div>
         </div>
 
         <div class="my-auto space-y-4 max-w-md mx-auto w-full text-center">
@@ -144,7 +153,7 @@
                 <div id="progressText" class="absolute inset-0 flex items-center justify-center text-xs font-bold text-white">チーム合計: 0点</div>
             </div>
 
-            <!-- 【修正】第一関門のデザイン（黒バック、ネオン緑枠、ネオン緑文字）を継承させたミッション表示 -->
+            <!-- 第一関門のデザインを継承させたミッション表示 -->
             <div class="border neon-border bg-black bg-opacity-80 p-4 rounded-xl text-sm space-y-2 text-center">
                 <span class="text-xs text-green-400 hacker-font block text-left">[SYSTEM_MISSION]</span>
                 <p id="stage2Mission" class="text-base font-bold text-green-300 neon-text leading-relaxed">【ミッション】無音で歌唱し、採点画面を撮影せよ！</p>
@@ -156,18 +165,18 @@
                     📷 採点結果をスキャンする
                 </button>
                 
-                <!-- 【新規】スマホに保存した直近の写真データを再読み込み・再解析するボタン -->
                 <button id="reanalyzeBtn" onclick="reanalyzeSavedImage()" class="w-full bg-zinc-800 hover:bg-zinc-700 text-xs text-zinc-300 py-2 rounded-lg border border-zinc-700 transition hidden">
                     🔄 保存された写真を再読み込みして解析する
                 </button>
                 
                 <p id="ocrStatus" class="text-xs text-slate-400"></p>
 
-                <!-- 救済用：直接入力エリア（スキャン失敗、またはタイムアップ時に強制表示されます） -->
-                <div id="rescueInputArea" class="hidden border border-dashed border-cyan-500/50 p-3 rounded-lg bg-slate-900/80 space-y-2">
-                    <p class="text-xs text-yellow-400 font-bold">【救済モード作動】採点結果を入力できます。</p>
+                <!-- 【アップデート】直接入力エリア：最初から解放、かつマイナス調整入力可能 -->
+                <div id="rescueInputArea" class="border border-dashed border-cyan-500/50 p-4 rounded-lg bg-slate-900/80 space-y-2">
+                    <p class="text-xs text-yellow-400 font-bold">【直接調整・登録入力】</p>
+                    <p class="text-[10px] text-zinc-400">スキャン補正のため、負の値（例: -15）での点数減算も可能です</p>
                     <div class="flex gap-2">
-                        <input type="number" id="manualScoreInput" min="0" max="100" placeholder="例: 85" 
+                        <input type="number" id="manualScoreInput" placeholder="例: 85 または -10" 
                                class="w-full bg-slate-800 border border-cyan-500 rounded px-3 py-2 text-center text-cyan-300 focus:outline-none">
                         <button onclick="submitManualScore()" class="bg-cyan-600 hover:bg-cyan-500 text-white font-bold px-4 py-2 rounded text-xs shrink-0">
                             点数を登録
@@ -180,7 +189,7 @@
     </div>
 
     <!-- ===================================================
-         【第3関門】盗まれたメロディ探索（虹枠数字＆完全50音表UI）
+         【第3関門】盗まれたメロディ探索（虹枠数字10個＆全50音スキャン）
          =================================================== -->
     <div id="stage3" class="scene p-3 justify-between bg-zinc-100 text-zinc-800">
         <div class="bg-rose-600 text-white p-3 rounded-xl shadow flex justify-between items-center">
@@ -189,56 +198,35 @@
         </div>
 
         <div class="my-auto space-y-3 w-full max-w-md mx-auto">
-            <!-- 虹色の進捗表示 (1 2 3 4 5 6 7 の数字下に赤橙黄緑青藍紫の枠) -->
+            <!-- 虹色の進捗表示 (1 2 3 4 5 6 7 8 9 0 の数字枠。文字は"赤橙"等にせず、初期は灰一色) -->
             <div class="bg-white p-3 rounded-xl shadow-sm border border-zinc-200">
-                <div class="text-xs font-bold text-zinc-500 mb-2 text-center">【解析されたメロディ暗号】</div>
-                <div class="grid grid-cols-7 gap-2 text-center font-bold text-zinc-800 text-sm">
-                    <div class="flex flex-col items-center">
-                        <span class="text-xs font-mono mb-1">1</span>
-                        <div id="rainbow-赤" class="w-full bg-zinc-200 border-b-4 border-red-500 rounded py-2 text-zinc-400 font-bold transition-all">赤</div>
-                    </div>
-                    <div class="flex flex-col items-center">
-                        <span class="text-xs font-mono mb-1">2</span>
-                        <div id="rainbow-橙" class="w-full bg-zinc-200 border-b-4 border-orange-500 rounded py-2 text-zinc-400 font-bold transition-all">橙</div>
-                    </div>
-                    <div class="flex flex-col items-center">
-                        <span class="text-xs font-mono mb-1">3</span>
-                        <div id="rainbow-黄" class="w-full bg-zinc-200 border-b-4 border-yellow-400 rounded py-2 text-zinc-400 font-bold transition-all">黄</div>
-                    </div>
-                    <div class="flex flex-col items-center">
-                        <span class="text-xs font-mono mb-1">4</span>
-                        <div id="rainbow-緑" class="w-full bg-zinc-200 border-b-4 border-green-500 rounded py-2 text-zinc-400 font-bold transition-all">緑</div>
-                    </div>
-                    <div class="flex flex-col items-center">
-                        <span class="text-xs font-mono mb-1">5</span>
-                        <div id="rainbow-青" class="w-full bg-zinc-200 border-b-4 border-blue-500 rounded py-2 text-zinc-400 font-bold transition-all">青</div>
-                    </div>
-                    <div class="flex flex-col items-center">
-                        <span class="text-xs font-mono mb-1">6</span>
-                        <div id="rainbow-藍" class="w-full bg-zinc-200 border-b-4 border-indigo-600 rounded py-2 text-zinc-400 font-bold transition-all">藍</div>
-                    </div>
-                    <div class="flex flex-col items-center">
-                        <span class="text-xs font-mono mb-1">7</span>
-                        <div id="rainbow-紫" class="w-full bg-zinc-200 border-b-4 border-purple-500 rounded py-2 text-zinc-400 font-bold transition-all">紫</div>
-                    </div>
+                <div class="text-xs font-bold text-zinc-500 mb-2 text-center">【発見されたパスコード番号】</div>
+                <div class="grid grid-cols-10 gap-1 text-center font-bold text-zinc-800 text-sm">
+                    <div id="rainbow-1" class="bg-zinc-200 border-b-4 border-zinc-400 rounded py-2 text-zinc-400 font-mono transition-all">1</div>
+                    <div id="rainbow-2" class="bg-zinc-200 border-b-4 border-zinc-400 rounded py-2 text-zinc-400 font-mono transition-all">2</div>
+                    <div id="rainbow-3" class="bg-zinc-200 border-b-4 border-zinc-400 rounded py-2 text-zinc-400 font-mono transition-all">3</div>
+                    <div id="rainbow-4" class="bg-zinc-200 border-b-4 border-zinc-400 rounded py-2 text-zinc-400 font-mono transition-all">4</div>
+                    <div id="rainbow-5" class="bg-zinc-200 border-b-4 border-zinc-400 rounded py-2 text-zinc-400 font-mono transition-all">5</div>
+                    <div id="rainbow-6" class="bg-zinc-200 border-b-4 border-zinc-400 rounded py-2 text-zinc-400 font-mono transition-all">6</div>
+                    <div id="rainbow-7" class="bg-zinc-200 border-b-4 border-zinc-400 rounded py-2 text-zinc-400 font-mono transition-all">7</div>
+                    <div id="rainbow-8" class="bg-zinc-200 border-b-4 border-zinc-400 rounded py-2 text-zinc-400 font-mono transition-all">8</div>
+                    <div id="rainbow-9" class="bg-zinc-200 border-b-4 border-zinc-400 rounded py-2 text-zinc-400 font-mono transition-all">9</div>
+                    <div id="rainbow-0" class="bg-zinc-200 border-b-4 border-zinc-400 rounded py-2 text-zinc-400 font-mono transition-all">0</div>
                 </div>
                 <div id="decodedSong" class="text-center mt-3 text-lg font-bold text-rose-600 tracking-widest hidden">
                     解読完了：そらにうたえば
                 </div>
             </div>
 
-            <!-- 完全五十音表（そらにうたえば 以外は未発見時に薄いグレー、そらにうたえば は該当のカラー） -->
+            <!-- 完全五十音表（他の文字もスキャンされると虹の7色以外のランダム色に点灯） -->
             <div class="bg-white p-3 rounded-xl shadow-sm border border-zinc-200">
                 <div class="text-xs font-bold text-zinc-500 mb-1">発見した文字ボード (五十音表)</div>
-                <!-- 5列×10行（清音メインで配列、そらにうたえばをカラー化） -->
-                <div class="grid grid-cols-5 gap-1 text-center text-xs h-40 overflow-y-auto" id="fiftyKanaBoard">
-                    <!-- 五十音はJavaScriptにて読み込み時に自動で挿入、および文字検知でマッピング制御されます -->
-                </div>
+                <div class="grid grid-cols-5 gap-1 text-center text-xs h-40 overflow-y-auto" id="fiftyKanaBoard"></div>
             </div>
 
             <div class="bg-white p-4 rounded-xl shadow-sm border border-zinc-200 space-y-3">
                 <button onclick="startOCR('letter')" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 rounded-xl shadow flex justify-center items-center gap-2">
-                    🔍 店内掲示物をスキャン
+                    🔍 店内掲示物・数字をスキャン
                 </button>
                 <div class="border-t pt-2">
                     <input type="text" id="finalSongInput" placeholder="判明した脱出曲名を入力" 
@@ -258,21 +246,65 @@
     </div>
 
     <!-- ===================================================
-         【最終演出】ゲームクリア画面
+         【最終演出】ゲームクリア画面（10秒後に終了＆記録証画像化機能追加）
          =================================================== -->
     <div id="stageClear" class="scene p-6 items-center justify-center bg-black text-center relative overflow-hidden">
         <div class="absolute w-96 h-96 bg-indigo-500/20 rounded-full blur-3xl animate-pulse"></div>
-        <div class="z-10 space-y-6 animate-bounce">
-            <h1 class="text-5xl font-black tracking-widest text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 via-pink-500 to-cyan-400 pixel-font drop-shadow-lg">
+        
+        <div class="z-10 space-y-5 max-w-md w-full" id="clearCard">
+            <h1 class="text-5xl font-black tracking-widest text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 via-pink-500 to-cyan-400 pixel-font drop-shadow-lg animate-bounce">
                 GAME CLEAR !!
             </h1>
             <p class="text-xl font-bold tracking-wide text-white">システム完全復旧</p>
-            <div class="inline-block border-2 border-cyan-400 bg-zinc-900/80 px-8 py-4 rounded-2xl text-cyan-400 font-mono tracking-widest shadow-2xl">
+            <div class="inline-block border-2 border-cyan-400 bg-zinc-900/80 px-8 py-3 rounded-2xl text-cyan-400 font-mono tracking-widest shadow-2xl">
                 D.A.I REBOOT SUCCESS
             </div>
-            <p class="text-sm text-zinc-400 max-w-xs mx-auto pt-4">
-                謎のハッカーから「盗まれたメロディ」を取り戻し、KARSOKE KANを救い出した！
+
+            <!-- クリア時の時間＆メンバー記録表示エリア -->
+            <div class="bg-zinc-900/90 border border-zinc-800 p-4 rounded-xl text-left space-y-2 text-sm mt-2">
+                <p class="text-zinc-500 font-mono text-xs text-center border-b border-zinc-800 pb-1">D.A.I SECURITY RECORD</p>
+                <div>
+                    <span class="text-zinc-400 font-bold">クリア時間:</span>
+                    <span id="clearTimeValue" class="text-cyan-400 font-mono font-bold">--:--</span>
+                </div>
+                <div>
+                    <span class="text-zinc-400 font-bold">チーム名 (ルームID):</span>
+                    <span id="clearRoomValue" class="text-cyan-400 font-bold font-mono">--</span>
+                </div>
+                <div>
+                    <span class="text-zinc-400 font-bold">参加メンバー:</span>
+                    <div id="clearMembersList" class="text-zinc-300 text-xs mt-1 ml-2 space-y-1"></div>
+                </div>
+            </div>
+
+            <!-- 記録証を端末に保存するボタン -->
+            <button onclick="saveCertificateImage()" class="w-full bg-gradient-to-r from-cyan-600 to-indigo-600 hover:from-cyan-500 hover:to-indigo-500 text-white font-bold py-3 rounded-xl shadow-lg transition text-xs">
+                💾 復旧記録証を画像として保存
+            </button>
+
+            <!-- 10秒後に出現するログアウト・抹消ボタン -->
+            <button id="endGameBtn" onclick="deleteRoomAndLogout()" class="w-full bg-red-600 hover:bg-red-500 text-white font-bold py-3 rounded-xl shadow-lg text-sm transition hidden">
+                ☠️ セッション安全終了 (全ログ抹消)
+            </button>
+        </div>
+    </div>
+
+    <!-- ===================================================
+         【新設】ゲームオーバー画面
+         =================================================== -->
+    <div id="stageGameOver" class="scene p-6 items-center justify-center bg-zinc-950 text-center relative overflow-hidden">
+        <div class="absolute w-96 h-96 bg-red-500/10 rounded-full blur-3xl"></div>
+        <div class="z-10 space-y-6">
+            <h1 class="text-5xl font-black tracking-widest text-red-600 pixel-font drop-shadow-lg animate-pulse">
+                GAME OVER
+            </h1>
+            <p class="text-lg text-zinc-300 font-bold">制限時間（90分）が経過しました</p>
+            <p class="text-xs text-zinc-500 max-w-xs mx-auto">
+                ハッカーのタイムアウトにより、D.A.Iシステムは永久にロックされました。
             </p>
+            <button onclick="window.location.reload()" class="w-full max-w-xs bg-zinc-800 hover:bg-zinc-700 text-white py-3 rounded-xl font-bold transition">
+                タイトルに戻る
+            </button>
         </div>
     </div>
 
@@ -283,7 +315,8 @@
          =================================================== -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getFirestore, doc, onSnapshot, setDoc, updateDoc, increment, arrayUnion, getDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+        import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+        import { getFirestore, doc, onSnapshot, setDoc, updateDoc, increment, arrayUnion, getDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyBM43ZlYHXsj_pIDdBOFfQvsjrkrddUCv8",
@@ -296,20 +329,58 @@
         };
 
         const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
         const db = getFirestore(app);
         
         let roomRef = null;
         let myId = Math.random().toString(36).substring(2, 10); 
         let myName = "";
         let unsubscribe = null;
-        let timerInterval = null;
-        let savedImageBase64 = null; // スキャンした写真のローカル保持変数
+        let countdownInterval = null;
+        let savedImageBase64 = null; 
 
         const escapeSong = "そらにうたえば";
         const rainbowMapping = { 'そ': '赤', 'ら': '橙', 'に': '黄', 'う': '緑', 'た': '青', 'え': '藍', 'ば': '紫' };
 
-        // 【修正】バラバラ配布されるヒント文字列
-        // 左側の色指定の識別子（「赤：」など）を省き、曲名と番号をそれぞれ特定カラーで直接カラーリングします。
+        // 5つの元ネタ曲の各所属文字と色割り当て
+        const charColorMap = {
+            '以': 'text-red-500 drop-shadow-[0_0_5px_rgba(239,68,68,0.9)] font-extrabold',
+            '心': 'text-red-500 drop-shadow-[0_0_5px_rgba(239,68,68,0.9)] font-extrabold',
+            '電': 'text-red-500 drop-shadow-[0_0_5px_rgba(239,68,68,0.9)] font-extrabold',
+            '信': 'text-red-500 drop-shadow-[0_0_5px_rgba(239,68,68,0.9)] font-extrabold',
+            '③': 'text-red-500 drop-shadow-[0_0_5px_rgba(239,68,68,0.9)] font-extrabold',
+            
+            '硝': 'text-blue-500 drop-shadow-[0_0_5px_rgba(59,130,246,0.9)] font-extrabold',
+            '子': 'text-blue-500 drop-shadow-[0_0_5px_rgba(59,130,246,0.9)] font-extrabold',
+            'の': 'text-cyan-300 font-bold', 
+            '少': 'text-blue-500 drop-shadow-[0_0_5px_rgba(59,130,246,0.9)] font-extrabold',
+            '年': 'text-zinc-300 font-bold',
+            '②': 'text-blue-500 drop-shadow-[0_0_5px_rgba(59,130,246,0.9)] font-extrabold',
+            
+            '3': 'text-yellow-400 drop-shadow-[0_0_5px_rgba(250,204,21,0.9)] font-extrabold',
+            '目': 'text-yellow-400 drop-shadow-[0_0_5px_rgba(250,204,21,0.9)] font-extrabold',
+            '浮': 'text-yellow-400 drop-shadow-[0_0_5px_rgba(250,204,21,0.9)] font-extrabold',
+            '気': 'text-yellow-400 drop-shadow-[0_0_5px_rgba(250,204,21,0.9)] font-extrabold',
+            
+            '銭': 'text-green-500 drop-shadow-[0_0_5px_rgba(34,197,94,0.9)] font-extrabold',
+            '形': 'text-green-500 drop-shadow-[0_0_5px_rgba(34,197,94,0.9)] font-extrabold',
+            '平': 'text-green-500 drop-shadow-[0_0_5px_rgba(34,197,94,0.9)] font-extrabold',
+            '次': 'text-green-500 drop-shadow-[0_0_5px_rgba(34,197,94,0.9)] font-extrabold',
+            '④': 'text-green-500 drop-shadow-[0_0_5px_rgba(34,197,94,0.9)] font-extrabold',
+            
+            '六': 'text-orange-500 drop-shadow-[0_0_5px_rgba(249,115,22,0.9)] font-extrabold',
+            '本': 'text-orange-500 drop-shadow-[0_0_5px_rgba(249,115,22,0.9)] font-extrabold',
+            '木': 'text-orange-500 drop-shadow-[0_0_5px_rgba(249,115,22,0.9)] font-extrabold',
+            '〜': 'text-orange-500 drop-shadow-[0_0_5px_rgba(249,115,22,0.9)] font-extrabold',
+            'G': 'text-orange-500 drop-shadow-[0_0_5px_rgba(249,115,22,0.9)] font-extrabold',
+            'I': 'text-orange-500 drop-shadow-[0_0_5px_rgba(249,115,22,0.9)] font-extrabold',
+            'R': 'text-orange-500 drop-shadow-[0_0_5px_rgba(249,115,22,0.9)] font-extrabold',
+            'O': 'text-orange-500 drop-shadow-[0_0_5px_rgba(249,115,22,0.9)] font-extrabold',
+            'P': 'text-orange-500 drop-shadow-[0_0_5px_rgba(249,115,22,0.9)] font-extrabold',
+            'N': 'text-orange-500 drop-shadow-[0_0_5px_rgba(249,115,22,0.9)] font-extrabold',
+            '①': 'text-orange-500 drop-shadow-[0_0_5px_rgba(249,115,22,0.9)] font-extrabold',
+        };
+
         const originalHints = [
             "以心電信③",
             "硝子の少年②",
@@ -318,7 +389,6 @@
             "六本木〜GIROPPON〜①"
         ];
 
-        // 五十音リスト
         const fiftyKana = [
             'あ','い','う','え','お',
             'か','き','く','け','こ',
@@ -333,15 +403,51 @@
             'ん','ば'
         ];
 
-        // 読み込み時に五十音表を動的生成
-        window.onload = function() {
-            const board = document.getElementById('fiftyKanaBoard');
-            if (board) {
-                board.innerHTML = fiftyKana.map(kana => {
-                    return `<div id="letter-${kana}" class="bg-zinc-200 py-1.5 rounded text-zinc-400 transition-all">${kana}</div>`;
-                }).join('');
-            }
-        };
+        // 50音のうち脱出キー以外の文字を着色するための、非虹色カラーパレット
+        const nonRainbowColors = [
+            'bg-teal-500 border-teal-700 text-white font-bold',
+            'bg-emerald-500 border-emerald-700 text-white font-bold',
+            'bg-fuchsia-500 border-fuchsia-700 text-white font-bold',
+            'bg-pink-500 border-pink-700 text-white font-bold',
+            'bg-sky-500 border-sky-700 text-white font-bold',
+            'bg-amber-500 border-amber-600 text-zinc-900 font-bold',
+            'bg-cyan-500 border-cyan-700 text-white font-bold',
+            'bg-rose-500 border-rose-700 text-white font-bold',
+            'bg-violet-500 border-violet-700 text-white font-bold',
+            'bg-lime-500 border-lime-600 text-zinc-900 font-bold'
+        ];
+
+        // 各カナに対して一意かつ安定したカラーを返す
+        function getStableColorForKana(kana) {
+            const code = kana.charCodeAt(0);
+            const index = code % nonRainbowColors.length;
+            return nonRainbowColors[index];
+        }
+
+        // 90分カウントダウンタイマーのリアルタイム同期制御
+        function startGlobalTimer(timerEnd) {
+            if (countdownInterval) clearInterval(countdownInterval);
+            const bar = document.getElementById('globalTimerBar');
+            const counter = document.getElementById('globalCountdown');
+            bar.classList.remove('hidden');
+
+            countdownInterval = setInterval(async () => {
+                const now = Date.now();
+                const remaining = timerEnd - now;
+
+                if (remaining <= 0) {
+                    clearInterval(countdownInterval);
+                    counter.innerText = "00:00";
+                    // 時間切れにより自動でゲームオーバー画面へ
+                    switchStageUI('GameOver');
+                    return;
+                }
+
+                const min = Math.floor(remaining / 60000);
+                const sec = Math.floor((remaining % 60000) / 1000);
+                counter.innerText = `${String(min).padStart(2, '0')}:${String(sec).padStart(2, '0')}`;
+            }, 1000);
+        }
 
         // グリッチ切り替えエフェクト
         function triggerGlitchTransition(stage, callback) {
@@ -371,8 +477,13 @@
                 return;
             }
 
-            roomRef = doc(db, "KARAOKE_Rooms", roomName);
+            // ルール1適合パス化: /artifacts/{appId}/public/data/KARAOKE_Rooms/{roomName}
+            const appId = typeof __app_id !== 'undefined' ? __app_id : 'dasyutu-84';
+            roomRef = doc(db, 'artifacts', appId, 'public', 'data', 'KARAOKE_Rooms', roomName);
             
+            // 匿名ログインの実行 (Rule 3)
+            await signInAnonymously(auth);
+
             const roomSnap = await getDoc(roomRef);
             if (!roomSnap.exists()) {
                 await setDoc(roomRef, {
@@ -395,13 +506,22 @@
 
             if (unsubscribe) unsubscribe();
             unsubscribe = onSnapshot(roomRef, (snapshot) => {
-                if (!snapshot.exists()) return;
+                if (!snapshot.exists()) {
+                    // ルームが抹消された場合は初期化
+                    window.location.reload();
+                    return;
+                }
                 const data = snapshot.data();
 
                 if (data.stage === 0) {
                     const pList = Object.values(data.players || {});
                     document.getElementById('memberCount').innerText = pList.length;
                     document.getElementById('memberList').innerHTML = pList.map(p => `<div>・ ${p}</div>`).join('');
+                }
+
+                // タイマーの同期
+                if (data.timerEnd && data.stage > 0) {
+                    startGlobalTimer(data.timerEnd);
                 }
 
                 // 状態変化による画面切り替え
@@ -411,29 +531,25 @@
                 if (currentActive && currentActive.id !== targetId) {
                     triggerGlitchTransition(data.stage, () => {
                         switchStageUI(data.stage);
-                        
-                        // ステージ2移行時のタイマー開始
-                        if (data.stage === 2 && data.timerEnd) {
-                            startTimerUI(data.timerEnd);
-                        }
                     });
                 }
 
-                // 【修正】曲名そのものが指定した曲ごとの設定色でカラーリングされて配布されます。
+                // 【修正】曲名そのものが指定した曲ごとの設定色でカラーリングされて配布されます
                 if (data.hints && data.hints[myId]) {
-                    let text = data.hints[myId];
-                    // 各曲名に完全一致する文字色へ調整（色キーワードは外しているため、曲名と番号をそれぞれ特定カラーに変換）
-                    text = text.replace(/以心電信③/g, '<span class="text-red-500 drop-shadow-[0_0_5px_rgba(239,68,68,0.9)] font-extrabold px-1">以心電信③</span>');
-                    text = text.replace(/硝子の少年②/g, '<span class="text-blue-500 drop-shadow-[0_0_5px_rgba(59,130,246,0.9)] font-extrabold px-1">硝子の少年②</span>');
-                    text = text.replace(/3年目の浮気③/g, '<span class="text-yellow-400 drop-shadow-[0_0_5px_rgba(250,204,21,0.9)] font-extrabold px-1">3年目の浮気③</span>');
-                    text = text.replace(/銭形平次④/g, '<span class="text-green-500 drop-shadow-[0_0_5px_rgba(34,197,94,0.9)] font-extrabold px-1">銭形平次④</span>');
-                    text = text.replace(/六本木〜GIROPPON〜①/g, '<span class="text-orange-500 drop-shadow-[0_0_5px_rgba(249,115,22,0.9)] font-extrabold px-1">六本木〜GIROPPON〜①</span>');
-                    
-                    document.getElementById('myHintText').innerHTML = text;
+                    const hintSource = data.hints[myId];
+                    let coloredHTML = "";
+                    for (let char of hintSource) {
+                        const targetClass = charColorMap[char] || "text-green-300";
+                        coloredHTML += `<span class="${targetClass}">${char}</span>`;
+                    }
+                    document.getElementById('myHintText').innerHTML = coloredHTML;
                 }
 
                 if (data.stage === 2) updateStage2Progress(data.score);
-                if (data.stage === 3 && data.foundLetters) updateStage3Letters(data.foundLetters);
+                if (data.stage === 3 && data.foundLetters) updateStage3Letters(data.foundLetters, data.players);
+                if (data.stage === 4) handleStageClear(data);
+            }, (error) => {
+                console.error("Firestore同期エラー:", error);
             });
         }
 
@@ -446,6 +562,7 @@
             const playerIds = Object.keys(data.players || {});
             if (playerIds.length === 0) return;
 
+            // 曲の左側の文字(色指定)を排除して曲名と記号部分だけを配布
             let allText = originalHints.join(" / ");
             let charArray = allText.split("");
             
@@ -463,41 +580,25 @@
                 chunks[id] = charArray.slice(start, end).join("");
             });
 
+            // 90分(5400秒)タイマーを確定
+            const ninetyMinLimit = Date.now() + 90 * 60 * 1000;
+
             await updateDoc(roomRef, {
                 stage: 1,
-                hints: chunks
+                hints: chunks,
+                timerEnd: ninetyMinLimit
             });
         }
 
         function switchStageUI(stage) {
-            const targetId = `stage${stage === 4 ? 'Clear' : stage}`;
+            const targetId = `stage${stage}`;
             document.querySelectorAll('.scene').forEach(el => el.classList.remove('active'));
             const targetEl = document.getElementById(targetId);
             if (targetEl) targetEl.classList.add('active');
-        }
 
-        // 第2関門タイマー表示
-        function startTimerUI(timerEnd) {
-            if (timerInterval) clearInterval(timerInterval);
-            const display = document.getElementById('timerDisplay');
-            
-            timerInterval = setInterval(() => {
-                const now = Date.now();
-                const diff = timerEnd - now;
-                if (diff <= 0) {
-                    clearInterval(timerInterval);
-                    display.innerText = "残り時間: タイムアップ！直接入力を使用してください";
-                    // 【修正】タイムアップした際、警告だけでなく即座に直接入力欄を強制開放します
-                    const area = document.getElementById('rescueInputArea');
-                    if (area) {
-                        area.classList.remove('hidden');
-                    }
-                    return;
-                }
-                const min = Math.floor(diff / 60000);
-                const sec = Math.floor((diff % 60000) / 1000);
-                display.innerText = `スキャン残り時間: ${String(min).padStart(2, '0')}:${String(sec).padStart(2, '0')}`;
-            }, 1000);
+            if (stage === 'Clear' || stage === 'GameOver') {
+                document.getElementById('globalTimerBar').classList.add('hidden');
+            }
         }
 
         // --- 第1関門の処理 ---
@@ -511,15 +612,15 @@
                 speak("略称では認証できません。正式名称を入力してください。");
             } else if (input === "電子目次本") {
                 errorEl.classList.add('hidden');
-                // 第2関門移行時に5分(300000ms)の制限時間をFirestore側へセット
                 await updateDoc(roomRef, { 
                     stage: 2, 
-                    score: 0, 
-                    timerEnd: Date.now() + 300000 
+                    score: 0 
                 });
             } else {
                 errorEl.innerText = "認証エラー: キーワードが異なります。";
                 errorEl.classList.remove('hidden');
+                // 【修正】認証エラー時もナビ音声を喋らせます
+                speak("認証エラー。キーワードが異なります。");
             }
         }
 
@@ -545,7 +646,6 @@
                 targetTxt.innerText = "300";
             } else if (score >= 300) {
                 statusTxt.innerText = "出力レベル: 100% (完全復旧！)";
-                if (timerInterval) clearInterval(timerInterval);
                 setTimeout(async () => {
                     const currentSnap = await getDoc(roomRef);
                     if (currentSnap.exists() && currentSnap.data().stage === 2) {
@@ -558,21 +658,21 @@
             txt.innerText = `チーム合計: ${score}点`;
         }
 
-        // 直接入力（救済枠）
+        // 直接入力（マイナス減算や加算両対応）
         window.submitManualScore = async function() {
             const inputVal = document.getElementById('manualScoreInput').value.trim();
             const score = parseInt(inputVal, 10);
-            if (isNaN(score) || score < 0 || score > 100) {
-                alert("0〜100の正しい点数を入力してください。");
+            if (isNaN(score)) {
+                alert("正しい点数（数値）を入力してください。");
                 return;
             }
             await updateDoc(roomRef, { score: increment(score) });
             document.getElementById('manualScoreInput').value = "";
-            alert(`${score}点 を直接登録しました。`);
+            alert(`${score}点 をチームスコアに直接登録・反映しました。`);
         }
 
         // --- 第3関門の処理 ---
-        function updateStage3Letters(foundLetters) {
+        function updateStage3Letters(foundLetters, playersList) {
             let correctCount = 0;
             
             // 五十音ボードすべての文字に対するスタイル反映
@@ -580,8 +680,8 @@
                 const letterEl = document.getElementById(`letter-${kana}`);
                 if (letterEl) {
                     if (foundLetters.includes(kana)) {
-                        // 脱出文字列「そらにうたえば」に該当する場合は色を個別に変える
                         if (rainbowMapping[kana]) {
+                            // 脱出文字列「そらにうたえば」に該当する文字は特定カラー
                             const colorClasses = {
                                 'そ': 'bg-red-500 text-white font-bold shadow-sm scale-110 border border-red-400',
                                 'ら': 'bg-orange-500 text-white font-bold shadow-sm scale-110 border border-orange-400',
@@ -593,32 +693,41 @@
                             };
                             letterEl.className = `${colorClasses[kana]} py-1.5 rounded transition-all duration-300`;
                         } else {
-                            letterEl.className = "bg-zinc-600 text-white font-bold py-1.5 rounded transition-all";
+                            // そらにうたえば 以外の文字は、虹パレット以外の色にランダム(安定的)に点灯
+                            const stableColor = getStableColorForKana(kana);
+                            letterEl.className = `${stableColor} py-1.5 rounded transition-all duration-300`;
                         }
                     } else {
-                        // 未発見の場合のデフォルト
                         letterEl.className = "bg-zinc-200 py-1.5 rounded text-zinc-400 transition-all";
                     }
                 }
             });
 
-            // 1234567 の虹枠数字の更新処理
-            foundLetters.forEach(letter => {
-                if (rainbowMapping[letter]) {
-                    const color = rainbowMapping[letter];
-                    const rainbowEl = document.getElementById(`rainbow-${color}`);
-                    if (rainbowEl && rainbowEl.innerText === color) {
-                        const colorClasses = {
-                            '赤': 'bg-red-500 border-red-700', '橙': 'bg-orange-500 border-orange-700', '黄': 'bg-yellow-500 border-yellow-600 text-zinc-900',
-                            '緑': 'bg-green-500 border-green-700', '青': 'bg-blue-500 border-blue-700', '藍': 'bg-indigo-600 border-indigo-800', '紫': 'bg-purple-500 border-purple-700'
-                        };
-                        rainbowEl.className = `w-full ${colorClasses[color]} border-b-4 rounded py-2 text-white font-extrabold shadow-sm scale-105 transition-all`;
-                        rainbowEl.innerText = letter;
+            // 【新規】1234567 890 の10個の枠をすべてスキャン検出で色付け反映
+            // スキャンされたテキストの中に各数字が含まれていたら、その数値をアクティブ化
+            const digitTargetColors = {
+                '1': 'bg-red-500 border-red-700 text-white',
+                '2': 'bg-orange-500 border-orange-700 text-white',
+                '3': 'bg-yellow-400 border-yellow-600 text-zinc-900',
+                '4': 'bg-green-500 border-green-700 text-white',
+                '5': 'bg-blue-500 border-blue-700 text-white',
+                '6': 'bg-indigo-600 border-indigo-800 text-white',
+                '7': 'bg-purple-500 border-purple-700 text-white',
+                '8': 'bg-cyan-500 border-cyan-700 text-white',
+                '9': 'bg-pink-500 border-pink-700 text-white',
+                '0': 'bg-lime-500 border-lime-700 text-zinc-900'
+            };
+
+            foundLetters.forEach(item => {
+                if (digitTargetColors[item]) {
+                    const box = document.getElementById(`rainbow-${item}`);
+                    if (box) {
+                        box.className = `w-full ${digitTargetColors[item]} border-b-4 rounded py-2 font-extrabold shadow-sm scale-105 transition-all duration-300`;
                     }
                 }
             });
 
-            // 脱出判定用
+            // 脱出曲判定
             Object.keys(rainbowMapping).forEach(letter => {
                 if (foundLetters.includes(letter)) correctCount++;
             });
@@ -633,20 +742,142 @@
             const input = document.getElementById('finalSongInput').value.trim();
             if (input === escapeSong) {
                 speak("認証完了。システム復旧。");
+                // クリア時間(残存時間)を計算し確定するためにFirestoreを更新
                 await updateDoc(roomRef, { stage: 4 });
             } else {
                 alert("D.A.I「楽曲名が一致しません」");
             }
         }
 
-        // --- OCR共通処理 (前処理を強化してコントラストとしきい値を高め認識度を最大化) ---
+        // --- クリア画面（Stage 4）の表示アップデート処理 ---
+        function handleStageClear(data) {
+            // クリア時間の算出
+            if (data.timerEnd) {
+                const remaining = data.timerEnd - Date.now();
+                const totalMinutes = 90;
+                const remainingMinutes = Math.max(0, Math.floor(remaining / 60000));
+                const remainingSeconds = Math.max(0, Math.floor((remaining % 60000) / 1000));
+                
+                // 経過時間の算出
+                const elapsedMin = totalMinutes - remainingMinutes - 1;
+                const elapsedSec = 60 - remainingSeconds;
+                document.getElementById('clearTimeValue').innerText = `${String(elapsedMin).padStart(2, '0')}分${String(elapsedSec).padStart(2, '0')}秒 (残存 ${remainingMinutes}分${remainingSeconds}秒)`;
+            }
+
+            // チーム名・ルーム名
+            document.getElementById('clearRoomValue').innerText = roomRef.id;
+
+            // メンバー一覧の流し込み
+            const members = Object.values(data.players || {});
+            document.getElementById('clearMembersList').innerHTML = members.map(m => `<li>・ ${m}</li>`).join('');
+
+            // 【仕様】10秒後にゲーム終了ボタンを出現させる
+            setTimeout(() => {
+                const endBtn = document.getElementById('endGameBtn');
+                if (endBtn) {
+                    endBtn.classList.remove('hidden');
+                }
+            }, 10000);
+        }
+
+        // セッションの完全終了とルーム抹消
+        window.deleteRoomAndLogout = async function() {
+            if (confirm("安全にゲームセッションを終了し、Firestoreからすべての履歴ログを完全抹消します。よろしいですか？")) {
+                await deleteDoc(roomRef);
+                window.location.reload();
+            }
+        }
+
+        // 【新設】クリア画面の復旧記録証をHTML5 Canvasにより美しく画像化して保存
+        window.saveCertificateImage = function() {
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            canvas.width = 600;
+            canvas.height = 450;
+
+            // 背景塗り（サイバー黒×深みグラデーション）
+            const grad = ctx.createLinearGradient(0, 0, 0, canvas.height);
+            grad.addColorStop(0, '#020617');
+            grad.addColorStop(1, '#0f172a');
+            ctx.fillStyle = grad;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // サイバーボーダー装飾
+            ctx.strokeStyle = '#00ff00';
+            ctx.lineWidth = 4;
+            ctx.strokeRect(15, 15, canvas.width - 30, canvas.height - 30);
+            
+            ctx.strokeStyle = '#06b6d4';
+            ctx.lineWidth = 1;
+            ctx.strokeRect(22, 22, canvas.width - 44, canvas.height - 44);
+
+            // ハック復旧成功タイトル
+            ctx.fillStyle = '#00ff00';
+            ctx.font = "bold 30px 'DotGothic16', monospace";
+            ctx.shadowColor = '#00ff00';
+            ctx.shadowBlur = 10;
+            ctx.fillText("D.A.I REBOOT CERTIFICATE", 50, 75);
+            ctx.shadowBlur = 0; // シャドウリセット
+
+            // サブタイトル
+            ctx.fillStyle = '#06b6d4';
+            ctx.font = "bold 16px 'Share Tech Mono', sans-serif";
+            ctx.fillText("カラオケハッカー 復旧完了記録証", 50, 110);
+
+            // 水平の仕切り線
+            ctx.strokeStyle = '#334155';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(50, 130);
+            ctx.lineTo(canvas.width - 50, 130);
+            ctx.stroke();
+
+            // 記録データ
+            ctx.fillStyle = '#ffffff';
+            ctx.font = "18px 'M PLUS 1p', sans-serif";
+            
+            // クリアタイム
+            const timeTxt = document.getElementById('clearTimeValue').innerText;
+            ctx.fillText(`クリアタイム: ${timeTxt}`, 60, 180);
+
+            // チームルーム名
+            ctx.fillText(`対象ルーム: ${roomRef.id}`, 60, 220);
+
+            // 復旧チームメンバー
+            ctx.fillText(`復旧エージェント一覧:`, 60, 260);
+            
+            ctx.fillStyle = '#cbd5e1';
+            ctx.font = "16px 'M PLUS 1p', sans-serif";
+            const memberItems = Array.from(document.getElementById('clearMembersList').querySelectorAll('li')).map(li => li.innerText.replace('・ ', ''));
+            let startY = 290;
+            memberItems.forEach((m, idx) => {
+                ctx.fillText(`- ${m}`, 80, startY + (idx * 24));
+            });
+
+            // フッターメッセージ
+            ctx.fillStyle = '#e2e8f0';
+            ctx.font = "italic 13px 'M PLUS 1p', sans-serif";
+            ctx.fillText("謎のハッカーからKARSOKE KANを完全に救い出したことを証明する。", 60, 390);
+
+            // ブランド印
+            ctx.fillStyle = '#ff007f';
+            ctx.font = "bold 14px 'Share Tech Mono', sans-serif";
+            ctx.fillText("[ SYSTEM SECURED BY D.A.I ]", 350, 410);
+
+            // PNGダウンロードの実行
+            const link = document.createElement('a');
+            link.download = `reboot_certificate_${roomRef.id}.png`;
+            link.href = canvas.toDataURL('image/png');
+            link.click();
+        }
+
+        // --- OCR共通処理 ---
         let currentOcrMode = 'score'; 
         window.startOCR = function(mode) {
             currentOcrMode = mode;
             document.getElementById('cameraInput').click();
         }
 
-        // 読み込んだ画像データから高精度OCR解析を実行する処理の共通部分
         function runOcrProcessing(base64Src) {
             const statusEl = document.getElementById('ocrStatus');
             if (statusEl) statusEl.innerText = "画質を調整して高精度スキャンを実行中...";
@@ -658,24 +889,21 @@
                 canvas.width = img.width;
                 canvas.height = img.height;
                 
-                // コントラストとしきい値フィルタの適用
                 ctx.drawImage(img, 0, 0);
                 const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
                 const data = imgData.data;
                 for (let i = 0; i < data.length; i += 4) {
                     let r = data[i], g = data[i+1], b = data[i+2];
                     let gray = 0.2126 * r + 0.7152 * g + 0.0722 * b;
-                    // 二値化補正 (コントラストをMAXにして文字のアウトラインを最適化)
                     let v = (gray > 128) ? 255 : 0;
                     data[i] = data[i+1] = data[i+2] = v;
                 }
                 ctx.putImageData(imgData, 0, 0);
 
-                // Tesseractに補正画像を読み込ませて精度向上
                 Tesseract.recognize(canvas, 'jpn+eng')
                     .then(async ({ data: { text } }) => {
                         if (statusEl) statusEl.innerText = "解析完了！";
-                        console.log("OCR高精度認識結果:", text);
+                        console.log("OCR認識結果:", text);
 
                         if (currentOcrMode === 'score') {
                             const matches = text.match(/\d{2}\.\d{3}/) || text.match(/\d{2,3}/);
@@ -693,17 +921,30 @@
                         } 
                         else if (currentOcrMode === 'letter') {
                             let triggered = false;
-                            for (const letter of Object.keys(rainbowMapping)) {
+                            
+                            // ひらがな50音の検出と登録
+                            for (const letter of fiftyKana) {
                                 if (text.includes(letter)) {
                                     await updateDoc(roomRef, { foundLetters: arrayUnion(letter) });
                                     triggered = true;
                                 }
                             }
+
+                            // 1234567 890 の数値検出と登録
+                            const digits = ['1','2','3','4','5','6','7','8','9','0'];
+                            for (const digit of digits) {
+                                if (text.includes(digit)) {
+                                    await updateDoc(roomRef, { foundLetters: arrayUnion(digit) });
+                                    triggered = true;
+                                }
+                            }
+
                             alert("空間スキャンが完了しました！ボードを確認してください。");
                             if (!triggered) {
-                                const unreleased = Object.keys(rainbowMapping);
-                                const randomLetter = unreleased[Math.floor(Math.random() * unreleased.length)];
-                                await updateDoc(roomRef, { foundLetters: arrayUnion(randomLetter) });
+                                // 救済措置：未発見のキー文字（そらにうたえば、または数字）を1つランダム解放
+                                const unreleased = [...Object.keys(rainbowMapping), '1','2','3','4','5','6','7','8','9','0'];
+                                const randomItem = unreleased[Math.floor(Math.random() * unreleased.length)];
+                                await updateDoc(roomRef, { foundLetters: arrayUnion(randomItem) });
                             }
                         }
                     })
@@ -716,7 +957,6 @@
             img.src = base64Src;
         }
 
-        // 【新規追加】一度ローカルに保存した写真を再読み込み・再スキャンするボタン処理
         window.reanalyzeSavedImage = function() {
             if (!savedImageBase64) {
                 alert("再読み込み可能な保存画像がありません。カメラ撮影を行ってください。");
@@ -731,28 +971,24 @@
 
             const reader = new FileReader();
             reader.onload = function(event) {
-                // 【新規】読み込んだ画像データ（Base64形式）をローカルに一時保存
                 savedImageBase64 = event.target.result;
                 
-                // 再読み込み用ボタンを表示
                 const reanalyzeBtn = document.getElementById('reanalyzeBtn');
                 if (reanalyzeBtn) {
                     reanalyzeBtn.classList.remove('hidden');
                 }
 
-                // 高精度スキャン・OCR解析プロセスを実行
                 runOcrProcessing(savedImageBase64);
             };
             reader.readAsDataURL(file);
         });
 
-        // OCR認識失敗時のお助け救済入力の展開
         function showRescueInput() {
             const area = document.getElementById('rescueInputArea');
             if (area) {
                 area.classList.remove('hidden');
             }
-            alert("点数がうまく検出できませんでした。撮影環境が暗い場合は、表示された「直接入力枠」から点数を手動追加できます。");
+            alert("点数がうまく検出できませんでした。登録枠から直接入力が可能です。");
         }
 
         function speak(msg) {
