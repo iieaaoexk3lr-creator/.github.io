@@ -307,7 +307,7 @@
             document.getElementById('nameInput').value = myName;
         }
 
-        // ログイン・部屋入室処理（絶対いじらず完全維持）
+        // ログイン・部屋入室処理（過去正常に動いていた「updateDocを用いたフィールド特定指定」に完全復元）
         window.joinRoom = async function() {
             const roomName = document.getElementById('roomInput').value.trim();
             myName = document.getElementById('nameInput').value.trim();
@@ -326,9 +326,10 @@
                     return alert("ルームが存在しません。まず「ルーム構築」を行ってください。");
                 }
 
-                await setDoc(roomRef, {
-                    players: { [myId]: myName }
-                }, { merge: true });
+                // 過去にログインできていた頃の指定方法に復元
+                const updateData = {};
+                updateData[`players.${myId}`] = myName;
+                await updateDoc(roomRef, updateData);
 
                 onSnapshot(roomRef, (snapshot) => {
                     if (!snapshot.exists()) {
@@ -450,7 +451,6 @@
             currentStage = stage;
             document.querySelectorAll('.scene').forEach(s => s.classList.remove('active'));
             
-            // 指摘点修正：stageが4の時は、対応するHTML要素'stageClear'をアクティブ化
             let targetId = 'stage' + stage;
             if (stage === 4) targetId = 'stageClear';
             
@@ -513,7 +513,6 @@
                 const charSpan = document.createElement('span');
                 charSpan.innerText = h.char;
                 
-                // 指摘点修正：同じ文字が別色で重複して存在しても個別認識できるよう「文字-色」形式のキーで判定
                 const charKey = `${h.char}-${h.color}`;
                 if (foundChars.includes(charKey)) {
                     charSpan.className = `text-${h.color}-500 neon-text transition-all duration-500 transform scale-110 px-1 border border-${h.color}-500/30 bg-zinc-900 rounded`;
@@ -546,7 +545,7 @@
             const foundNumbers = data.foundNumbers || [];
             const isCleared = data.stage3Cleared || false;
 
-            // ① 数字枠（一番上）：最初灰色一色、数字に反応して色がつく
+            // ① 数字枠：最初灰色一色、数字に反応して色がつく
             const digitsContainer = document.getElementById('rainbowDigits');
             digitsContainer.innerHTML = '';
             ['1','2','3','4','5','6','7','8','9','0'].forEach(num => {
@@ -560,7 +559,7 @@
                 digitsContainer.appendChild(numEl);
             });
 
-            // ② 色枠：色を感知したら灰色一色から赤橙…の色にそれぞれ変わる（文字は見せない）
+            // ② 色枠：色を感知したら灰色一色から各虹色へ背景が変化（文字は見せない）
             const colorsContainer = document.getElementById('rainbowColors');
             colorsContainer.innerHTML = '';
             rainbowData.forEach(item => {
@@ -570,7 +569,7 @@
                 } else {
                     colorEl.className = `p-3 rounded h-12 transition-all duration-500 bg-zinc-800 border border-zinc-700/50`;
                 }
-                colorEl.innerText = ""; // 色枠の文字は見せない仕様
+                colorEl.innerText = "";
                 colorsContainer.appendChild(colorEl);
             });
 
@@ -650,7 +649,6 @@
                 playHackerSound("https://actions.google.com/sounds/v1/alarms/digital_watch_alarm_long.ogg");
                 alert("【システム認証完了】すべてのロックが解除されました！メロディを奪還しました！");
                 
-                // 指摘点修正：ここでは部屋を消去(deleteDoc)せず、単にステージをクリア(4)にするだけに留めます
                 await updateDoc(roomRef, {
                     stage: 4,
                     stage3Cleared: true
@@ -660,7 +658,7 @@
             }
         };
 
-        // 部屋データを削除するのはゲーム終了ボタンをプレイヤーが押したとき（完全維持）
+        // 終了ボタン明示クリックで部屋を抹消
         window.deleteRoomAndLogout = async function() {
             if (!roomRef) return;
             if (confirm("本当にハッキングセッションを終了しますか？（すべてのプレイヤーが自動的に退出します）")) {
@@ -708,7 +706,6 @@
                                 let newFound = [...alreadyFound];
 
                                 myHints.forEach(h => {
-                                    // 指摘点修正：重複文字に対応するため、スキャン判定時も「文字-色」の組み合わせで保存
                                     const charKey = `${h.char}-${h.color}`;
                                     if (text.includes(h.char) && !newFound.includes(charKey)) {
                                         newFound.push(charKey);
@@ -838,7 +835,6 @@
         const alphabet = katakana.split('');
         const fontSize = 16;
         
-        // 縦の行数分配列を作り、それぞれの「横位置（X）」を保持
         const rows = canvas.height / fontSize;
         const horizontalDrops = Array(Math.floor(rows)).fill(1);
 
@@ -850,10 +846,8 @@
             
             for (let i = 0; i < horizontalDrops.length; i++) {
                 const text = alphabet[Math.floor(Math.random() * alphabet.length)];
-                // X座標を移動、Y座標は固定で行にする（左から右へ）
                 ctx.fillText(text, horizontalDrops[i] * fontSize, i * fontSize);
                 
-                // 右端を超えたらランダムで左端に戻す
                 if (horizontalDrops[i] * fontSize > canvas.width && Math.random() > 0.975) {
                     horizontalDrops[i] = 0;
                 }
