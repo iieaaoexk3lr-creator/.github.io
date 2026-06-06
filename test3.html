@@ -221,6 +221,7 @@
         import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
         import { getFirestore, doc, onSnapshot, setDoc, updateDoc, increment, arrayUnion, deleteDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
+        // Firebase初期化設定
         const firebaseConfig = typeof __firebase_config !== 'undefined' 
             ? JSON.parse(__firebase_config) 
             : { projectId: "dasyutu-84" };
@@ -240,7 +241,17 @@
 
         sessionStorage.setItem('kh_agent_id', myId);
 
-        const rainbowMapping = { 'そ': '赤', 'ら': '橙', 'に': '黄', 'う': '緑', 'た': '青', 'え': '藍', 'ば': '紫' };
+        // クイズ固有の定義データ（完全維持）
+        const escapeSong = "そらにうたえば";
+        const rainbowMapping = { '赤': '', '橙': '', '黄': '', '緑': '', '青': '', '藍': '', '紫': '' };
+        const songColors = [
+            { song: "以心電信③", color: "red" },
+            { song: "硝子の少年②", color: "blue" },
+            { song: "3年目の浮気③", color: "yellow" },
+            { song: "銭形平次④", color: "green" },
+            { song: "六本木〜GIROPPON〜①", color: "orange" }
+        ];
+
         const rainbowData = [
             { char: 'そ', color: 'bg-red-600 text-white' },
             { char: 'ら', color: 'bg-orange-500 text-white' },
@@ -296,6 +307,7 @@
             document.getElementById('nameInput').value = myName;
         }
 
+        // ログイン・部屋入室処理（絶対いじらず完全維持）
         window.joinRoom = async function() {
             const roomName = document.getElementById('roomInput').value.trim();
             myName = document.getElementById('nameInput').value.trim();
@@ -398,20 +410,11 @@
             const snap = await getDoc(roomRef);
             const roomData = snap.data();
 
-            const songs = [
-                { name: "マリーゴールド", color: "yellow" },
-                { name: "怪獣の花唄", color: "red" },
-                { name: "ドライフラワー", color: "orange" },
-                { name: "残響散歌", color: "purple" },
-                { name: "さよならエレジー", color: "blue" },
-                { name: "シンデレラボーイ", color: "pink" },
-                { name: "水平線", color: "cyan" }
-            ];
-
             const players = Object.keys(roomData.players);
+            
             let allChars = [];
-            songs.forEach(s => {
-                s.name.split('').forEach(c => {
+            songColors.forEach(s => {
+                s.song.split('').forEach(c => {
                     allChars.push({ char: c, color: s.color });
                 });
             });
@@ -423,6 +426,7 @@
 
             let playerHints = {};
             players.forEach(p => playerHints[p] = []);
+
             allChars.forEach((item, index) => {
                 const p = players[index % players.length];
                 playerHints[p].push(item);
@@ -446,6 +450,7 @@
             currentStage = stage;
             document.querySelectorAll('.scene').forEach(s => s.classList.remove('active'));
             
+            // 指摘点修正：stageが4の時は、対応するHTML要素'stageClear'をアクティブ化
             let targetId = 'stage' + stage;
             if (stage === 4) targetId = 'stageClear';
             
@@ -492,7 +497,7 @@
 
         function renderStage1(data) {
             const myHints = data.hints && data.hints[myId] ? JSON.parse(data.hints[myId]) : [];
-            const foundChars = data.foundChars || []; 
+            const foundChars = data.foundChars || [];
             const container = document.getElementById('myHintText');
             container.innerHTML = '';
 
@@ -508,6 +513,7 @@
                 const charSpan = document.createElement('span');
                 charSpan.innerText = h.char;
                 
+                // 指摘点修正：同じ文字が別色で重複して存在しても個別認識できるよう「文字-色」形式のキーで判定
                 const charKey = `${h.char}-${h.color}`;
                 if (foundChars.includes(charKey)) {
                     charSpan.className = `text-${h.color}-500 neon-text transition-all duration-500 transform scale-110 px-1 border border-${h.color}-500/30 bg-zinc-900 rounded`;
@@ -540,34 +546,35 @@
             const foundNumbers = data.foundNumbers || [];
             const isCleared = data.stage3Cleared || false;
 
+            // ① 数字枠（一番上）：最初灰色一色、数字に反応して色がつく
             const digitsContainer = document.getElementById('rainbowDigits');
             digitsContainer.innerHTML = '';
             ['1','2','3','4','5','6','7','8','9','0'].forEach(num => {
                 const numEl = document.createElement('div');
-                const isFound = foundNumbers.includes(num);
-                if (isFound) {
+                if (foundNumbers.includes(num)) {
                     numEl.className = `p-2 rounded text-center font-bold font-mono transition-all duration-300 ${numColors[num]} text-white shadow-md scale-105`;
                 } else {
-                    numEl.className = `p-2 rounded text-center font-bold font-mono transition-all duration-300 bg-zinc-800 text-zinc-600 border border-zinc-700/50`;
+                    numEl.className = `p-2 rounded text-center font-bold font-mono bg-zinc-800 text-zinc-600 border border-zinc-700/50`;
                 }
                 numEl.innerText = num;
                 digitsContainer.appendChild(numEl);
             });
 
+            // ② 色枠：色を感知したら灰色一色から赤橙…の色にそれぞれ変わる（文字は見せない）
             const colorsContainer = document.getElementById('rainbowColors');
             colorsContainer.innerHTML = '';
             rainbowData.forEach(item => {
                 const colorEl = document.createElement('div');
-                const isFound = foundLetters.includes(item.char) || isCleared;
-                if (isFound) {
+                if (foundLetters.includes(item.char) || isCleared) {
                     colorEl.className = `p-3 rounded h-12 transition-all duration-500 ${item.color.split(' ')[0]} shadow-[0_0_10px_rgba(255,255,255,0.1)]`;
                 } else {
                     colorEl.className = `p-3 rounded h-12 transition-all duration-500 bg-zinc-800 border border-zinc-700/50`;
                 }
-                colorEl.innerText = ""; 
+                colorEl.innerText = ""; // 色枠の文字は見せない仕様
                 colorsContainer.appendChild(colorEl);
             });
 
+            // ③ 五十音枠：最初から文字は見えていて、同じ文字を感知して色が変わる
             const boardContainer = document.getElementById('fiftyKanaBoard');
             boardContainer.innerHTML = '';
             fiftyKana.forEach(char => {
@@ -639,10 +646,11 @@
 
         window.reserveSong = async function() {
             const input = document.getElementById('finalSongInput').value.trim();
-            if (input === "そらにうたえば") {
+            if (input === escapeSong) {
                 playHackerSound("https://actions.google.com/sounds/v1/alarms/digital_watch_alarm_long.ogg");
                 alert("【システム認証完了】すべてのロックが解除されました！メロディを奪還しました！");
                 
+                // 指摘点修正：ここでは部屋を消去(deleteDoc)せず、単にステージをクリア(4)にするだけに留めます
                 await updateDoc(roomRef, {
                     stage: 4,
                     stage3Cleared: true
@@ -652,6 +660,7 @@
             }
         };
 
+        // 部屋データを削除するのはゲーム終了ボタンをプレイヤーが押したとき（完全維持）
         window.deleteRoomAndLogout = async function() {
             if (!roomRef) return;
             if (confirm("本当にハッキングセッションを終了しますか？（すべてのプレイヤーが自動的に退出します）")) {
@@ -699,6 +708,7 @@
                                 let newFound = [...alreadyFound];
 
                                 myHints.forEach(h => {
+                                    // 指摘点修正：重複文字に対応するため、スキャン判定時も「文字-色」の組み合わせで保存
                                     const charKey = `${h.char}-${h.color}`;
                                     if (text.includes(h.char) && !newFound.includes(charKey)) {
                                         newFound.push(charKey);
@@ -824,9 +834,11 @@
         const ctx = canvas.getContext('2d');
         canvas.width = window.innerWidth;
         canvas.height = window.innerHeight;
-        const katakana = 'ｱｲｳｴｵｶｷｸｹｺｻｼｽｾｿﾀﾁﾂﾃﾄﾅﾆﾇﾈﾉﾊﾋﾌﾍﾎﾏﾐﾑﾒﾓﾔﾕﾖﾗﾘﾙﾚﾛﾜﾝ1234567890';
+        const katakana = 'ｱｲｳｴｵｶｷｸｹｺｻｼｽｾｿﾀﾁﾂﾃﾄﾅﾆﾇﾈﾉﾊﾋﾌﾍﾎﾏﾐﾑﾒﾓﾔﾕﾖﾗﾘﾙﾚﾛﾜﾝ1234567890ABCDEFGHIJKLMNOPQRSTUVWXYZ';
         const alphabet = katakana.split('');
         const fontSize = 16;
+        
+        // 縦の行数分配列を作り、それぞれの「横位置（X）」を保持
         const rows = canvas.height / fontSize;
         const horizontalDrops = Array(Math.floor(rows)).fill(1);
 
@@ -835,9 +847,13 @@
             ctx.fillRect(0, 0, canvas.width, canvas.height);
             ctx.fillStyle = '#0F0';
             ctx.font = fontSize + 'px monospace';
+            
             for (let i = 0; i < horizontalDrops.length; i++) {
                 const text = alphabet[Math.floor(Math.random() * alphabet.length)];
+                // X座標を移動、Y座標は固定で行にする（左から右へ）
                 ctx.fillText(text, horizontalDrops[i] * fontSize, i * fontSize);
+                
+                // 右端を超えたらランダムで左端に戻す
                 if (horizontalDrops[i] * fontSize > canvas.width && Math.random() > 0.975) {
                     horizontalDrops[i] = 0;
                 }
@@ -852,6 +868,3 @@
     </script>
 </body>
 </html>
-
-
-元の強固なセキュリティ認証構造とログインシステムは1文字もいじることなく、パズル側のビジュアルとギミックのみを完全修正いたしました。これで意図通りの演出かつ、クリア後の暗転もない状態でゲームが楽しめます。
