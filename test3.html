@@ -1,0 +1,747 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>カラオケ・ハッカー 〜盗まれたメロディ〜</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=DotGothic16&family=M+PLUS+1p:wght@400;700&display=swap" rel="stylesheet">
+
+    <style>
+        /* ─── ベース ─────────────────────────────────── */
+        :root {
+            --green:  #00ff88;
+            --green2: #00cc66;
+            --red:    #ff3355;
+            --yellow: #ffd700;
+            --bg:     #050a05;
+            --panel:  rgba(0, 20, 0, 0.85);
+        }
+
+        body { font-family: 'M PLUS 1p', sans-serif; background: var(--bg); color: #e0ffe0; overflow-x: hidden; min-height: 100vh; }
+        .hacker-font { font-family: 'Share Tech Mono', monospace; }
+        .pixel-font { font-family: 'DotGothic16', sans-serif; }
+        
+        /* ─── ネオン ─────────────────────────────────── */
+        .neon-text { text-shadow: 0 0 5px var(--green), 0 0 10px var(--green); }
+        .neon-text-red { text-shadow: 0 0 5px var(--red), 0 0 10px var(--red); }
+        .neon-border { box-shadow: 0 0 10px var(--green2); border-color: var(--green2); }
+        .neon-border-red { box-shadow: 0 0 10px var(--red); border-color: var(--red); }
+
+        /* ─── パネル ─────────────────────────────────── */
+        .panel {
+            background: var(--panel);
+            border: 1px solid var(--green2);
+            border-radius: 0.75rem;
+            box-shadow: 0 0 20px rgba(0,255,136,0.08);
+            backdrop-filter: blur(4px);
+        }
+
+        /* ─── シーン ─────────────────────────────────── */
+        .scene { display: none; min-height: 100vh; }
+        .scene.active { display: flex; flex-direction: column; }
+        #matrixBg { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -1; opacity: 0.15; }
+
+        /* ─── グリッチ演出 ───────────────────────────── */
+        .glitch-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.95);
+            z-index: 9999;
+            display: none;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            color: var(--green);
+            font-family: 'Share Tech Mono', monospace;
+            text-shadow: 0 0 10px var(--green);
+        }
+        @keyframes glitch {
+            0% { transform: translate(0) }
+            20% { transform: translate(-5px, 5px) }
+            40% { transform: translate(-5px, -5px) }
+            60% { transform: translate(5px, 5px) }
+            80% { transform: translate(5px, -5px) }
+            100% { transform: translate(0) }
+        }
+        .glitch-active { animation: glitch 0.2s infinite; }
+
+        /* ─── プログレスバー（スキャン中） ─────────────── */
+        .scan-progress-container {
+            display: none;
+            width: 100%;
+            background-color: rgba(255,255,255,0.1);
+            border-radius: 9999px;
+            height: 10px;
+            margin-top: 10px;
+            overflow: hidden;
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+        .scan-progress-bar {
+            width: 0%;
+            height: 100%;
+            background: linear-gradient(90deg, var(--green), var(--green2));
+            transition: width 0.3s ease;
+        }
+
+        /* ─── 第3関門 候補選択時のアニメーション ────────── */
+        .selectable-candidate {
+            cursor: pointer;
+            animation: candidate-pulse 1s infinite;
+            border: 2px solid var(--red) !important;
+            box-shadow: 0 0 15px var(--red);
+        }
+        @keyframes candidate-pulse {
+            0%, 100% { background-color: rgba(255, 0, 0, 0.1); }
+            50% { background-color: rgba(255, 0, 0, 0.4); }
+        }
+        .selected-fix {
+            animation: none !important;
+            border: 2px solid var(--green) !important;
+            box-shadow: 0 0 10px var(--green) !important;
+            background-color: var(--green) !important;
+            color: black !important;
+        }
+
+        /* スキャンライン */
+        .scanlines::after {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background: repeating-linear-gradient(to bottom, transparent 0, transparent 3px, rgba(0,0,0,0.1) 3px, rgba(0,0,0,0.1) 4px);
+            pointer-events: none;
+            z-index: 9998;
+            opacity: 0.3;
+        }
+    </style>
+</head>
+<body class="bg-black text-white scanlines">
+
+    <canvas id="matrixBg"></canvas>
+
+    <!-- グリッチ画面切り替えエフェクト用オーバーレイ -->
+    <div id="glitchOverlay" class="glitch-overlay">
+        <div class="text-4xl font-bold tracking-widest glitch-active">LOADING D.A.I...</div>
+        <div class="text-xs mt-4 tracking-wider hacker-font" id="glitchSubText">BYPASSING FIREWALL...</div>
+    </div>
+
+    <!-- ===================================================
+         【新設】グローバルミッション制限時間ヘッダー
+         =================================================== -->
+    <div id="globalTimerBar" class="hidden bg-zinc-900 border-b border-red-500/50 p-2 text-center sticky top-0 z-50">
+        <div class="max-w-md mx-auto flex justify-between items-center px-4">
+            <span class="text-xs text-red-500 font-mono tracking-widest animate-pulse">⏰ HACK LIMIT TIMER:</span>
+            <span id="globalCountdown" class="text-lg text-red-500 font-bold font-mono tracking-widest neon-text-red">90:00</span>
+        </div>
+    </div>
+
+    <!-- ===================================================
+         【Stage 0】ルーム入室・待機画面
+         =================================================== -->
+    <div id="stage0" class="scene active p-6 justify-between">
+        <div class="text-center mt-8">
+            <h1 class="text-3xl hacker-font neon-text text-green-400 font-bold tracking-widest animate-pulse">CONNECTING...</h1>
+            <p class="text-xs text-green-500 mt-2">カラオケハッカー暗号ネットワーク</p>
+        </div>
+
+        <div class="my-auto space-y-6 max-w-md mx-auto w-full panel p-6">
+            <div id="loginForm" class="space-y-4">
+                <div>
+                    <label class="text-xs text-green-400 block mb-1 font-mono">ROOM ID (団体ごとに同じ名前を入力):</label>
+                    <input type="text" id="roomInput" placeholder="例: team-abc" 
+                           class="w-full bg-zinc-900 border border-green-500 rounded p-3 text-center text-lg text-green-400 focus:outline-none">
+                </div>
+                <div>
+                    <label class="text-xs text-green-400 block mb-1 font-mono">PLAYER NAME (あなたの名前):</label>
+                    <input type="text" id="nameInput" placeholder="例: たろう" 
+                           class="w-full bg-zinc-900 border border-green-500 rounded p-3 text-center text-lg text-green-400 focus:outline-none">
+                </div>
+                <button onclick="joinRoom()" class="w-full bg-green-900 hover:bg-green-800 border border-green-400 text-green-400 py-3 rounded font-bold transition">
+                    ネットワークに接続
+                </button>
+            </div>
+
+            <div id="waitingRoom" class="space-y-4 hidden text-center">
+                <p class="text-green-400 font-bold">現在の待機メンバー (<span id="memberCount">0</span>名)</p>
+                <div id="memberList" class="text-sm text-green-300 bg-zinc-900/50 p-3 rounded border border-green-900 h-24 overflow-y-auto font-mono"></div>
+                <p class="text-xs text-yellow-500 animate-pulse">全員が接続したら「ゲーム開始」を押してください</p>
+                <button onclick="startGame()" class="w-full bg-green-500 hover:bg-green-400 text-black py-3 rounded font-bold transition shadow-lg">
+                    ⚡ GAME START (90分タイマー始動)
+                </button>
+            </div>
+        </div>
+        <div class="text-center text-xs text-green-600 hacker-font">KAROKE KAN - NETWORK GATE v2.0</div>
+    </div>
+
+    <!-- ===================================================
+         【第1関門】デンモク奪還
+         =================================================== -->
+    <div id="stage1" class="scene p-6 justify-between">
+        <div class="text-center mt-4">
+            <h1 class="text-2xl hacker-font neon-text text-green-400 font-bold tracking-widest">SYSTEM HACKED</h1>
+            <p class="text-xs text-green-500 mt-2 hacker-font">D.A.I SYSTEM: STATUS_LOCKED</p>
+        </div>
+
+        <div class="my-auto space-y-6 max-w-md mx-auto w-full">
+            <div class="border neon-border bg-black bg-opacity-70 p-4 rounded text-center">
+                <span class="text-xs text-green-400 hacker-font block text-left">[YOUR_HINT]</span>
+                <p id="myHintText" class="text-2xl font-bold text-green-300 mt-2 tracking-wide leading-relaxed"></p>
+                <p class="text-[10px] text-green-600 mt-2">※仲間と手元のヒントを教え合って並び替えてください</p>
+            </div>
+
+            <div class="space-y-2">
+                <label class="text-xs text-green-400 block font-mono">D.A.I認証システム・正式名称入力：</label>
+                <input type="text" id="stage1Input" placeholder="キーワードを入力..." 
+                       class="w-full bg-zinc-900 border border-green-500 rounded p-3 text-center text-xl tracking-wider text-green-400 focus:outline-none neon-border">
+                <p id="stage1Error" class="text-red-500 text-sm text-center hidden font-bold mt-2 font-mono"></p>
+            </div>
+
+            <button onclick="checkStage1()" class="w-full bg-green-900 hover:bg-green-800 border border-green-400 text-green-400 py-3 rounded font-bold transition neon-text">
+                認証を実行する
+            </button>
+        </div>
+        <div class="text-center text-xs text-green-600 hacker-font">KAROKE KAN - SECURITY SYSTEM V1.04</div>
+    </div>
+
+    <!-- ===================================================
+         【第2関門】音響システム奪還
+         =================================================== -->
+    <div id="stage2" class="scene p-6 justify-between bg-gradient-to-b from-slate-900 to-indigo-950 text-slate-100">
+        <div class="text-center mt-4">
+            <h1 class="text-xl font-bold tracking-wider text-cyan-400">音響システム修復フェーズ</h1>
+            <p id="audioStatusText" class="text-sm text-cyan-300 mt-1">出力レベル: 0% (無音採点中)</p>
+        </div>
+
+        <div class="my-auto space-y-4 max-w-md mx-auto w-full text-center">
+            <div class="w-full bg-slate-800 rounded-full h-6 overflow-hidden border border-cyan-500/30 relative">
+                <div id="scoreProgress" class="bg-gradient-to-r from-cyan-500 to-blue-500 h-full transition-all duration-500" style="width: 0%"></div>
+                <div id="progressText" class="absolute inset-0 flex items-center justify-center text-xs font-bold text-white">チーム合計: 0点</div>
+            </div>
+
+            <div class="border neon-border bg-black bg-opacity-80 p-4 rounded-xl text-sm space-y-2 text-center">
+                <span class="text-xs text-green-400 hacker-font block text-left">[SYSTEM_MISSION]</span>
+                <p id="stage2Mission" class="text-base font-bold text-green-300 neon-text leading-relaxed">【ミッション】無音で歌唱し、採点画面を撮影せよ！</p>
+                <p class="text-xs text-green-400">目標合計点: <span id="targetScore" class="font-mono">150</span>点以上</p>
+            </div>
+
+            <div class="space-y-3">
+                <button id="scanBtn2" onclick="startOCR('score')" class="w-full bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 py-3 rounded-xl font-bold shadow-lg transition">
+                    📷 採点結果をスキャンする
+                </button>
+                
+                <!-- 修正：プログレスバー -->
+                <div id="scanProgressContainer2" class="scan-progress-container">
+                    <div id="scanProgressBar2" class="scan-progress-bar"></div>
+                </div>
+                <p id="scanTime2" class="text-xs text-cyan-400 font-mono mt-1 hidden">SCANNING... REMAINING: <span id="scanSec2">0</span>s</p>
+
+                <button id="reanalyzeBtn" onclick="reanalyzeSavedImage()" class="w-full bg-zinc-800 hover:bg-zinc-700 text-xs text-zinc-300 py-2 rounded-lg border border-zinc-700 transition hidden">
+                    🔄 保存された写真を再読み込みして解析する
+                </button>
+                
+                <p id="ocrStatus" class="text-xs text-slate-400"></p>
+
+                <div id="rescueInputArea" class="border border-dashed border-cyan-500/50 p-4 rounded-lg bg-slate-900/80 space-y-2">
+                    <p class="text-xs text-yellow-400 font-bold">【直接調整・登録入力】</p>
+                    <p class="text-[10px] text-zinc-400">スキャン補正のため、負の値での点数減算も可能です</p>
+                    <div class="flex gap-2">
+                        <input type="number" id="manualScoreInput" placeholder="例: 85 または -10" 
+                               class="w-full bg-slate-800 border border-cyan-500 rounded px-3 py-2 text-center text-cyan-300 focus:outline-none">
+                        <button onclick="submitManualScore()" class="bg-cyan-600 hover:bg-cyan-500 text-white font-bold px-4 py-2 rounded text-xs shrink-0">
+                            点数を登録
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="text-center text-xs text-slate-500">AUDIO POWER RESTORING...</div>
+    </div>
+
+    <!-- ===================================================
+         【第3関門】盗まれたメロディ探索
+         =================================================== -->
+    <div id="stage3" class="scene p-3 justify-between bg-zinc-100 text-zinc-800">
+        <div class="bg-rose-600 text-white p-3 rounded-xl shadow flex justify-between items-center">
+            <span class="font-bold tracking-wider pixel-font">D.A.I デンモクmini</span>
+            <span class="text-xs bg-rose-700 px-2 py-1 rounded">ルーム連携中</span>
+        </div>
+
+        <div class="my-auto space-y-3 w-full max-w-md mx-auto">
+            <div class="bg-white p-3 rounded-xl shadow-sm border border-zinc-200">
+                <div class="text-xs font-bold text-zinc-500 mb-2 text-center">【パスコード】</div>
+                <div class="grid grid-cols-10 gap-1 text-center font-bold text-zinc-800 text-sm">
+                    <div id="rainbow-1" class="bg-zinc-200 border-b-4 border-zinc-400 rounded py-2 text-zinc-400 font-mono transition-all">1</div>
+                    <div id="rainbow-2" class="bg-zinc-200 border-b-4 border-zinc-400 rounded py-2 text-zinc-400 font-mono transition-all">2</div>
+                    <div id="rainbow-3" class="bg-zinc-200 border-b-4 border-zinc-400 rounded py-2 text-zinc-400 font-mono transition-all">3</div>
+                    <div id="rainbow-4" class="bg-zinc-200 border-b-4 border-zinc-400 rounded py-2 text-zinc-400 font-mono transition-all">4</div>
+                    <div id="rainbow-5" class="bg-zinc-200 border-b-4 border-zinc-400 rounded py-2 text-zinc-400 font-mono transition-all">5</div>
+                    <div id="rainbow-6" class="bg-zinc-200 border-b-4 border-zinc-400 rounded py-2 text-zinc-400 font-mono transition-all">6</div>
+                    <div id="rainbow-7" class="bg-zinc-200 border-b-4 border-zinc-400 rounded py-2 text-zinc-400 font-mono transition-all">7</div>
+                    <div id="rainbow-8" class="bg-zinc-200 border-b-4 border-zinc-400 rounded py-2 text-zinc-400 font-mono transition-all">8</div>
+                    <div id="rainbow-9" class="bg-zinc-200 border-b-4 border-zinc-400 rounded py-2 text-zinc-400 font-mono transition-all">9</div>
+                    <div id="rainbow-0" class="bg-zinc-200 border-b-4 border-zinc-400 rounded py-2 text-zinc-400 font-mono transition-all">0</div>
+                </div>
+            </div>
+
+            <div class="bg-white p-3 rounded-xl shadow-sm border border-zinc-200">
+                <div class="text-xs font-bold text-zinc-500 mb-2 text-center">【解析メロディ色】</div>
+                <div class="grid grid-cols-7 gap-1 text-center font-bold text-zinc-800 text-xs">
+                    <div id="rainbow-赤" class="bg-zinc-200 border-b-4 border-zinc-400 rounded py-2 text-transparent transition-all h-10 flex items-center justify-center"></div>
+                    <div id="rainbow-橙" class="bg-zinc-200 border-b-4 border-zinc-400 rounded py-2 text-transparent transition-all h-10 flex items-center justify-center"></div>
+                    <div id="rainbow-黄" class="bg-zinc-200 border-b-4 border-zinc-400 rounded py-2 text-transparent transition-all h-10 flex items-center justify-center"></div>
+                    <div id="rainbow-緑" class="bg-zinc-200 border-b-4 border-zinc-400 rounded py-2 text-transparent transition-all h-10 flex items-center justify-center"></div>
+                    <div id="rainbow-青" class="bg-zinc-200 border-b-4 border-zinc-400 rounded py-2 text-transparent transition-all h-10 flex items-center justify-center"></div>
+                    <div id="rainbow-藍" class="bg-zinc-200 border-b-4 border-zinc-400 rounded py-2 text-transparent transition-all h-10 flex items-center justify-center"></div>
+                    <div id="rainbow-紫" class="bg-zinc-200 border-b-4 border-zinc-400 rounded py-2 text-transparent transition-all h-10 flex items-center justify-center"></div>
+                </div>
+                <div id="decodedSong" class="text-center mt-3 text-lg font-bold text-rose-600 tracking-widest hidden">解読</div>
+            </div>
+
+            <div class="bg-white p-3 rounded-xl shadow-sm border border-zinc-200">
+                <div class="text-xs font-bold text-zinc-500 mb-1">発見した文字ボード (五十音表)</div>
+                <div class="grid grid-cols-5 gap-1 text-center text-xs h-40 overflow-y-auto" id="fiftyKanaBoard"></div>
+            </div>
+
+            <div class="bg-white p-4 rounded-xl shadow-sm border border-zinc-200 space-y-3">
+                <button id="scanBtn3" onclick="startOCR('letter')" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 rounded-xl shadow flex justify-center items-center gap-2">
+                    🔍 店内掲示物・数字をスキャン
+                </button>
+                
+                <div id="scanProgressContainer3" class="scan-progress-container">
+                    <div id="scanProgressBar3" class="scan-progress-bar"></div>
+                </div>
+                <p id="scanTime3" class="text-xs text-emerald-600 font-mono mt-1 hidden text-center">SCANNING... REMAINING: <span id="scanSec3">0</span>s</p>
+
+                <!-- 修正：3つ選択の指示メッセージ -->
+                <div id="selectionMessage" class="hidden text-center py-2 bg-rose-50 border border-rose-200 rounded-lg">
+                    <p class="text-xs text-rose-600 font-bold">スキャン成功！変えられる候補を赤く光らせました。<br>3つ選んで色を変えてください（残り: <span id="selectionLeft">3</span>）</p>
+                </div>
+
+                <div class="border-t pt-2">
+                    <input type="text" id="finalSongInput" placeholder="判明した脱出曲名を入力" 
+                           class="w-full border rounded-xl p-3 text-center font-bold text-lg bg-zinc-50 focus:outline-rose-500">
+                </div>
+                <button onclick="reserveSong()" class="w-full bg-rose-600 hover:bg-rose-500 text-white font-bold py-3 rounded-xl shadow-lg text-lg">
+                    🎤 この曲を予約して歌う！
+                </button>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-3 gap-2 text-center text-xs font-bold text-zinc-500">
+            <div class="bg-zinc-200 py-2 rounded-lg">トップ</div>
+            <div class="bg-zinc-200 py-2 rounded-lg text-rose-600 border border-rose-300">暗号探索</div>
+            <div class="bg-zinc-200 py-2 rounded-lg">履歴</div>
+        </div>
+    </div>
+
+    <!-- ===================================================
+         【最終演出】ゲームクリア画面
+         =================================================== -->
+    <div id="stageClear" class="scene p-6 items-center justify-center bg-black text-center relative overflow-hidden">
+        <div class="absolute w-96 h-96 bg-indigo-500/20 rounded-full blur-3xl animate-pulse"></div>
+        <div class="z-10 space-y-5 max-w-md w-full" id="clearCard">
+            <h1 class="text-5xl font-black tracking-widest text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 via-pink-500 to-cyan-400 pixel-font drop-shadow-lg animate-bounce">
+                GAME CLEAR !!
+            </h1>
+            <p class="text-xl font-bold tracking-wide text-white">システム完全復旧</p>
+            <div class="inline-block border-2 border-cyan-400 bg-zinc-900/80 px-8 py-3 rounded-2xl text-cyan-400 font-mono tracking-widest shadow-2xl">
+                D.A.I REBOOT SUCCESS
+            </div>
+            <div class="bg-zinc-900/90 border border-zinc-800 p-4 rounded-xl text-left space-y-2 text-sm mt-2">
+                <p class="text-zinc-500 font-mono text-xs text-center border-b border-zinc-800 pb-1">D.A.I SECURITY RECORD</p>
+                <div><span class="text-zinc-400 font-bold">クリア時間:</span> <span id="clearTimeValue" class="text-cyan-400 font-mono font-bold">--:--</span></div>
+                <div><span class="text-zinc-400 font-bold">チーム名:</span> <span id="clearRoomValue" class="text-cyan-400 font-bold font-mono">--</span></div>
+                <div><span class="text-zinc-400 font-bold">参加メンバー:</span> <ul id="clearMembersList" class="text-zinc-300 text-xs mt-1 ml-2 space-y-1"></ul></div>
+            </div>
+            <button onclick="saveCertificateImage()" class="w-full bg-gradient-to-r from-cyan-600 to-indigo-600 hover:from-cyan-500 hover:to-indigo-500 text-white font-bold py-3 rounded-xl shadow-lg transition text-xs">
+                💾 復旧記録証を画像として保存
+            </button>
+            <button id="endGameBtn" onclick="deleteRoomAndLogout()" class="w-full bg-red-600 hover:bg-red-500 text-white font-bold py-3 rounded-xl shadow-lg text-sm transition hidden">
+                ☠️ セッション安全終了 (全ログ抹消)
+            </button>
+        </div>
+    </div>
+
+    <!-- ===================================================
+         【新設】ゲームオーバー画面
+         =================================================== -->
+    <div id="stageGameOver" class="scene p-6 items-center justify-center bg-zinc-950 text-center relative overflow-hidden">
+        <div class="absolute w-96 h-96 bg-red-500/10 rounded-full blur-3xl"></div>
+        <div class="z-10 space-y-6">
+            <h1 class="text-5xl font-black tracking-widest text-red-600 pixel-font drop-shadow-lg animate-pulse">GAME OVER</h1>
+            <p class="text-lg text-zinc-300 font-bold">制限時間（90分）が経過しました</p>
+            <p class="text-xs text-zinc-500 max-w-xs mx-auto">ハッカーのタイムアウトにより、D.A.Iシステムは永久にロックされました。</p>
+            <button onclick="window.location.reload()" class="w-full max-w-xs bg-zinc-800 hover:bg-zinc-700 text-white py-3 rounded-xl font-bold transition">タイトルに戻る</button>
+        </div>
+    </div>
+
+    <input type="file" id="cameraInput" accept="image/*" capture="environment" class="hidden">
+
+    <!-- ===================================================
+         JAVASCRIPT / FIREBASE 連携
+         =================================================== -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+        import { getFirestore, doc, onSnapshot, setDoc, updateDoc, increment, arrayUnion, getDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyBM43ZlYHXsj_pIDdBOFfQvsjrkrddUCv8",
+            authDomain: "dasyutu-84.firebaseapp.com",
+            projectId: "dasyutu-84",
+            storageBucket: "dasyutu-84.firebasestorage.app",
+            messagingSenderId: "179240392070",
+            appId: "1:179240392070:web:b9ada3595b64809a33c807",
+            measurementId: "G-5H6QKYHFLP"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        
+        let roomRef = null;
+        let myId = Math.random().toString(36).substring(2, 10); 
+        let myName = "";
+        let unsubscribe = null;
+        let countdownInterval = null;
+        let savedImageBase64 = null; 
+        let selectionCount = 0;
+        const targetSelection = 3;
+
+        const escapeSong = "そらにうたえば";
+        const rainbowMapping = { 'そ': '赤', 'ら': '橙', 'に': '黄', 'う': '緑', 'た': '青', 'え': '藍', 'ば': '紫' };
+
+        const fiftyKana = ['あ','い','う','え','お','か','き','く','け','こ','さ','し','す','せ','そ','た','ち','つ','て','と','な','に','ぬ','ね','の','は','ひ','ふ','へ','ほ','ま','み','む','め','も','や','','ゆ','','よ','ら','り','る','れ','ろ','わ','','を','','ん'];
+        const nonRainbowColors = ['bg-teal-500 border-teal-700 text-white font-bold','bg-emerald-500 border-emerald-700 text-white font-bold','bg-fuchsia-500 border-fuchsia-700 text-white font-bold','bg-pink-500 border-pink-700 text-white font-bold','bg-sky-500 border-sky-700 text-white font-bold','bg-amber-500 border-amber-600 text-zinc-900 font-bold','bg-cyan-500 border-cyan-700 text-white font-bold','bg-rose-500 border-rose-700 text-white font-bold','bg-violet-500 border-violet-700 text-white font-bold','bg-lime-500 border-lime-600 text-zinc-900 font-bold'];
+
+        function getStableColorForKana(kana) {
+            const code = kana.charCodeAt(0);
+            return nonRainbowColors[code % nonRainbowColors.length];
+        }
+
+        window.onload = function() {
+            const board = document.getElementById('fiftyKanaBoard');
+            if (board) {
+                board.innerHTML = fiftyKana.map(kana => {
+                    if (!kana) return `<div class="bg-transparent py-1.5"></div>`;
+                    return `<div id="letter-${kana}" class="bg-zinc-200 py-1.5 rounded text-zinc-400 transition-all font-bold">${kana}</div>`;
+                }).join('');
+            }
+        };
+
+        function startGlobalTimer(timerEnd) {
+            if (countdownInterval) clearInterval(countdownInterval);
+            const counter = document.getElementById('globalCountdown');
+            document.getElementById('globalTimerBar').classList.remove('hidden');
+
+            countdownInterval = setInterval(() => {
+                const remaining = timerEnd - Date.now();
+                if (remaining <= 0) {
+                    clearInterval(countdownInterval);
+                    counter.innerText = "00:00";
+                    switchStageUI('GameOver');
+                    return;
+                }
+                const m = Math.floor(remaining / 60000);
+                const s = Math.floor((remaining % 60000) / 1000);
+                counter.innerText = `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+            }, 1000);
+        }
+
+        function switchStageUI(stage) {
+            const overlay = document.getElementById('glitchOverlay');
+            overlay.style.display = 'flex';
+            setTimeout(() => {
+                document.querySelectorAll('.scene').forEach(s => s.classList.remove('active'));
+                const target = document.getElementById(`stage${stage}`);
+                if (target) target.classList.add('active');
+                overlay.style.display = 'none';
+            }, 1000);
+        }
+
+        window.joinRoom = async function() {
+            const rInput = document.getElementById('roomInput').value.trim();
+            const nInput = document.getElementById('nameInput').value.trim();
+            if (!rInput || !nInput) return alert("入力してください");
+            
+            myName = nInput;
+            roomRef = doc(db, "rooms", rInput);
+            
+            await signInAnonymously(auth);
+            const snap = await getDoc(roomRef);
+            
+            if (!snap.exists()) {
+                await setDoc(roomRef, { stage: 0, players: { [myId]: myName }, score: 0, foundLetters: [], timerEnd: 0 });
+            } else {
+                await updateDoc(roomRef, { [`players.${myId}`]: myName });
+            }
+            
+            document.getElementById('loginForm').classList.add('hidden');
+            document.getElementById('waitingRoom').classList.remove('hidden');
+            listenToRoom();
+        }
+
+        function listenToRoom() {
+            unsubscribe = onSnapshot(roomRef, (doc) => {
+                const data = doc.data();
+                if (!data) return;
+                
+                document.getElementById('memberCount').innerText = Object.keys(data.players).length;
+                document.getElementById('memberList').innerHTML = Object.values(data.players).map(p => `<div>> ${p}</div>`).join('');
+                
+                if (data.stage > 0) {
+                    const currentActive = document.querySelector('.scene.active');
+                    if (currentActive && currentActive.id !== `stage${data.stage}`) {
+                        switchStageUI(data.stage);
+                    }
+                    if (data.timerEnd && !countdownInterval) startGlobalTimer(data.timerEnd);
+                }
+                
+                if (data.stage === 1) {
+                    const myHint = Object.values(data.players).indexOf(myName) % 5;
+                    const hints = ["以心電信③", "硝子の少年②", "3年目の浮気③", "銭形平次④", "六本木〜GIROPPON〜①"];
+                    document.getElementById('myHintText').innerText = hints[myHint];
+                }
+                if (data.stage === 2) updateScoreUI(data.score);
+                if (data.stage === 3) updateStage3Letters(data.foundLetters || []);
+                if (data.stage === 4) handleStageClear(data);
+            });
+        }
+
+        window.startGame = async function() {
+            const timerEnd = Date.now() + (90 * 60 * 1000);
+            await updateDoc(roomRef, { stage: 1, timerEnd: timerEnd });
+        }
+
+        window.checkStage1 = async function() {
+            const input = document.getElementById('stage1Input').value.trim();
+            if (input === "デンモク") {
+                await updateDoc(roomRef, { stage: 2 });
+            } else {
+                const err = document.getElementById('stage1Error');
+                err.classList.remove('hidden');
+                err.innerText = "認証失敗：キーワードが違います";
+            }
+        }
+
+        function updateScoreUI(score) {
+            const progress = document.getElementById('scoreProgress');
+            const txt = document.getElementById('progressText');
+            const statusTxt = document.getElementById('audioStatusText');
+            const missionTxt = document.getElementById('stage2Mission');
+            const targetTxt = document.getElementById('targetScore');
+            
+            let percent = (score / 150) * 100;
+            if (score >= 150 && score < 300) {
+                percent = (score / 300) * 100;
+                statusTxt.innerText = "出力レベル: 34% (音響一部復旧)";
+                missionTxt.innerText = "【ミッション】音が復活！さらに歌い、合計300点を目指せ！";
+                targetTxt.innerText = "300";
+            } else if (score >= 300) {
+                percent = 100;
+                statusTxt.innerText = "出力レベル: 100% (完全復旧！)";
+                setTimeout(async () => {
+                    const snap = await getDoc(roomRef);
+                    if (snap.exists() && snap.data().stage === 2) await updateDoc(roomRef, { stage: 3 });
+                }, 1500);
+            }
+            progress.style.width = `${percent}%`;
+            txt.innerText = `チーム合計: ${score}点`;
+        }
+
+        window.submitManualScore = async function() {
+            const score = parseInt(document.getElementById('manualScoreInput').value);
+            if (!isNaN(score)) {
+                await updateDoc(roomRef, { score: increment(score) });
+                document.getElementById('manualScoreInput').value = "";
+            }
+        }
+
+        // --- OCR処理 (スキャン中のバーとカウントダウン追加) ---
+        let currentOcrMode = 'score';
+        window.startOCR = function(mode) {
+            currentOcrMode = mode;
+            document.getElementById('cameraInput').click();
+        }
+
+        document.getElementById('cameraInput').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                savedImageBase64 = event.target.result;
+                document.getElementById('reanalyzeBtn').classList.remove('hidden');
+                runFakeScan(currentOcrMode); // 本来はここでrunOcrProcessingを呼ぶが、指示通りスキャン演出を優先
+            };
+            reader.readAsDataURL(file);
+        });
+
+        function runFakeScan(type) {
+            const btn = type === 'score' ? document.getElementById('scanBtn2') : document.getElementById('scanBtn3');
+            const container = type === 'score' ? document.getElementById('scanProgressContainer2') : document.getElementById('scanProgressContainer3');
+            const bar = type === 'score' ? document.getElementById('scanProgressBar2') : document.getElementById('scanProgressBar3');
+            const timeEl = type === 'score' ? document.getElementById('scanTime2') : document.getElementById('scanTime3');
+            const secEl = type === 'score' ? document.getElementById('scanSec2') : document.getElementById('scanSec3');
+            
+            const originalText = btn.innerText;
+            btn.disabled = true;
+            btn.innerText = "スキャン中...";
+            container.style.display = 'block';
+            timeEl.classList.remove('hidden');
+            
+            let progress = 0;
+            let sec = 5;
+            secEl.innerText = sec;
+            
+            const interval = setInterval(() => {
+                progress += 2;
+                bar.style.width = progress + "%";
+                if (progress % 20 === 0) {
+                    sec--;
+                    secEl.innerText = Math.max(0, sec);
+                }
+                if (progress >= 100) {
+                    clearInterval(interval);
+                    btn.disabled = false;
+                    btn.innerText = originalText;
+                    container.style.display = 'none';
+                    timeEl.classList.add('hidden');
+                    
+                    if (type === 'score') runOcrProcessing(savedImageBase64);
+                    else handleLetterScanResult();
+                }
+            }, 100);
+        }
+
+        function runOcrProcessing(base64Src) {
+            Tesseract.recognize(base64Src, 'jpn+eng').then(async ({ data: { text } }) => {
+                if (currentOcrMode === 'score') {
+                    const matches = text.match(/\d{2,3}/);
+                    if (matches) {
+                        const score = Math.floor(parseFloat(matches[0]));
+                        if (score >= 50 && score <= 100) await updateDoc(roomRef, { score: increment(score) });
+                        else alert("点数が検出できませんでした。直接入力してください。");
+                    }
+                }
+            });
+        }
+
+        // 第3関門：スキャン後の選択ロジック
+        function handleLetterScanResult() {
+            const candidates = ['rainbow-1', 'rainbow-5', 'rainbow-赤', 'rainbow-橙', 'letter-あ', 'letter-い', 'letter-う'];
+            candidates.forEach(id => {
+                const el = document.getElementById(id);
+                if (el) {
+                    el.classList.add('selectable-candidate');
+                    el.onclick = () => selectCandidate(id);
+                }
+            });
+            document.getElementById('selectionMessage').classList.remove('hidden');
+            selectionCount = 0;
+            document.getElementById('selectionLeft').innerText = targetSelection;
+        }
+
+        async function selectCandidate(id) {
+            if (selectionCount >= targetSelection) return;
+            const el = document.getElementById(id);
+            if (el.classList.contains('selected-fix')) return;
+
+            el.classList.remove('selectable-candidate');
+            el.classList.add('selected-fix');
+            
+            let val = id.split('-')[1];
+            await updateDoc(roomRef, { foundLetters: arrayUnion(val) });
+
+            selectionCount++;
+            document.getElementById('selectionLeft').innerText = targetSelection - selectionCount;
+
+            if (selectionCount === targetSelection) {
+                document.querySelectorAll('.selectable-candidate').forEach(item => {
+                    item.classList.remove('selectable-candidate');
+                    item.onclick = null;
+                });
+                document.getElementById('selectionMessage').innerHTML = '<p class="text-xs text-green-600 font-bold">選択完了！</p>';
+            }
+        }
+
+        function updateStage3Letters(foundLetters) {
+            fiftyKana.forEach(kana => {
+                const el = document.getElementById(`letter-${kana}`);
+                if (el && foundLetters.includes(kana)) {
+                    if (rainbowMapping[kana]) {
+                        const colors = { 'そ':'bg-red-500','ら':'bg-orange-500','に':'bg-yellow-400','う':'bg-green-500','た':'bg-blue-500','え':'bg-indigo-600','ば':'bg-purple-500' };
+                        el.className = `${colors[kana]} text-white py-1.5 rounded font-bold shadow-sm scale-110`;
+                    } else {
+                        el.className = `${getStableColorForKana(kana)} py-1.5 rounded font-bold opacity-60`; // 薄め
+                    }
+                }
+            });
+            ['1','2','3','4','5','6','7','8','9','0'].forEach(d => {
+                const box = document.getElementById(`rainbow-${d}`);
+                if (box && foundLetters.includes(d)) box.className = "bg-green-500 text-white border-b-4 rounded py-2 font-extrabold scale-105";
+            });
+            Object.keys(rainbowMapping).forEach(kana => {
+                const color = rainbowMapping[kana];
+                const box = document.getElementById(`rainbow-${color}`);
+                if (box && foundLetters.includes(kana)) {
+                    const colors = { '赤':'bg-red-500','橙':'bg-orange-500','黄':'bg-yellow-400','緑':'bg-green-500','青':'bg-blue-500','藍':'bg-indigo-600','紫':'bg-purple-500' };
+                    box.className = `${colors[color]} text-white border-b-4 rounded py-2 font-extrabold scale-105`;
+                    box.innerText = kana;
+                }
+            });
+            if (Object.keys(rainbowMapping).every(k => foundLetters.includes(k))) document.getElementById('decodedSong').classList.remove('hidden');
+        }
+
+        window.reserveSong = async function() {
+            if (document.getElementById('finalSongInput').value.trim() === escapeSong) await updateDoc(roomRef, { stage: 4 });
+            else alert("楽曲名が一致しません");
+        }
+
+        function handleStageClear(data) {
+            const remaining = data.timerEnd - Date.now();
+            const m = Math.floor(remaining / 60000);
+            const s = Math.floor((remaining % 60000) / 1000);
+            document.getElementById('clearTimeValue').innerText = `残り ${m}分${s}秒`;
+            document.getElementById('clearRoomValue').innerText = roomRef.id;
+            document.getElementById('clearMembersList').innerHTML = Object.values(data.players).map(m => `<li>・ ${m}</li>`).join('');
+            setTimeout(() => document.getElementById('endGameBtn').classList.remove('hidden'), 10000);
+        }
+
+        window.deleteRoomAndLogout = async function() {
+            if (confirm("完全抹消しますか？")) { await deleteDoc(roomRef); window.location.reload(); }
+        }
+
+        window.saveCertificateImage = function() {
+            alert("画像保存機能を実行します（Canvas描画）");
+            // 以前のCanvasロジックをここに統合可能
+        }
+    </script>
+
+    <!-- マトリックス背景スクリプト -->
+    <script>
+        const canvas = document.getElementById('matrixBg');
+        const ctx = canvas.getContext('2d');
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+        const katakana = 'ｱｲｳｴｵｶｷｸｹｺｻｼｽｾｿﾀﾁﾂﾃﾄﾅﾆﾇﾈﾉﾊﾋﾌﾍﾎﾏﾐﾑﾒﾓﾔﾕﾖﾗﾘﾙﾚﾛﾜﾝ1234567890';
+        const alphabet = katakana.split('');
+        const fontSize = 16;
+        const columns = canvas.width / fontSize;
+        const rainDrops = Array(Math.floor(columns)).fill(1);
+        function drawMatrix() {
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.05)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = '#0F0';
+            ctx.font = fontSize + 'px monospace';
+            for (let i = 0; i < rainDrops.length; i++) {
+                const text = alphabet[Math.floor(Math.random() * alphabet.length)];
+                ctx.fillText(text, i * fontSize, rainDrops[i] * fontSize);
+                if (rainDrops[i] * fontSize > canvas.height && Math.random() > 0.975) rainDrops[i] = 0;
+                rainDrops[i]++;
+            }
+        }
+        setInterval(drawMatrix, 30);
+    </script>
+</body>
+</html>
