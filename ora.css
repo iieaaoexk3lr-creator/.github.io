@@ -1,0 +1,465 @@
+/* =====================================
+   リセット
+===================================== */
+
+*{
+  margin:0;
+  padding:0;
+  box-sizing:border-box;
+}
+
+html{
+  scroll-behavior:smooth;
+}
+
+body{
+  background:#0b0d10;
+  color:#ffffff;
+  font-family:
+    "Segoe UI",
+    "Hiragino Sans",
+    sans-serif;
+
+  min-height:100vh;
+}
+
+/* =====================================
+   全体
+===================================== */
+
+#app{
+  width:100%;
+  max-width:900px;
+  margin:auto;
+  padding-bottom:40px;
+}
+
+/* =====================================
+   ヘッダー
+===================================== */
+
+header{
+  text-align:center;
+  padding:20px 16px;
+}
+
+header h1{
+  font-size:1.8rem;
+  margin-bottom:8px;
+}
+
+header p{
+  color:#aab3be;
+  font-size:.95rem;
+}
+
+/* =====================================
+   設定
+===================================== */
+
+#settings{
+
+  padding:16px;
+
+  display:flex;
+
+  flex-direction:column;
+
+  gap:12px;
+}
+
+#settings label{
+
+  display:flex;
+
+  flex-direction:column;
+
+  gap:8px;
+
+  color:#d0d7de;
+}
+
+#playerName{
+
+  width:100%;
+
+  padding:14px;
+
+  border:none;
+
+  border-radius:16px;
+
+  background:#171b21;
+
+  color:white;
+
+  font-size:1rem;
+
+  outline:none;
+}
+
+#playerName:focus{
+
+  box-shadow:
+    0 0 0 2px #4da6ff;
+}
+
+/* =====================================
+   ボタン
+===================================== */
+
+.buttonRow{
+
+  display:flex;
+
+  gap:10px;
+}
+
+button{
+
+  flex:1;
+
+  border:none;
+
+  border-radius:16px;
+
+  padding:14px;
+
+  font-size:1rem;
+
+  font-weight:700;
+
+  cursor:pointer;
+
+  transition:
+    transform .15s,
+    opacity .15s;
+}
+
+button:active{
+
+  transform:scale(.97);
+}
+
+button:disabled{
+
+  opacity:.45;
+
+  cursor:not-allowed;
+}
+
+#startBtn{
+
+  background:#19c37d;
+
+  color:white;
+}
+
+#stopBtn{
+
+  background:#ff4d4d;
+
+  color:white;
+}
+
+#retryBtn{
+
+  background:#555;
+
+  color:white;
+}
+
+#saveResultBtn{
+
+  background:#42a5f5;
+
+  color:white;
+}
+
+#saveSummaryBtn{
+
+  background:#ffd54f;
+
+  color:black;
+}
+
+#saveVideoBtn{
+
+  background:#9c27b0;
+
+  color:white;
+}
+
+/* =====================================
+   カメラ
+===================================== */
+
+#cameraSection{
+
+  padding:12px;
+}
+
+#cameraWrapper{
+
+  position:relative;
+
+  width:100%;
+
+  aspect-ratio:9/16;
+
+  overflow:hidden;
+
+  border-radius:24px;
+
+  background:black;
+
+  box-shadow:
+    0 0 30px rgba(0,0,0,.55);
+}
+
+#video{
+
+  position:absolute;
+
+  inset:0;
+
+  width:100%;
+
+  height:100%;
+
+  object-fit:cover;
+}
+
+#auraCanvas{
+
+  position:absolute;
+
+  inset:0;
+
+  width:100%;
+
+  height:100%;
+
+  pointer-events:none;
+}
+
+/* =====================================
+   歌Show力
+===================================== */
+
+#showPowerBox{
+
+  position:absolute;
+
+  top:12px;
+
+  left:12px;
+
+  background:
+    rgba(0,0,0,.55);
+
+  backdrop-filter:
+    blur(8px);
+
+  border-radius:16px;
+
+  padding:12px;
+
+  min-width:130px;
+}
+
+#showPower{
+
+  margin-top:4px;
+
+  font-size:2rem;
+
+  font-weight:800;
+}
+
+.smallLabel{
+
+  color:#d0d7de;
+
+  font-size:.8rem;
+}
+
+/* =====================================
+   属性
+===================================== */
+
+#attributeBox{
+
+  position:absolute;
+
+  top:12px;
+
+  right:12px;
+
+  background:
+    rgba(0,0,0,.55);
+
+  backdrop-filter:
+    blur(8px);
+
+  border-radius:16px;
+
+  padding:12px;
+
+  min-width:120px;
+
+  text-align:center;
+}
+
+#attributeName{
+
+  margin-top:4px;
+
+  font-size:1rem;
+
+  font-weight:700;
+}
+
+/* =====================================
+   リザルト
+===================================== */
+
+#resultSection{
+
+  padding:16px;
+}
+
+#resultSection h2{
+
+  margin-bottom:12px;
+}
+
+.resultCard{
+
+  display:flex;
+
+  flex-direction:column;
+
+  gap:10px;
+}
+
+.resultItem{
+
+  background:#171b21;
+
+  border-radius:16px;
+
+  padding:14px;
+}
+
+.resultLabel{
+
+  color:#9aa4b2;
+
+  margin-bottom:4px;
+
+  font-size:.85rem;
+}
+
+/* =====================================
+   TOP3
+===================================== */
+
+#topShotsSection{
+
+  padding:16px;
+}
+
+#topShotsSection h2{
+
+  margin-bottom:12px;
+}
+
+#topShotsGrid{
+
+  display:grid;
+
+  grid-template-columns:
+    repeat(3,1fr);
+
+  gap:8px;
+}
+
+#topShotsGrid img{
+
+  width:100%;
+
+  aspect-ratio:9/16;
+
+  object-fit:cover;
+
+  border-radius:14px;
+
+  background:#171b21;
+
+  border:
+    1px solid #30363d;
+}
+
+/* =====================================
+   保存
+===================================== */
+
+#downloadSection{
+
+  padding:16px;
+
+  display:flex;
+
+  flex-direction:column;
+
+  gap:10px;
+}
+
+/* =====================================
+   スマホ最適化
+===================================== */
+
+@media (max-width:600px){
+
+  header h1{
+
+    font-size:1.5rem;
+  }
+
+  #showPower{
+
+    font-size:1.7rem;
+  }
+
+  #attributeName{
+
+    font-size:.9rem;
+  }
+
+}
+
+/* =====================================
+   横画面
+===================================== */
+
+@media (orientation:landscape){
+
+  #app{
+
+    max-width:none;
+  }
+
+  #cameraWrapper{
+
+    aspect-ratio:auto;
+
+    height:80vh;
+  }
+
+  #topShotsGrid img{
+
+    aspect-ratio:16/9;
+  }
+
+}
