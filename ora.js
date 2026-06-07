@@ -1764,7 +1764,12 @@ function createFinalResult(){
     "Player";
 
   resultAttributeEl.textContent =
-    currentAttribute;
+
+  attributeHistory
+    .map(
+      x=>x.attribute
+    )
+    .join(" → ");
 
   resultTitleEl.textContent =
     currentTitle;
@@ -1882,15 +1887,258 @@ function saveResultImage(){
 
   if(!finalFrame) return;
 
-  const a =
-    document.createElement("a");
+  const canvas =
+    document.createElement(
+      "canvas"
+    );
 
-  a.href = finalFrame;
+  canvas.width = 1080;
+  canvas.height = 1920;
 
-  a.download =
-    "result.png";
+  const ctx =
+    canvas.getContext("2d");
 
-  a.click();
+  const frameColor =
+    auraColors[
+      currentAttribute
+    ] || "#ffd700";
+
+  const bg =
+    new Image();
+
+  bg.onload = ()=>{
+
+    // 背景
+
+    ctx.fillStyle =
+      "#111";
+
+    ctx.fillRect(
+      0,
+      0,
+      canvas.width,
+      canvas.height
+    );
+
+    // 外枠
+
+    ctx.fillStyle =
+      frameColor;
+
+    ctx.fillRect(
+      20,
+      20,
+      1040,
+      1880
+    );
+
+    ctx.fillStyle =
+      "#111";
+
+    ctx.fillRect(
+      40,
+      40,
+      1000,
+      1840
+    );
+
+    // タイトル帯
+
+    ctx.fillStyle =
+      frameColor;
+
+    ctx.fillRect(
+      60,
+      60,
+      960,
+      140
+    );
+
+    ctx.fillStyle =
+      "#fff";
+
+    ctx.font =
+      "bold 70px sans-serif";
+
+    ctx.fillText(
+      currentAttribute,
+      90,
+      155
+    );
+
+    // メイン画像
+
+    ctx.drawImage(
+      bg,
+      60,
+      220,
+      960,
+      760
+    );
+
+    // 称号枠
+
+    ctx.fillStyle =
+      "#222";
+
+    ctx.fillRect(
+      60,
+      1020,
+      960,
+      220
+    );
+
+    ctx.strokeStyle =
+      frameColor;
+
+    ctx.lineWidth = 6;
+
+    ctx.strokeRect(
+      60,
+      1020,
+      960,
+      220
+    );
+
+    ctx.fillStyle =
+      "#fff";
+
+    ctx.font =
+      "bold 44px sans-serif";
+
+    ctx.fillText(
+      "称号",
+      90,
+      1085
+    );
+
+    ctx.font =
+      "bold 62px sans-serif";
+
+    ctx.fillText(
+      currentTitle,
+      90,
+      1175
+    );
+
+    // 歌Show力
+
+    ctx.fillStyle =
+      "#222";
+
+    ctx.fillRect(
+      60,
+      1280,
+      960,
+      180
+    );
+
+    ctx.strokeRect(
+      60,
+      1280,
+      960,
+      180
+    );
+
+    ctx.font =
+      "bold 42px sans-serif";
+
+    ctx.fillStyle =
+      "#fff";
+
+    ctx.fillText(
+      "歌Show力",
+      90,
+      1350
+    );
+
+    ctx.font =
+      "bold 90px sans-serif";
+
+    ctx.fillText(
+      maxShowPower,
+      90,
+      1440
+    );
+
+    // 属性履歴
+
+    ctx.fillStyle =
+      "#222";
+
+    ctx.fillRect(
+      60,
+      1500,
+      960,
+      250
+    );
+
+    ctx.strokeRect(
+      60,
+      1500,
+      960,
+      250
+    );
+
+    ctx.font =
+      "bold 42px sans-serif";
+
+    ctx.fillStyle =
+      "#fff";
+
+    ctx.fillText(
+      "属性変化履歴",
+      90,
+      1570
+    );
+
+    const historyText =
+      attributeHistory
+        .map(
+          item =>
+          item.attribute
+        )
+        .join(" → ");
+
+    ctx.font =
+      "bold 60px sans-serif";
+
+    ctx.fillText(
+      historyText,
+      90,
+      1670
+    );
+
+    // プレイヤー名
+
+    ctx.font =
+      "bold 48px sans-serif";
+
+    ctx.fillText(
+      playerNameInput.value ||
+      "Player",
+      90,
+      1830
+    );
+
+    const a =
+      document.createElement(
+        "a"
+      );
+
+    a.href =
+      canvas.toDataURL(
+        "image/png"
+      );
+
+    a.download =
+      "uta-show-card.png";
+
+    a.click();
+
+  };
+
+  bg.src = finalFrame;
 
 }
 
