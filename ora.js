@@ -2,8 +2,7 @@
 // DOM
 // =====================================
 
-finalVideoBlob = null;
-finalFrame = null;
+
 
 const video =
   document.getElementById("video");
