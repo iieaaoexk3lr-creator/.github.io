@@ -1638,39 +1638,44 @@ function getAuraRadius(){
 // 五線譜
 // =====================================
 
-const palette =
-  staffColors[
-    currentAttribute
-  ];
-
-for(
-  let i=0;
-  i<5;
-  i++
+function drawStaffCircle(
+  center,
+  radius
 ){
 
-  const r =
-    radius +
-    (i-2)*10;
+  const palette =
+    staffColors[
+      currentAttribute
+    ];
 
-  auraCtx.strokeStyle =
-    palette[i];
+  for(
+    let i=0;
+    i<5;
+    i++
+  ){
 
-  auraCtx.lineWidth = 4;
+    const r =
+      radius +
+      (i-2)*10;
 
-  auraCtx.beginPath();
+    auraCtx.strokeStyle =
+      palette[i];
 
-  auraCtx.arc(
-    center.x,
-    center.y,
-    r,
-    0,
-    Math.PI*2
-  );
+    auraCtx.lineWidth = 4;
 
-  auraCtx.stroke();
+    auraCtx.beginPath();
 
-}{
+    auraCtx.arc(
+      center.x,
+      center.y,
+      r,
+      0,
+      Math.PI*2
+    );
+
+    auraCtx.stroke();
+
+  }
 
   const spacing = 7;
 
@@ -1692,15 +1697,11 @@ for(
     auraCtx.beginPath();
 
     auraCtx.arc(
-
       center.x,
       center.y,
-
       r,
-
       0,
       Math.PI*2
-
     );
 
     auraCtx.stroke();
