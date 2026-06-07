@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+
+<meta charset="UTF-8">
+
+<meta
+name="viewport"
+content="width=device-width,initial-scale=1.0,viewport-fit=cover"
+>
+
+<title>歌唱オーラ診断</title>
+
+<link rel="stylesheet" href="ora.css">
+
+<script type="module" src="ora.js" defer></script>
+
+</head>
+
+<body>
+
+<div id="app">
+
+<header>
+
+<h1>歌唱オーラ診断</h1>
+
+<p>
+歌Show力・AI属性・AI称号を診断
+</p>
+
+</header>
+
+<section id="settings">
+
+<label>
+
+名前（チーム名）
+
+<input
+id="playerName"
+type="text"
+maxlength="30"
+placeholder="名前（チーム名）"
+>
+
+</label>
+
+<div class="buttonRow">
+
+<button id="startBtn">
+
+🎤 録画開始
+
+</button>
+
+<button
+id="stopBtn"
+disabled
+>
+
+■ 録画停止
+
+</button>
+
+</div>
+
+<div class="buttonRow">
+
+<button
+id="retryBtn"
+disabled
+>
+
+↺ 撮り直し
+
+</button>
+
+</div>
+
+</section>
+
+<section id="cameraSection">
+
+<div id="cameraWrapper">
+
+<video
+id="video"
+autoplay
+muted
+playsinline
+></video>
+
+<canvas
+id="auraCanvas"
+></canvas>
+
+<div id="showPowerBox">
+
+<div class="smallLabel">
+
+歌Show力
+
+</div>
+
+<div id="showPower">
+
+0
+
+</div>
+
+</div>
+
+<div id="attributeBox">
+
+<div class="smallLabel">
+
+AI属性
+
+</div>
+
+<div id="attributeName">
+
+判定中...
+
+</div>
+
+</div>
+
+</div>
+
+</section>
+
+<section id="resultSection">
+
+<h2>
+
+診断結果
+
+</h2>
+
+<div class="resultCard">
+
+<div class="resultItem">
+
+<div class="resultLabel">
+
+名前
+
+</div>
+
+<div id="resultName">
+
+-
+
+</div>
+
+</div>
+
+<div class="resultItem">
+
+<div class="resultLabel">
+
+AI属性
+
+</div>
+
+<div id="resultAttribute">
+
+-
+
+</div>
+
+</div>
+
+<div class="resultItem">
+
+<div class="resultLabel">
+
+AI称号
+
+</div>
+
+<div id="resultTitle">
+
+録画終了後に表示
+
+</div>
+
+</div>
+
+<div class="resultItem">
+
+<div class="resultLabel">
+
+最高歌Show力
+
+</div>
+
+<div id="resultPower">
+
+0
+
+</div>
+
+</div>
+
+</div>
+
+</section>
+
+<section id="topShotsSection">
+
+<h2>
+
+ベストショット TOP3
+
+</h2>
+
+<div id="topShotsGrid">
+
+<img id="shot1">
+
+<img id="shot2">
+
+<img id="shot3">
+
+</div>
+
+</section>
+
+<section id="downloadSection">
+
+<button
+id="saveResultBtn"
+disabled
+>
+
+リザルト保存
+
+</button>
+
+<button
+id="saveSummaryBtn"
+disabled
+>
+
+TOP3＋リザルト保存
+
+</button>
+
+<button
+id="saveVideoBtn"
+disabled
+>
+
+動画保存(WebM)
+
+</button>
+
+</section>
+
+</div>
+
+<!-- 録画用 -->
+
+<canvas
+id="recordCanvas"
+hidden
+></canvas>
+
+<!-- 保存用 -->
+
+<canvas
+id="resultCanvas"
+hidden
+></canvas>
+
+</body>
+</html>
