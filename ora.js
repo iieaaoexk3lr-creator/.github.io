@@ -1097,36 +1097,40 @@ function generateTitle(){
 
 function evaluateAttribute(){
 
-  let upper =
+  const headMotion =
+    motionStats.head;
 
-    motionStats.head +
-
-    motionStats.elbow +
-
+  const wristMotion =
     motionStats.wrist;
 
-  let lower =
+  const elbowMotion =
+    motionStats.elbow;
 
-    motionStats.hip +
+  const hipMotion =
+    motionStats.hip;
 
-    motionStats.knee +
+  const kneeMotion =
+    motionStats.knee;
 
-    travelDistance;
+  const totalMotion =
 
-  let total =
-    upper + lower;
+    headMotion +
+    wristMotion +
+    elbowMotion +
+    hipMotion +
+    kneeMotion;
 
-  if(total < 5){
+  // =====================
+  // 歌神
+  // =====================
 
-    currentAttribute =
-      "カリスマ";
+  if(
 
-  }
+    pitchScore > 70 &&
 
-  else if(
+    currentShowPower > 3500 &&
 
-    currentShowPower > 2500 &&
-    pitchScore > 50
+    totalMotion > 15
 
   ){
 
@@ -1135,9 +1139,15 @@ function evaluateAttribute(){
 
   }
 
+  // =====================
+  // 歌うま
+  // =====================
+
   else if(
 
-    pitchScore > 40
+    pitchScore > 50 &&
+
+    currentShowPower > 1500
 
   ){
 
@@ -1146,32 +1156,32 @@ function evaluateAttribute(){
 
   }
 
+  // =====================
+  // カリスマ
+  // =====================
+
   else if(
 
-    travelDistance > 2.0
+    travelDistance < 2 &&
+
+    totalMotion < 4
 
   ){
 
     currentAttribute =
-      "元気";
+      "カリスマ";
 
   }
 
-  else if(
-
-    upper > lower * 1.5
-
-  ){
-
-    currentAttribute =
-      "妖艶";
-
-  }
+  // =====================
+  // コミカル
+  // =====================
 
   else if(
 
-    motionStats.head >
-    total * 0.3
+    headMotion >
+
+    totalMotion * 0.4
 
   ){
 
@@ -1180,9 +1190,33 @@ function evaluateAttribute(){
 
   }
 
+  // =====================
+  // 妖艶
+  // =====================
+
   else if(
 
-    total > 15
+    wristMotion +
+    elbowMotion >
+
+    totalMotion * 0.5
+
+  ){
+
+    currentAttribute =
+      "妖艶";
+
+  }
+
+  // =====================
+  // 熱血
+  // =====================
+
+  else if(
+
+    travelDistance < 5 &&
+
+    totalMotion > 20
 
   ){
 
@@ -1190,6 +1224,33 @@ function evaluateAttribute(){
       "熱血";
 
   }
+
+  // =====================
+  // 元気
+  // =====================
+
+  else if(
+
+    travelDistance > 12 &&
+
+    (
+
+      headMotion +
+      wristMotion +
+      elbowMotion
+
+    ) > 8
+
+  ){
+
+    currentAttribute =
+      "元気";
+
+  }
+
+  // =====================
+  // 冷静
+  // =====================
 
   else{
 
@@ -1202,6 +1263,22 @@ function evaluateAttribute(){
     currentAttribute;
 
   saveAttributeMoment();
+
+  // =====================
+  // 次の10秒用にリセット
+  // =====================
+
+  motionStats = {
+
+    head:0,
+    elbow:0,
+    wrist:0,
+    hip:0,
+    knee:0
+
+  };
+
+  travelDistance = 0;
 
 }
 
