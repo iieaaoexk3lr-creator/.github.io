@@ -301,6 +301,73 @@ let previousCenter = null;
 // =====================================
 // 属性色
 // =====================================
+const staffColors = {
+
+  熱血:[
+    "#661111",
+    "#992222",
+    "#cc3333",
+    "#ff5555",
+    "#ff8888"
+  ],
+
+  元気:[
+    "#116622",
+    "#229933",
+    "#33cc55",
+    "#55ff77",
+    "#88ff99"
+  ],
+
+  冷静:[
+    "#113366",
+    "#2255aa",
+    "#3377dd",
+    "#66aaff",
+    "#99ccff"
+  ],
+
+  コミカル:[
+    "#aa7700",
+    "#cc9900",
+    "#ffbb00",
+    "#ffdd44",
+    "#ffee88"
+  ],
+
+  妖艶:[
+    "#441166",
+    "#662299",
+    "#8833cc",
+    "#aa66ff",
+    "#cc99ff"
+  ],
+
+  カリスマ:[
+    "#222222",
+    "#444444",
+    "#666666",
+    "#999999",
+    "#cccccc"
+  ],
+
+  歌うま:[
+    "#666666",
+    "#888888",
+    "#aaaaaa",
+    "#dddddd",
+    "#ffffff"
+  ],
+
+  歌神:[
+    "#886600",
+    "#cc9900",
+    "#ffcc00",
+    "#ffe066",
+    "#fff0aa"
+  ]
+
+};
 
 const auraColors = {
 
@@ -1295,7 +1362,7 @@ function evaluateAttribute(){
     wristMotion +
     elbowMotion >
 
-    totalMotion * 0.5
+    totalMotion * 0.7
 
   ){
 
@@ -1356,9 +1423,11 @@ function evaluateAttribute(){
   }
 
   attributeNameEl.textContent =
-    currentAttribute;
+  currentAttribute;
 
-  saveAttributeMoment();
+drawAura();
+
+saveAttributeMoment();
 
   // =====================
   // 次の10秒用にリセット
@@ -1529,10 +1598,10 @@ function getAuraRadius(){
 
   return Math.min(
 
-    220,
+    350,
 
-    100 +
-    currentShowPower * 0.02
+    180 +
+    currentShowPower * 0.03
 
   );
 
@@ -1543,10 +1612,39 @@ function getAuraRadius(){
 // 五線譜
 // =====================================
 
-function drawStaffCircle(
-  center,
-  radius
+const palette =
+  staffColors[
+    currentAttribute
+  ];
+
+for(
+  let i=0;
+  i<5;
+  i++
 ){
+
+  const r =
+    radius +
+    (i-2)*10;
+
+  auraCtx.strokeStyle =
+    palette[i];
+
+  auraCtx.lineWidth = 4;
+
+  auraCtx.beginPath();
+
+  auraCtx.arc(
+    center.x,
+    center.y,
+    r,
+    0,
+    Math.PI*2
+  );
+
+  auraCtx.stroke();
+
+}{
 
   const spacing = 7;
 
