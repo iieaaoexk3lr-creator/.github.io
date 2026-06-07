@@ -442,7 +442,33 @@ function resizeCanvas(){
 // =====================================
 // カメラ起動
 // =====================================
+function drawStaffCircle(center,radius){
 
+  const palette =
+    staffColors[currentAttribute];
+
+  for(let i=0;i<5;i++){
+
+    const r =
+      radius + (i-2)*10;
+
+    auraCtx.strokeStyle =
+      palette[i];
+
+    auraCtx.lineWidth = 4;
+
+    auraCtx.beginPath();
+    auraCtx.arc(
+      center.x,
+      center.y,
+      r,
+      0,
+      Math.PI*2
+    );
+    auraCtx.stroke();
+  }
+
+}
 async function setupCamera(){
 
   try{
