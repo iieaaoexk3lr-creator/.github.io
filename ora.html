@@ -300,7 +300,17 @@
      スクリプト
 ========================== -->
 
-<script src="ora.js"></script>
+<script type="module">
+import {
+  PoseLandmarker,
+  FilesetResolver
+} from
+"https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@latest";
+window.PoseLandmarker = PoseLandmarker;
+window.FilesetResolver = FilesetResolver;
+</script>
 
+<script src="ora.js"></script>
+  
 </body>
 </html>
