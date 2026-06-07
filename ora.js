@@ -1435,18 +1435,6 @@ function drawNotes(
   auraCtx.font =
     "24px sans-serif";
 
-  const progress =
-    Math.min(
-
-      1,
-
-      (
-        Date.now() -
-        sessionStartTime
-      ) / 60000
-
-    );
-
   for(
   let i=0;
   i<count;
