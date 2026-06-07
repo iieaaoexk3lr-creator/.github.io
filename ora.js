@@ -639,3 +639,1062 @@ setInterval(()=>{
 
 },10000);
 
+// =====================================
+// 距離計算
+// =====================================
+
+function distance(a,b){
+
+  if(!a || !b) return 0;
+
+  const dx = a.x - b.x;
+  const dy = a.y - b.y;
+
+  return Math.sqrt(
+    dx*dx + dy*dy
+  );
+
+}
+
+
+// =====================================
+// ノイズ除去
+// =====================================
+
+function filteredDistance(a,b){
+
+  const d =
+    distance(a,b);
+
+  if(d < 0.008){
+    return 0;
+  }
+
+  return d;
+
+}
+
+
+// =====================================
+// Pose取得
+// =====================================
+
+function updatePosePoints(landmarks){
+
+  posePoints.head = landmarks[0];
+
+  posePoints.leftElbow = landmarks[13];
+  posePoints.rightElbow = landmarks[14];
+
+  posePoints.leftWrist = landmarks[15];
+  posePoints.rightWrist = landmarks[16];
+
+  posePoints.leftHip = landmarks[23];
+  posePoints.rightHip = landmarks[24];
+
+  posePoints.leftKnee = landmarks[25];
+  posePoints.rightKnee = landmarks[26];
+
+}
+
+
+// =====================================
+// 動き量計算
+// =====================================
+
+function updateMotionStats(){
+
+  motionStats.head += filteredDistance(
+    posePoints.head,
+    previousPoints.head
+  );
+
+  motionStats.elbow +=
+    filteredDistance(
+      posePoints.leftElbow,
+      previousPoints.leftElbow
+    ) +
+    filteredDistance(
+      posePoints.rightElbow,
+      previousPoints.rightElbow
+    );
+
+  motionStats.wrist +=
+    filteredDistance(
+      posePoints.leftWrist,
+      previousPoints.leftWrist
+    ) +
+    filteredDistance(
+      posePoints.rightWrist,
+      previousPoints.rightWrist
+    );
+
+  motionStats.hip +=
+    filteredDistance(
+      posePoints.leftHip,
+      previousPoints.leftHip
+    ) +
+    filteredDistance(
+      posePoints.rightHip,
+      previousPoints.rightHip
+    );
+
+  motionStats.knee +=
+    filteredDistance(
+      posePoints.leftKnee,
+      previousPoints.leftKnee
+    ) +
+    filteredDistance(
+      posePoints.rightKnee,
+      previousPoints.rightKnee
+    );
+
+}
+
+
+// =====================================
+// 移動量
+// =====================================
+
+function updateTravelDistance(){
+
+  if(
+    !posePoints.leftHip ||
+    !posePoints.rightHip
+  ){
+    return;
+  }
+
+  const center = {
+
+    x:
+      (posePoints.leftHip.x +
+      posePoints.rightHip.x) / 2,
+
+    y:
+      (posePoints.leftHip.y +
+      posePoints.rightHip.y) / 2
+
+  };
+
+  if(previousCenter){
+
+    travelDistance +=
+      filteredDistance(
+        center,
+        previousCenter
+      );
+
+  }
+
+  previousCenter = center;
+
+}
+
+
+// =====================================
+// バッファ追加
+// =====================================
+
+function updateMotionBuffer(){
+
+  const total =
+
+    motionStats.head +
+
+    motionStats.elbow +
+
+    motionStats.wrist +
+
+    motionStats.hip +
+
+    motionStats.knee;
+
+  motionBuffer.push({
+
+    head:motionStats.head,
+    elbow:motionStats.elbow,
+    wrist:motionStats.wrist,
+    hip:motionStats.hip,
+    knee:motionStats.knee,
+
+    total:total,
+
+    time:Date.now()
+
+  });
+
+}
+
+
+// =====================================
+// 歌Show力
+// =====================================
+
+function updateShowPower(){
+
+  const motionPower =
+
+    motionStats.head * 100 +
+
+    motionStats.elbow * 120 +
+
+    motionStats.wrist * 150 +
+
+    motionStats.hip * 100 +
+
+    motionStats.knee * 120;
+
+  const movePower =
+    travelDistance * 200;
+
+  const voicePower =
+    pitchScore * 2;
+
+  currentShowPower = Math.floor(
+
+    motionPower +
+
+    movePower +
+
+    voicePower
+
+  );
+
+  if(
+    currentShowPower >
+    maxShowPower
+  ){
+
+    maxShowPower =
+      currentShowPower;
+
+  }
+
+  showPowerEl.textContent =
+    currentShowPower;
+
+}
+
+
+// =====================================
+// AI称号生成
+// =====================================
+
+function generateTitle(){
+
+  const prefixMap = {
+
+    "熱血":[
+      "紅蓮の",
+      "燃え盛る",
+      "炎熱の"
+    ],
+
+    "元気":[
+      "跳躍する",
+      "疾走する",
+      "全力の"
+    ],
+
+    "冷静":[
+      "静寂の",
+      "蒼き",
+      "理知の"
+    ],
+
+    "コミカル":[
+      "爆笑の",
+      "愉快な",
+      "自由な"
+    ],
+
+    "妖艶":[
+      "魅惑の",
+      "妖美なる",
+      "艶やかな"
+    ],
+
+    "カリスマ":[
+      "孤高の",
+      "伝説の",
+      "圧倒的"
+    ],
+
+    "歌うま":[
+      "美声の",
+      "歌唱の",
+      "旋律の"
+    ],
+
+    "歌神":[
+      "神域の",
+      "黄金の",
+      "奇跡の"
+    ]
+
+  };
+
+  const middle = [
+
+    "超越",
+    "異次元",
+    "伝説",
+    "覚醒",
+    "究極",
+    "無限",
+    "天空",
+    "銀河",
+    "幻影",
+    "衝撃"
+
+  ];
+
+  const suffix = [
+
+    "歌い手",
+    "シンガー",
+    "表現者",
+    "スター",
+    "支配者",
+    "覇者",
+    "パフォーマー",
+    "挑戦者",
+    "主人公",
+    "レジェンド"
+
+  ];
+
+  const p =
+    prefixMap[currentAttribute];
+
+  currentTitle =
+
+    p[
+      Math.floor(
+        Math.random()*p.length
+      )
+    ]
+
+    +
+
+    middle[
+      Math.floor(
+        Math.random()*middle.length
+      )
+    ]
+
+    +
+
+    suffix[
+      Math.floor(
+        Math.random()*suffix.length
+      )
+    ];
+
+}
+
+// =====================================
+// 属性判定
+// =====================================
+
+function evaluateAttribute(){
+
+  let upper =
+
+    motionStats.head +
+
+    motionStats.elbow +
+
+    motionStats.wrist;
+
+  let lower =
+
+    motionStats.hip +
+
+    motionStats.knee +
+
+    travelDistance;
+
+  let total =
+    upper + lower;
+
+  if(total < 5){
+
+    currentAttribute =
+      "カリスマ";
+
+  }
+
+  else if(
+
+    currentShowPower > 2500 &&
+    pitchScore > 50
+
+  ){
+
+    currentAttribute =
+      "歌神";
+
+  }
+
+  else if(
+
+    pitchScore > 40
+
+  ){
+
+    currentAttribute =
+      "歌うま";
+
+  }
+
+  else if(
+
+    travelDistance > 2.0
+
+  ){
+
+    currentAttribute =
+      "元気";
+
+  }
+
+  else if(
+
+    upper > lower * 1.5
+
+  ){
+
+    currentAttribute =
+      "妖艶";
+
+  }
+
+  else if(
+
+    motionStats.head >
+    total * 0.3
+
+  ){
+
+    currentAttribute =
+      "コミカル";
+
+  }
+
+  else if(
+
+    total > 15
+
+  ){
+
+    currentAttribute =
+      "熱血";
+
+  }
+
+  else{
+
+    currentAttribute =
+      "冷静";
+
+  }
+
+  attributeNameEl.textContent =
+    currentAttribute;
+
+  saveAttributeMoment();
+
+}
+
+
+// =====================================
+// 属性変化履歴
+// =====================================
+
+function saveAttributeMoment(){
+
+  if(
+
+    attributeHistory.length > 0 &&
+
+    attributeHistory[
+      attributeHistory.length - 1
+    ].attribute === currentAttribute
+
+  ){
+    return;
+  }
+
+  const image =
+    auraCanvas.toDataURL(
+      "image/png"
+    );
+
+  attributeHistory.push({
+
+    attribute:
+      currentAttribute,
+
+    image:image
+
+  });
+
+  if(
+    attributeHistory.length > 3
+  ){
+
+    attributeHistory.shift();
+
+  }
+
+  updateHistoryView();
+
+}
+
+
+function updateHistoryView(){
+
+  const slots = [
+
+    {
+      img:history1,
+      label:historyLabel1
+    },
+
+    {
+      img:history2,
+      label:historyLabel2
+    },
+
+    {
+      img:history3,
+      label:historyLabel3
+    }
+
+  ];
+
+  slots.forEach((slot,index)=>{
+
+    const item =
+      attributeHistory[index];
+
+    if(item){
+
+      slot.img.src =
+        item.image;
+
+      slot.label.textContent =
+        item.attribute;
+
+    }
+
+  });
+
+}
+
+
+// =====================================
+// オーラ中心
+// =====================================
+
+function getAuraCenter(){
+
+  if(
+    !posePoints.leftHip ||
+    !posePoints.rightHip
+  ){
+    return null;
+  }
+
+  return {
+
+    x:
+      ((posePoints.leftHip.x +
+      posePoints.rightHip.x) / 2)
+      *
+      auraCanvas.width,
+
+    y:
+      ((posePoints.leftHip.y +
+      posePoints.rightHip.y) / 2)
+      *
+      auraCanvas.height
+
+  };
+
+}
+
+
+// =====================================
+// オーラ半径
+// =====================================
+
+function getAuraRadius(){
+
+  return Math.min(
+
+    220,
+
+    100 +
+    currentShowPower * 0.02
+
+  );
+
+}
+
+
+// =====================================
+// 五線譜
+// =====================================
+
+function drawStaffCircle(
+  center,
+  radius
+){
+
+  const spacing = 7;
+
+  auraCtx.strokeStyle =
+    "rgba(255,255,255,0.3)";
+
+  auraCtx.lineWidth = 2;
+
+  for(
+    let i=0;
+    i<5;
+    i++
+  ){
+
+    const r =
+      radius +
+      (i-2)*spacing;
+
+    auraCtx.beginPath();
+
+    auraCtx.arc(
+
+      center.x,
+      center.y,
+
+      r,
+
+      0,
+      Math.PI*2
+
+    );
+
+    auraCtx.stroke();
+
+  }
+
+}
+
+
+// =====================================
+// 音符
+// =====================================
+
+function drawNotes(
+  center,
+  radius
+){
+
+  noteRotation += 0.02;
+
+  const count = Math.min(
+
+    40,
+
+    Math.floor(
+      currentShowPower / 150
+    ) + 3
+
+  );
+
+  auraCtx.fillStyle =
+    "#ffffff";
+
+  auraCtx.font =
+    "24px sans-serif";
+
+  const progress =
+    Math.min(
+
+      1,
+
+      (
+        Date.now() -
+        sessionStartTime
+      ) / 60000
+
+    );
+
+  for(
+    let i=0;
+    i<count;
+    i++
+  ){
+
+    const angle =
+
+      noteRotation +
+
+      (
+        Math.PI*2 /
+        count
+      ) * i;
+
+    const amp =
+
+      Math.min(
+
+        40,
+
+        currentShowPower *
+        0.001
+
+      );
+
+    const r =
+
+      radius +
+
+      30 +
+
+      Math.sin(
+        i +
+        noteRotation*3
+      ) * amp;
+
+    const x =
+      center.x +
+      Math.cos(angle) * r;
+
+    const y =
+      center.y +
+      Math.sin(angle) * r;
+
+    auraCtx.fillText(
+      "♪",
+      x,
+      y
+    );
+
+  }
+
+  // 後半追加
+
+  if(progress > 0.5){
+
+    for(
+      let i=0;
+      i<count;
+      i++
+    ){
+
+      const angle =
+
+        noteRotation*1.5 +
+
+        (
+          Math.PI*2 /
+          count
+        ) * i;
+
+      const r =
+
+        radius +
+
+        100 +
+
+        Math.sin(
+          noteRotation+i
+        ) * 30;
+
+      auraCtx.fillText(
+
+        i%2
+          ? "♫"
+          : "♪",
+
+        center.x +
+        Math.cos(angle)*r,
+
+        center.y +
+        Math.sin(angle)*r
+
+      );
+
+    }
+
+  }
+
+}
+
+
+// =====================================
+// オーラ描画
+// =====================================
+
+function drawAura(){
+
+  auraCtx.clearRect(
+
+    0,
+    0,
+
+    auraCanvas.width,
+    auraCanvas.height
+
+  );
+
+  const center =
+    getAuraCenter();
+
+  if(!center){
+    return;
+  }
+
+  const radius =
+    getAuraRadius();
+
+  const color =
+    auraColors[
+      currentAttribute
+    ];
+
+  drawStaffCircle(
+    center,
+    radius
+  );
+
+  auraCtx.beginPath();
+
+  auraCtx.fillStyle =
+    color + "33";
+
+  auraCtx.arc(
+
+    center.x,
+    center.y,
+
+    radius,
+
+    0,
+    Math.PI*2
+
+  );
+
+  auraCtx.fill();
+
+  auraCtx.beginPath();
+
+  auraCtx.strokeStyle =
+    color;
+
+  auraCtx.lineWidth = 4;
+
+  auraCtx.shadowBlur = 20;
+
+  auraCtx.shadowColor =
+    color;
+
+  auraCtx.arc(
+
+    center.x,
+    center.y,
+
+    radius,
+
+    0,
+    Math.PI*2
+
+  );
+
+  auraCtx.stroke();
+
+  auraCtx.shadowBlur = 0;
+
+  drawNotes(
+    center,
+    radius
+  );
+
+}
+
+
+// =====================================
+// MediaPipeループ
+// =====================================
+
+async function renderLoop(){
+
+  if(!recording){
+    return;
+  }
+
+  updatePitchScore();
+
+  if(
+
+    video.currentTime !==
+    lastVideoTime
+
+  ){
+
+    lastVideoTime =
+      video.currentTime;
+
+    const result =
+
+      poseLandmarker
+      .detectForVideo(
+
+        video,
+
+        performance.now()
+
+      );
+
+    if(
+
+      result.landmarks &&
+      result.landmarks.length
+
+    ){
+
+      const landmarks =
+        result.landmarks[0];
+
+      updatePosePoints(
+        landmarks
+      );
+
+      updateMotionStats();
+
+      updateTravelDistance();
+
+      updateMotionBuffer();
+
+      updateShowPower();
+
+      drawAura();
+
+      previousPoints =
+
+        structuredClone(
+          posePoints
+        );
+
+    }
+
+  }
+
+  recordCtx.clearRect(
+
+    0,
+    0,
+
+    recordCanvas.width,
+    recordCanvas.height
+
+  );
+
+  recordCtx.drawImage(
+
+    video,
+
+    0,
+    0,
+
+    recordCanvas.width,
+    recordCanvas.height
+
+  );
+
+  recordCtx.drawImage(
+
+    auraCanvas,
+
+    0,
+    0
+
+  );
+
+  requestAnimationFrame(
+    renderLoop
+  );
+
+}
+
+
+// =====================================
+// リザルト
+// =====================================
+
+function createFinalResult(){
+
+  generateTitle();
+
+  resultNameEl.textContent =
+
+    playerNameInput.value ||
+    "Player";
+
+  resultAttributeEl.textContent =
+    currentAttribute;
+
+  resultTitleEl.textContent =
+    currentTitle;
+
+  resultPowerEl.textContent =
+    maxShowPower;
+
+}
+
+
+// =====================================
+// リセット
+// =====================================
+
+resetBtn.addEventListener(
+
+  "click",
+
+  ()=>{
+
+    currentShowPower = 0;
+    maxShowPower = 0;
+
+    travelDistance = 0;
+
+    motionStats = {
+
+      head:0,
+      elbow:0,
+      wrist:0,
+      hip:0,
+      knee:0
+
+    };
+
+    attributeHistory = [];
+
+    showPowerEl.textContent =
+      "0";
+
+    attributeNameEl.textContent =
+      "判定中...";
+
+    resultTitleEl.textContent =
+      "録画終了後に表示";
+
+    updateHistoryView();
+
+    startBtn.disabled = false;
+
+  }
+
+);
