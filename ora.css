@@ -1,5 +1,5 @@
 /* =====================================
-   リセット
+   全体
 ===================================== */
 
 *{
@@ -8,49 +8,60 @@
   box-sizing:border-box;
 }
 
-html{
-  scroll-behavior:smooth;
+html,
+body{
+
+  width:100%;
+  min-height:100%;
+
+  background:#0b0b0b;
+  color:#ffffff;
+
+  font-family:
+    "Hiragino Sans",
+    "Yu Gothic",
+    sans-serif;
+
 }
 
 body{
-  background:#0b0d10;
-  color:#ffffff;
-  font-family:
-    "Segoe UI",
-    "Hiragino Sans",
-    sans-serif;
-
-  min-height:100vh;
+  padding:12px;
 }
 
 /* =====================================
-   全体
+   アプリ
 ===================================== */
 
 #app{
-  width:100%;
+
   max-width:900px;
   margin:auto;
-  padding-bottom:40px;
+
 }
 
 /* =====================================
-   ヘッダー
+   タイトル
 ===================================== */
 
 header{
+
   text-align:center;
-  padding:20px 16px;
+  margin-bottom:16px;
+
 }
 
 header h1{
-  font-size:1.8rem;
+
+  font-size:2rem;
   margin-bottom:8px;
+
 }
 
 header p{
-  color:#aab3be;
-  font-size:.95rem;
+
+  color:#bbbbbb;
+  font-size:0.9rem;
+
 }
 
 /* =====================================
@@ -59,135 +70,84 @@ header p{
 
 #settings{
 
-  padding:16px;
-
   display:flex;
-
   flex-direction:column;
-
   gap:12px;
+
+  margin-bottom:18px;
+
 }
 
 #settings label{
 
   display:flex;
-
   flex-direction:column;
+  gap:6px;
 
-  gap:8px;
-
-  color:#d0d7de;
 }
 
 #playerName{
 
-  width:100%;
-
-  padding:14px;
+  height:44px;
 
   border:none;
+  border-radius:10px;
 
-  border-radius:16px;
+  padding:0 12px;
 
-  background:#171b21;
+  font-size:16px;
 
-  color:white;
-
-  font-size:1rem;
-
-  outline:none;
 }
-
-#playerName:focus{
-
-  box-shadow:
-    0 0 0 2px #4da6ff;
-}
-
-/* =====================================
-   ボタン
-===================================== */
 
 .buttonRow{
 
   display:flex;
-
   gap:10px;
+
 }
 
 button{
 
   flex:1;
 
+  min-height:50px;
+
   border:none;
-
-  border-radius:16px;
-
-  padding:14px;
-
-  font-size:1rem;
-
-  font-weight:700;
+  border-radius:12px;
 
   cursor:pointer;
 
-  transition:
-    transform .15s,
-    opacity .15s;
-}
+  font-size:16px;
+  font-weight:bold;
 
-button:active{
-
-  transform:scale(.97);
 }
 
 button:disabled{
 
-  opacity:.45;
-
+  opacity:0.45;
   cursor:not-allowed;
+
 }
 
 #startBtn{
 
-  background:#19c37d;
-
+  background:#18c75d;
   color:white;
+
 }
 
 #stopBtn{
 
-  background:#ff4d4d;
-
+  background:#d63d3d;
   color:white;
+
 }
 
-#retryBtn{
+#resetBtn{
 
-  background:#555;
-
+  background:#3d7eff;
   color:white;
-}
 
-#saveResultBtn{
-
-  background:#42a5f5;
-
-  color:white;
-}
-
-#saveSummaryBtn{
-
-  background:#ffd54f;
-
-  color:black;
-}
-
-#saveVideoBtn{
-
-  background:#9c27b0;
-
-  color:white;
 }
 
 /* =====================================
@@ -196,7 +156,8 @@ button:disabled{
 
 #cameraSection{
 
-  padding:12px;
+  margin-bottom:20px;
+
 }
 
 #cameraWrapper{
@@ -204,30 +165,21 @@ button:disabled{
   position:relative;
 
   width:100%;
-
-  aspect-ratio:9/16;
-
   overflow:hidden;
 
-  border-radius:24px;
+  border-radius:16px;
 
   background:black;
 
-  box-shadow:
-    0 0 30px rgba(0,0,0,.55);
 }
 
 #video{
 
-  position:absolute;
-
-  inset:0;
+  display:block;
 
   width:100%;
+  height:auto;
 
-  height:100%;
-
-  object-fit:cover;
 }
 
 #auraCanvas{
@@ -237,10 +189,10 @@ button:disabled{
   inset:0;
 
   width:100%;
-
   height:100%;
 
   pointer-events:none;
+
 }
 
 /* =====================================
@@ -252,36 +204,23 @@ button:disabled{
   position:absolute;
 
   top:12px;
-
   left:12px;
 
-  background:
-    rgba(0,0,0,.55);
+  background:rgba(0,0,0,0.55);
 
-  backdrop-filter:
-    blur(8px);
+  border-radius:12px;
 
-  border-radius:16px;
+  padding:10px;
 
-  padding:12px;
+  min-width:120px;
 
-  min-width:130px;
 }
 
 #showPower{
 
-  margin-top:4px;
+  font-size:1.6rem;
+  font-weight:bold;
 
-  font-size:2rem;
-
-  font-weight:800;
-}
-
-.smallLabel{
-
-  color:#d0d7de;
-
-  font-size:.8rem;
 }
 
 /* =====================================
@@ -293,31 +232,32 @@ button:disabled{
   position:absolute;
 
   top:12px;
-
   right:12px;
 
-  background:
-    rgba(0,0,0,.55);
+  background:rgba(0,0,0,0.55);
 
-  backdrop-filter:
-    blur(8px);
+  border-radius:12px;
 
-  border-radius:16px;
-
-  padding:12px;
+  padding:10px;
 
   min-width:120px;
 
   text-align:center;
+
 }
 
 #attributeName{
 
-  margin-top:4px;
+  font-size:1.2rem;
+  font-weight:bold;
 
-  font-size:1rem;
+}
 
-  font-weight:700;
+.smallLabel{
+
+  font-size:0.75rem;
+  color:#cccccc;
+
 }
 
 /* =====================================
@@ -326,140 +266,200 @@ button:disabled{
 
 #resultSection{
 
-  padding:16px;
+  margin-top:10px;
+  margin-bottom:20px;
+
 }
 
 #resultSection h2{
 
   margin-bottom:12px;
+
 }
 
 .resultCard{
 
   display:flex;
-
   flex-direction:column;
 
   gap:10px;
-}
 
-.resultItem{
-
-  background:#171b21;
+  background:#161616;
 
   border-radius:16px;
 
   padding:14px;
+
+}
+
+.resultItem{
+
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+
+  gap:12px;
+
 }
 
 .resultLabel{
 
-  color:#9aa4b2;
+  color:#aaaaaa;
 
-  margin-bottom:4px;
-
-  font-size:.85rem;
 }
 
 /* =====================================
-   TOP3
+   属性履歴
 ===================================== */
 
-#topShotsSection{
+#historySection{
 
-  padding:16px;
+  margin-bottom:20px;
+
 }
 
-#topShotsSection h2{
+#historySection h2{
 
   margin-bottom:12px;
+
 }
 
-#topShotsGrid{
+#historyGrid{
 
   display:grid;
 
   grid-template-columns:
     repeat(3,1fr);
 
-  gap:8px;
+  gap:10px;
+
 }
 
-#topShotsGrid img{
+.historyCard{
+
+  background:#161616;
+
+  border-radius:12px;
+
+  overflow:hidden;
+
+}
+
+.historyCard img{
+
+  display:block;
 
   width:100%;
-
   aspect-ratio:9/16;
 
   object-fit:cover;
 
-  border-radius:14px;
+  background:#000;
 
-  background:#171b21;
+}
 
-  border:
-    1px solid #30363d;
+.historyLabel{
+
+  text-align:center;
+
+  padding:8px;
+
+  font-weight:bold;
+
 }
 
 /* =====================================
-   保存
+   保存ボタン
 ===================================== */
 
 #downloadSection{
 
-  padding:16px;
-
   display:flex;
-
   flex-direction:column;
 
   gap:10px;
+
+  margin-bottom:40px;
+
+}
+
+#saveVideoBtn{
+
+  background:#7d3cff;
+  color:white;
+
+}
+
+#saveResultBtn{
+
+  background:#f0a000;
+  color:white;
+
+}
+
+#saveSummaryBtn{
+
+  background:#00a8a8;
+  color:white;
+
 }
 
 /* =====================================
-   スマホ最適化
+   属性カラー
 ===================================== */
 
-@media (max-width:600px){
+.attr-nekketsu{
+  color:#ff4444;
+}
+
+.attr-genki{
+  color:#44ff66;
+}
+
+.attr-reisei{
+  color:#4da6ff;
+}
+
+.attr-comical{
+  color:#ffd93d;
+}
+
+.attr-youen{
+  color:#c066ff;
+}
+
+.attr-charisma{
+  color:#777777;
+}
+
+.attr-utauma{
+  color:#ffffff;
+}
+
+.attr-utagami{
+  color:#ffd700;
+}
+
+/* =====================================
+   スマホ
+===================================== */
+
+@media(max-width:600px){
 
   header h1{
-
-    font-size:1.5rem;
+    font-size:1.6rem;
   }
 
   #showPower{
-
-    font-size:1.7rem;
+    font-size:1.2rem;
   }
 
   #attributeName{
-
-    font-size:.9rem;
+    font-size:1rem;
   }
 
-}
-
-/* =====================================
-   横画面
-===================================== */
-
-@media (orientation:landscape){
-
-  #app{
-
-    max-width:none;
-  }
-
-  #cameraWrapper{
-
-    aspect-ratio:auto;
-
-    height:80vh;
-  }
-
-  #topShotsGrid img{
-
-    aspect-ratio:16/9;
+  button{
+    min-height:48px;
   }
 
 }
