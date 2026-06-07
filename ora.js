@@ -556,7 +556,7 @@ function updatePitchScore(){
 
 async function startRecording(){
 　finalVideoBlob = null;
-　finalFrame = null;
+  finalFrame = null;
   await initPose();
 
   recordedChunks = [];
@@ -637,7 +637,6 @@ mediaRecorder.ondataavailable =
 mediaRecorder.onstop = ()=>{
 
   finalVideoBlob =
-
     new Blob(
 
       recordedChunks,
@@ -648,6 +647,12 @@ mediaRecorder.onstop = ()=>{
 
     );
 
+  saveVideoBtn.disabled = false;
+
+  saveResultBtn.disabled = false;
+
+  saveSummaryBtn.disabled = false;
+
 };
 
 mediaRecorder.start();
@@ -657,14 +662,7 @@ mediaRecorder.start();
   );
 
 }
-  saveVideoBtn.disabled = false;
-
-  saveResultBtn.disabled = false;
-
-  saveSummaryBtn.disabled = false;
-
-
-
+  
 // =====================================
 // 録画停止
 // =====================================
@@ -1424,6 +1422,8 @@ function drawNotes(
   radius
 ){
 
+  noteRotation += 0.02;
+
   const progress = Math.min(
     1,
     (
@@ -1432,64 +1432,53 @@ function drawNotes(
     ) / 60000
   );
 
+  const count = Math.min(
+    40,
+    Math.floor(
+      currentShowPower / 150
+    ) + 3
+  );
+
   auraCtx.font =
     "24px sans-serif";
 
   for(
-  let i=0;
-  i<count;
-  i++
-){
+    let i=0;
+    i<count;
+    i++
+  ){
 
-  const palette =
-    noteColors[
-      currentAttribute
-    ];
+    const palette =
+      noteColors[
+        currentAttribute
+      ];
 
-  auraCtx.fillStyle =
-    palette[
-      i %
-      palette.length
-    ];
+    auraCtx.fillStyle =
+      palette[
+        i %
+        palette.length
+      ];
 
-  const angle =
-    noteRotation +
-    (
-      Math.PI*2 /
-      count
-    ) * i;
-
-  // 以下続く
-}
     const angle =
-
       noteRotation +
-
       (
-        Math.PI*2 /
+        Math.PI * 2 /
         count
       ) * i;
 
     const amp =
-
       Math.min(
-
         40,
-
         currentShowPower *
         0.001
-
       );
 
     const r =
-
       radius +
-
       30 +
-
       Math.sin(
         i +
-        noteRotation*3
+        noteRotation * 3
       ) * amp;
 
     const x =
@@ -1508,15 +1497,10 @@ function drawNotes(
 
   }
 
-  // 後半追加
-
   if(
-
-  progress > 0.5 &&
-
-  currentShowPower > 1500
-
-){
+    progress > 0.5 &&
+    currentShowPower > 1500
+  ){
 
     for(
       let i=0;
@@ -1524,42 +1508,50 @@ function drawNotes(
       i++
     ){
 
+      const palette =
+        noteColors[
+          currentAttribute
+        ];
+
+      auraCtx.fillStyle =
+        palette[
+          i %
+          palette.length
+        ];
+
       const angle =
-
-        noteRotation*1.5 +
-
+        noteRotation * 1.5 +
         (
-          Math.PI*2 /
+          Math.PI * 2 /
           count
         ) * i;
 
       const r =
-
         radius +
-
         100 +
-
         Math.sin(
-          noteRotation+i
+          noteRotation + i
         ) * 30;
 
       auraCtx.fillText(
 
-        i%2
+        i % 2
           ? "♫"
           : "♪",
 
         center.x +
-        Math.cos(angle)*r,
+        Math.cos(angle) * r,
 
         center.y +
-        Math.sin(angle)*r
+        Math.sin(angle) * r
 
       );
 
     }
 
   }
+
+}
 
 
 // =====================================
