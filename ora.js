@@ -555,7 +555,8 @@ function updatePitchScore(){
 // =====================================
 
 async function startRecording(){
-
+　finalVideoBlob = null;
+　finalFrame = null;
   await initPose();
 
   recordedChunks = [];
