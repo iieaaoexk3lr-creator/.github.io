@@ -2103,26 +2103,7 @@ resetBtn.addEventListener(
   }
 );
 
-setupCamera();
-    
-    attributeHistory = [];
 
-    showPowerEl.textContent =
-      "0";
-
-    attributeNameEl.textContent =
-      "判定中...";
-
-    resultTitleEl.textContent =
-      "録画終了後に表示";
-
-    updateHistoryView();
-
-    startBtn.disabled = false;
-
-  }
-
-);
 
 saveVideoBtn.addEventListener(
   "click",
