@@ -1453,22 +1453,28 @@ function drawNotes(
   for(
     let i=0;
     i<count;
-    i++
-
-const palette =
-  noteColors[
-    currentAttribute
-  ];
-
-auraCtx.fillStyle =
-
-  palette[
-    i %
-    palette.length
-  ];
-    
+    i++    
   ){
+const palette =
+    noteColors[
+      currentAttribute
+    ];
 
+  auraCtx.fillStyle =
+    palette[
+      i %
+      palette.length
+    ];
+
+  const angle =
+    noteRotation +
+    (
+      Math.PI*2 /
+      count
+    ) * i;
+
+  // 以下続く
+}
     const angle =
 
       noteRotation +
