@@ -608,40 +608,32 @@ async function startRecording(){
     });
 
   mediaRecorder =
-    new MediaRecorder(
+  new MediaRecorder(
 
-      combinedStream,
+    combinedStream,
 
-      {
-        mimeType:
-          "video/webm"
-      }
+    {
+      mimeType:"video/webm"
+    }
 
-    );
-
-  mediaRecorder.ondataavailable =
-    event=>{
-
-      if(
-        event.data &&
-        event.data.size > 0
-      ){
-
-        recordedChunks.push(
-          event.data
-        );
-
-      }
-
-    };
-
-  mediaRecorder.start();
-
-  requestAnimationFrame(
-    renderLoop
   );
 
-}
+mediaRecorder.ondataavailable =
+  event=>{
+
+    if(
+      event.data &&
+      event.data.size > 0
+    ){
+
+      recordedChunks.push(
+        event.data
+      );
+
+    }
+
+  };
+
 mediaRecorder.onstop = ()=>{
 
   finalVideoBlob =
@@ -656,6 +648,15 @@ mediaRecorder.onstop = ()=>{
 
     );
 
+};
+
+mediaRecorder.start();
+
+  requestAnimationFrame(
+    renderLoop
+  );
+
+}
   saveVideoBtn.disabled = false;
 
   saveResultBtn.disabled = false;
