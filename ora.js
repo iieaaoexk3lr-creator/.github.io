@@ -2,6 +2,9 @@
 // DOM
 // =====================================
 
+finalVideoBlob = null;
+finalFrame = null;
+
 const video =
   document.getElementById("video");
 
@@ -144,6 +147,70 @@ let attributeHistory = [];
 
 let noteRotation = 0;
 
+// =====================================
+// 保存
+// =====================================
+
+let finalVideoBlob = null;
+
+let finalFrame = null;
+
+
+// =====================================
+// 音符カラー
+// =====================================
+
+const noteColors = {
+
+  熱血:[
+    "#ff3333",
+    "#ff8844",
+    "#ffcc44"
+  ],
+
+  元気:[
+    "#33ff66",
+    "#88ff33",
+    "#ccff44"
+  ],
+
+  冷静:[
+    "#3399ff",
+    "#66ccff",
+    "#99ddff"
+  ],
+
+  コミカル:[
+    "#ffd700",
+    "#ffeb66",
+    "#ff9900"
+  ],
+
+  妖艶:[
+    "#aa55ff",
+    "#dd77ff",
+    "#ff99ff"
+  ],
+
+  カリスマ:[
+    "#666666",
+    "#999999",
+    "#cccccc"
+  ],
+
+  歌うま:[
+    "#ffffff",
+    "#ddddff",
+    "#ffeeff"
+  ],
+
+  歌神:[
+    "#ffd700",
+    "#fff07a",
+    "#fff8c0"
+  ]
+
+};
 
 // =====================================
 // 音声解析
@@ -575,7 +642,27 @@ async function startRecording(){
   );
 
 }
+mediaRecorder.onstop = ()=>{
 
+  finalVideoBlob =
+
+    new Blob(
+
+      recordedChunks,
+
+      {
+        type:"video/webm"
+      }
+
+    );
+
+  saveVideoBtn.disabled = false;
+
+  saveResultBtn.disabled = false;
+
+  saveSummaryBtn.disabled = false;
+
+};
 
 // =====================================
 // 録画停止
@@ -589,15 +676,26 @@ function stopRecording(){
 
   resetBtn.disabled = false;
 
-  saveVideoBtn.disabled = false;
-
-  saveResultBtn.disabled = false;
-
-  saveSummaryBtn.disabled = false;
+  finalFrame =
+    recordCanvas.toDataURL(
+      "image/png"
+    );
 
   if(mediaRecorder){
 
     mediaRecorder.stop();
+
+  }
+
+  if(cameraStream){
+
+    cameraStream
+      .getTracks()
+      .forEach(track=>{
+
+        track.stop();
+
+      });
 
   }
 
@@ -1127,26 +1225,50 @@ function saveAttributeMoment(){
     return;
   }
 
-  const image =
-    auraCanvas.toDataURL(
-      "image/png"
+  const temp =
+    document.createElement(
+      "canvas"
     );
+
+  temp.width =
+    recordCanvas.width;
+
+  temp.height =
+    recordCanvas.height;
+
+  const ctx =
+    temp.getContext("2d");
+
+  ctx.drawImage(
+    video,
+    0,
+    0,
+    temp.width,
+    temp.height
+  );
+
+  ctx.drawImage(
+    auraCanvas,
+    0,
+    0
+  );
 
   attributeHistory.push({
 
     attribute:
       currentAttribute,
 
-    image:image
+    image:
+      temp.toDataURL(
+        "image/png"
+      )
 
   });
 
   if(
     attributeHistory.length > 3
   ){
-
     attributeHistory.shift();
-
   }
 
   updateHistoryView();
@@ -1313,9 +1435,6 @@ function drawNotes(
 
   );
 
-  auraCtx.fillStyle =
-    "#ffffff";
-
   auraCtx.font =
     "24px sans-serif";
 
@@ -1335,6 +1454,19 @@ function drawNotes(
     let i=0;
     i<count;
     i++
+
+const palette =
+  noteColors[
+    currentAttribute
+  ];
+
+auraCtx.fillStyle =
+
+  palette[
+    i %
+    palette.length
+  ];
+    
   ){
 
     const angle =
@@ -1386,7 +1518,13 @@ function drawNotes(
 
   // 後半追加
 
-  if(progress > 0.5){
+  if(
+
+  progress > 0.5 &&
+
+  currentShowPower > 1500
+
+){
 
     for(
       let i=0;
@@ -1679,7 +1817,30 @@ resetBtn.addEventListener(
       knee:0
 
     };
+    
+resultNameEl.textContent="-";
 
+resultAttributeEl.textContent="-";
+
+resultPowerEl.textContent="0";
+
+resultTitleEl.textContent=
+"録画終了後に表示";
+
+history1.src="";
+history2.src="";
+history3.src="";
+
+historyLabel1.textContent="-";
+historyLabel2.textContent="-";
+historyLabel3.textContent="-";
+
+saveVideoBtn.disabled=true;
+saveResultBtn.disabled=true;
+saveSummaryBtn.disabled=true;
+
+setupCamera();
+    
     attributeHistory = [];
 
     showPowerEl.textContent =
@@ -1698,3 +1859,134 @@ resetBtn.addEventListener(
   }
 
 );
+
+saveVideoBtn.addEventListener(
+  "click",
+  saveVideo
+);
+
+saveResultBtn.addEventListener(
+  "click",
+  saveResultImage
+);
+
+saveSummaryBtn.addEventListener(
+  "click",
+  saveHistoryImage
+);
+
+function saveVideo(){
+
+  if(!finalVideoBlob) return;
+
+  const url =
+    URL.createObjectURL(
+      finalVideoBlob
+    );
+
+  const a =
+    document.createElement("a");
+
+  a.href = url;
+
+  a.download =
+    "uta-show.webm";
+
+  a.click();
+
+}
+
+function saveResultImage(){
+
+  if(!finalFrame) return;
+
+  const a =
+    document.createElement("a");
+
+  a.href = finalFrame;
+
+  a.download =
+    "result.png";
+
+  a.click();
+
+}
+
+function saveHistoryImage(){
+
+  if(
+    attributeHistory.length === 0
+  ){
+    return;
+  }
+
+  const canvas =
+    document.createElement(
+      "canvas"
+    );
+
+  canvas.width = 1080;
+  canvas.height = 1920;
+
+  const ctx =
+    canvas.getContext("2d");
+
+  ctx.fillStyle = "#000";
+  ctx.fillRect(
+    0,
+    0,
+    canvas.width,
+    canvas.height
+  );
+
+  attributeHistory.forEach(
+
+    (item,index)=>{
+
+      const img =
+        new Image();
+
+      img.onload = ()=>{
+
+        ctx.drawImage(
+
+          img,
+
+          40,
+
+          40 + index*600,
+
+          1000,
+
+          550
+
+        );
+
+      };
+
+      img.src =
+        item.image;
+
+    }
+
+  );
+
+  setTimeout(()=>{
+
+    const a =
+      document.createElement("a");
+
+    a.href =
+      canvas.toDataURL(
+        "image/png"
+      );
+
+    a.download =
+      "history.png";
+
+    a.click();
+
+  },500);
+
+}
+
