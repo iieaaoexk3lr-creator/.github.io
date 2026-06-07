@@ -1424,16 +1424,12 @@ function drawNotes(
   radius
 ){
 
-  noteRotation += 0.02;
-
-  const count = Math.min(
-
-    40,
-
-    Math.floor(
-      currentShowPower / 150
-    ) + 3
-
+  const progress = Math.min(
+    1,
+    (
+      Date.now() -
+      sessionStartTime
+    ) / 60000
   );
 
   auraCtx.font =
@@ -1452,11 +1448,12 @@ function drawNotes(
     );
 
   for(
-    let i=0;
-    i<count;
-    i++    
-  ){
-const palette =
+  let i=0;
+  i<count;
+  i++
+){
+
+  const palette =
     noteColors[
       currentAttribute
     ];
