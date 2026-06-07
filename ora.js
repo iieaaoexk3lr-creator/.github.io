@@ -2082,46 +2082,25 @@ function createFinalResult(){
 // =====================================
 
 resetBtn.addEventListener(
-
   "click",
-
   ()=>{
 
-    currentShowPower = 0;
-    maxShowPower = 0;
+    if(recording){
 
-    travelDistance = 0;
+      recording = false;
 
-    motionStats = {
+      if(mediaRecorder &&
+         mediaRecorder.state !== "inactive"){
 
-      head:0,
-      elbow:0,
-      wrist:0,
-      hip:0,
-      knee:0
+        mediaRecorder.stop();
+      }
 
-    };
-    
-resultNameEl.textContent="-";
+    }
 
-resultAttributeEl.textContent="-";
+    location.reload();
 
-resultPowerEl.textContent="0";
-
-resultTitleEl.textContent=
-"録画終了後に表示";
-
-history1.src="";
-history2.src="";
-history3.src="";
-
-historyLabel1.textContent="-";
-historyLabel2.textContent="-";
-historyLabel3.textContent="-";
-
-saveVideoBtn.disabled=true;
-saveResultBtn.disabled=true;
-saveSummaryBtn.disabled=true;
+  }
+);
 
 setupCamera();
     
