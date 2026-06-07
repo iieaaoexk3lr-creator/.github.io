@@ -663,7 +663,7 @@ mediaRecorder.start();
 
   saveSummaryBtn.disabled = false;
 
-};
+
 
 // =====================================
 // 録画停止
