@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The 知ってるから歌います - DUET -</title>
+    <style>
+        :root {
+            --primary: #e91e63; /* デュエット用に大人っぽいピンク */
+            --dark: #1f1a24;
+            --light: #f5f0f6;
+            --success: #28a745;
+            --info: #17a2b8;
+        }
+        body { font-family: 'Helvetica Neue', Arial, sans-serif; background: var(--dark); color: var(--light); margin: 0; padding: 20px; text-align: center; }
+        .container { max-width: 600px; margin: 0 auto; }
+        h1 { color: var(--primary); margin-bottom: 5px; }
+        .subtitle { font-size: 0.9rem; color: #bbb; margin-bottom: 20px; }
+        
+        /* ログイン・エリア */
+        .login-box { background: #32293a; padding: 20px; border-radius: 10px; margin-bottom: 20px; border: 1px solid #4a3b56; }
+        input, button { padding: 12px; font-size: 1rem; border-radius: 5px; border: none; margin: 5px; box-sizing: border-box; }
+        input { width: 80%; max-width: 300px; background: #231b29; color: white; border: 1px solid #5c496c; }
+        button { background: var(--primary); color: white; font-weight: bold; cursor: pointer; }
+        button:hover { opacity: 0.9; }
+        button:disabled { background: #555; color: #888; cursor: not-allowed; }
+
+        /* ステージ（デュエット選考・結果エリア） */
+        .stage { background: #2d2238; border: 3px solid var(--primary); border-radius: 15px; padding: 20px; margin: 20px 0; display: none; }
+        .huge-text { font-size: 2.2rem; font-weight: bold; color: #fff; margin: 15px 0; text-shadow: 0 0 10px var(--primary); }
+        .entry-box { background: #1f1726; padding: 15px; border-radius: 10px; margin: 15px 0; border: 1px dashed var(--primary); }
+        
+        /* スコアボード */
+        .scoreboard { background: #19121e; padding: 15px; border-radius: 10px; margin-top: 20px; text-align: left; border: 1px solid #33253d; }
+        .score-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #33253d; }
+        .badge { background: #444; padding: 2px 8px; border-radius: 10px; font-size: 0.8rem; }
+        .badge.sing { background: var(--primary); }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>🎤 The 知ってるから歌います</h1>
+    <div class="subtitle">〜デュエット相手争奪ロシアンルーレット〜</div>
+
+    <div id="setup-area" class="login-box">
+        <h3>ゲームに参加する</h3>
+        <input type="text" id="input-room" placeholder="部屋番号（例：101）" value="101"><br>
+        <input type="text" id="input-name" placeholder="あなたの名前"><br>
+        <input type="text" id="input-song" placeholder="登録するデュエット曲名"><br>
+        <button id="btn-join">この曲で参戦！</button>
+    </div>
+
+    <div id="user-status" style="margin: 10px 0; font-weight: bold; color: var(--primary);"></div>
+
+    <button id="btn-start-game" style="display:none; background:var(--info); margin-bottom:20px;">全員揃ったのでゲーム開始！</button>
+
+    <div id="stage-area" class="stage">
+        <div id="stage-info" style="font-size: 1.1rem; color: #ccc;">🎵 次のデュエット曲はこれだ！</div>
+        <div id="stage-song-title" class="huge-text">曲名読み込み中...</div>
+        <div id="stage-owner" style="font-size: 1rem; color: #ffb7ce; margin-bottom: 15px;">（選曲者：非公開）</div>
+        
+        <div class="entry-box">
+            <div id="entry-ui-voter">
+                <p style="margin:5px 0 15px 0;">この曲、相方として「知ってるから歌えます」か！？</p>
+                <button id="btn-entry" style="background:var(--success); font-size:1.2rem; padding:10px 25px;">🙋‍♂️ 歌える！エントリーする</button>
+            </div>
+            <div id="entry-ui-owner" style="display:none; color:var(--primary); font-weight:bold;">
+                あなた（選曲者）の曲です。エントリーを待ちましょう！
+            </div>
+            <div style="margin-top: 15px; color:#aaa;">現在のエントリー数: <span id="entry-count" style="color:white; font-weight:bold;">0</span> 人</div>
+        </div>
+
+        <button id="btn-action-lottery" style="background:var(--primary); display:none;">エントリー締め切り＆相方抽選！</button>
+        <button id="btn-next-song" style="background:var(--info); display:none;">次の曲へ進む ➡️</button>
+    </div>
+
+    <div class="scoreboard">
+        <h3>📊 参加者ランキング（歌唱回数）</h3>
+        <div id="score-list"></div>
+    </div>
+</div>
+
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.0.0/firebase-app.js";
+    import { getDatabase, ref, onValue, update, get } from "https://www.gstatic.com/firebasejs/10.0.0/firebase-database.js";
+
+    // Firebase設定情報
+    const firebaseConfig = {
+        apiKey: "AIzaSyC4DQhH_swesAD98Xyjg8d1lcWEkkrHrgw",
+        authDomain: "gamehistory-m84.firebaseapp.com",
+        databaseURL: "https://gamehistory-m84-default-rtdb.firebaseio.com",
+        projectId: "gamehistory-m84",
+        storageBucket: "gamehistory-m84.firebasestorage.app",
+        messagingSenderId: "475761727837",
+        appId: "1:475761727837:web:06d07e1ab4120a7ccaf0b4",
+        measurementId: "G-3636W6LC4F"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+
+    let myId = null;
+    let myName = "";
+    let roomNum = "";
+    let roomPath = "";
+
+    // --- 1. 入室・参加処理 ---
+    document.getElementById('btn-join').addEventListener('click', () => {
+        const room = document.getElementById('input-room').value.trim();
+        const name = document.getElementById('input-name').value.trim();
+        const song = document.getElementById('input-song').value.trim();
+
+        if (!room || !name || !song) {
+            alert('全部入力してください！');
+            return;
+        }
+
+        roomNum = room;
+        roomPath = `DNKNOW_duet_room_${roomNum}`;
+        myId = 'DNKNOW_user_' + Math.random().toString(36).substring(2, 9);
+        myName = name;
+
+        // 1. プレイヤー登録（歌唱カウント用 `sing_count` も用意）
+        const playerUpdates = {};
+        playerUpdates[`${roomPath}/DNKNOW_players/${myId}`] = {
+            name: name,
+            earned_points: 0,
+            sing_count: 0 
+        };
+        update(ref(db), playerUpdates);
+
+        // 2. 選曲カード登録
+        const cardId = 'DNKNOW_card_' + Math.random().toString(36).substring(2, 9);
+        const cardUpdates = {};
+        cardUpdates[`${roomPath}/DNKNOW_cards/${cardId}`] = {
+            song_title: song,
+            owner_id: myId,
+            owner_name: name,
+            status: 'waiting' // waiting, active, finished
+        };
+        update(ref(db), cardUpdates);
+
+        // UI切替
+        document.getElementById('setup-area').style.display = 'none';
+        document.getElementById('user-status').innerText = `部屋: ${roomNum} / プレイヤー: ${name} で待機中`;
+        document.getElementById('btn-start-game').style.display = 'inline-block';
+
+        // リアルタイム同期の開始
+        startSync();
+    });
+
+    // --- 2. ゲーム開始（曲のランダム順序決定） ---
+    document.getElementById('btn-start-game').addEventListener('click', () => {
+        get(ref(db, `${roomPath}/DNKNOW_cards`)).then((snapshot) => {
+            const cards = snapshot.val();
+            if (!cards) return;
+
+            const cardIds = Object.keys(cards);
+            // フィッシャー–イェーツのシャッフルアルゴリズムで曲順をランダムに
+            for (let i = cardIds.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [cardIds[i], cardIds[j]] = [cardIds[j], cardIds[i]];
+            }
+
+            // シャッフルされた配列と最初の曲をセットしてゲーム状態を更新
+            update(ref(db, roomPath), {
+                game_status: 'playing',
+                playlist: cardIds,
+                current_index: 0
+            }).then(() => {
+                activateTrack(cardIds[0]);
+            });
+        });
+    });
+
+    // 指定されたカードIDの曲をアクティブ（現在の歌唱曲）にする
+    function activateTrack(cardId) {
+        get(ref(db, `${roomPath}/DNKNOW_cards/${cardId}`)).then((snap) => {
+            const card = snap.val();
+            update(ref(db, roomPath), {
+                current_card_id: cardId,
+                current_card_data: {
+                    song_title: card.song_title,
+                    owner_id: card.owner_id,
+                    owner_name: card.owner_name,
+                    phase: 'entry', // entry(募集中) -> reveal(抽選完了)
+                    entries: {}
+                }
+            });
+            // カード自体のステータスも変更
+            update(ref(db, `${roomPath}/DNKNOW_cards/${cardId}`), { status: 'active' });
+        });
+    }
+
+    // --- 3. リアルタイムデータ同期 ---
+    function startSync() {
+        onValue(ref(db, roomPath), (snapshot) => {
+            const roomData = snapshot.val();
+            if (!roomData) return;
+
+            const players = roomData.DNKNOW_players || {};
+            const currentCardId = roomData.current_card_id;
+            const currentCard = roomData.current_card_data;
+
+            // --- 3-a. ステージ表示の切り替え ---
+            if (roomData.game_status === 'playing' && currentCard) {
+                document.getElementById('stage-area').style.display = 'block';
+                document.getElementById('btn-start-game').style.display = 'none';
+
+                // フェーズごとの画面情報制御
+                if (currentCard.phase === 'entry') {
+                    document.getElementById('stage-song-title').innerText = currentCard.song_title;
+                    document.getElementById('stage-owner').innerText = `（選曲者は歌い終わるまでヒミツ🤫）`;
+                    document.getElementById('btn-next-song').style.display = 'none';
+                    
+                    // 司会権限（選曲者本人にのみ、抽選ボタンを露出させる）
+                    document.getElementById('btn-action-lottery').style.display = (myId === currentCard.owner_id) ? 'inline-block' : 'none';
+
+                    // エントリーUIの出し分け
+                    if (myId === currentCard.owner_id) {
+                        document.getElementById('entry-ui-voter').style.display = 'none';
+                        document.getElementById('entry-ui-owner').style.display = 'block';
+                    } else {
+                        document.getElementById('entry-ui-voter').style.display = 'block';
+                        document.getElementById('entry-ui-owner').style.display = 'none';
+                        
+                        // 既にエントリー済みの場合はボタンを無効化
+                        const hasEntered = currentCard.entries && currentCard.entries[myId];
+                        document.getElementById('btn-entry').disabled = hasEntered;
+                        document.getElementById('btn-entry').innerText = hasEntered ? 'エントリー完了！待機中...' : '🙋‍♂️ 歌える！エントリーする';
+                    }
+
+                    const entriesCount = currentCard.entries ? Object.keys(currentCard.entries).length : 0;
+                    document.getElementById('entry-count').innerText = entriesCount;
+
+                } else if (currentCard.phase === 'reveal') {
+                    // 抽選結果発表フェーズ
+                    document.getElementById('stage-song-title').innerText = `${currentCard.song_title}`;
+                    document.getElementById('stage-owner').innerHTML = `
+                        選曲者: <strong>${currentCard.owner_name}</strong><br>
+                        <span style="font-size:1.5rem; color:#00ffcc; display:block; margin-top:10px;">
+                            🎤 相方当選者: 🎉 <strong>${currentCard.winner_name || '誰もエントリーなし😭'}</strong> 🎉
+                        </span>
+                    `;
+                    document.getElementById('entry-ui-voter').style.display = 'none';
+                    document.getElementById('entry-ui-owner').style.display = 'none';
+                    document.getElementById('btn-action-lottery').style.display = 'none';
+                    
+                    // 次の曲へ進めるボタンを選曲者にだけ出す
+                    document.getElementById('btn-next-song').style.display = (myId === currentCard.owner_id) ? 'inline-block' : 'none';
+                }
+            } else if (roomData.game_status === 'finished') {
+                document.getElementById('stage-area').style.display = 'block';
+                document.getElementById('stage-song-title').innerText = "🏁 全全曲終了！！";
+                document.getElementById('stage-owner').innerText = "結果は下のランキングシートをチェック！";
+                document.getElementById('entry-ui-voter').style.display = 'none';
+                document.getElementById('entry-ui-owner').style.display = 'none';
+            }
+
+            // --- 3-b. スコアボード・歌唱回数レンダリング ---
+            const scoreList = document.getElementById('score-list');
+            scoreList.innerHTML = '';
+            
+            // スコア順に並び替えるために配列化
+            const playerArray = Object.keys(players).map(pId => ({ id: pId, ...players[pId] }));
+            playerArray.sort((a, b) => b.earned_points - a.earned_points);
+
+            playerArray.forEach(player => {
+                const row = document.createElement('div');
+                row.classList.add('score-row');
+                row.innerHTML = `
+                    <span><strong>${player.name}</strong> <span class="badge sing">歌唱: ${player.sing_count}回</span></span>
+                    <span style="color:var(--primary); font-weight:bold; font-size:1.2rem;">${player.earned_points} 点</span>
+                `;
+                scoreList.appendChild(row);
+            });
+        });
+    }
+
+    // --- 4. アクション：歌えるボタンを押してエントリー ---
+    document.getElementById('btn-entry').addEventListener('click', () => {
+        if (!roomPath || !myId) return;
+        const entryRef = ref(db, `${roomPath}/DNKNOW_current_card_data/entries/${myId}`);
+        update(ref(db), { [`${roomPath}/DNKNOW_current_card_data/entries/${myId}`]: myName });
+    });
+
+    // --- 5. アクション：エントリー締め切り ＆ ガチ抽選（選曲者が実行） ---
+    document.getElementById('btn-action-lottery').addEventListener('click', () => {
+        get(ref(db, roomPath)).then((snapshot) => {
+            const roomData = snapshot.val();
+            const currentCard = roomData.current_card_data;
+            const players = roomData.DNKNOW_players;
+            const entries = currentCard.entries || {};
+            const entryIds = Object.keys(entries);
+            const entryCount = entryIds.length;
+
+            let winnerId = null;
+            let winnerName = "なし";
+
+            const playerUpdates = {};
+
+            if (entryCount > 0) {
+                // 🔥【ここがポイント！】歌唱回数が少ない人を優先するロジック
+                // 各エントリー者の現在の歌唱回数を調べる
+                let minSingCount = Infinity;
+                entryIds.forEach(pId => {
+                    const count = players[pId].sing_count || 0;
+                    if (count < minSingCount) minSingCount = count;
+                });
+
+                // 一番歌唱回数が少ない人たちのグループを作る（一度も歌ってない人など）
+                const priorityCandidates = entryIds.filter(pId => (players[pId].sing_count || 0) === minSingCount);
+                
+                // その中から完全にランダムで1名を決定！
+                winnerId = priorityCandidates[Math.floor(Math.random() * priorityCandidates.length)];
+                winnerName = entries[winnerId];
+
+                // ─── ポイント計算の開始 ───
+                // 1. 選曲者（ホスト）のポイント：エントリーしてくれた人数分がそのまま加算
+                playerUpdates[`DNKNOW_players/${currentCard.owner_id}/earned_points`] = players[currentCard.owner_id].earned_points + entryCount;
+
+                // 2. 当選者（ゲスト）のポイント：1人だけなら3pt、複数競合がいたら2pt
+                const guestPoints = (entryCount === 1) ? 3 : 2;
+                playerUpdates[`DNKNOW_players/${winnerId}/earned_points`] = players[winnerId].earned_points + guestPoints;
+                
+                // 当選者は歌唱カウントを +1 加算（次回以降の優先度を下げるため）
+                playerUpdates[`DNKNOW_players/${winnerId}/sing_count`] = (players[winnerId].sing_count || 0) + 1;
+            } else {
+                // エントリーが0人だった場合、誰もポイントは入らない
+                alert("誰もエントリーがいませんでした…！無念。");
+            }
+
+            // 選曲者自身の歌唱カウントも加算
+            playerUpdates[`DNKNOW_players/${currentCard.owner_id}/sing_count`] = (players[currentCard.owner_id].sing_count || 0) + 1;
+
+            // 各プレイヤーの獲得ポイントを反映
+            update(ref(db, roomPath), playerUpdates);
+
+            // ステージを「結果開示フェーズ」に移行
+            update(ref(db, `${roomPath}/DNKNOW_current_card_data`), {
+                phase: 'reveal',
+                winner_id: winnerId,
+                winner_name: winnerName
+            });
+        });
+    });
+
+    // --- 6. アクション：次の曲へ（選曲者が実行） ---
+    document.getElementById('btn-next-song').addEventListener('click', () => {
+        get(ref(db, roomPath)).then((snapshot) => {
+            const roomData = snapshot.val();
+            const playlist = roomData.playlist;
+            const nextIndex = roomData.current_index + 1;
+            const currentCardId = roomData.current_card_id;
+
+            // 今のカードを完全に「finished」にする
+            update(ref(db, `${roomPath}/DNKNOW_cards/${currentCardId}`), { status: 'finished' });
+
+            if (nextIndex < playlist.length) {
+                // まだ曲が残っていればインデックスを進めて次の曲をセット
+                update(ref(db, roomPath), { current_index: nextIndex }).then(() => {
+                    activateTrack(playlist[nextIndex]);
+                });
+            } else {
+                // 全曲消化したらゲームセット
+                update(ref(db, roomPath), { game_status: 'finished' });
+            }
+        });
+    });
+</script>
+
+</body>
+</html>
