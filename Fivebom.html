@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <title>カラフルBOMBER</title>
+  <title>マイクボンバー</title>
   <style>
     :root {
       --bg-color: #e5ebf0; 
@@ -11,6 +11,8 @@
       --metallic-frame: #788896;
       --accent-gold: #d4af37;
       --text-color: #202530;
+      --mic-head: #333;
+      --mic-body: #1a1a1a;
     }
 
     body {
@@ -63,6 +65,11 @@
       border: 2px solid var(--metallic-frame);
       box-shadow: 0 4px 12px rgba(0,0,0,0.1);
     }
+    .setting-group {
+      margin-bottom: 15px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid #eee;
+    }
     label { font-size: 1.1rem; margin-right: 5px; font-weight: bold; }
     input, select { 
       font-size: 1.1rem; padding: 6px 12px; margin: 5px; 
@@ -83,6 +90,7 @@
       color: #0b111e;
       box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15), inset 0 0 8px rgba(255,255,255,1);
       box-sizing: border-box;
+      position: relative;
     }
     #question::before {
       content: "Q. ";
@@ -140,7 +148,7 @@
       border-left: 3px solid #fff;
       border-right: 3px solid #cbd5de;
       box-shadow: inset 0 0 10px rgba(0,0,0,0.05);
-      flex: 0 0 130px; 
+      flex: 0 0 150px; 
       border-radius: 8px;
       scroll-margin: 20px; 
     }
@@ -157,11 +165,47 @@
       text-shadow: 0 0 8px rgba(255, 0, 0, 0.2);
     }
 
-    /* バーの要素（コントラストによる円柱シリンダー化） */
+    /* マイクのデザイン */
+    .mic-container {
+      width: 100px;
+      height: 520px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      position: relative;
+    }
+
+    /* マイクの頭（グリル） */
+    .mic-head {
+      width: 90px;
+      height: 90px;
+      background: radial-gradient(circle at 30% 30%, #666, #222);
+      border-radius: 50%;
+      border: 3px solid #444;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+      position: relative;
+      z-index: 5;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      overflow: hidden;
+    }
+    .mic-head::after {
+      content: "";
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      background-image: radial-gradient(#444 1px, transparent 1px);
+      background-size: 4px 4px;
+      opacity: 0.5;
+    }
+
+    /* マイクの本体（持ち手 = バー） */
     .answer-box {
-      width: 90%;
-      height: 450px; 
-      border-radius: 30px;
+      width: 60px;
+      height: 380px; 
+      border-radius: 0;
+      margin-top: -10px; 
       font-size: 2.5rem; 
       font-weight: 900;
       display: flex;
@@ -170,8 +214,35 @@
       position: relative;
       overflow: hidden;
       z-index: 1;
-      border: 4px solid rgba(255, 255, 255, 0.9);
+      border: 4px solid #333;
+      border-top: none;
       box-sizing: border-box;
+      box-shadow: inset 0 0 20px rgba(0,0,0,0.5);
+    }
+
+    /* 通信部（マイク下部のパーツ） */
+    .mic-bottom {
+      width: 70px;
+      height: 40px;
+      background: linear-gradient(to bottom, #333, #111);
+      border-radius: 5px 5px 15px 15px;
+      border: 3px solid #444;
+      z-index: 2;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.4);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      position: relative;
+    }
+    /* アンテナ/コネクタ風の小さな点 */
+    .mic-bottom::after {
+      content: "";
+      width: 10px;
+      height: 10px;
+      background: #00ff00;
+      border-radius: 50%;
+      box-shadow: 0 0 5px #00ff00;
+      opacity: 0.8;
     }
 
     /* 文字を前面へ */
@@ -182,7 +253,7 @@
       color: #222;
     }
 
-    /* 上から下へせり下りてくる侵食レッド（円柱対応グラデーション） */
+    /* 侵食レッド */
     .fill {
       position: absolute;
       top: 0; 
@@ -229,16 +300,13 @@
     }
     button.game-btn:active { transform: scale(0.95); box-shadow: 0 2px 4px rgba(0,0,0,0.2); }
     
-    /* メインの巨大判定ボタン */
     .btn-correct { background: linear-gradient(135deg, #00c853, #009944); font-size: 1.8rem !important; padding: 25px 40px !important; flex: 2 !important; }
     .btn-wrong { background: linear-gradient(135deg, #ff1744, #d7003a); font-size: 1.8rem !important; padding: 25px 40px !important; flex: 2 !important; }
     
-    /* サブアクションボタン */
     #startBtn { background: linear-gradient(135deg, #00b0ff, #0077cc); }
-    #startBtn.paused { background: linear-gradient(135deg, #ff9100, #ff6d00); } /* 一時停止状態の審議カラー */
+    #startBtn.paused { background: linear-gradient(135deg, #ff9100, #ff6d00); } 
     .btn-reset { background: #6c757d; }
     
-    /* 誤操作を防ぐために小さくしたリセットボタン */
     .btn-reset-mini { 
       background: #788896 !important; 
       padding: 8px 15px !important; 
@@ -257,19 +325,9 @@
       font-size: 5rem; font-weight: 900; color: #009944; text-shadow: 0 0 30px rgba(255,255,255,1);
       animation: sparkle 1s ease-out forwards; pointer-events: none; z-index: 999;
     }
-    @keyframes sparkle {
-      0% { opacity: 0; transform: translate(-50%, -50%) scale(0.5); }
-      50% { opacity: 1; transform: translate(-50%, -50%) scale(1.1); }
-      100% { opacity: 0; transform: translate(-50%, -50%) scale(1); }
-    }
     #explosion {
       display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
       font-size: 12rem; animation: explode 0.8s ease-out forwards; pointer-events: none; z-index: 999;
-    }
-    @keyframes explode {
-      0% { transform: translate(-50%, -50%) scale(0.3); opacity: 0; }
-      30% { opacity: 1; }
-      100% { transform: translate(-50%, -50%) scale(2); opacity: 0; }
     }
 
     #manual {
@@ -278,15 +336,17 @@
       box-sizing: border-box;
     }
 
-    /* 📱 横画面（ランドスケープ）最適化：縮尺を自動調整して上下はみ出しをガード */
     @media (orientation: landscape) and (max-height: 600px) {
       h1 { font-size: 2.2rem; margin: 4px 0; }
       #question { font-size: 1.5rem; padding: 8px 15px; margin: 5px auto; border-width: 4px; }
       #score { font-size: 1.2rem; margin-bottom: 8px; }
       #gameZone { padding: 10px 15px; margin-bottom: 10px; gap: 12px; }
-      .stage-container { flex: 0 0 100px; padding: 8px 5px; }
+      .stage-container { flex: 0 0 110px; padding: 8px 5px; }
       .timer-box { font-size: 1.8rem; margin-bottom: 6px; }
-      .answer-box { height: 220px; font-size: 1.8rem; border-width: 3px; }
+      .mic-container { height: 300px; width: 70px; }
+      .mic-head { width: 60px; height: 60px; }
+      .answer-box { height: 200px; width: 40px; font-size: 1.8rem; border-width: 3px; }
+      .mic-bottom { width: 46px; height: 25px; }
       button.game-btn { padding: 10px 15px; font-size: 1rem; min-width: 100px; }
       .btn-correct, .btn-wrong { font-size: 1.3rem !important; padding: 12px 25px !important; }
       .controls-row { margin: 8px auto; }
@@ -296,25 +356,46 @@
 <body>
 
 <h1>
-  <span class="t-cyan">カ</span><span class="t-red">ラ</span><span class="t-green">フ</span><span class="t-yellow">ル</span><span class="t-purple">ボンバー</span>
+  <span class="t-cyan">マ</span><span class="t-red">イ</span><span class="t-green">ク</span><span class="t-yellow">ボ</span><span class="t-purple">ンバー</span>
 </h1>
 
 <button class="btn-toggle-settings" onclick="toggleSettingsPanel()">⚙️ ゲーム設定</button>
 
 <div id="settings">
-  <label>制限時間：</label>
-  <input type="number" id="timeInput" value="50" min="1" max="200"> 秒
-  <label style="margin-left: 15px;">バーの本数：</label>
-  <select id="barCount">
-    <option>4</option>
-    <option selected>5</option>
-    <option>6</option>
-    <option>7</option>
-    <option>8</option>
-    <option>9</option>
-    <option>10</option>
-  </select>
-  <button class="game-btn btn-set" onclick="applySettings()">SET</button>
+  <div class="setting-group">
+    <label>制限時間：</label>
+    <input type="number" id="timeInput" value="50" min="1" max="200"> 秒
+    <label style="margin-left: 15px;">マイクの本数：</label>
+    <select id="barCount">
+      <option>4</option>
+      <option selected>5</option>
+      <option>6</option>
+      <option>7</option>
+      <option>8</option>
+      <option>9</option>
+      <option>10</option>
+    </select>
+  </div>
+  
+  <div class="setting-group">
+    <label>お題の表示：</label>
+    <select id="questionDisplayMode" onchange="refreshQuestionDisplay()">
+      <option value="text" selected>内容を表示</option>
+      <option value="number">「第何問」形式</option>
+    </select>
+    <label style="margin-left: 15px;">音声読み上げ：</label>
+    <select id="speechToggle">
+      <option value="on" selected>ON</option>
+      <option value="off">OFF</option>
+    </select>
+  </div>
+
+  <div class="setting-group">
+    <label>直接入力お題：</label>
+    <input type="text" id="customQuestionInput" placeholder="ここにお題を入力してSET" style="width: 300px;">
+  </div>
+
+  <button class="game-btn btn-set" onclick="applySettings()">設定を適用してリセット</button>
 </div>
 
 <div id="question"></div>
@@ -346,7 +427,7 @@
 
 <script>
 /* -------------------------
-    WebAudio：効果音 (完全維持)
+    WebAudio：効果音
 ------------------------- */
 function playCorrect(){
     const ctx = new (window.AudioContext || window.webkitAudioContext)();
@@ -385,17 +466,17 @@ let timeLeft = 50;
 let found = 0;
 let timerId;
 let started = false;
-let isPaused = false; // 一時停止（審議）フラグ
+let isPaused = false;
 let timerStopped = Array(barNum).fill(false);
 let totalScore = 0;
+let questionCount = 1;
 
-/* 強力な原色系の円柱シリンダー用グラデーションに変更 */
 const barColors = [
-  "linear-gradient(to right, #0088cc 0%, #00e5ff 30%, #ffffff 50%, #00e5ff 70%, #005588 100%)", // 強烈シアン
-  "linear-gradient(to right, #00aa00 0%, #00ff66 30%, #ffffff 50%, #00ff66 70%, #005500 100%)", // 強烈グリーン
-  "linear-gradient(to right, #cc9900 0%, #ffea00 30%, #ffffff 50%, #ffea00 70%, #664400 100%)", // 強烈イエロー
-  "linear-gradient(to right, #9900cc 0%, #cc33ff 30%, #ffffff 50%, #cc33ff 70%, #440066 100%)", // 強烈パープル
-  "linear-gradient(to right, #cc0066 0%, #ff1493 30%, #ffffff 50%, #ff1493 70%, #660033 100%)"  // 強烈マゼンタピンク
+  "linear-gradient(to right, #0088cc 0%, #00e5ff 30%, #ffffff 50%, #00e5ff 70%, #005588 100%)", 
+  "linear-gradient(to right, #00aa00 0%, #00ff66 30%, #ffffff 50%, #00ff66 70%, #005500 100%)", 
+  "linear-gradient(to right, #cc9900 0%, #ffea00 30%, #ffffff 50%, #ffea00 70%, #664400 100%)", 
+  "linear-gradient(to right, #9900cc 0%, #cc33ff 30%, #ffffff 50%, #cc33ff 70%, #440066 100%)", 
+  "linear-gradient(to right, #cc0066 0%, #ff1493 30%, #ffffff 50%, #ff1493 70%, #660033 100%)"
 ];
 
 const barNeonShadows = [
@@ -406,14 +487,15 @@ const barNeonShadows = [
   "0 0 25px rgba(255, 20, 147, 0.8), inset 0 0 15px rgba(0, 0, 0, 0.5)"
 ];
 
-const questions = [
+const defaultQuestions = [
     "広辞苑に載っている言葉の中で「〇〇アップ」という言葉 10個答えろ",
     "色のつく曲を答えよ！",
     "アニメの曲を答えよ！",
     "動物の曲を答えよ！",
     "三文字の曲を答えよ！"
 ];
-let currentQuestion = 0;
+let questions = [...defaultQuestions];
+let currentQuestionIndex = 0;
 
 function toggleSettingsPanel() {
   const panel = document.getElementById("settings");
@@ -423,29 +505,53 @@ function toggleSettingsPanel() {
 function applySettings() {
   barNum = Number(document.getElementById("barCount").value);
   timeLimit = Number(document.getElementById("timeInput").value);
+  const customQ = document.getElementById("customQuestionInput").value.trim();
+  if (customQ) {
+    questions = [customQ];
+    currentQuestionIndex = 0;
+    questionCount = 1;
+  } else {
+    questions = [...defaultQuestions];
+  }
   resetGame();
 }
 
-/* -------------------------
-    初期化と配置生成
-------------------------- */
+function refreshQuestionDisplay() {
+  const mode = document.getElementById("questionDisplayMode").value;
+  const qElement = document.getElementById("question");
+  if (mode === "number") {
+    qElement.textContent = "第 " + questionCount + " 問";
+  } else {
+    qElement.textContent = questions[currentQuestionIndex];
+  }
+}
+
+function speakQuestion() {
+  const speechOn = document.getElementById("speechToggle").value === "on";
+  const mode = document.getElementById("questionDisplayMode").value;
+  if (speechOn && mode === "text") {
+    const uttr = new SpeechSynthesisUtterance();
+    uttr.text = questions[currentQuestionIndex];
+    uttr.lang = "ja-JP";
+    uttr.rate = 1.0;
+    window.speechSynthesis.cancel();
+    window.speechSynthesis.speak(uttr);
+  }
+}
+
 function init() {
   timeLeft = timeLimit;
   found = 0;
   started = false;
   isPaused = false;
   timerStopped = Array(barNum).fill(false);
-
-  document.getElementById("question").textContent = questions[currentQuestion];
+  refreshQuestionDisplay();
   document.getElementById("score").querySelector("span").textContent = totalScore;
-  
   const startBtn = document.getElementById("startBtn");
   startBtn.style.display = "inline-block";
   startBtn.textContent = "START";
   startBtn.classList.remove("paused");
-  
   document.getElementById("nextBtn").style.display = "none";
-
   const gameZone = document.getElementById("gameZone");
   gameZone.innerHTML = "";
 
@@ -460,6 +566,13 @@ function init() {
     t.textContent = timeLeft;
     container.appendChild(t);
 
+    const mic = document.createElement("div");
+    mic.className = "mic-container";
+
+    const head = document.createElement("div");
+    head.className = "mic-head";
+    mic.appendChild(head);
+
     const box = document.createElement("div");
     box.className = "answer-box";
     box.id = "box" + i;
@@ -472,28 +585,29 @@ function init() {
 
     box.appendChild(fill);
     box.innerHTML += "<span>？</span>";
-    container.appendChild(box);
+    mic.appendChild(box);
 
+    const bottom = document.createElement("div");
+    bottom.className = "mic-bottom";
+    mic.appendChild(bottom);
+
+    container.appendChild(mic);
     gameZone.appendChild(container);
   }
-  
   gameZone.scrollLeft = 0;
 }
 
-/* STARTボタン押下時：始動・一時停止（審議）のトグル制御 */
 function handleStartToggle() {
   const startBtn = document.getElementById("startBtn");
-  
   if (!started) {
-    // 初回スタート
     started = true;
     isPaused = false;
     startBtn.textContent = "PAUSE (審議)";
     startBtn.classList.add("paused");
+    speakQuestion();
     startTimer();
     focusBar(0);
   } else {
-    // 稼働中のトグル（一時停止 ⇔ 再開）
     if (!isPaused) {
       isPaused = true;
       clearInterval(timerId);
@@ -512,15 +626,17 @@ function startTimer() {
   clearInterval(timerId);
   timerId = setInterval(() => {
     timeLeft--;
-
     for (let i = 0; i < barNum; i++) {
       if (!timerStopped[i]) {
-        document.getElementById("timer" + i).textContent = timeLeft;
-        const percent = ((timeLimit - timeLeft) / timeLimit) * 100;
-        document.getElementById("fill" + i).style.height = percent + "%";
+        const timerEl = document.getElementById("timer" + i);
+        if (timerEl) timerEl.textContent = timeLeft;
+        const fillEl = document.getElementById("fill" + i);
+        if (fillEl) {
+            const percent = ((timeLimit - timeLeft) / timeLimit) * 100;
+            fillEl.style.height = percent + "%";
+        }
       }
     }
-
     if (timeLeft <= 0) {
       clearInterval(timerId);
       triggerExplosion();
@@ -538,18 +654,14 @@ function focusBar(index) {
 }
 
 function markCorrect() {
-  if (!started || isPaused) return; // 審議中（一時停止中）は判定不可
+  if (!started || isPaused) return;
   playCorrect();
-
   timerStopped[found] = true;
-
   const box = document.getElementById("box" + found);
   box.querySelector("span").innerHTML = "<span style='color:#fff; font-size:3.5rem; text-shadow:0 0 15px #fff;'>○</span>";
-
   found++;
   totalScore++;
   document.getElementById("score").querySelector("span").textContent = totalScore;
-
   if (found === barNum) {
     clearInterval(timerId);
     showSuccess();
@@ -562,12 +674,11 @@ function markCorrect() {
 }
 
 function markWrong() {
-  if (!started || isPaused) return; // 審議中（一時停止中）は判定不可
+  if (!started || isPaused) return;
   playWrong();
   const box = document.getElementById("box" + found);
   box.classList.add("wrongFlash");
   setTimeout(() => box.classList.remove("wrongFlash"), 600);
-  
   focusBar(found);
 }
 
@@ -586,7 +697,8 @@ function showSuccess() {
 }
 
 function nextQuestion() {
-  currentQuestion = (currentQuestion + 1) % questions.length;
+  currentQuestionIndex = (currentQuestionIndex + 1) % questions.length;
+  questionCount++;
   init();
 }
 
@@ -605,9 +717,9 @@ init();
 
 <div id="manual">
   <b>【スタジオルール】</b><br>
-  ・<b>START</b>でタイマーが始動し、上から下へ向かって赤いエネルギーが徐々に充填されていきます。<br>
+  ・<b>START</b>でタイマーが始動し、マイクの持ち手部分が上から下へ向かって赤いエネルギーで満たされていきます。<br>
   ・稼働中に再度メインボタン（<b>PAUSE</b>）を押すと、タイマーをストップして<b>審議モード</b>に入ることができます。<br>
-  ・<b>正解</b>を判定すると、そのターゲットのタイマーと赤い液体の侵食が<b>その時点の高さでピタッと停止してキープ</b>されます。
+  ・<b>正解</b>を判定すると、そのマイクのタイマーと赤い液体の侵食が<b>その時点の高さでピタッと停止</b>されます。
 </div>
 
 </body>
