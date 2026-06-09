@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>カラオケ演奏停止チキンレース コントローラー</title>
+    <style>
+        :root {
+            --bg-color: #1a1a2e;
+            --panel-bg: #16213e;
+            --accent-color: #00f2fe;
+            --text-color: #ffffff;
+            --team1-color: #ff4757;
+            --team2-color: #2ed573;
+            --danger-color: #ff6b6b;
+        }
+
+        body {
+            font-family: 'Helvetica Neue', Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            text-align: center;
+            color: var(--accent-color);
+            text-shadow: 0 0 10px rgba(0, 242, 254, 0.5);
+        }
+
+        /* 設定セクション */
+        .config-section {
+            background: var(--panel-bg);
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            border: 1px solid #0f3460;
+        }
+
+        .config-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+        }
+
+        .config-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .config-group label {
+            font-size: 0.9rem;
+            margin-bottom: 5px;
+            color: #848ccf;
+        }
+
+        .config-group input {
+            background: #0f3460;
+            border: 1px solid var(--accent-color);
+            color: white;
+            padding: 8px;
+            border-radius: 5px;
+            font-size: 1rem;
+        }
+
+        /* ルール説明動的テキスト */
+        .rule-explanation {
+            background: rgba(0, 242, 254, 0.1);
+            border-left: 4px solid var(--accent-color);
+            padding: 15px;
+            margin-top: 15px;
+            border-radius: 0 10px 10px 0;
+            font-size: 0.95rem;
+            line-height: 1.6;
+        }
+
+        /* タイマーセクション */
+        .timer-section {
+            background: #0f3460;
+            text-align: center;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            box-shadow: 0 0 20px rgba(0,0,0,0.5);
+        }
+
+        #timer-display {
+            font-size: 4rem;
+            font-family: monospace;
+            font-weight: bold;
+            color: var(--accent-color);
+            text-shadow: 0 0 15px rgba(0, 242, 254, 0.8);
+            margin: 10px 0;
+        }
+
+        .btn {
+            background: var(--accent-color);
+            color: #1a1a2e;
+            border: none;
+            padding: 12px 30px;
+            font-size: 1.2rem;
+            font-weight: bold;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.2s;
+            margin: 5px;
+        }
+
+        .btn:hover {
+            opacity: 0.9;
+            transform: scale(1.05);
+        }
+
+        .btn-stop { background: var(--danger-color); color: white; }
+        .btn-reset { background: #6c757d; color: white; }
+
+        /* チームセクション */
+        .game-boards {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        @media (max-width: 768px) {
+            .game-boards { grid-template-columns: 1fr; }
+        }
+
+        .team-board {
+            background: var(--panel-bg);
+            padding: 20px;
+            border-radius: 10px;
+            border-top: 5px solid white;
+        }
+
+        #team1-board { border-top-color: var(--team1-color); }
+        #team2-board { border-top-color: var(--team2-color); }
+
+        .team-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 2px solid #0f3460;
+            padding-bottom: 10px;
+            margin-bottom: 15px;
+        }
+
+        .team-title { font-size: 1.5rem; font-weight: bold; }
+        .team-score { font-size: 1.8rem; font-weight: bold; color: #ffd700; }
+
+        .member-row {
+            display: grid;
+            grid-template-columns: 2fr 2fr 1.5fr 1.5fr 1fr;
+            gap: 8px;
+            align-items: center;
+            margin-bottom: 10px;
+            background: rgba(255,255,255,0.05);
+            padding: 8px;
+            border-radius: 5px;
+        }
+
+        .member-row input[type="text"], .member-row input[type="number"] {
+            background: #0f3460;
+            border: 1px solid #333;
+            color: white;
+            padding: 6px;
+            border-radius: 4px;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        .result-diff { font-weight: bold; text-align: center; }
+        .result-score { font-weight: bold; text-align: center; color: #ffd700; }
+        
+        .double-checkbox {
+            text-align: center;
+        }
+
+        .dobon { color: var(--danger-color) !important; font-weight: bold; }
+        .perfect { color: #00ffcc !important; font-weight: bold; }
+
+        .add-member-btn {
+            background: transparent;
+            color: white;
+            border: 1px dashed var(--accent-color);
+            width: 100%;
+            padding: 8px;
+            cursor: pointer;
+            border-radius: 5px;
+            margin-top: 10px;
+        }
+        .add-member-btn:hover { background: rgba(0, 242, 254, 0.1); }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>🎤 カラオケ演奏停止チキンレース</h1>
+
+    <div class="config-section">
+        <h3>🛠️ ルール・条件設定</h3>
+        <div class="config-grid">
+            <div class="config-group">
+                <label>初期持ち点</label>
+                <input type="number" id="cfg-init-score" value="100" oninput="updateRules()">
+            </div>
+            <div class="config-group">
+                <label>設定分数 (分)</label>
+                <input type="number" id="cfg-target-min" value="2" step="0.5" oninput="updateRules()">
+            </div>
+            <div class="config-group">
+                <label>ジャスト時の点数</label>
+                <input type="number" id="cfg-just-score" value="10" oninput="updateRules()">
+            </div>
+            <div class="config-group">
+                <label>超過ドボン秒数 (秒から)</label>
+                <input type="number" id="cfg-over-limit" value="4" oninput="updateRules()">
+            </div>
+            <div class="config-group">
+                <label>ドボン時のペナルティ点</label>
+                <input type="number" id="cfg-dobon-score" value="-10" oninput="updateRules()">
+            </div>
+            <div class="config-group">
+                <label>未満時の減衰秒数ごと</label>
+                <input type="number" id="cfg-under-step" value="2" oninput="updateRules()">
+            </div>
+        </div>
+
+        <div class="rule-explanation" id="rule-text">
+            </div>
+    </div>
+
+    <div class="timer-section">
+        <h3>⏱️ 歌唱タイマー (目安・入力補助用)</h3>
+        <div id="timer-display">00:00.00</div>
+        <button class="btn" id="btn-start" onclick="startTimer()">歌い出しスタート</button>
+        <button class="btn btn-stop" id="btn-stop" onclick="stopTimer()" disabled>演奏停止</button>
+        <button class="btn btn-reset" onclick="resetTimer()">リセット</button>
+        <p style="font-size:0.85rem; color:#aaa; margin-top:10px;">※タイマーを停止すると、現在選択されている行（または空いている行）に秒数をコピーできます。</p>
+    </div>
+
+    <div class="game-boards">
+        
+        <div class="team-board" id="team1-board">
+            <div class="team-header">
+                <div class="team-title" style="color:var(--team1-color);">紅組</div>
+                <div class="team-score">TOTAL: <span id="team1-total">100</span>点</div>
+            </div>
+            <div id="team1-members">
+                </div>
+            <button class="add-member-btn" onclick="addMemberRow('team1')">+ メンバーを追加</button>
+        </div>
+
+        <div class="team-board" id="team2-board">
+            <div class="team-header">
+                <div class="team-title" style="color:var(--team2-color);">白組</div>
+                <div class="team-score">TOTAL: <span id="team2-total">100</span>点</div>
+            </div>
+            <div id="team2-members">
+                </div>
+            <button class="add-member-btn" onclick="addMemberRow('team2')">+ メンバーを追加</button>
+        </div>
+
+    </div>
+</div>
+
+<script>
+    // タイマー用変数
+    let startTime;
+    let elapsedTime = 0;
+    let timerInterval;
+    let activeInputId = null; // 現在タイマー値を流し込む対象のインプットID
+
+    // 初期化
+    window.onload = function() {
+        // 初期メンバー追加
+        for(let i=0; i<3; i++) {
+            addMemberRow('team1');
+            addMemberRow('team2');
+        }
+        updateRules();
+    };
+
+    // 1. ルール説明文の動的更新 & 全計算のトリガー
+    function updateRules() {
+        const initScore = parseInt(document.getElementById('cfg-init-score').value) || 0;
+        const targetMin = parseFloat(document.getElementById('cfg-target-min').value) || 0;
+        const justScore = parseInt(document.getElementById('cfg-just-score').value) || 0;
+        const overLimit = parseInt(document.getElementById('cfg-over-limit').value) || 0;
+        const dobonScore = parseInt(document.getElementById('cfg-dobon-score').value) || 0;
+        const underStep = parseInt(document.getElementById('cfg-under-step').value) || 0;
+
+        const targetSec = targetMin * 60;
+
+        let explanation = `【現在のルール】<br>`;
+        explanation += `・各チーム初期持ち点 <strong>${initScore}点</strong> からスタート。<br>`;
+        explanation += `・目標時間は <strong>${targetMin}分 (${targetSec}秒)</strong> です。<br>`;
+        explanation += `・<strong>ジャスト秒</strong> で演奏停止： <strong>+${justScore}点</strong><br>`;
+        explanation += `・<strong>超過（0.01秒〜${overLimit - 1}.99秒まで）</strong>： 1秒ごとに点数が減衰（+9, +8, +7点...）<br>`;
+        explanation += `・<strong>${overLimit}秒以上 超過</strong>： 【ドボン】となり <strong>${dobonScore}点</strong><br>`;
+        explanation += `・<strong>設定未満</strong>： <strong>${underStep}秒不足する毎</strong>に、+9, +8... -10点まで減衰されます。<br>`;
+        explanation += `・各チーム <strong>1人だけ「2倍権」</strong> を使用可能。その人の獲得点（プラスもマイナスも）が2倍になります。`;
+
+        document.getElementById('rule-text').innerHTML = explanation;
+
+        // ルールが変わったら点数も再計算
+        calculateScores();
+    }
+
+    // 2. メンバー行の動的追加
+    let memberCounter = 0;
+    function addMemberRow(teamId) {
+        memberCounter++;
+        const container = document.getElementById(`${teamId}-members`);
+        const rowId = `row-${memberCounter}`;
+        
+        const rowHtml = `
+            <div class="member-row" id="${rowId}">
+                <input type="text" placeholder="名前" value="プレイヤー ${container.children.length + 1}">
+                <input type="number" id="time-${rowId}" placeholder="秒数(秒)" step="0.01" onfocus="setActiveInput('time-${rowId}')" oninput="calculateScores()">
+                <div class="result-diff" id="diff-${rowId}">-</div>
+                <div class="result-score" id="score-${rowId}">0</div>
+                <div class="double-checkbox">
+                    <input type="checkbox" class="double-calc" id="double-${rowId}" onchange="checkDoubleLimit('${teamId}', this); calculateScores();" title="2倍権">
+                </div>
+            </div>
+        `;
+        container.insertAdjacentHTML('beforeend', rowHtml);
+    }
+
+    // 2倍権のチェック制限（1チーム1人のみ）
+    function checkDoubleLimit(teamId, checkbox) {
+        if (!checkbox.checked) return;
+        const checkboxes = document.querySelectorAll(`#${teamId}-members .double-calc`);
+        checkboxes.forEach(cb => {
+            if (cb !== checkbox) cb.checked = false;
+        });
+    }
+
+    // タイマーがフォーカスされているインプットを記憶
+    function setActiveInput(id) {
+        activeInputId = id;
+    }
+
+    // 3. 点数計算ロジック核心
+    function calculateScores() {
+        const targetSec = parseFloat(document.getElementById('cfg-target-min').value) * 60;
+        const justScore = parseInt(document.getElementById('cfg-just-score').value);
+        const overLimit = parseInt(document.getElementById('cfg-over-limit').value);
+        const dobonScore = parseInt(document.getElementById('cfg-dobon-score').value);
+        const underStep = parseInt(document.getElementById('cfg-under-step').value);
+
+        ['team1', 'team2'].forEach(teamId => {
+            let teamTotal = parseInt(document.getElementById('cfg-init-score').value) || 0;
+            const rows = document.getElementById(`${teamId}-members`).children;
+
+            for (let row of rows) {
+                const rowId = row.id;
+                const timeInput = document.getElementById(`time-${rowId}`);
+                const diffDiv = document.getElementById(`diff-${rowId}`);
+                const scoreDiv = document.getElementById(`score-${rowId}`);
+                const isDouble = document.getElementById(`double-${rowId}`).checked;
+
+                const val = parseFloat(timeInput.value);
+
+                if (isNaN(val)) {
+                    diffDiv.innerText = "-";
+                    scoreDiv.innerText = "0";
+                    diffDiv.className = "result-diff";
+                    scoreDiv.className = "result-score";
+                    continue;
+                }
+
+                // 誤差計算
+                const diff = val - targetSec;
+                let displayDiff = (diff >= 0 ? "+" : "") + diff.toFixed(2) + "秒";
+                diffDiv.innerText = displayDiff;
+
+                let pts = 0;
+
+                if (diff === 0) {
+                    // ジャスト
+                    pts = justScore;
+                    scoreDiv.className = "result-score perfect";
+                } else if (diff > 0) {
+                    // 超過
+                    if (diff >= overLimit) {
+                        // ドボン
+                        pts = dobonScore;
+                        scoreDiv.className = "result-score dobon";
+                    } else {
+                        // 減衰 (1秒ごとに-1点される例：1秒未満超過で+9, 2秒未満で+8...)
+                        let ceilOver = Math.ceil(diff);
+                        pts = justScore - ceilOver;
+                        scoreDiv.className = "result-score";
+                    }
+                } else {
+                    // 未満 (-diff は正の不足秒数)
+                    const absDiff = Math.abs(diff);
+                    // 不足ステップ数（例：2秒毎なら、0.01〜2.00秒不足で1ステップ）
+                    const steps = Math.ceil(absDiff / underStep);
+                    
+                    // 9, 8, 7... と減衰し、最低 -10 まで
+                    let calculatedPts = justScore - steps;
+                    if (calculatedPts < -10) calculatedPts = -10;
+                    
+                    pts = calculatedPts;
+                    scoreDiv.className = pts < 0 ? "result-score dobon" : "result-score";
+                }
+
+                // 2倍権の適用
+                if (isDouble) {
+                    pts = pts * 2;
+                    scoreDiv.innerText = pts + "点 (x2)";
+                } else {
+                    scoreDiv.innerText = pts + "点";
+                }
+
+                teamTotal += pts;
+            }
+
+            document.getElementById(`${teamId}-total`).innerText = teamTotal;
+        });
+    }
+
+    // 4. タイマー制御ロジック
+    function startTimer() {
+        startTime = Date.now() - elapsedTime;
+        timerInterval = setInterval(updateTimerDisplay, 10);
+        document.getElementById('btn-start').disabled = true;
+        document.getElementById('btn-stop').disabled = false;
+    }
+
+    function stopTimer() {
+        clearInterval(timerInterval);
+        document.getElementById('btn-start').disabled = false;
+        document.getElementById('btn-stop').disabled = true;
+
+        // 停止時の秒数を取得
+        const finalSeconds = (elapsedTime / 1000).toFixed(2);
+
+        // アクティブな入力欄、または最初に見つかった空の入力欄に数値を流し込む
+        if (activeInputId) {
+            document.getElementById(activeInputId).value = finalSeconds;
+        } else {
+            // 空いている欄を探す
+            const allInputs = document.querySelectorAll('input[id^="time-"]');
+            for (let input of allInputs) {
+                if (input.value === "") {
+                    input.value = finalSeconds;
+                    break;
+                }
+            }
+        }
+        calculateScores();
+    }
+
+    function resetTimer() {
+        clearInterval(timerInterval);
+        elapsedTime = 0;
+        document.getElementById('timer-display').innerText = "00:00.00";
+        document.getElementById('btn-start').disabled = false;
+        document.getElementById('btn-stop').disabled = true;
+    }
+
+    function updateTimerDisplay() {
+        elapsedTime = Date.now() - startTime;
+        
+        let min = Math.floor(elapsedTime / 60000);
+        let sec = Math.floor((elapsedTime % 60000) / 1000);
+        let ms = Math.floor((elapsedTime % 1000) / 10);
+
+        min = String(min).padStart(2, '0');
+        sec = String(sec).padStart(2, '0');
+        ms = String(ms).padStart(2, '0');
+
+        document.getElementById('timer-display').innerText = `${min}:${sec}.${ms}`;
+    }
+</script>
+
+</body>
+</html>
