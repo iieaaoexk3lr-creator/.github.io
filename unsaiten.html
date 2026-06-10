@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>本格スロット式・カラオケ運ゲー採点</title>
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+    <style>
+        :root {
+            --primary-color: #e84118;
+            --slot-bg: #1e272e;
+            --slot-border: #fbc531;
+        }
+        body {
+            font-family: 'Helvetica Neue', Arial, sans-serif;
+            background-color: #2f3640;
+            color: #f5f6fa;
+            margin: 0;
+            padding: 15px;
+            display: flex;
+            justify-content: center;
+        }
+        .container {
+            max-width: 480px;
+            width: 100%;
+            background: #353b48;
+            padding: 20px;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            box-sizing: border-box;
+        }
+        h2 {
+            text-align: center;
+            color: #fbc531;
+            margin: 0 0 15px 0;
+            text-shadow: 0 0 10px rgba(251, 197, 49, 0.5);
+        }
+        .input-group {
+            margin-bottom: 15px;
+            display: flex;
+            gap: 10px;
+        }
+        input[type="text"] {
+            flex: 1;
+            padding: 10px;
+            border-radius: 8px;
+            border: none;
+            font-size: 16px;
+        }
+        /* スロット共通デザイン */
+        .slot-machine {
+            background: var(--slot-bg);
+            border: 4px solid var(--slot-border);
+            border-radius: 12px;
+            padding: 15px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+            box-shadow: inset 0 0 20px rgba(0,0,0,0.8);
+            margin-bottom: 15px;
+        }
+        .reel {
+            background: #ffffff;
+            color: #1e272e;
+            font-size: 36px;
+            font-weight: bold;
+            width: 60px;
+            height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 8px;
+            border: 2px solid #718093;
+            box-shadow: inset 0 0 10px rgba(0,0,0,0.3);
+        }
+        .reel.text-reel {
+            width: auto;
+            padding: 0 15px;
+            font-size: 24px;
+        }
+        .reel.active-dir {
+            background: #4cd137;
+            color: white;
+            border-color: #4cd137;
+        }
+        .reel.active-num {
+            background: #e84118;
+            color: white;
+            border-color: #e84118;
+            text-shadow: 0 0 5px rgba(255,255,255,0.8);
+        }
+        
+        /* 写真アップロード（2ボタン構成に変更） */
+        .upload-block-container {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        .upload-box {
+            flex: 1;
+            border: 3px dashed #718093;
+            padding: 15px 10px;
+            border-radius: 10px;
+            cursor: pointer;
+            background: rgba(255,255,255,0.05);
+            text-align: center;
+            transition: background 0.2s;
+        }
+        .upload-box:hover {
+            background: rgba(255,255,255,0.1);
+        }
+        #preview {
+            max-width: 100%;
+            max-height: 150px;
+            display: none;
+            margin: 10px auto 0 auto;
+            border-radius: 5px;
+        }
+        button {
+            background: #00a8ff;
+            color: white;
+            border: none;
+            padding: 12px;
+            font-size: 16px;
+            font-weight: bold;
+            border-radius: 25px;
+            cursor: pointer;
+            width: 100%;
+            box-shadow: 0 4px 10px rgba(0, 168, 255, 0.3);
+            margin-bottom: 10px;
+        }
+        button:disabled {
+            background: #718093;
+            box-shadow: none;
+            cursor: not-allowed;
+        }
+        .action-btns {
+            display: flex;
+            gap: 10px;
+        }
+        .btn-retry { background: #e1b12c; box-shadow: 0 4px 10px rgba(225, 177, 44, 0.3); }
+        .btn-confirm { background: #4cd137; box-shadow: 0 4px 10px rgba(76, 209, 55, 0.3); }
+        
+        /* 履歴エリア */
+        .history-section {
+            margin-top: 20px;
+            background: rgba(0,0,0,0.2);
+            padding: 15px;
+            border-radius: 12px;
+        }
+        .history-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        select {
+            padding: 5px 10px;
+            border-radius: 5px;
+            background: #2f3640;
+            color: white;
+            border: 1px solid #718093;
+        }
+        .history-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            max-height: 150px;
+            overflow-y: auto;
+        }
+        .history-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 10px;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            font-size: 14px;
+        }
+        .history-item:first-child { background: rgba(255,255,255,0.05); }
+        .status { text-align: center; font-weight: bold; color: #fbc531; margin: 10px 0; min-height: 20px; font-size: 14px;}
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>🎰 運ゲー採点 SLOT MACHINE</h2>
+
+    <div class="input-group" id="playerBlock">
+        <input type="text" id="playerName" placeholder="挑戦者の名前を入力（例：たかし）">
+    </div>
+
+    <div class="slot-machine">
+        <div class="reel active-dir" id="dirReel">？</div>
+        <div class="reel text-reel">か</div>
+        <div class="reel text-reel">ら</div>
+        <div class="reel text-reel">の</div>
+        <div class="reel text-reel">スキャン</div>
+    </div>
+    <button id="dirBtn" onclick="spinDirectionSlot()">① スキャン方向を決める</button>
+
+    <div id="uploadGroup" style="opacity: 0.4; pointer-events: none;">
+        <div class="upload-block-container">
+            <div class="upload-box" onclick="document.getElementById('cameraInput').click()">
+                <span style="font-size: 24px;">📸</span>
+                <p style="margin: 5px 0 0 0; font-size: 13px; font-weight: bold;">その場で撮影</p>
+                <input type="file" id="cameraInput" accept="image/*" capture="environment" style="display: none;" onchange="loadImage(this)">
+            </div>
+            <div class="upload-box" onclick="document.getElementById('folderInput').click()">
+                <span style="font-size: 24px;">📁</span>
+                <p style="margin: 5px 0 0 0; font-size: 13px; font-weight: bold;">フォルダから選ぶ</p>
+                <input type="file" id="folderInput" accept="image/*" style="display: none;" onchange="loadImage(this)">
+            </div>
+        </div>
+        <div style="text-align: center;">
+            <img id="preview" alt="プレビュー">
+        </div>
+    </div>
+
+    <div class="slot-machine" style="margin-top: 15px;">
+        <div class="reel" id="numReel1">？</div>
+        <div class="reel" id="numReel2">？</div>
+        <div class="reel" id="numReel3">？</div>
+        <div class="reel text-reel">点</div>
+    </div>
+    <button id="scanBtn" style="display:none;" onclick="startOcrAndScoreSlot()">② 運命のスキャン開始！</button>
+    <div id="status" class="status"></div>
+
+    <div class="action-btns" id="actionBlock" style="display: none;">
+        <button class="btn-retry" id="retryBtn" onclick="rematch()">🙅‍♂️ 不服！引き直す(1回迄)</button>
+        <button class="btn-confirm" onclick="confirmScore()">🎯 この得点で確定</button>
+    </div>
+
+    <div class="history-section">
+        <div class="history-header">
+            <span>📊 スコア履歴</span>
+            <select id="filterSelect" onchange="renderHistory()">
+                <option value="time">挑戦順</option>
+                <option value="desc">得点が高い順</option>
+                <option value="asc">得点が低い順</option>
+            </select>
+        </div>
+        <ul class="history-list" id="historyList"></ul>
+    </div>
+</div>
+
+<canvas id="rotateCanvas" style="display:none;"></canvas>
+
+<script>
+    const directions = ["上", "右", "下", "left"]; // AI内部処理用。画面表示は日本語に変えます
+    const directionsJA = ["上", "右", "下", "左"];
+    let chosenDirIndex = null;
+    let originalImageSrc = null;
+    let finalScoreString = "000";
+    let hasRetried = false;
+    let historyData = [];
+
+    // --- ① 方向スロットを回す ---
+    function spinDirectionSlot() {
+        const name = document.getElementById('playerName').value.trim();
+        if(!name) { alert("挑戦者の名前を入力してください！"); return; }
+        
+        document.getElementById('dirBtn').disabled = true;
+        document.getElementById('playerName').disabled = true;
+        
+        let count = 0;
+        const interval = setInterval(() => {
+            document.getElementById('dirReel').innerText = directionsJA[count % 4];
+            count++;
+            if (count > 15) {
+                clearInterval(interval);
+                chosenDirIndex = Math.floor(Math.random() * 4);
+                document.getElementById('dirReel').innerText = directionsJA[chosenDirIndex];
+                
+                // 写真エリアを解放
+                document.getElementById('uploadGroup').style.opacity = "1";
+                document.getElementById('uploadGroup').style.pointerEvents = "auto";
+                document.getElementById('dirBtn').style.display = "none";
+            }
+        }, 80);
+    }
+
+    // --- 写真の読み込み（カメラ・フォルダ共通） ---
+    function loadImage(input) {
+        const file = input.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                originalImageSrc = e.target.result;
+                document.getElementById('preview').src = originalImageSrc;
+                document.getElementById('preview').style.display = 'block';
+                document.getElementById('scanBtn').style.display = 'block';
+                document.getElementById('status').innerText = "📸 写真がセットされました！ボタンを押してスキャンしてください。";
+            }
+            reader.readAsDataURL(file);
+        }
+    }
+
+    // --- ② OCR開始と得点スロット演出 ---
+    async function startOcrAndScoreSlot() {
+        document.getElementById('scanBtn').disabled = true;
+        const statusDiv = document.getElementById('status');
+        statusDiv.innerText = "⏳ 画像解析中... 数字を抽出しています...";
+
+        const rotatedBlob = await rotateImage(originalImageSrc, chosenDirIndex);
+
+        try {
+            const worker = await Tesseract.createWorker('eng');
+            await worker.setParameters({ tessedit_char_whitelist: '0123456789' });
+            const { data } = await worker.recognize(rotatedBlob);
+            const allNumbers = data.text.replace(/[^0-9]/g, '').split('');
+            await worker.terminate();
+
+            if (allNumbers.length >= 3) {
+                statusDiv.innerText = "🎰 解析完了！スロットスタート！";
+                document.getElementById('scanBtn').style.display = 'none';
+                runScoreSlotAnimation(allNumbers.slice(0, 3));
+            } else {
+                statusDiv.innerText = `❌ 数字が${allNumbers.length}個しか見つかりません。別の写真にするか、明るく撮り直してね。`;
+                document.getElementById('scanBtn').disabled = false;
+            }
+        } catch (e) {
+            console.error(e);
+            statusDiv.innerText = "⚠️ エラーが発生しました。";
+            document.getElementById('scanBtn').disabled = false;
+        }
+    }
+
+    function runScoreSlotAnimation(targetDigits) {
+        const reels = [
+            document.getElementById('numReel1'),
+            document.getElementById('numReel2'),
+            document.getElementById('numReel3')
+        ];
+        
+        finalScoreString = targetDigits.join('');
+
+        const spinInterval = setInterval(() => {
+            reels.forEach((reel, i) => {
+                if (!reel.classList.contains('active-num')) {
+                    reel.innerText = Math.floor(Math.random() * 10);
+                }
+            });
+        }, 50);
+
+        targetDigits.forEach((digit, index) => {
+            setTimeout(() => {
+                reels[index].classList.add('active-num');
+                reels[index].innerText = digit;
+                
+                if (index === 2) {
+                    clearInterval(spinInterval);
+                    document.getElementById('status').innerText = "🎉 スコア確定！";
+                    document.getElementById('actionBlock').style.style.display = 'flex';
+                }
+            }, (index + 1) * 2000);
+        });
+    }
+
+    function rematch() {
+        hasRetried = true;
+        addHistory(true);
+
+        const reels = ['numReel1', 'numReel2', 'numReel3'];
+        reels.forEach(id => {
+            const r = document.getElementById(id);
+            r.innerText = "？";
+            r.classList.remove('active-num');
+        });
+
+        document.getElementById('actionBlock').style.display = 'none';
+        document.getElementById('status').innerText = "🔄 ラストチャンス！もう一度スキャンします。";
+        
+        setTimeout(() => {
+            startOcrAndScoreSlot();
+        }, 1000);
+    }
+
+    function confirmScore() {
+        addHistory(false);
+        alert("スコアが確定しました！次のプレイヤーへ交代してください。");
+        resetForNextPlayer();
+    }
+
+    function addHistory(isRematchTrigger) {
+        const name = document.getElementById('playerName').value.trim();
+        const scoreStr = finalScoreString;
+        const displayScore = parseInt(scoreStr, 10);
+        
+        let label = "";
+        if (isRematchTrigger) label = " (※引き直し前)";
+        else if (hasRetried) label = " (※引き直し後)";
+
+        historyData.push({
+            id: Date.now() + Math.random(),
+            name: name,
+            score: displayScore,
+            scoreStr: scoreStr,
+            label: label,
+            time: new Date()
+        });
+
+        renderHistory();
+    }
+
+    function renderHistory() {
+        const list = document.getElementById('historyList');
+        const filter = document.getElementById('filterSelect').value;
+        list.innerHTML = "";
+
+        let sortedData = [...historyData];
+        if (filter === 'desc') { sortedData.sort((a, b) => b.score - a.score); }
+        else if (filter === 'asc') { sortedData.sort((a, b) => a.score - b.score); }
+        else { sortedData.sort((a, b) => a.time - b.time); }
+
+        sortedData.forEach(item => {
+            const li = document.createElement('li');
+            li.className = "history-item";
+            li.innerHTML = `<span>👤 <strong>${item.name}</strong>${item.label}</span>
+                            <span style="color:#fbc531; font-weight:bold;">${item.scoreStr} 点</span>`;
+            list.appendChild(li);
+        });
+    }
+
+    function resetForNextPlayer() {
+        hasRetried = false;
+        document.getElementById('playerName').disabled = false;
+        document.getElementById('playerName').value = "";
+        document.getElementById('dirBtn').disabled = false;
+        document.getElementById('dirBtn').style.display = "block";
+        document.getElementById('dirReel').innerText = "？";
+        
+        document.getElementById('uploadGroup').style.opacity = "0.4";
+        document.getElementById('uploadGroup').style.pointerEvents = "none";
+        document.getElementById('preview').style.display = 'none';
+        document.getElementById('cameraInput').value = "";
+        document.getElementById('folderInput').value = "";
+        
+        const reels = ['numReel1', 'numReel2', 'numReel3'];
+        reels.forEach(id => {
+            const r = document.getElementById(id);
+            r.innerText = "？";
+            r.classList.remove('active-num');
+        });
+        
+        document.getElementById('actionBlock').style.style.display = 'none';
+        document.getElementById('status').innerText = "";
+    }
+
+    function rotateImage(imageSrc, dirIndex) {
+        return new Promise((resolve) => {
+            const img = new Image();
+            img.onload = function() {
+                const canvas = document.getElementById('rotateCanvas');
+                const ctx = canvas.getContext('2d');
+                if (dirIndex === 1 || dirIndex === 3) { canvas.width = img.height; canvas.height = img.width; }
+                else { canvas.width = img.width; canvas.height = img.height; }
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                ctx.save();
+                if (dirIndex === 1) { ctx.translate(canvas.width, 0); ctx.rotate(90 * Math.PI / 180); }
+                else if (dirIndex === 2) { ctx.translate(canvas.width, canvas.height); ctx.rotate(180 * Math.PI / 180); }
+                else if (dirIndex === 3) { ctx.translate(0, canvas.height); ctx.rotate(-90 * Math.PI / 180); }
+                ctx.drawImage(img, 0, 0); ctx.restore();
+                canvas.toBlob((blob) => resolve(blob), 'image/jpeg');
+            };
+            img.src = imageSrc;
+        });
+    }
+</script>
+
+</body>
+</html>
