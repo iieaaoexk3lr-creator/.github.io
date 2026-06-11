@@ -3,13 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Webカメラ指先心拍計 - 病院モニター風</title>
+    <title>Webカメラ指先心拍計 - フルレポート版</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         body {
             font-family: 'Helvetica Neue', Arial, sans-serif;
-            background-color: #0d1117; /* 病院のモニター風にダークモード化 */
+            background-color: #0d1117;
             color: #c9d1d9;
             margin: 0;
             padding: 20px;
@@ -63,10 +63,6 @@
             color: #58a6ff;
             font-size: 0.95rem;
         }
-        .instruction-box ol {
-            margin: 0;
-            padding-left: 20px;
-        }
 
         .input-group {
             margin-bottom: 20px;
@@ -89,7 +85,7 @@
             box-sizing: border-box;
         }
 
-        /* 【新規】モニターレイアウト（心拍計・タイマー・カメラ） */
+        /* モニターレイアウト */
         .monitor-panel {
             background: #000;
             border: 2px solid #30363d;
@@ -105,7 +101,6 @@
             margin-bottom: 10px;
         }
 
-        /* 【新規】経過時間タイマー */
         .timer-display {
             font-family: 'Courier New', Courier, monospace;
             font-size: 1.1rem;
@@ -134,7 +129,7 @@
             text-align: center;
             font-size: 3.5rem;
             font-weight: bold;
-            color: #39ff14; /* 病院っぽいネオングリーン */
+            color: #39ff14;
             margin: 5px 0;
             text-shadow: 0 0 10px rgba(57, 255, 20, 0.5);
         }
@@ -143,7 +138,7 @@
             color: #8b949e;
         }
 
-        /* 【新規】病院風リアルタイム心電図グラフ */
+        /* リアルタイム心電図グラフ */
         .chart-container {
             width: 100%;
             height: 120px;
@@ -153,29 +148,46 @@
             padding: 5px;
             box-sizing: border-box;
         }
+        
+        #status {
+            text-align: center;
+            font-size: 0.85rem;
+            color: #8b949e;
+            margin-bottom: 15px;
+        }
 
-        /* 結果表示エリア */
+        /* 【大幅変更】結果表示エリア（画像保存対象） */
         #result-card {
             background: #161b22;
-            border: 1px solid #30363d;
+            border: 2px solid #30363d;
             border-radius: 12px;
-            padding: 16px;
+            padding: 20px;
             margin-bottom: 20px;
             color: #c9d1d9;
         }
         #result-card h2 {
-            font-size: 1.1rem;
+            font-size: 1.2rem;
             margin-top: 0;
             border-bottom: 2px solid #30363d;
-            padding-bottom: 6px;
+            padding-bottom: 8px;
             color: #58a6ff;
+            text-align: center;
+        }
+        .report-meta {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 15px;
+            font-size: 0.95rem;
+            background: #21262d;
+            padding: 8px 12px;
+            border-radius: 6px;
         }
         .stats-grid {
             display: grid;
-            grid-template-columns: repeat(3, 1fr);
+            grid-template-columns: repeat(2, 1fr);
             gap: 10px;
             text-align: center;
-            margin-top: 12px;
+            margin-bottom: 15px;
         }
         .stat-box {
             background: #21262d;
@@ -183,22 +195,37 @@
             border-radius: 8px;
             border: 1px solid #30363d;
         }
+        .stat-box.full-width {
+            grid-column: span 2;
+            background: #1f242c;
+            border-color: #58a6ff;
+        }
         .stat-label {
-            font-size: 0.75rem;
+            font-size: 0.8rem;
             color: #8b949e;
             margin-bottom: 4px;
         }
         .stat-value {
-            font-size: 1.2rem;
+            font-size: 1.4rem;
             font-weight: bold;
             color: #ff7b72;
         }
-        
-        #status {
-            text-align: center;
-            font-size: 0.85rem;
+        .stat-value.highlight {
+            color: #39ff14;
+            font-size: 1.8rem;
+        }
+        /* レポート画像に埋め込む用の静止グラフ領域 */
+        .report-chart-title {
+            font-size: 0.8rem;
             color: #8b949e;
-            margin-bottom: 15px;
+            margin-bottom: 5px;
+        }
+        .report-chart-container {
+            width: 100%;
+            height: 90px;
+            background: #000;
+            border-radius: 6px;
+            border: 1px solid #30363d;
         }
 
         /* ボタン類 */
@@ -229,15 +256,14 @@
     <h1>指先脈波モニター</h1>
     
     <div id="lineWarning" class="line-warning">
-        ⚠️ 警告: LINE等のアプリ内ブラウザでは動きません。<br>
-        画面右上などのメニューから「ブラウザで開く」を選び、SafariやChromeで開き直してください。
+        ⚠️ 警告: LINE等のアプリ内ブラウザでは動きません。標準ブラウザで開き直してください。
     </div>
 
     <div class="instruction-box">
         <h3>💡 測定のコツ</h3>
-        <ol>
-            <li>カメラとライトを指の腹で同時にピタッと塞ぎます。</li>
-            <li><strong>強く押し付けすぎず、そっと触れる程度</strong>にすると血流の変化（グラフの波）が出やすくなります。</li>
+        <ol style="margin:0; padding-left:20px; font-size:0.85rem;">
+            <li>カメラとライトを指の腹で同時にそっと塞ぎます。</li>
+            <li>押し付けすぎず、グラフの波が一番大きく上下に揺れる強さを探してください。</li>
         </ol>
     </div>
     
@@ -265,9 +291,17 @@
     <div id="status">「測定開始」ボタンを押してください</div>
 
     <div id="result-card">
-        <h2>測定結果レポート</h2>
-        <div><strong>氏名:</strong> <span id="reportName">ゲスト</span></div>
+        <h2>脈波測定結果レポート</h2>
+        <div class="report-meta">
+            <div><strong>氏名:</strong> <span id="reportName">ゲスト</span></div>
+            <div><strong>測定時間:</strong> <span id="reportDuration">0秒</span></div>
+        </div>
+        
         <div class="stats-grid">
+            <div class="stat-box full-width">
+                <div class="stat-label">終了時のリアルタイムBPM</div>
+                <div id="lastBpm" class="stat-value highlight">--</div>
+            </div>
             <div class="stat-box">
                 <div class="stat-label">最高心拍</div>
                 <div id="maxBpm" class="stat-value">--</div>
@@ -276,10 +310,15 @@
                 <div class="stat-label">最低心拍</div>
                 <div id="minBpm" class="stat-value">--</div>
             </div>
-            <div class="stat-box">
-                <div class="stat-label">全体平均</div>
-                <div id="avgBpm" class="stat-value">--</div>
+            <div class="stat-box full-width" style="background:#1f242c;">
+                <div class="stat-label">全体平均心拍</div>
+                <div id="avgBpm" class="stat-value" style="color:#58a6ff;">--</div>
             </div>
+        </div>
+
+        <div class="report-chart-title">📊 終了時の波形記録</div>
+        <div class="report-chart-container">
+            <canvas id="reportChart"></canvas>
         </div>
     </div>
 
@@ -298,10 +337,12 @@
     // UI要素
     const userNameInput = document.getElementById('userName');
     const reportName = document.getElementById('reportName');
+    const reportDuration = document.getElementById('reportDuration');
     const startBtn = document.getElementById('startBtn');
     const saveBtn = document.getElementById('saveBtn');
     const resetBtn = document.getElementById('resetBtn');
     const displayBpm = document.getElementById('displayBpm');
+    const lastBpmText = document.getElementById('lastBpm');
     const maxBpmText = document.getElementById('maxBpm');
     const minBpmText = document.getElementById('minBpm');
     const avgBpmText = document.getElementById('avgBpm');
@@ -313,91 +354,110 @@
     let animationId = null;
     let isMeasuring = false;
 
-    // タイマー用変数
+    // タイマー用
     let startTime = 0;
+    let elapsedSeconds = 0;
     let timerInterval = null;
 
-    // 心拍計算用データ
-    let rValues = [];
-    let timestamps = [];
+    // アルゴリズム用データ群
+    let rawValues = []; 
+    let smoothedValues = [];
     let bpmHistory = [];
-    
-    // 【新規】Chart.jsの初期化（病院モニター風グラフ設定）
+    const maxPoints = 60; 
+
+    // 【1】動的波形用グラフの初期化
     const chartCtx = document.getElementById('pulseChart').getContext('2d');
-    const maxGraphPoints = 60; // 画面内に表示する点の数
     const pulseChart = new Chart(chartCtx, {
         type: 'line',
         data: {
-            labels: Array(maxGraphPoints).fill(''),
+            labels: Array(maxPoints).fill(''),
             datasets: [{
-                label: '脈波(血流変化)',
-                data: Array(maxGraphPoints).fill(0),
-                borderColor: '#39ff14', // ネオングリーン
+                data: Array(maxPoints).fill(0),
+                borderColor: '#39ff14',
                 borderWidth: 2,
-                pointRadius: 0, // 点を非表示にして滑らかに
-                tension: 0.4    // 線をなめらかにカーブさせる
+                pointRadius: 0,
+                tension: 0.3
             }]
         },
         options: {
-            responsive: true,
-            maintainAspectRatio: false,
+            responsive: true, maintainAspectRatio: false,
             plugins: { legend: { display: false } },
-            scales: {
-                x: { display: false },
-                y: { display: false } // 波形の変化だけ見せるため軸は非表示
-            }
+            scales: { x: { display: false }, y: { display: false } }
         }
     });
 
-    // LINE等のインアプリブラウザ判定
+    // 【2】レポート用静止グラフの初期化
+    const reportChartCtx = document.getElementById('reportChart').getContext('2d');
+    const reportChart = new Chart(reportChartCtx, {
+        type: 'line',
+        data: {
+            labels: Array(maxPoints).fill(''),
+            datasets: [{
+                data: Array(maxPoints).fill(0),
+                borderColor: '#58a6ff', // レポート側は綺麗な青色
+                borderWidth: 2,
+                pointRadius: 0,
+                tension: 0.3
+            }]
+        },
+        options: {
+            responsive: true, maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: { x: { display: false }, y: { display: false } }
+        }
+    });
+
+    // アプリ内ブラウザ判定
     window.addEventListener('DOMContentLoaded', () => {
         const ua = navigator.userAgent.toLowerCase();
         if (ua.indexOf('line') > -1 || ua.indexOf('fban') > -1 || ua.indexOf('fbav') > -1 || ua.indexOf('instagram') > -1) {
             lineWarning.style.display = 'block';
-            alert('LINEなどのアプリ内ブラウザでは動作しません。標準ブラウザで開き直してください。');
         }
     });
 
-    // 名前入力の同期
     userNameInput.addEventListener('input', () => {
         reportName.textContent = userNameInput.value || 'ゲスト';
     });
 
-    // 測定開始・停止
     startBtn.addEventListener('click', async () => {
-        if (isMeasuring) {
-            stopMeasurement();
-        } else {
-            await startMeasurement();
-        }
+        if (isMeasuring) { stopMeasurement(); } else { await startMeasurement(); }
     });
 
     // リセットボタン
     resetBtn.addEventListener('click', () => {
         stopMeasurement();
         clearInterval(timerInterval);
+        elapsedSeconds = 0;
         timerDisplay.textContent = "TIME: 00:00";
         userNameInput.value = 'ゲスト';
         reportName.textContent = 'ゲスト';
+        reportDuration.textContent = '0秒';
         displayBpm.innerHTML = '-- <span>BPM</span>';
+        lastBpmText.textContent = '--';
         maxBpmText.textContent = '--';
         minBpmText.textContent = '--';
         avgBpmText.textContent = '--';
         bpmHistory = [];
-        
-        // グラフの初期化
-        pulseChart.data.datasets[0].data = Array(maxGraphPoints).fill(0);
+        rawValues = [];
+        smoothedValues = [];
+        pulseChart.data.datasets[0].data = Array(maxPoints).fill(0);
         pulseChart.update();
-        
-        statusText.textContent = "リセットされました。「測定開始」を押してください。";
+        reportChart.data.datasets[0].data = Array(maxPoints).fill(0);
+        reportChart.update();
+        statusText.textContent = "リセットされました。";
     });
 
     // 画像保存ボタン
     saveBtn.addEventListener('click', () => {
+        // 保存する直前に、現在の動的波形をレポート用グラフにコピーして焼き付ける
+        reportChart.data.datasets[0].data = [...pulseChart.data.datasets[0].data];
+        reportChart.update('none');
+
         const resultCard = document.getElementById('result-card');
         statusText.textContent = "画像を生成中...";
         
-        html2canvas(resultCard, { backgroundColor: '#161b22' }).then(canvas => {
+        // 暗い背景が保たれるようにオプションを指定
+        html2canvas(resultCard, { backgroundColor: '#161b22', useCORS: true }).then(canvas => {
             const link = document.createElement('a');
             const name = userNameInput.value || 'ゲスト';
             link.download = `sinpaku-${name}.png`;
@@ -426,12 +486,10 @@
             isMeasuring = true;
             startBtn.textContent = '測定停止';
             startBtn.style.backgroundColor = '#f85149';
-            statusText.textContent = "解析中... 指先でカメラをしっかり覆ってください。";
+            statusText.textContent = "解析中...";
             
-            rValues = [];
-            timestamps = [];
-
-            // 【新規】タイマーの作動
+            rawValues = [];
+            smoothedValues = [];
             startTime = Date.now();
             timerInterval = setInterval(updateTimer, 1000);
             
@@ -442,99 +500,97 @@
         }
     }
 
-    // 測定停止
     function stopMeasurement() {
         isMeasuring = false;
         startBtn.textContent = '測定開始';
         startBtn.style.backgroundColor = '#238636';
-        statusText.textContent = "測定を停止しました。";
-
-        if (animationId) cancelAnimationFrame(animationId);
-        clearInterval(timerInterval); // タイマー停止
+        statusText.textContent = "測定を終了しました。結果を保存できます。";
+        clearInterval(timerInterval);
         if (stream) {
             stream.getTracks().forEach(track => track.stop());
         }
     }
 
-    // 【新規】タイマー表示更新関数
     function updateTimer() {
-        const elapsedMs = Date.now() - startTime;
-        const totalSec = Math.floor(elapsedMs / 1000);
-        const min = String(Math.floor(totalSec / 60)).padStart(2, '0');
-        const sec = String(totalSec % 60).padStart(2, '0');
+        elapsedSeconds++;
+        const min = String(Math.floor(elapsedSeconds / 60)).padStart(2, '0');
+        const sec = String(elapsedSeconds % 60).padStart(2, '0');
         timerDisplay.textContent = `TIME: ${min}:${sec}`;
+        reportDuration.textContent = `${elapsedSeconds}秒`; // レポート領域に秒数を反映
     }
 
-    // メイン解析ループ
+    // 核心となる解析ループ
+    let lastBPMUpdateTime = 0;
+    let crossTimestamps = [];
+
     function loop() {
         if (!isMeasuring) return;
 
         if (video.readyState === video.HAVE_ENOUGH_DATA) {
-            canvas.width = 50; 
-            canvas.height = 50; 
+            canvas.width = 30; canvas.height = 30; // 処理高速化のためコンパクトに
             ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
             const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
             const data = imgData.data;
 
-            let rSum = 0;
+            // R(赤)だけでなく、G(緑)も混ぜることで皮膚の色の補正がかかり、脈動が浮き彫りになります
+            let totalValue = 0;
             for (let i = 0; i < data.length; i += 4) {
-                rSum += data[i]; 
+                totalValue += (data[i] - data[i+1]); // 赤から緑を引くと、血流変化が強調される
             }
-            const rAvg = rSum / (data.length / 4);
+            const avgValue = totalValue / (data.length / 4);
             
-            const now = performance.now();
-            rValues.push(rAvg);
-            timestamps.push(now);
+            rawValues.push(avgValue);
+            if (rawValues.length > 150) rawValues.shift();
 
-            // 【新規】リアルタイム波形グラフのデータ更新
-            pulseChart.data.datasets[0].data.push(rAvg);
-            pulseChart.data.datasets[0].data.shift();
-            pulseChart.update('none'); // パフォーマンス優先で描画アニメーションを切る
+            // 新アルゴリズム①: 簡単な移動平均フィルタ（細かいガタガタノイズを除去）
+            if (rawValues.length >= 5) {
+                let sum = 0;
+                for(let j = rawValues.length - 5; j < rawValues.length; j++) sum += rawValues[j];
+                const smoothed = sum / 5;
+                smoothedValues.push(smoothed);
+                if (smoothedValues.length > 120) smoothedValues.shift();
 
-            if (rValues.length > 100) {
-                rValues.shift();
-                timestamps.shift();
-                calculateBPM();
+                // 画面上のリアルタイム動的グラフを更新
+                pulseChart.data.datasets[0].data.push(smoothed);
+                pulseChart.data.datasets[0].data.shift();
+                pulseChart.update('none');
+
+                // 新アルゴリズム②: ゼロ交差（ベースライン交差）法によるBPM算出
+                // データの平均線を波が「下から上へ突き抜けた瞬間」の間隔を計算します。
+                if (smoothedValues.length >= 60) {
+                    const baseLine = smoothedValues.reduce((a,b)=>a+b, 0) / smoothedValues.length;
+                    const lastIdx = smoothedValues.length - 1;
+                    
+                    // 前のフレームが平均線以下で、現在のフレームが平均線を超えたか？
+                    if (smoothedValues[lastIdx - 1] <= baseLine && smoothedValues[lastIdx] > baseLine) {
+                        const nowTime = performance.now();
+                        crossTimestamps.push(nowTime);
+                        if (crossTimestamps.length > 10) crossTimestamps.shift();
+
+                        if (crossTimestamps.length >= 2) {
+                            const lastInterval = crossTimestamps[crossTimestamps.length - 1] - crossTimestamps[crossTimestamps.length - 2];
+                            // 脈拍として妥当な間隔（450ms〜1200ms）のみ採用
+                            if (lastInterval > 430 && lastInterval < 1200) {
+                                const calculatedBpm = Math.round(60000 / lastInterval);
+                                
+                                // 頻繁な画面のチラつきを抑えるため、0.5秒に1回以上のみ数値を更新
+                                if (nowTime - lastBPMUpdateTime > 500) {
+                                    displayBpm.innerHTML = `${calculatedBpm} <span>BPM</span>`;
+                                    lastBpmText.textContent = calculatedBpm; // レポート用「最後の瞬間のBPM」
+                                    updateStatistics(calculatedBpm);
+                                    lastBPMUpdateTime = nowTime;
+                                }
+                            }
+                        }
+                    }
+                }
             }
         }
         animationId = requestAnimationFrame(loop);
     }
 
-    // BPM（心拍数）計算（※感度を少し上げました）
-    function calculateBPM() {
-        const avgR = rValues.reduce((a, b) => a + b, 0) / rValues.length;
-        let lastPeakTime = 0;
-        let peakIntervals = [];
-
-        for (let i = 1; i < rValues.length - 1; i++) {
-            // 【感度調整】しきい値を「avgR + 0.2」から「avgR + 0.08」に引き下げ、小さな変化も検知
-            if (rValues[i] > rValues[i-1] && rValues[i] > rValues[i+1] && rValues[i] > avgR + 0.08) {
-                const time = timestamps[i];
-                if (lastPeakTime > 0) {
-                    const interval = time - lastPeakTime;
-                    if (interval > 400 && interval < 1200) {
-                        peakIntervals.push(interval);
-                    }
-                }
-                lastPeakTime = time;
-            }
-        }
-
-        if (peakIntervals.length >= 2) {
-            const avgInterval = peakIntervals.reduce((a, b) => a + b, 0) / peakIntervals.length;
-            const bpm = Math.round(60000 / avgInterval);
-
-            if (bpm >= 45 && bpm <= 160) {
-                displayBpm.innerHTML = `${bpm} <span>BPM</span>`;
-                updateStatistics(bpm);
-            }
-        }
-    }
-
-    // 統計の更新
     function updateStatistics(currentBpm) {
         bpmHistory.push(currentBpm);
-
         const max = Math.max(...bpmHistory);
         const min = Math.min(...bpmHistory);
         const sum = bpmHistory.reduce((a, b) => a + b, 0);
