@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>カラオケ部屋割りツール（ファイル読み込み版）</title>
+    <title>カラオケ部屋割りツール（ファイル読み込み修正版）</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <style>
         body { font-family: sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; background: #f5f5f5; color: #333; }
@@ -22,7 +22,7 @@
         .btn-danger { background: #dc3545; }
         .btn-danger:hover { background: #bd2130; }
         
-        /* ファイル入力エリアのデザイン */
+        /* ファイル入力エリア */
         .file-input-area { background: #e9ecef; padding: 15px; border-radius: 6px; border: 2px dashed #ced4da; text-align: center; margin-bottom: 15px; }
         .file-input-area input[type="file"] { display: none; }
         .file-label { background: #6c757d; color: white; padding: 8px 15px; border-radius: 4px; cursor: pointer; display: inline-block; font-size: 14px; }
@@ -56,7 +56,7 @@
         .result-member-badge:hover { background: #bae6fd; }
         .result-header { font-size: 18px; font-weight: bold; color: #007bff; margin-bottom: 10px; border-bottom: 2px solid #e9ecef; padding-bottom: 5px; }
         
-        /* オプション選択トグル */
+        /* プライバシー設定トグル */
         .option-toggle-area { background: #fff3cd; padding: 12px; border-radius: 6px; border: 1px solid #ffeeba; margin-bottom: 15px; display: flex; align-items: center; gap: 15px; font-size: 14px; }
 
         /* 移動モーダル */
@@ -78,7 +78,7 @@
                 📊 調整さんの「ダウンロード(Excel形式)」ファイルを読み込む
             </span>
             <label class="file-label" for="csvFileInput">ファイルを選択する</label>
-            <input type="file" id="csvFileInput" accept=".csv, .xlsx" onchange="handleFileSelect(this)">
+            <input type="file" id="csvFileInput" accept=".csv, .txt, .xlsx" onchange="handleFileSelect(this)">
             <span id="fileNameDisplay" style="font-size: 12px; color: #666; margin-left: 10px; display: inline-block; vertical-align: middle;">ファイルが選択されていません</span>
         </div>
 
@@ -177,11 +177,10 @@ let roomCounter = 2;
 let selectedMemberName = "";
 let selectedSourceRoomId = "";
 
-// 日本語の文字化けを防ぐBase64エンコード・デコード
 function utf8_to_b64(str) { return window.btoa(unescape(encodeURIComponent(str))); }
 function b64_to_utf8(str) { return decodeURIComponent(escape(window.atob(str))); }
 
-// ファイルが選択されたときの処理
+// ファイル読み込み処理
 function handleFileSelect(input) {
     const file = input.files[0];
     if (!file) return;
@@ -193,63 +192,49 @@ function handleFileSelect(input) {
         const text = e.target.result;
         parseChouseisanCSV(text);
     };
-    // 調整さんのダウンロードファイル(CSV)はShift_JIS(Excel用)かUTF-8なので、自動判別を試みますが、日本語対応のため一旦文字コードを合わせて読み込みます
+    // 調整さんのShift_JISに対応
     reader.readAsText(file, "Shift_JIS");
 }
 
-// 調整さんのCSVファイルを解析するロジック
+// 調整さんのCSVファイルをどんな行構造からでも解析するロジック
 function parseChouseisanCSV(textContent) {
-    // もしShift_JISで文字化けして「◯」などが崩れた場合のために、UTF-8での再読込フォールバック処理を考慮
-    if (!textContent.includes("日程") && !textContent.includes("コメント")) {
-        // 再度UTF-8で読み直すためにアラートを出すか自動処理（簡易的に判定文字列がない場合はUTF-8とみなす）
-        alert("文字コードを自動判定中、またはデータが読み込めません。正しく表示されない場合はUTF-8で解析します。");
-    }
-
     const lines = textContent.split(/\r?\n/);
     let importedList = [];
     let idCounter = 1;
 
-    // ヘッダー行を探す（「日程,名前1,名前2...」の行）
+    // 「日程」というヘッダーが入っている行をファイルを全スキャンして特定する
     let headerLineIndex = -1;
     for (let i = 0; i < lines.length; i++) {
-        if (lines[i].startsWith("日程") || lines[i].includes("コメント")) {
+        if (lines[i].startsWith("日程") || lines[i].includes("日程,")) {
             headerLineIndex = i;
             break;
         }
     }
 
     if (headerLineIndex === -1) {
-        alert("調整さんのファイル形式を正しく認識できませんでした。ダウンロードしたファイルをそのまま選択してください。");
+        alert("調整さんのファイル内から『日程』の項目行が見つかりませんでした。ファイル形式をもう一度ご確認ください。");
         return;
     }
 
-    // ヘッダー行からメンバー名を抽出
+    // ヘッダー行からメンバー名を一挙に配列化
     const headers = lines[headerLineIndex].split(',').map(h => h.replace(/"/g, '').trim());
     
-    // スケジュール回答行（通常ヘッダーの次の行）を探して、◯がついているか判定
-    let answerLine = "";
-    for (let i = headerLineIndex + 1; i < lines.length; i++) {
-        if (lines[i].trim() && !lines[i].startsWith("コメント")) {
-            answerLine = lines[i];
-            break;
-        }
-    }
-
-    if (!answerLine) {
-        alert("回答データが見つかりませんでした。");
+    // スケジュール回答が書かれている行（日程ヘッダーのすぐ次の行）を取得
+    let answerLineIndex = headerLineIndex + 1;
+    if (answerLineIndex >= lines.length || !lines[answerLineIndex].trim()) {
+        alert("回答データ行が見つかりませんでした。");
         return;
     }
+    
+    const tokens = lines[answerLineIndex].split(',').map(t => t.replace(/"/g, '').trim());
 
-    const tokens = answerLine.split(',').map(t => t.replace(/"/g, '').trim());
-
-    // インデックス1番目以降がメンバー名
+    // インデックス1番目以降（各メンバー名）をループ処理
     for (let j = 1; j < headers.length; j++) {
         const name = headers[j];
         if (!name || name === "コメント" || name.includes("★")) continue;
         
-        // その人の回答トークンを取得
         const answer = tokens[j] || "";
-        // 「◯」または「○」が含まれている場合に出席とする
+        // 「◯」または「○」が出席の証拠
         if (answer.includes('◯') || answer.includes('○')) {
             importedList.push({
                 id: `u_${idCounter++}_${Date.now()}`,
@@ -260,14 +245,14 @@ function parseChouseisanCSV(textContent) {
     }
 
     if (importedList.length === 0) {
-        alert("ファイルから「◯（出席）」の参加者を検出できませんでした。回答状況を確認してください。");
+        alert("ファイルから「◯（出席）」の参加者を検出できませんでした。");
         return;
     }
 
     activeMembers = importedList;
-    historyMatrix = {}; // 新規読み込みなので履歴はリセット
+    historyMatrix = {}; // 新規読み込みなので履歴は初期化
     renderMemberList();
-    alert(`調整さんファイルから 出席確定メンバー ${activeMembers.length} 名を読み込みました！`);
+    alert(`調整さんファイル解析完了！\n出席確定メンバー ${activeMembers.length} 名を読み込みました！`);
 }
 
 function handleTextImport() {
@@ -392,7 +377,7 @@ function addMemberDirectly(status) {
     const nameInput = document.getElementById('newMemberName');
     const name = nameInput.value.trim();
     if (!name) return;
-    if (activeMembers.some(m => m.name === name)) { alert("その名前は既に存在します。"); return; }
+    if (activeMembers.some(m => m.name === name)) { alert("その名前は側に存在します。"); return; }
     activeMembers.push({ id: `u_direct_${Date.now()}`, name: name, status: status });
     nameInput.value = "";
     renderMemberList();
