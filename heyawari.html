@@ -3,14 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>カラオケ部屋割りツール（プライバシー配慮版）</title>
+    <title>カラオケ部屋割りツール（ファイル読み込み版）</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <style>
         body { font-family: sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; background: #f5f5f5; color: #333; }
         .card { background: white; padding: 20px; border-radius: 8px; margin-bottom: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
         h1 { text-align: center; color: #007bff; font-size: 24px; margin-bottom: 30px; }
         h3 { margin-top: 0; border-left: 4px solid #007bff; padding-left: 10px; }
-        textarea { width: 100%; height: 120px; box-sizing: border-box; padding: 10px; border: 1px solid #ccc; border-radius: 4px; resize: vertical; }
+        textarea { width: 100%; height: 100px; box-sizing: border-box; padding: 10px; border: 1px solid #ccc; border-radius: 4px; resize: vertical; }
         .btn { background: #007bff; color: white; border: none; padding: 10px 15px; border-radius: 4px; cursor: pointer; font-size: 14px; margin-right: 5px; margin-bottom: 5px; }
         .btn:hover { background: #0056b3; }
         .btn-success { background: #28a745; font-size: 16px; width: 100%; padding: 12px; margin-top: 10px; }
@@ -21,6 +21,12 @@
         .btn-info:hover { background: #138496; }
         .btn-danger { background: #dc3545; }
         .btn-danger:hover { background: #bd2130; }
+        
+        /* ファイル入力エリアのデザイン */
+        .file-input-area { background: #e9ecef; padding: 15px; border-radius: 6px; border: 2px dashed #ced4da; text-align: center; margin-bottom: 15px; }
+        .file-input-area input[type="file"] { display: none; }
+        .file-label { background: #6c757d; color: white; padding: 8px 15px; border-radius: 4px; cursor: pointer; display: inline-block; font-size: 14px; }
+        .file-label:hover { background: #5a6268; }
         
         /* 参加者管理エリア */
         .member-container { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; padding: 10px; background: #f8f9fa; border-radius: 4px; min-height: 40px; }
@@ -65,18 +71,28 @@
     <h1>カラオケ部屋割りツール</h1>
 
     <div class="card">
-        <h3>1. 調整さんのデータ、または前回のLINEテキストを貼り付け</h3>
-        <p style="font-size: 12px; color: #666; margin-bottom: 8px;">
-            【部屋替え】LINEのテキストを貼り付けて「読み込む」を押します。<b>暗号化コード（#SECRET）が含まれていても自動で解読して復元します。</b>
+        <h3>1. メンバーデータの読み込み</h3>
+        
+        <div class="file-input-area">
+            <span style="font-size: 13px; font-weight: bold; color: #495057; display: block; margin-bottom: 8px;">
+                📊 調整さんの「ダウンロード(Excel形式)」ファイルを読み込む
+            </span>
+            <label class="file-label" for="csvFileInput">ファイルを選択する</label>
+            <input type="file" id="csvFileInput" accept=".csv, .xlsx" onchange="handleFileSelect(this)">
+            <span id="fileNameDisplay" style="font-size: 12px; color: #666; margin-left: 10px; display: inline-block; vertical-align: middle;">ファイルが選択されていません</span>
+        </div>
+
+        <p style="font-size: 12px; color: #666; margin-bottom: 5px;">
+            【部屋替え用】または、前回のLINEテキスト（暗号化コード #SECRET 含む）をここに貼り付けて読み込むことも可能です：
         </p>
-        <textarea id="mainInput" placeholder="調整さんのデータ、またはLINEの部屋割りテキストをここにペーストしてください"></textarea>
+        <textarea id="mainInput" placeholder="LINEの部屋割りテキストをここにペーストして読み込むことも可能です"></textarea>
         <div style="margin-top: 8px;">
-            <button class="btn" onclick="handleImport()">読み込みを実行（自動判別）</button>
+            <button class="btn" onclick="handleTextImport()">貼り付けたテキストから読み込む</button>
         </div>
 
         <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;">
 
-        <p style="font-size: 12px; color: #666; margin-bottom: 5px;">【現在の参加予定メンバー】（ステータス切り替えや削除が可能）</p>
+        <p style="font-size: 12px; color: #666; margin-bottom: 5px;">【現在の参加予定メンバー】（到着変更・帰宅処理・削除が可能）</p>
         <div id="memberListArea" class="member-container">
             <span style="color:#999; font-size:13px;">メンバーが登録されていません</span>
         </div>
@@ -161,48 +177,104 @@ let roomCounter = 2;
 let selectedMemberName = "";
 let selectedSourceRoomId = "";
 
-function addRoomRow(type, defaultCap) {
-    const container = document.getElementById('roomsContainer');
-    const rowId = `roomRow_${roomCounter++}`;
-    let roomName = type;
-    if (type === '号室') {
-        const existingCount = container.querySelectorAll('.room-name').length;
-        roomName = `${101 + existingCount}号室`;
-    }
-    const div = document.createElement('div');
-    div.className = 'room-input';
-    div.id = rowId;
-    div.innerHTML = `
-        <input type="text" class="room-name" value="${roomName}" placeholder="部屋名">
-        <button class="room-select-btn" onclick="toggleRoomPreset(this)">部屋名切替</button>
-        <input type="number" class="room-cap" value="${defaultCap}" min="1"> 人
-        <button class="btn btn-danger" style="margin:0; padding:5px 10px;" onclick="removeRoomRow(this)">削除</button>
-    `;
-    container.appendChild(div);
-}
-
-function removeRoomRow(button) { button.parentElement.remove(); }
-
-function toggleRoomPreset(button) {
-    const input = button.parentElement.querySelector('.room-name');
-    if (input.value.includes('号室')) { input.value = 'パーティールーム'; }
-    else if (input.value === 'パーティールーム') { input.value = '大部屋'; }
-    else { input.value = '101号室'; }
-}
-
-function handleImport() {
-    const text = document.getElementById('mainInput').value;
-    if (!text.trim()) { alert("テキストが入力されていません。"); return; }
-    if (text.includes('号室') || text.includes('部屋') || text.includes('■') || text.includes('パーティー') || text.includes('大部屋') || text.includes('#SECRET')) {
-        importFromLineText(text);
-    } else {
-        importFromChouseisan(text);
-    }
-}
-
 // 日本語の文字化けを防ぐBase64エンコード・デコード
 function utf8_to_b64(str) { return window.btoa(unescape(encodeURIComponent(str))); }
 function b64_to_utf8(str) { return decodeURIComponent(escape(window.atob(str))); }
+
+// ファイルが選択されたときの処理
+function handleFileSelect(input) {
+    const file = input.files[0];
+    if (!file) return;
+    
+    document.getElementById('fileNameDisplay').innerText = file.name;
+    
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        const text = e.target.result;
+        parseChouseisanCSV(text);
+    };
+    // 調整さんのダウンロードファイル(CSV)はShift_JIS(Excel用)かUTF-8なので、自動判別を試みますが、日本語対応のため一旦文字コードを合わせて読み込みます
+    reader.readAsText(file, "Shift_JIS");
+}
+
+// 調整さんのCSVファイルを解析するロジック
+function parseChouseisanCSV(textContent) {
+    // もしShift_JISで文字化けして「◯」などが崩れた場合のために、UTF-8での再読込フォールバック処理を考慮
+    if (!textContent.includes("日程") && !textContent.includes("コメント")) {
+        // 再度UTF-8で読み直すためにアラートを出すか自動処理（簡易的に判定文字列がない場合はUTF-8とみなす）
+        alert("文字コードを自動判定中、またはデータが読み込めません。正しく表示されない場合はUTF-8で解析します。");
+    }
+
+    const lines = textContent.split(/\r?\n/);
+    let importedList = [];
+    let idCounter = 1;
+
+    // ヘッダー行を探す（「日程,名前1,名前2...」の行）
+    let headerLineIndex = -1;
+    for (let i = 0; i < lines.length; i++) {
+        if (lines[i].startsWith("日程") || lines[i].includes("コメント")) {
+            headerLineIndex = i;
+            break;
+        }
+    }
+
+    if (headerLineIndex === -1) {
+        alert("調整さんのファイル形式を正しく認識できませんでした。ダウンロードしたファイルをそのまま選択してください。");
+        return;
+    }
+
+    // ヘッダー行からメンバー名を抽出
+    const headers = lines[headerLineIndex].split(',').map(h => h.replace(/"/g, '').trim());
+    
+    // スケジュール回答行（通常ヘッダーの次の行）を探して、◯がついているか判定
+    let answerLine = "";
+    for (let i = headerLineIndex + 1; i < lines.length; i++) {
+        if (lines[i].trim() && !lines[i].startsWith("コメント")) {
+            answerLine = lines[i];
+            break;
+        }
+    }
+
+    if (!answerLine) {
+        alert("回答データが見つかりませんでした。");
+        return;
+    }
+
+    const tokens = answerLine.split(',').map(t => t.replace(/"/g, '').trim());
+
+    // インデックス1番目以降がメンバー名
+    for (let j = 1; j < headers.length; j++) {
+        const name = headers[j];
+        if (!name || name === "コメント" || name.includes("★")) continue;
+        
+        // その人の回答トークンを取得
+        const answer = tokens[j] || "";
+        // 「◯」または「○」が含まれている場合に出席とする
+        if (answer.includes('◯') || answer.includes('○')) {
+            importedList.push({
+                id: `u_${idCounter++}_${Date.now()}`,
+                name: name,
+                status: 'present'
+            });
+        }
+    }
+
+    if (importedList.length === 0) {
+        alert("ファイルから「◯（出席）」の参加者を検出できませんでした。回答状況を確認してください。");
+        return;
+    }
+
+    activeMembers = importedList;
+    historyMatrix = {}; // 新規読み込みなので履歴はリセット
+    renderMemberList();
+    alert(`調整さんファイルから 出席確定メンバー ${activeMembers.length} 名を読み込みました！`);
+}
+
+function handleTextImport() {
+    const text = document.getElementById('mainInput').value;
+    if (!text.trim()) { alert("テキストが入力されていません。"); return; }
+    importFromLineText(text);
+}
 
 function importFromLineText(text) {
     const lines = text.split('\n');
@@ -211,13 +283,12 @@ function importFromLineText(text) {
     let secretData = null;
     historyMatrix = {};
 
-    // まず暗号化コード（#SECRET:）があるか探して解読
     lines.forEach(line => {
         if (line.includes('#SECRET:')) {
             try {
                 const b64 = line.split('#SECRET:')[1].trim();
                 const jsonStr = b64_to_utf8(b64);
-                secretData = JSON.parse(jsonStr); // { absent: [...], returned: [...] }
+                secretData = JSON.parse(jsonStr); 
             } catch(e) {
                 console.error("暗号データの復元に失敗しました", e);
             }
@@ -251,7 +322,6 @@ function importFromLineText(text) {
     });
     recordPairings(currentRoomMembers);
 
-    // 暗号コードから復元したメンバーがいれば、リストにマージする
     if (secretData) {
         if (secretData.absent) {
             secretData.absent.forEach(name => {
@@ -289,23 +359,33 @@ function recordPairings(memberList) {
     }
 }
 
-function importFromChouseisan(text) {
-    const lines = text.split('\n');
-    let importedList = [];
-    let idCounter = 1;
-    lines.forEach(line => {
-        if (!line.trim()) return;
-        let tokens = line.includes(',') ? line.split(',').map(t => t.replace(/"/g, '').trim()) : line.trim().split(/\s+/);
-        const name = tokens[0];
-        if (name === "日程" || name === "コメント" || name.includes("カラフル") || name.includes("★") || name.startsWith("6/")) return;
-        const hasMaru = tokens.slice(1).some(t => t.includes('◯') || t.includes('○'));
-        if (hasMaru && name) { importedList.push({ id: `u_${idCounter++}_${Date.now()}`, name: name, status: 'present' }); }
-    });
-    if (importedList.length === 0) { alert("参加者が検出できませんでした。"); return; }
-    activeMembers = importedList;
-    historyMatrix = {}; 
-    renderMemberList();
-    alert(`調整さんから ${activeMembers.length} 名を新規読み込みました！`);
+function addRoomRow(type, defaultCap) {
+    const container = document.getElementById('roomsContainer');
+    const rowId = `roomRow_${roomCounter++}`;
+    let roomName = type;
+    if (type === '号室') {
+        const existingCount = container.querySelectorAll('.room-name').length;
+        roomName = `${101 + existingCount}号室`;
+    }
+    const div = document.createElement('div');
+    div.className = 'room-input';
+    div.id = rowId;
+    div.innerHTML = `
+        <input type="text" class="room-name" value="${roomName}" placeholder="部屋名">
+        <button class="room-select-btn" onclick="toggleRoomPreset(this)">部屋名切替</button>
+        <input type="number" class="room-cap" value="${defaultCap}" min="1"> 人
+        <button class="btn btn-danger" style="margin:0; padding:5px 10px;" onclick="removeRoomRow(this)">削除</button>
+    `;
+    container.appendChild(div);
+}
+
+function removeRoomRow(button) { button.parentElement.remove(); }
+
+function toggleRoomPreset(button) {
+    const input = button.parentElement.querySelector('.room-name');
+    if (input.value.includes('号室')) { input.value = 'パーティールーム'; }
+    else if (input.value === 'パーティールーム') { input.value = '大部屋'; }
+    else { input.value = '101号室'; }
 }
 
 function addMemberDirectly(status) {
@@ -523,8 +603,6 @@ function changeStatusAndRemove(newStatus) {
 
 function copyResultFromCurrentState() {
     if (currentRoomsData.length === 0) { alert("まだ部屋割りがありません。"); return; }
-    
-    // ラジオボタンの選択値を取得
     const privacyMode = document.querySelector('input[name="privacyMode"]:checked').value;
 
     let copyText = `【カラオケ部屋割り結果】\n\n`;
@@ -537,7 +615,6 @@ function copyResultFromCurrentState() {
     let returnedMembers = activeMembers.filter(m => m.status === 'returned');
 
     if (privacyMode === 'open') {
-        // そのまま実名で出力するモード
         if (absentMembers.length > 0) {
             copyText += `未着（連絡待ちなど）\n${absentMembers.map(m => `${m.name}（未）`).join(', ')}\n\n`;
         }
@@ -545,7 +622,6 @@ function copyResultFromCurrentState() {
             copyText += `帰宅メンバー\n${returnedMembers.map(m => `${m.name}（帰）`).join(', ')}\n`;
         }
     } else {
-        // 暗号コード化モード（暗号化したJSONを末尾にくっつける）
         if (absentMembers.length > 0 || returnedMembers.length > 0) {
             const secretObj = {
                 absent: absentMembers.map(m => m.name),
