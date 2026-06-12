@@ -2,123 +2,134 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <title>【幹事・共同管理用】スマート部屋割りシステム</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>【幹事用】スマート部屋割りシステム</title>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
     <style>
-        body { font-family: sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; background: #f5f5f5; line-height: 1.6; }
-        .card { background: white; padding: 20px; border-radius: 8px; margin-bottom: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-        h1 { text-align: center; color: #dc3545; margin-bottom: 5px; }
-        h3 { border-bottom: 2px solid #dee2e6; padding-bottom: 6px; margin-top: 5px; color: #333; }
-        .guide-text { font-size: 14px; color: #495057; background: #e9ecef; padding: 12px; border-radius: 6px; margin-bottom: 15px; border-left: 4px solid #6c757d; }
-        .btn { background: #007bff; color: white; border: none; padding: 10px 15px; border-radius: 4px; cursor: pointer; margin-right: 5px; font-weight: bold; }
-        .btn-success { background: #28a745; width: 100%; padding: 12px; font-size: 16px; margin-top: 10px; font-weight: bold; }
-        .btn-danger { background: #c82333; padding: 10px 15px; font-weight: bold; }
-        .room-input { display: flex; gap: 10px; margin-bottom: 8px; background: #f8f9fa; padding: 8px; border-radius: 4px; align-items: center; }
-        .room-box { border: 1px solid #dee2e6; padding: 15px; margin-top: 10px; border-radius: 6px; background: #fff; box-shadow: inset 3px 0 0 #007bff; }
-        .badge { background: #e0f2fe; color: #0369a1; padding: 4px 10px; border-radius: 4px; display: inline-block; margin: 2px; }
-        .member-tag { background: #e2e3e5; padding: 6px 12px; border-radius: 20px; display: inline-block; margin: 4px; font-size: 14px; font-weight: bold; }
-        .status-badge { background: #28a745; color: #fff; padding: 3px 8px; border-radius: 4px; font-size: 12px; font-weight: bold; }
-        .code-box { background: #fff; padding: 10px; border-radius: 4px; font-family: monospace; font-size: 16px; font-weight: bold; color: #dc3545; display: flex; align-items: center; justify-content: space-between; margin-top: 10px; border: 1px solid #ced4da; }
-        ul { margin: 5px 0 0 20px; padding: 0; font-size: 13px; color: #666; }
+        :root {
+            --primary: #6f42c1;
+            --success: #28a745;
+            --info: #17a2b8;
+            --danger: #dc3545;
+            --dark: #343a40;
+            --light: #f8f9fa;
+        }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Sans-Serif; max-width: 600px; margin: 0 auto; padding: 10px; background: #e9ecef; color: #333; }
+        h1 { text-align: center; font-size: 20px; color: var(--dark); margin: 10px 0; }
+        .card { background: white; padding: 15px; border-radius: 12px; margin-bottom: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
+        
+        /* ボタン共通スタイル（スマホで押しやすいサイズ） */
+        .btn { display: inline-flex; align-items: center; justify-content: center; background: #007bff; color: white; border: none; padding: 12px; border-radius: 8px; font-size: 15px; font-weight: bold; cursor: pointer; width: 100%; box-sizing: border-box; margin-bottom: 8px; -webkit-appearance: none; }
+        .btn-sm { padding: 6px 10px; font-size: 12px; width: auto; margin-bottom: 0; }
+        .btn-outline { background: transparent; color: #666; border: 1px solid #ccc; }
+        
+        /* 入力エリア */
+        label { display: block; font-weight: bold; font-size: 13px; margin-bottom: 5px; color: #555; text-align: left; }
+        .input-field { width: 100%; padding: 12px; font-size: 16px; box-sizing: border-box; border: 1px solid #ced4da; border-radius: 8px; margin-bottom: 12px; background: var(--light); }
+        
+        /* タブメニュー（スマホ特化） */
+        .tab-container { display: flex; background: #dee2e6; border-radius: 8px; padding: 4px; margin-bottom: 15px; }
+        .tab-btn { flex: 1; border: none; background: transparent; padding: 10px; font-size: 14px; font-weight: bold; color: #555; cursor: pointer; text-align: center; border-radius: 6px; }
+        .tab-btn.active { background: white; color: var(--primary); box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+
+        /* 各種ボックス要素 */
+        .room-row { background: var(--light); padding: 12px; border-radius: 8px; margin-bottom: 10px; border: 1px solid #dee2e6; position: relative; }
+        .room-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 8px; }
+        .room-box-result { border-left: 4px solid var(--primary); background: #fff; padding: 12px; margin-bottom: 10px; border-radius: 0 8px 8px 0; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+        .room-title-bar { display: flex; justify-content: space-between; font-weight: bold; font-size: 14px; border-bottom: 1px dashed #eee; padding-bottom: 4px; margin-bottom: 8px; color: #495057; }
+        
+        /* メンバーバッジと手動移動 */
+        .member-wrapper { display: inline-flex; align-items: center; background: #e2f0d9; color: #385723; padding: 4px 8px; border-radius: 6px; font-size: 13px; margin: 3px; font-weight: bold; }
+        .move-select { background: transparent; border: none; font-size: 11px; color: #007bff; margin-left: 5px; font-weight: bold; outline: none; }
+        .member-tag-view { background: #e9ecef; padding: 6px 12px; border-radius: 20px; display: inline-block; margin: 4px; font-size: 13px; font-weight: bold; }
+        
+        .status-header { background: #e2e3e5; padding: 10px; border-radius: 8px; font-size: 13px; margin-bottom: 15px; text-align: center; font-weight: bold; }
+        .badge-code { background: #fff; padding: 4px 8px; border-radius: 4px; font-family: monospace; color: var(--danger); font-size: 14px; border: 1px solid #ccc; }
+        hr { border: 0; border-top: 1px dashed #ccc; margin: 15px 0; }
     </style>
 </head>
 <body>
 
-    <h1>🔑 スマート部屋割りシステム（管理コントロール）</h1>
-    <p style="text-align: center; color: #666; font-size: 14px; margin-top: 0; margin-bottom: 25px;">
-        リアルタイムに参加者を募り、過去のペア重複を自動回避してカラオケの部屋割りを作成・配信します。
-    </p>
+    <h1>🔑 部屋割り管理（幹事画面）</h1>
 
-    <div id="statusArea" class="card" style="background: #e2e3e5; display: none;">
-        <div><b>現在の接続ステータス:</b> <span id="statusText" class="status-badge">接続中（自動同期ON）</span></div>
-        <div id="activeGroupName" style="margin-top: 10px; font-weight: bold; font-size: 18px; color: #0056b3;"></div>
+    <div id="step1_connection" class="card">
+        <h3 style="margin-top:0; text-align:center; font-size:16px;">イベント管理室への入室</h3>
         
-        <div style="margin-top: 15px; font-size: 14px; color: #212529; font-weight: bold;">👥 他の幹事とこの管理画面を共有・同時操作する場合:</div>
-        <p style="font-size: 12px; color: #555; margin: 2px 0 8px 0;">
-            共同運営したいメンバーに、下の「部屋コード」を共有してください。相手が同じコードを入力すると、リアルタイムに同じ画面を共有できます。
-        </p>
-        <div class="code-box">
-            <span id="displayCodeText"></span>
-            <button class="btn" style="background: #495057; padding: 5px 12px; font-size: 12px;" onclick="copyRoomCode()">部屋コードをコピー</button>
+        <div id="createModeArea">
+            <label>新規イベント名を入力してください:</label>
+            <input type="text" id="groupNameInput" class="input-field" placeholder="例: 6月カラフル定例会">
+            <button class="btn" style="background: var(--primary);" onclick="createNewGroupSession()">👥 新規グループ部屋を作成する</button>
+        </div>
+
+        <div style="text-align: center; color: #888; font-size: 13px; margin: 15px 0;">ー または ー</div>
+
+        <div id="joinModeArea">
+            <label>既存の部屋コードで入室（共同管理用）:</label>
+            <input type="text" id="existingCodeInput" class="input-field" placeholder="コードをここに貼り付け">
+            <button class="btn" style="background: var(--info);" onclick="joinExistingGroupSession()">🔑 部屋コードでログイン</button>
         </div>
     </div>
 
-    <div id="setupCard" class="card">
-        <h3>✨ はじめる（どちらかを選択）</h3>
+    <div id="step2_mainDashboard" style="display: none;">
         
-        <div class="guide-text">
-            <b>【パターンA：あなたが最初の幹事の場合】</b><br>
-            イベント名と部屋リストを入力し、紫色の「新規グループ部屋を作成」ボタンを押して部屋を立ち上げてください。
+        <div class="status-header">
+            <span id="activeGroupName" style="color:var(--primary);"></span><br>
+            <span style="font-weight:normal; font-size:12px; color:#666;">部屋コード:</span> 
+            <span id="displayCodeText" class="badge-code"></span>
+            <button class="btn btn-sm btn-outline" style="margin-left:5px; padding:2px 6px;" onclick="copyRoomCode()">コピー</button>
         </div>
 
-        <label><b>① 表示するイベント名</b>（参加者のスマホ画面にも表示されます）:</label><br>
-        <input type="text" id="groupNameInput" value="カラフル定例会" style="width:100%; padding:10px; box-sizing:border-box; margin-bottom:15px; font-size: 15px;"><br>
-        
-        <label><b>② 用意するカラオケ部屋リスト</b>（各部屋の名称と定員）:</label>
-        <div id="roomsContainer" style="margin-top: 5px;">
-            <div class="room-input">
-                <input type="text" class="room-name" value="101号室" style="padding: 6px;">
-                <input type="number" class="room-cap" value="5" style="width:50px; padding: 6px;"> 人まで
+        <div class="tab-container">
+            <button class="tab-btn active" onclick="switchTab('tab_settings')">🛠️ 部屋設定</button>
+            <button class="tab-btn" onclick="switchTab('tab_members')">👥 参加者</button>
+            <button class="tab-btn" onclick="switchTab('tab_shuffle')">🔀 部屋割り</button>
+        </div>
+
+        <div id="tab_settings" class="tab-content active card">
+            <h4 style="margin-top:0; font-size:15px; color:#555;">カラオケ部屋の構成・機材設定</h4>
+            <p style="font-size:12px; color:#777; margin-top:-5px;">部屋を追加・編集したら、必ず一番下の「設定を保存」を押してください。</p>
+            
+            <div id="roomsSetupContainer">
+                </div>
+            
+            <button class="btn btn-outline" style="font-size:13px; padding:8px;" onclick="addRoomRowSetup('', 5, '', '')">＋ 新しい部屋を追加</button>
+            <hr>
+            <button class="btn" style="background: var(--success);" onclick="saveRoomsSetupOnly()">💾 上記の部屋設定を保存・更新する</button>
+        </div>
+
+        <div id="tab_members" class="tab-content card">
+            <h4 style="margin-top:0; font-size:15px; color:#555;">現在の出席表明メンバー</h4>
+            
+            <div style="background:#e9ecef; padding:10px; border-radius:8px; margin-bottom:15px; font-size:13px;">
+                <b style="color:var(--success)">📢 参加登録用の共通LINE用URL:</b>
+                <input type="text" id="shareUrl" class="input-field" style="margin: 5px 0; padding:8px; font-size:13px;" readonly>
+                <button class="btn btn-success" style="padding:10px; font-size:13px; margin-bottom:0;" onclick="copyShareUrl()">📋 LINE用URLをコピーする</button>
             </div>
-            <div class="room-input">
-                <input type="text" class="room-name" value="パーティールーム" style="padding: 6px;">
-                <input type="number" class="room-cap" value="10" style="width:50px; padding: 6px;"> 人まで
+
+            <div id="joinedMembersArea" style="min-height:50px; background:var(--light); padding:10px; border-radius:8px; border: 1px dashed #ccc;">
+                </div>
+        </div>
+
+        <div id="tab_shuffle" class="tab-content card">
+            <h4 style="margin-top:0; font-size:15px; color:#555;">部屋割りの決定と手動微調整</h4>
+            <p style="font-size:11px; color:#666; margin-top:-5px;">自動シャッフル後、メンバー名の右側の「移動」から個別に手動移動・入替調整が可能です。</p>
+            
+            <button class="btn" style="background: var(--primary); padding:13px; font-size:15px;" onclick="executeSmartShuffle()">🔀 重複回避の自動部屋割りを作成・配信</button>
+            
+            <div id="resultInside" style="margin-top:15px;">
+                <p style="color:#999; text-align:center; font-size:13px; padding:20px;">まだ部屋割りが作成されていません。</p>
             </div>
         </div>
-        <button class="btn" style="background: #6c757d; font-size: 13px; padding: 6px 12px; margin-top: 5px;" onclick="addRoomRow()">＋ 部屋の種類を追加</button><br><br>
-        <button class="btn" style="background:#6f42c1; width: 100%; padding: 13px; font-size: 16px;" onclick="createNewGroupSession()">👥 新規グループ部屋を作成して受付開始</button>
 
-        <hr style="margin: 30px 0; border: 0; border-top: 2px dashed #ccc;">
-
-        <div class="guide-text" style="border-left-color: #17a2b8;">
-            <b>【パターンB：すでに別の幹事が作成した部屋に合流する場合】</b><br>
-            相方の幹事から教えてもらった「部屋コード」を下に貼り付けて入室してください。同じ画面が同期されます。
+        <div class="card" style="border: 1px solid #f5c6cb; background-color: #fdf3f4; margin-top:20px;">
+            <h4 style="color: #721c24; margin-top: 0; font-size:14px;">⚠️ イベントの終了・完全初期化</h4>
+            <p style="font-size: 11px; color: #721c24; margin:0 0 10px 0;">今回のグループ部屋を完全に削除し、参加者・共同幹事全員の画面を一斉に名前入力（初期状態）に戻します。</p>
+            <button class="btn btn-danger" style="padding:10px; font-size:13px; margin-bottom:0;" onclick="resetCurrentEvent()">🧹 今回のグループ部屋を完全に削除して終了</button>
         </div>
-        <label><b>🔑 共有された部屋コードを入力:</b></label>
-        <input type="text" id="existingCodeInput" placeholder="例: カラフル定例会_1718123456" style="width:100%; padding:11px; box-sizing:border-box; margin-bottom:10px; font-family: monospace; font-size: 15px;">
-        <button class="btn" style="background:#17a2b8; width: 100%; padding: 13px; font-size: 16px;" onclick="joinExistingGroupSession()">🔑 部屋コードでログイン（共同管理をスタート）</button>
-    </div>
 
-    <div class="card">
-        <h3>👥 2. 現在の参加表明メンバー（リアルタイム同期中）</h3>
-        <p style="font-size: 13px; color: #666; margin-top: -5px;">
-            参加者がLINEのURLから名前を入力すると、ページを更新しなくてもここへリアルタイムに名前が追加されます。
-        </p>
-        <div id="joinedMembersArea" style="min-height:60px; background:#f8f9fa; padding:12px; border-radius:4px; margin-bottom: 15px; border: 1px dashed #ced4da;">
-            <span style="color:#999; font-size: 14px;">※グループ部屋に接続すると、参加者の待機状態がここに同期されます。</span>
-        </div>
-        
-        <div id="shareArea" style="display:none; background:#e9ecef; padding:15px; border-radius:6px; border: 1px solid #dee2e6;">
-            <strong style="color: #28a745;">📢 参加者（一般メンバー）に伝えるLINE配布用URL:</strong>
-            <p style="font-size: 12px; color: #555; margin: 2px 0 6px 0;">以下のURLをコピーして、イベントのLINEグループやノートに貼り付けてください。</p>
-            <input type="text" id="shareUrl" style="width:100%; padding:8px; margin-bottom:8px; font-size:14px; font-weight: bold; color:#007bff;" readonly>
-            <button class="btn" style="background:#28a745; width: 100%; padding: 10px;" onclick="copyShareUrl()">📋 LINE用URLをコピーする</button>
-        </div>
-    </div>
-
-    <div class="card">
-        <h3>🔀 3. 部屋割りの実行と配信</h3>
-        <p style="font-size: 13px; color: #666; margin-top: -5px;">
-            「部屋割り配信」ボタンを押すと、瞬時にすべての参加者のスマホ画面に結果が自動配信されます。<br>
-            <b>★アルゴリズムの特徴：</b>過去に同じ部屋になった回数が多いペアに対して自動的にペナルティを課し、可能な限り「まだ同じ部屋になったことがない人同士」を優先して組み合わせます。
-        </p>
-        <button class="btn btn-success" onclick="executeSmartShuffle()">🔀 重複を回避して部屋割りを作成＆配信</button>
-        <div id="resultInside" style="margin-top:15px;"></div>
-    </div>
-
-    <div class="card" style="border: 1px solid #f5c6cb; background-color: #fdf3f4;">
-        <h3 style="color: #721c24; margin-top: 0;">⚠️ イベントの終了・クリア処理（解散）</h3>
-        <p style="font-size: 13px; color: #721c24; margin-bottom: 10px;">
-            この会（イベント）が完全に終了した際、または最初からメンバーを受付し直したい場合は下のボタンを押してください。<br>
-            <b>【実行時の影響】</b>
-        </p>
-        <ul>
-            <li>すべての共同幹事の画面が初期状態（設定・ログイン画面）に強制リセットされます。</li>
-            <li>参加者のスマホ画面の記憶も自動クリアされ、次回アクセス時に再び「名前の入力画面」に戻ります。</li>
-            <li>※これまでの部屋割りペア履歴（重複回避用のデータ）は安全に裏側に残りますのでご安心ください。</li>
-        </ul>
-        <button class="btn btn-danger" style="width: 100%; padding: 12px; margin-top: 10px;" onclick="resetCurrentEvent()">🧹 今回のグループ部屋を完全に削除して終了する</button>
     </div>
 
 <script>
@@ -141,6 +152,7 @@ const kanjiStorageKey = "heyawari_kanji_group_id";
 let uniqueGroupId = "";
 let groupDisplayName = "";
 let currentPresentMembers = [];
+let cachedRoomsSetup = [];
 let historyMatrix = {}; 
 let unsubscribeMembers = null;
 let unsubscribeStatus = null;
@@ -153,13 +165,45 @@ window.onload = function() {
     }
 };
 
-function addRoomRow() {
-    const div = document.createElement('div');
-    div.className = 'room-input';
-    div.innerHTML = `<input type="text" class="room-name" value="新部屋" style="padding:6px;"> <input type="number" class="room-cap" value="5" style="width:50px; padding:6px;"> 人まで`;
-    document.getElementById('roomsContainer').appendChild(div);
+function switchTab(tabId) {
+    document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+    event.currentTarget.classList.add('active');
+    document.getElementById(tabId).classList.add('active');
 }
 
+// 設定タブ用：部屋行の追加
+function addRoomRowSetup(name="", cap=5, model="", memo="") {
+    const container = document.getElementById('roomsSetupContainer');
+    const div = document.createElement('div');
+    div.className = 'room-row';
+    div.innerHTML = `
+        <div class="room-grid">
+            <div>
+                <label>部屋番号/名:</label>
+                <input type="text" class="setup-room-name" value="${name}" placeholder="例: 101号室" style="width:100%; padding:6px; border-radius:4px; border:1px solid #ccc; box-sizing:border-box;">
+            </div>
+            <div>
+                <label>キャパ(定員):</label>
+                <input type="number" class="setup-room-cap" value="${cap}" style="width:100%; padding:6px; border-radius:4px; border:1px solid #ccc; box-sizing:border-box;">
+            </div>
+        </div>
+        <div class="room-grid">
+            <div>
+                <label>機種 (DAM/JOY等):</label>
+                <input type="text" class="setup-room-model" value="${model}" placeholder="例: DAM" style="width:100%; padding:6px; border-radius:4px; border:1px solid #ccc; box-sizing:border-box;">
+            </div>
+            <div>
+                <label>その他メモ:</label>
+                <input type="text" class="setup-room-memo" value="${memo}" placeholder="例: 禁煙" style="width:100%; padding:6px; border-radius:4px; border:1px solid #ccc; box-sizing:border-box;">
+            </div>
+        </div>
+        <button class="btn btn-sm btn-outline" style="background:#fff; color:var(--danger); border-color:var(--danger); position:absolute; right:8px; top:8px; padding:2px 6px;" onclick="this.parentElement.remove()">削除</button>
+    `;
+    container.appendChild(div);
+}
+
+// 👥 【新規作成】最初の画面でイベント名を入れるだけ
 function createNewGroupSession() {
     groupDisplayName = document.getElementById('groupNameInput').value.trim();
     if (!groupDisplayName) { alert("イベント名を入力してください"); return; }
@@ -167,26 +211,24 @@ function createNewGroupSession() {
     const cleanName = encodeURIComponent(groupDisplayName).replace(/%/g, '');
     uniqueGroupId = cleanName + "_" + Date.now();
 
-    const names = document.querySelectorAll('.room-name');
-    const caps = document.querySelectorAll('.room-cap');
-    let roomsSetup = [];
-    names.forEach((n, i) => {
-        roomsSetup.push({ name: n.value, capacity: parseInt(caps[i].value), members: [] });
-    });
+    // 💡 ご要望通り、初期設定の部屋として「パーティールーム」を1つだけ仮作成（他は空欄）
+    const defaultSetup = [
+        { name: "パーティールーム", capacity: 10, model: "DAM", memo: "", members: [] }
+    ];
 
     db.collection("multigroups").doc(uniqueGroupId).set({
         title: groupDisplayName,
-        roomsSetup: roomsSetup, 
+        roomsSetup: defaultSetup, 
         currentResult: null,
         status: "active",
         updatedAt: firebase.firestore.FieldValue.serverTimestamp()
     }).then(() => {
         localStorage.setItem(kanjiStorageKey, uniqueGroupId);
         resumeGroupSession();
-        alert("🌐 グループ部屋を作成しました！他の幹事にコードを共有できます。");
     }).catch(err => alert("作成エラー: " + err));
 }
 
+// 🔑 【部屋コードで入室】
 function joinExistingGroupSession() {
     const inputCode = document.getElementById('existingCodeInput').value.trim();
     if (!inputCode) { alert("部屋コードを入力してください"); return; }
@@ -196,13 +238,13 @@ function joinExistingGroupSession() {
             uniqueGroupId = inputCode;
             localStorage.setItem(kanjiStorageKey, uniqueGroupId);
             resumeGroupSession();
-            alert("🔑 共同管理としてログインに成功しました！画面が同期されます。");
         } else {
             alert("❌ 指定された部屋コードが見つからないか、すでに終了しているセッションです。");
         }
     }).catch(err => alert("通信エラー: " + err));
 }
 
+// 🔄 【データ同期・再開システム】
 function resumeGroupSession() {
     if (!uniqueGroupId) return;
     document.getElementById('displayCodeText').innerText = uniqueGroupId;
@@ -211,24 +253,29 @@ function resumeGroupSession() {
     unsubscribeStatus = db.collection("multigroups").doc(uniqueGroupId).onSnapshot((doc) => {
         if (doc.exists) {
             const data = doc.data();
-            if (data.status === "reset") {
-                clearKanjiState();
-                return;
-            }
+            if (data.status === "reset") { clearKanjiState(); return; }
+
             groupDisplayName = data.title;
-            document.getElementById('statusArea').style.display = 'block';
-            document.getElementById('activeGroupName').innerText = `管理中のイベント: ${groupDisplayName}`;
-            document.getElementById('setupCard').style.display = 'none'; 
+            cachedRoomsSetup = data.roomsSetup || [];
+
+            document.getElementById('step1_connection').style.display = 'none';
+            document.getElementById('step2_mainDashboard').style.display = 'block';
+            document.getElementById('activeGroupName').innerText = groupDisplayName;
+
+            // 部屋設定タブの中身を組み立て（コンテナが空の時のみ生成）
+            const setupContainer = document.getElementById('roomsSetupContainer');
+            if (setupContainer.children.length === 0) {
+                cachedRoomsSetup.forEach(r => {
+                    addRoomRowSetup(r.name, r.capacity, r.model, r.memo);
+                });
+            }
 
             if (data.currentResult) {
-                renderKanjiView(data.currentResult);
-            } else {
-                document.getElementById('resultInside').innerHTML = "";
+                renderKanjiResultView(data.currentResult);
             }
 
             const guestUrl = "https://iieaaoexk3lr-creator.github.io/.github.io/heyawari2.html" + `?groupId=${uniqueGroupId}`;
             document.getElementById('shareUrl').value = guestUrl;
-            document.getElementById('shareArea').style.display = 'block';
         } else {
             clearKanjiState();
         }
@@ -244,7 +291,12 @@ function resumeGroupSession() {
             currentPresentMembers.push(m.name);
             html += `<span class="member-tag">👤 ${m.name}</span>`;
         });
-        document.getElementById('joinedMembersArea').innerHTML = html || '<span style="color:#999; font-size:14px;">誰も登録していません。待機中...</span>';
+        document.getElementById('joinedMembersArea').innerHTML = html || '<span style="color:#999; font-size:13px;">参加者の登録待ちです（LINEのURLを共有してください）</span>';
+        
+        // メンバー変動時に選択ボックスを同期
+        db.collection("multigroups").doc(uniqueGroupId).get().then(d => {
+            if (d.exists && d.data().currentResult) { renderKanjiResultView(d.data().currentResult); }
+        });
     });
 
     db.collection("history_logs").doc(groupDisplayName).collection("logs").get().then((snapshot) => {
@@ -266,14 +318,44 @@ function resumeGroupSession() {
     });
 }
 
+// 💾 部屋設定の保存
+function saveRoomsSetupOnly() {
+    if (!uniqueGroupId) return;
+    const names = document.querySelectorAll('.setup-room-name');
+    const caps = document.querySelectorAll('.setup-room-cap');
+    const models = document.querySelectorAll('.setup-room-model');
+    const memos = document.querySelectorAll('.setup-room-memo');
+    
+    let newRoomsSetup = [];
+    names.forEach((n, i) => {
+        const roomName = n.value.trim();
+        newRoomsSetup.push({
+            name: roomName || `部屋${i+1}`,
+            capacity: parseInt(caps[i].value) || 5,
+            model: models[i].value.trim(),
+            memo: memos[i].value.trim(),
+            members: []
+        });
+    });
+
+    db.collection("multigroups").doc(uniqueGroupId).update({
+        roomsSetup: newRoomsSetup,
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    }).then(() => {
+        alert("💾 部屋の設定を保存しました！");
+    }).catch(err => alert("保存エラー: " + err));
+}
+
+// 🔀 【自動シャッフル】
 function executeSmartShuffle() {
-    if (!uniqueGroupId) { alert("接続されていません"); return; }
-    if (currentPresentMembers.length === 0) { alert("参加者が一人もいません"); return; }
+    if (!uniqueGroupId) return;
+    if (currentPresentMembers.length === 0) { alert("参加メンバーがまだ誰もいません。先に「参加者」タブからURLを共有して登録してもらってください。"); return; }
     
     db.collection("multigroups").doc(uniqueGroupId).get().then((doc) => {
         if (!doc.exists) return;
         const data = doc.data();
         let rooms = JSON.parse(JSON.stringify(data.roomsSetup)); 
+        rooms.forEach(r => r.members = []);
 
         let unassigned = [...currentPresentMembers];
         unassigned.sort(() => Math.random() - 0.5);
@@ -294,30 +376,84 @@ function executeSmartShuffle() {
                 if (penalty < minPenalty) { minPenalty = penalty; bestRoomIdx = i; }
             }
             if (bestRoomIdx !== -1) { rooms[bestRoomIdx].members.push(member); } 
-            else { alert("部屋の定員が不足しています！"); return; }
+            else { alert("部屋の合計定員が不足しています！「部屋設定」タブから部屋を増やすか定員を増やしてください。"); return; }
         }
 
-        db.collection("multigroups").doc(uniqueGroupId).update({
-            currentResult: rooms,
-            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-        });
-
+        updateResultOnFirebase(rooms);
+        
         db.collection("history_logs").doc(groupDisplayName).collection("logs").add({
             rooms: rooms,
             createdAt: firebase.firestore.FieldValue.serverTimestamp()
         });
-
-        alert("🎉 部屋割りを確定・配信しました！共同管理者の画面にも即座に反映されます。");
     });
 }
 
-function renderKanjiView(rooms) {
-    let html = '<h4>確定した部屋割り</h4>';
-    rooms.forEach(r => {
-        html += `<div class="room-box"><strong>■ ${r.name} (${r.members.length}/${r.capacity}人)</strong><br>`;
-        html += r.members.map(m => `<span class="badge">${m}</span>`).join(' ') + '</div>';
+// 🔄 結果表示 & 個別手動移動
+function renderKanjiResultView(rooms) {
+    let html = '';
+    
+    rooms.forEach((r, roomIdx) => {
+        const extraInfo = [r.model, r.memo].filter(Boolean).join(' / ');
+        html += `
+            <div class="room-box-result">
+                <div class="room-title-bar">
+                    <span>🏠 ${r.name} ${extraInfo ? `<span style="font-size:11px; font-weight:normal; color:#666;">(${extraInfo})</span>` : ''}</span>
+                    <span style="color:#666;">${r.members.length} / ${r.capacity}人</span>
+                </div>
+                <div>
+        `;
+        
+        if (r.members.length === 0) {
+            html += `<span style="color:#ccc; font-size:12px; display:block; padding:4px 0;">空き部屋です</span>`;
+        } else {
+            r.members.forEach(m => {
+                let selectHtml = `<select class="move-select" onchange="moveMemberManually('${m}', ${roomIdx}, this.value)">`;
+                selectHtml += `<option value="" disabled selected>移動</option>`;
+                rooms.forEach((targetRoom, targetIdx) => {
+                    if (roomIdx !== targetIdx) {
+                        selectHtml += `<option value="${targetIdx}">➡ ${targetRoom.name}</option>`;
+                    }
+                });
+                selectHtml += `</select>`;
+                
+                html += `
+                    <span class="member-wrapper">
+                        <span>${m}</span>
+                        ${selectHtml}
+                    </span>
+                `;
+            });
+        }
+        
+        html += `</div></div>`;
     });
+    
     document.getElementById('resultInside').innerHTML = html;
+}
+
+function moveMemberManually(memberName, fromRoomIdx, toRoomIdxStr) {
+    const toRoomIdx = parseInt(toRoomIdxStr);
+    
+    db.collection("multigroups").doc(uniqueGroupId).get().then(doc => {
+        if (!doc.exists) return;
+        let rooms = doc.data().currentResult;
+        
+        rooms[fromRoomIdx].members = rooms[fromRoomIdx].members.filter(m => m !== memberName);
+        rooms[toRoomIdx].members.push(memberName);
+        
+        if (rooms[toRoomIdx].members.length > rooms[toRoomIdx].capacity) {
+            alert(`⚠️ 注意: 移動先の部屋（${rooms[toRoomIdx].name}）が設定定員を超過します。`);
+        }
+        
+        updateResultOnFirebase(rooms);
+    });
+}
+
+function updateResultOnFirebase(rooms) {
+    db.collection("multigroups").doc(uniqueGroupId).update({
+        currentResult: rooms,
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
 }
 
 function clearKanjiState() {
@@ -325,16 +461,15 @@ function clearKanjiState() {
     if (unsubscribeMembers) unsubscribeMembers();
     if (unsubscribeStatus) unsubscribeStatus();
     uniqueGroupId = "";
-    document.getElementById('resultInside').innerHTML = "";
-    document.getElementById('statusArea').style.display = 'none';
-    document.getElementById('shareArea').style.display = 'none';
-    document.getElementById('setupCard').style.display = 'block';
-    document.getElementById('joinedMembersArea').innerHTML = '<span style="color:#999; font-size:14px;">グループ部屋に接続すると、参加者の待機状態がここに同期されます。</span>';
+    document.getElementById('roomsSetupContainer').innerHTML = "";
+    document.getElementById('resultInside').innerHTML = '<p style="color:#999; text-align:center; font-size:13px; padding:20px;">まだ部屋割りが作成されていません。</p>';
+    document.getElementById('step2_mainDashboard').style.display = 'none';
+    document.getElementById('step1_connection').style.display = 'block';
 }
 
 async function resetCurrentEvent() {
     if (!uniqueGroupId) return;
-    if (!confirm("本当に今回のイベント部屋を完全に削除し、管理室を解散しますか？\n（共同管理している他の幹事の画面も同時に初期化されます）")) return;
+    if (!confirm("本当にこのイベント管理室を削除して完全に解散しますか？")) return;
 
     try {
         await db.collection("multigroups").doc(uniqueGroupId).update({
@@ -342,14 +477,13 @@ async function resetCurrentEvent() {
             status: "reset",
             updatedAt: firebase.firestore.FieldValue.serverTimestamp()
         });
-
         const snapshot = await db.collection("multigroups").doc(uniqueGroupId).collection("members").get();
         const batch = db.batch();
         snapshot.forEach((doc) => { batch.delete(doc.ref); });
         await batch.commit();
 
         clearKanjiState();
-        alert("🧹 グループ部屋を削除し、解散しました。");
+        alert("🧹 完全に初期化されました。");
     } catch (error) {
         alert("エラー: " + error);
     }
@@ -359,15 +493,14 @@ function copyRoomCode() {
     const codeText = document.getElementById('displayCodeText').innerText;
     if(!codeText) return;
     navigator.clipboard.writeText(codeText);
-    alert("部屋コードをコピーしました！共同の幹事メンバーに共有してください。");
+    alert("部屋コードをコピーしました！共同幹事に共有してください。");
 }
 
-// 配布URLコピー
 function copyShareUrl() {
     const input = document.getElementById('shareUrl');
     input.select();
     navigator.clipboard.writeText(input.value);
-    alert("LINE用の参加登録URLをコピーしました！LINEグループに転送してください。");
+    alert("参加登録用URLをコピーしました！LINEグループ等に流してください。");
 }
 </script>
 </body>
