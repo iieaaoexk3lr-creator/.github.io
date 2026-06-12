@@ -7,41 +7,61 @@
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
     <style>
-        body { font-family: sans-serif; max-width: 500px; margin: 0 auto; padding: 15px; background: #f8f9fa; }
+        body { font-family: sans-serif; max-width: 500px; margin: 0 auto; padding: 15px; background: #f8f9fa; line-height: 1.5; }
         .card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); text-align: center; }
-        .input-field { width: 100%; padding: 12px; font-size: 16px; box-sizing: border-box; margin-bottom: 15px; border: 1px solid #ccc; border-radius: 4px; }
-        .btn { background: #007bff; color: white; border: none; width: 100%; padding: 12px; border-radius: 6px; font-size: 16px; font-weight: bold; cursor: pointer; }
+        .input-field { width: 100%; padding: 14px; font-size: 16px; box-sizing: border-box; margin-bottom: 15px; border: 1px solid #ccc; border-radius: 6px; text-align: center; }
+        .btn { background: #007bff; color: white; border: none; width: 100%; padding: 14px; border-radius: 6px; font-size: 16px; font-weight: bold; cursor: pointer; }
         .room-box { border-left: 4px solid #28a745; background: #fff; padding: 12px; margin-bottom: 12px; text-align: left; border-top: 1px solid #eee; border-right: 1px solid #eee; border-bottom: 1px solid #eee; border-radius: 0 6px 6px 0; }
         .room-title { font-weight: bold; font-size: 15px; color: #333; margin-bottom: 6px; }
         .member-badge { background: #e2f0d9; color: #385723; padding: 4px 10px; border-radius: 4px; font-size: 14px; display: inline-block; margin: 2px; }
-        .my-badge { background: #ffc000; color: #000; font-weight: bold; }
+        .my-badge { background: #ffc000; color: #000; font-weight: bold; border: 1px solid #e0a800; }
+        .info-text { font-size: 13px; color: #666; margin-bottom: 15px; text-align: left; background: #f1f3f5; padding: 10px; border-radius: 4px; }
     </style>
 </head>
 <body>
 
     <div class="card">
-        <h2 id="mainTitle">部屋割りシステム</h2>
+        <h2 id="mainTitle" style="color: #007bff; margin-bottom: 5px;">部屋割りシステム</h2>
+        <p style="font-size: 12px; color: #888; margin-top: 0; margin-bottom: 20px;">リアルタイム部屋割り確認用ページ</p>
         
         <div id="registerArea" style="display:none;">
-            <p style="font-size:14px; color:#666;">あなたのニックネームを入力して登録してください。</p>
-            <input type="text" id="myNameInput" class="input-field" placeholder="例：としぞう">
-            <button class="btn" onclick="registerMe()">確認登録（出席する）</button>
+            <div class="info-text">
+                <b>💡 使い方ガイド：</b><br>
+                1. 他の人と被らない「ニックネーム（例：としぞう）」を入力します。<br>
+                2. 「確認登録」を押すと幹事画面にあなたが自動で同期されます。<br>
+                3. 登録後は画面を閉じずにそのままお待ちください。
+            </div>
+            <input type="text" id="myNameInput" class="input-field" placeholder="ニックネームを入力">
+            <button class="btn" onclick="registerMe()">確認登録（部屋割りを受付する）</button>
         </div>
 
         <div id="waitingArea" style="display:none;">
-            <div style="font-size: 40px; margin-bottom: 10px;">⏰</div>
-            <p><strong><span id="registeredNameDisplay"></span></strong> さん、受付完了しています！</p>
-            <p style="color:#666; font-size:13px;">幹事さんが部屋割りを決定するまで、この画面のままお待ちください。</p>
+            <div style="font-size: 45px; margin-bottom: 10px; animation: pulse 2s infinite;">⏰</div>
+            <p style="font-size: 18px; margin-bottom: 5px;"><strong>「<span id="registeredNameDisplay" style="color: #dc3545;"></span>」</strong> さん</p>
+            <p style="font-weight: bold; color: #28a745; margin-top: 0;">正常に受付が完了しています！</p>
+            
+            <div class="info-text" style="background: #fff3cd; color: #856404; border: 1px solid #ffeeba;">
+                <b>⏳ 幹事さんの操作を待っています</b><br>
+                幹事さんが部屋割りをシャッフルして決定すると、<b>この画面が自動で結果画面に切り替わります。</b>ページを閉じたり更新したりせず、このまましばらくお待ちください。
+            </div>
         </div>
 
         <div id="resultArea" style="display:none; text-align:left;">
-            <h3 style="text-align:center; color:#28a745;">🎉 部屋割りが決定しました！</h3>
+            <h3 style="text-align:center; color:#28a745; margin-bottom: 5px;">🎉 部屋割りが決定しました！</h3>
+            <p style="text-align:center; font-size: 13px; color: #666; margin-top: 0; margin-bottom: 20px;">
+                黄色の <span style="background: #ffc000; padding: 1px 5px; border-radius: 3px; font-weight: bold; color: #000;">👑 あなたの部屋</span> を確認して移動してください。
+            </p>
+            
             <div id="roomsContainer"></div>
+
+            <div class="info-text" style="margin-top: 15px;">
+                <b>ℹ️ 次のラウンド（部屋替え）について：</b><br>
+                幹事さんが「次の部屋替え」または「リセット」を指示すると、この画面は自動的にリフレッシュされます。その際、過去に同じ部屋になった人とは極力被らないように自動計算されます。
+            </div>
         </div>
     </div>
 
 <script>
-// ご提示いただいたFirebase設定を反映
 const firebaseConfig = {
   apiKey: "AIzaSyDfMGBuQYpuyOMGt_hEdPgR_z42d92E8Lo",
   authDomain: "heyagae-84.firebaseapp.com",
@@ -64,7 +84,7 @@ let mySavedName = "";
 
 window.onload = function() {
     if (!groupId) {
-        document.body.innerHTML = "<h3>⚠️ エラー: 正しいURLからアクセスしてください。</h3>";
+        document.body.innerHTML = "<div class='card'><h3>⚠️ URLエラー</h3><p style='color:red; font-size:14px;'>正しい招待URLからアクセスしてください。<br>LINEに貼られたリンクを再度ご確認ください。</p></div>";
         return;
     }
     
