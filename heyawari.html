@@ -70,20 +70,22 @@
     </div>
 
 <script>
-// --- Firebase 設定情報を貼り付けてください ---
+// ご提示いただいたFirebase設定を反映
 const firebaseConfig = {
-    apiKey: "YOUR_API_KEY",
-    authDomain: "YOUR_AUTH_DOMAIN",
-    projectId: "YOUR_PROJECT_ID",
-    storageBucket: "YOUR_STORAGE_BUCKET",
-    messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
-    appId: "YOUR_APP_ID"
+  apiKey: "AIzaSyDfMGBuQYpuyOMGt_hEdPgR_z42d92E8Lo",
+  authDomain: "heyagae-84.firebaseapp.com",
+  databaseURL: "https://heyagae-84-default-rtdb.firebaseio.com",
+  projectId: "heyagae-84",
+  storageBucket: "heyagae-84.firebasestorage.app",
+  messagingSenderId: "199911902929",
+  appId: "1:199911902929:web:447aa228c15e4b80b7bff0",
+  measurementId: "G-BCG3FMW3KS"
 };
-// ------------------------------------------
+
 firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 
-let uniqueGroupId = ""; // 他のグループと絶対被らない内部ID
+let uniqueGroupId = "";
 let groupDisplayName = "";
 let currentPresentMembers = [];
 let historyMatrix = {}; 
@@ -96,25 +98,22 @@ function addRoomRow() {
     document.getElementById('roomsContainer').appendChild(div);
 }
 
-// 👥 新しい独立したグループセッションを開始する
 function startNewGroupSession() {
     groupDisplayName = document.getElementById('groupNameInput').value.trim();
     if (!groupDisplayName) { alert("イベント名を入力してください"); return; }
 
-    // 以前保存したセッション（リロード対策）がなければ新規発行、あれば再利用
     if (!uniqueGroupId) {
         const cleanName = encodeURIComponent(groupDisplayName).replace(/%/g, '');
-        uniqueGroupId = cleanName + "_" + Date.now(); // 例: Colorful_171812345678
+        uniqueGroupId = cleanName + "_" + Date.now();
     }
 
-    // 参加者用URLに「groupId」を付与
-    const guestUrl = window.location.href.replace('kanji.html', 'guest.html') + `?groupId=${uniqueGroupId}`;
+    // 💡 参加者用URLを実際の「heyawari2.html」に書き換え
+    const guestUrl = "https://iieaaoexk3lr-creator.github.io/.github.io/heyawari2.html" + `?groupId=${uniqueGroupId}`;
     document.getElementById('shareUrl').value = guestUrl;
     document.getElementById('shareArea').style.display = 'block';
 
     if (unsubscribeMembers) unsubscribeMembers();
 
-    // このグループID専用のメンバーリストをリアルタイム監視
     unsubscribeMembers = db.collection("multigroups").doc(uniqueGroupId).collection("members")
     .onSnapshot((snapshot) => {
         currentPresentMembers = [];
@@ -127,7 +126,6 @@ function startNewGroupSession() {
         document.getElementById('joinedMembersArea').innerHTML = html || '<span style="color:#999;">誰も登録していません。待機中...</span>';
     });
 
-    // イベント名単位（例：「カラフル定例会」）の過去履歴を読み込む（グループ名が同じなら過去履歴を引き継ぐ）
     db.collection("history_logs").doc(groupDisplayName).collection("logs").get().then((snapshot) => {
         historyMatrix = {};
         snapshot.forEach((doc) => {
@@ -180,7 +178,6 @@ function executeSmartShuffle() {
         else { alert("部屋の定員が不足しています！"); return; }
     }
 
-    // このグループID専用のドキュメントに結果を保存
     db.collection("multigroups").doc(uniqueGroupId).set({
         title: groupDisplayName,
         currentResult: rooms,
@@ -188,7 +185,6 @@ function executeSmartShuffle() {
         status: "active"
     });
 
-    // 表示名単位のログコレクションに履歴を蓄積
     db.collection("history_logs").doc(groupDisplayName).collection("logs").add({
         rooms: rooms,
         createdAt: firebase.firestore.FieldValue.serverTimestamp()
@@ -209,7 +205,7 @@ function renderKanjiView(rooms) {
 
 async function resetCurrentEvent() {
     if (!uniqueGroupId) return;
-    if (!confirm("本当に今回のイベントを終了してデータをリresetしますか？")) return;
+    if (!confirm("本当に今回のイベントを終了してデータをリセットしますか？")) return;
 
     try {
         await db.collection("multigroups").doc(uniqueGroupId).set({
@@ -224,7 +220,7 @@ async function resetCurrentEvent() {
         await batch.commit();
 
         document.getElementById('resultInside').innerHTML = "";
-        uniqueGroupId = ""; // IDをクリアして次回新しいIDを生成可能にする
+        uniqueGroupId = ""; 
         alert("🧹 リセット完了しました！");
     } catch (error) {
         alert("エラー: " + error);
