@@ -2,641 +2,240 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>カラオケ部屋割りツール（ファイル読み込み修正版）</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <title>【幹事用】マルチ対応・スマート部屋割りシステム</title>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
     <style>
-        body { font-family: sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; background: #f5f5f5; color: #333; }
+        body { font-family: sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; background: #f5f5f5; }
         .card { background: white; padding: 20px; border-radius: 8px; margin-bottom: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-        h1 { text-align: center; color: #007bff; font-size: 24px; margin-bottom: 30px; }
-        h3 { margin-top: 0; border-left: 4px solid #007bff; padding-left: 10px; }
-        textarea { width: 100%; height: 100px; box-sizing: border-box; padding: 10px; border: 1px solid #ccc; border-radius: 4px; resize: vertical; }
-        .btn { background: #007bff; color: white; border: none; padding: 10px 15px; border-radius: 4px; cursor: pointer; font-size: 14px; margin-right: 5px; margin-bottom: 5px; }
-        .btn:hover { background: #0056b3; }
-        .btn-success { background: #28a745; font-size: 16px; width: 100%; padding: 12px; margin-top: 10px; }
-        .btn-success:hover { background: #218838; }
-        .btn-secondary { background: #6c757d; }
-        .btn-secondary:hover { background: #5a6268; }
-        .btn-info { background: #17a2b8; }
-        .btn-info:hover { background: #138496; }
-        .btn-danger { background: #dc3545; }
-        .btn-danger:hover { background: #bd2130; }
-        
-        /* ファイル入力エリア */
-        .file-input-area { background: #e9ecef; padding: 15px; border-radius: 6px; border: 2px dashed #ced4da; text-align: center; margin-bottom: 15px; }
-        .file-input-area input[type="file"] { display: none; }
-        .file-label { background: #6c757d; color: white; padding: 8px 15px; border-radius: 4px; cursor: pointer; display: inline-block; font-size: 14px; }
-        .file-label:hover { background: #5a6268; }
-        
-        /* 参加者管理エリア */
-        .member-container { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; padding: 10px; background: #f8f9fa; border-radius: 4px; min-height: 40px; }
-        .member-tag { padding: 6px 12px; border-radius: 20px; display: inline-flex; align-items: center; gap: 6px; font-size: 14px; background: #e2e3e5; color: #333; border: 1px solid #ced4da; }
-        .member-tag.is-absent { background: #fff3cd; color: #856404; border: 1px solid #ffeeba; }
-        .member-tag.is-returned { background: #e2e3e5; color: #6c757d; border: 1px solid #d6d8db; text-decoration: line-through; }
-        .member-toggle-btn { background: none; border: none; cursor: pointer; font-size: 12px; padding: 0 4px; text-decoration: underline; color: #007bff; }
-        .member-remove { background: none; border: none; color: #dc3545; cursor: pointer; font-weight: bold; padding: 0 2px; }
-        .direct-input-area { display: flex; gap: 10px; margin-top: 15px; }
-        .direct-input-area input { flex: 1; padding: 8px; border: 1px solid #ccc; border-radius: 4px; }
-
-        /* 部屋設定エリア */
-        .room-input-list { display: flex; flex-direction: column; gap: 10px; margin-bottom: 15px; }
-        .room-input { display: flex; gap: 10px; align-items: center; background: #f8f9fa; padding: 10px; border-radius: 4px; border: 1px solid #dee2e6; }
-        .room-input input[type="text"] { flex: 2; padding: 8px; border: 1px solid #ccc; border-radius: 4px; }
-        .room-input input[type="number"] { flex: 1; padding: 8px; border: 1px solid #ccc; border-radius: 4px; max-width: 80px; }
-        .room-select-btn { background: #e9ecef; border: 1px solid #ced4da; padding: 8px 12px; border-radius: 4px; cursor: pointer; font-size: 13px; }
-        .room-select-btn:hover { background: #dee2e6; }
-        
-        /* 部屋割り結果エリア */
-        #captureArea { padding: 15px; background: white; border-radius: 6px; }
+        h1 { text-align: center; color: #dc3545; }
+        .btn { background: #007bff; color: white; border: none; padding: 10px 15px; border-radius: 4px; cursor: pointer; margin-right: 5px; }
+        .btn-success { background: #28a745; width: 100%; padding: 12px; font-size: 16px; margin-top: 10px; font-weight: bold; }
+        .btn-danger { background: #c82333; padding: 10px 15px; font-weight: bold; }
+        .room-input { display: flex; gap: 10px; margin-bottom: 8px; background: #f8f9fa; padding: 8px; border-radius: 4px; }
         .room-box { border: 1px solid #dee2e6; padding: 15px; margin-top: 10px; border-radius: 6px; background: #fff; box-shadow: inset 3px 0 0 #007bff; }
-        .room-title { font-weight: bold; font-size: 16px; margin-bottom: 8px; color: #495057; }
-        .room-members-dest { display: flex; flex-wrap: wrap; gap: 6px; min-height: 35px; padding: 5px; background: #fdfdfd; border: 1px dashed #ced4da; border-radius: 4px; }
-        
-        .result-member-badge { background: #e0f2fe; color: #0369a1; border: 1px solid #bae6fd; padding: 4px 10px; border-radius: 4px; font-size: 14px; cursor: pointer; display: inline-block; user-select: none; }
-        .result-member-badge:hover { background: #bae6fd; }
-        .result-header { font-size: 18px; font-weight: bold; color: #007bff; margin-bottom: 10px; border-bottom: 2px solid #e9ecef; padding-bottom: 5px; }
-        
-        /* プライバシー設定トグル */
-        .option-toggle-area { background: #fff3cd; padding: 12px; border-radius: 6px; border: 1px solid #ffeeba; margin-bottom: 15px; display: flex; align-items: center; gap: 15px; font-size: 14px; }
-
-        /* 移動モーダル */
-        .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center; }
-        .modal-content { background: white; padding: 20px; border-radius: 8px; max-width: 400px; width: 90%; box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
-        .modal-title { font-weight: bold; font-size: 16px; margin-bottom: 15px; }
-        .modal-options { display: flex; flex-direction: column; gap: 8px; }
+        .badge { background: #e0f2fe; color: #0369a1; padding: 4px 10px; border-radius: 4px; display: inline-block; margin: 2px; }
+        .member-tag { background: #e2e3e5; padding: 6px 12px; border-radius: 20px; display: inline-block; margin: 4px; font-size: 14px; }
     </style>
 </head>
 <body>
 
-    <h1>カラオケ部屋割りツール</h1>
+    <h1>🔑 部屋割りシステム（マルチグループ対応版）</h1>
 
     <div class="card">
-        <h3>1. メンバーデータの読み込み</h3>
+        <h3>1. イベント名と部屋の設定</h3>
+        <label>表示するイベント名（参加者画面に見える名前）:</label><br>
+        <input type="text" id="groupNameInput" value="カラフル定例会" style="width:100%; padding:8px; box-sizing:border-box; margin-bottom:15px;"><br>
         
-        <div class="file-input-area">
-            <span style="font-size: 13px; font-weight: bold; color: #495057; display: block; margin-bottom: 8px;">
-                📊 調整さんの「ダウンロード(Excel形式)」ファイルを読み込む
-            </span>
-            <label class="file-label" for="csvFileInput">ファイルを選択する</label>
-            <input type="file" id="csvFileInput" accept=".csv, .txt, .xlsx" onchange="handleFileSelect(this)">
-            <span id="fileNameDisplay" style="font-size: 12px; color: #666; margin-left: 10px; display: inline-block; vertical-align: middle;">ファイルが選択されていません</span>
+        <label>用意するカラオケ部屋リスト:</label>
+        <div id="roomsContainer">
+            <div class="room-input">
+                <input type="text" class="room-name" value="101号室">
+                <input type="number" class="room-cap" value="5" style="width:50px;"> 人
+            </div>
+            <div class="room-input">
+                <input type="text" class="room-name" value="パーティールーム">
+                <input type="number" class="room-cap" value="10" style="width:50px;"> 人
+            </div>
         </div>
+        <button class="btn" onclick="addRoomRow()">＋ 部屋を追加</button>
+        <button class="btn" style="background:#6f42c1;" onclick="startNewGroupSession()">👥 この内容で受付URLを発行する</button>
+    </div>
 
-        <p style="font-size: 12px; color: #666; margin-bottom: 5px;">
-            【部屋替え用】または、前回のLINEテキスト（暗号化コード #SECRET 含む）をここに貼り付けて読み込むことも可能です：
+    <div class="card">
+        <h3>2. 現在の参加表明メンバー（このURL専用）</h3>
+        <div id="joinedMembersArea" style="min-height:50px; background:#f8f9fa; padding:10px; border-radius:4px; margin-bottom: 10px;">
+            <span style="color:#999;">上のボタンを押すと、この会専用の受付けが開始されます。</span>
+        </div>
+        
+        <div id="shareArea" style="margin-top:15px; display:none; background:#e9ecef; padding:10px; border-radius:4px;">
+            <strong>📢 この会専用のLINE配布用URL:</strong><br>
+            <input type="text" id="shareUrl" style="width:100%; padding:6px; margin:5px 0;" readonly>
+            <button class="btn" style="background:#28a745; padding:5px 10px; font-size:12px;" onclick="copyShareUrl()">URLをコピー</button>
+        </div>
+    </div>
+
+    <div class="card">
+        <h3>3. 過去履歴を考慮して部屋割り実行</h3>
+        <button class="btn btn-success" onclick="executeSmartShuffle()">🔀 重複を回避して部屋割り配信</button>
+        <div id="resultInside" style="margin-top:15px;"></div>
+    </div>
+
+    <div class="card" style="border: 1px solid #f5c6cb; background-color: #fdf3f4;">
+        <h3 style="color: #721c24; margin-top: 0;">⚠️ このイベントの終了・クリア処理</h3>
+        <p style="font-size: 13px; color: #721c24;">
+            このイベントが終了し、参加者のスマホ画面を初期化（名前入力に戻す）したい場合は以下を押してください。
         </p>
-        <textarea id="mainInput" placeholder="LINEの部屋割りテキストをここにペーストして読み込むことも可能です"></textarea>
-        <div style="margin-top: 8px;">
-            <button class="btn" onclick="handleTextImport()">貼り付けたテキストから読み込む</button>
-        </div>
-
-        <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;">
-
-        <p style="font-size: 12px; color: #666; margin-bottom: 5px;">【現在の参加予定メンバー】（到着変更・帰宅処理・削除が可能）</p>
-        <div id="memberListArea" class="member-container">
-            <span style="color:#999; font-size:13px;">メンバーが登録されていません</span>
-        </div>
-
-        <div class="direct-input-area">
-            <input type="text" id="newMemberName" placeholder="当日飛び入り参加の人などの名前">
-            <button class="btn btn-secondary" onclick="addMemberDirectly('present')">リストに追加</button>
-            <button class="btn btn-secondary" style="background:#e0a800; color:#333;" onclick="addMemberDirectly('absent')">未着として追加</button>
-        </div>
-    </div>
-
-    <div class="card">
-        <h3>2. カラオケ部屋の設定（部屋割りの構成）</h3>
-        <div class="room-input-list" id="roomsContainer">
-            <div class="room-input" id="roomRow_0">
-                <input type="text" class="room-name" value="101号室" placeholder="部屋名">
-                <button class="room-select-btn" onclick="toggleRoomPreset(this)">部屋名切替</button>
-                <input type="number" class="room-cap" value="5" min="1"> 人
-                <button class="btn btn-danger" style="margin:0; padding:5px 10px;" onclick="removeRoomRow(this)">削除</button>
-            </div>
-            <div class="room-input" id="roomRow_1">
-                <input type="text" class="room-name" value="パーティールーム" placeholder="部屋名">
-                <button class="room-select-btn" onclick="toggleRoomPreset(this)">部屋名切替</button>
-                <input type="number" class="room-cap" value="10" min="1"> 人
-                <button class="btn btn-danger" style="margin:0; padding:5px 10px;" onclick="removeRoomRow(this)">削除</button>
-            </div>
-        </div>
-        
-        <div>
-            <button class="btn btn-secondary" onclick="addRoomRow('号室', 5)">＋ 個室を追加</button>
-            <button class="btn btn-secondary" style="background:#17a2b8;" onclick="addRoomRow('パーティールーム', 10)">＋ パーティールームを追加</button>
-        </div>
-
-        <button class="btn btn-success" onclick="executeRoomShuffle()">このメンバー・部屋構成で部屋割りを実行する</button>
-    </div>
-
-    <div class="card">
-        <h3>3. 部屋割り結果</h3>
-        
-        <div class="option-toggle-area">
-            <strong>🔒 プライバシー設定（LINEへの出力方法）:</strong>
-            <label style="cursor: pointer;">
-                <input type="radio" name="privacyMode" value="secret" checked> 
-                <b>暗号コード化（推奨）</b> <span style="font-size:11px;color:#666;">※LINE上では未着・帰宅が実名でバレません</span>
-            </label>
-            <label style="cursor: pointer;">
-                <input type="radio" name="privacyMode" value="open"> 
-                <b>そのまま実名コピペ</b> <span style="font-size:11px;color:#666;">※全員にそのまま見えます</span>
-            </label>
-        </div>
-
-        <p style="font-size: 12px; color: #dc3545; margin-bottom: 10px; font-weight: bold;">
-            💡 調整機能：名前をタップすると、別部屋への移動・入れ替え・帰宅処理が行えます！
-        </p>
-        
-        <div id="captureArea">
-            <div id="resultInside">
-                <span style="color: #666;">上のボタンを押すと、ここに部屋割り結果が表示されます。</span>
-            </div>
-        </div>
-
-        <div style="margin-top: 15px;">
-            <button class="btn" style="background:#28a745;" onclick="copyResultFromCurrentState()">結果をコピーしてLINE等に貼り付け</button>
-            <button class="btn btn-info" onclick="downloadResultAsImage()">結果を画像(PNG)として保存</button>
-        </div>
-    </div>
-
-    <div id="moveModal" class="modal-overlay" onclick="closeModal()">
-        <div class="modal-content" onclick="event.stopPropagation()">
-            <div class="modal-title" id="modalTitle">〇〇さんをどの部屋に移動しますか？</div>
-            <div class="modal-options" id="modalOptions"></div>
-            <button class="btn btn-secondary" style="margin-top: 15px; width: 100%;" onclick="closeModal()">キャンセル</button>
-        </div>
+        <button class="btn btn-danger" onclick="resetCurrentEvent()">🧹 今回の入室情報をリセットする</button>
     </div>
 
 <script>
-let activeMembers = []; // { id, name, status: 'present' | 'absent' | 'returned' }
+// --- Firebase 設定情報を貼り付けてください ---
+const firebaseConfig = {
+    apiKey: "YOUR_API_KEY",
+    authDomain: "YOUR_AUTH_DOMAIN",
+    projectId: "YOUR_PROJECT_ID",
+    storageBucket: "YOUR_STORAGE_BUCKET",
+    messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
+    appId: "YOUR_APP_ID"
+};
+// ------------------------------------------
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+
+let uniqueGroupId = ""; // 他のグループと絶対被らない内部ID
+let groupDisplayName = "";
+let currentPresentMembers = [];
 let historyMatrix = {}; 
-let currentRoomsData = []; 
-let roomCounter = 2; 
+let unsubscribeMembers = null;
 
-let selectedMemberName = "";
-let selectedSourceRoomId = "";
-
-function utf8_to_b64(str) { return window.btoa(unescape(encodeURIComponent(str))); }
-function b64_to_utf8(str) { return decodeURIComponent(escape(window.atob(str))); }
-
-// ファイル読み込み処理
-function handleFileSelect(input) {
-    const file = input.files[0];
-    if (!file) return;
-    
-    document.getElementById('fileNameDisplay').innerText = file.name;
-    
-    const reader = new FileReader();
-    reader.onload = function(e) {
-        const text = e.target.result;
-        parseChouseisanCSV(text);
-    };
-    // 調整さんのShift_JISに対応
-    reader.readAsText(file, "Shift_JIS");
-}
-
-// 調整さんのCSVファイルをどんな行構造からでも解析するロジック
-function parseChouseisanCSV(textContent) {
-    const lines = textContent.split(/\r?\n/);
-    let importedList = [];
-    let idCounter = 1;
-
-    // 「日程」というヘッダーが入っている行をファイルを全スキャンして特定する
-    let headerLineIndex = -1;
-    for (let i = 0; i < lines.length; i++) {
-        if (lines[i].startsWith("日程") || lines[i].includes("日程,")) {
-            headerLineIndex = i;
-            break;
-        }
-    }
-
-    if (headerLineIndex === -1) {
-        alert("調整さんのファイル内から『日程』の項目行が見つかりませんでした。ファイル形式をもう一度ご確認ください。");
-        return;
-    }
-
-    // ヘッダー行からメンバー名を一挙に配列化
-    const headers = lines[headerLineIndex].split(',').map(h => h.replace(/"/g, '').trim());
-    
-    // スケジュール回答が書かれている行（日程ヘッダーのすぐ次の行）を取得
-    let answerLineIndex = headerLineIndex + 1;
-    if (answerLineIndex >= lines.length || !lines[answerLineIndex].trim()) {
-        alert("回答データ行が見つかりませんでした。");
-        return;
-    }
-    
-    const tokens = lines[answerLineIndex].split(',').map(t => t.replace(/"/g, '').trim());
-
-    // インデックス1番目以降（各メンバー名）をループ処理
-    for (let j = 1; j < headers.length; j++) {
-        const name = headers[j];
-        if (!name || name === "コメント" || name.includes("★")) continue;
-        
-        const answer = tokens[j] || "";
-        // 「◯」または「○」が出席の証拠
-        if (answer.includes('◯') || answer.includes('○')) {
-            importedList.push({
-                id: `u_${idCounter++}_${Date.now()}`,
-                name: name,
-                status: 'present'
-            });
-        }
-    }
-
-    if (importedList.length === 0) {
-        alert("ファイルから「◯（出席）」の参加者を検出できませんでした。");
-        return;
-    }
-
-    activeMembers = importedList;
-    historyMatrix = {}; // 新規読み込みなので履歴は初期化
-    renderMemberList();
-    alert(`調整さんファイル解析完了！\n出席確定メンバー ${activeMembers.length} 名を読み込みました！`);
-}
-
-function handleTextImport() {
-    const text = document.getElementById('mainInput').value;
-    if (!text.trim()) { alert("テキストが入力されていません。"); return; }
-    importFromLineText(text);
-}
-
-function importFromLineText(text) {
-    const lines = text.split('\n');
-    let currentRoomMembers = [];
-    let allFoundMembers = []; 
-    let secretData = null;
-    historyMatrix = {};
-
-    lines.forEach(line => {
-        if (line.includes('#SECRET:')) {
-            try {
-                const b64 = line.split('#SECRET:')[1].trim();
-                const jsonStr = b64_to_utf8(b64);
-                secretData = JSON.parse(jsonStr); 
-            } catch(e) {
-                console.error("暗号データの復元に失敗しました", e);
-            }
-        }
-    });
-
-    lines.forEach(line => {
-        const trimmed = line.trim();
-        if (!trimmed || trimmed.includes('#SECRET:')) return;
-        if (trimmed.includes('号室') || trimmed.includes('部屋') || trimmed.startsWith('■') || trimmed.includes('パーティー') || trimmed.includes('大部屋') || trimmed.includes('バンケット') || trimmed.startsWith('未着') || trimmed.startsWith('帰宅')) {
-            recordPairings(currentRoomMembers);
-            currentRoomMembers = []; 
-        } else {
-            const names = trimmed.split(/[,、\s\/]+/).map(n => n.trim()).filter(n => n.length > 0);
-            names.forEach(rawName => {
-                if (rawName.includes('人') || rawName.startsWith('■') || rawName.includes('幹事管理用コード')) return;
-                
-                let status = 'present';
-                if (rawName.includes('（未）') || rawName.includes('(未)')) { status = 'absent'; }
-                else if (rawName.includes('（帰）') || rawName.includes('(帰)')) { status = 'returned'; }
-
-                const cleanName = rawName.replace(/（未）|\(未\)|（帰）|\(帰\)/g, '').trim();
-                if (!cleanName) return;
-                
-                currentRoomMembers.push(cleanName);
-                if (!allFoundMembers.some(m => m.name === cleanName)) {
-                    allFoundMembers.push({ name: cleanName, status: status });
-                }
-            });
-        }
-    });
-    recordPairings(currentRoomMembers);
-
-    if (secretData) {
-        if (secretData.absent) {
-            secretData.absent.forEach(name => {
-                if (!allFoundMembers.some(m => m.name === name)) { allFoundMembers.push({ name: name, status: 'absent' }); }
-                else { allFoundMembers.find(m => m.name === name).status = 'absent'; }
-            });
-        }
-        if (secretData.returned) {
-            secretData.returned.forEach(name => {
-                if (!allFoundMembers.some(m => m.name === name)) { allFoundMembers.push({ name: name, status: 'returned' }); }
-                else { allFoundMembers.find(m => m.name === name).status = 'returned'; }
-            });
-        }
-    }
-
-    if (allFoundMembers.length === 0) { alert("メンバー名を読み取れませんでした。"); return; }
-    let idCounter = 1;
-    activeMembers = allFoundMembers.map(m => ({ id: `u_${idCounter++}_${Date.now()}`, name: m.name, status: m.status }));
-    renderMemberList();
-    
-    if (secretData) {
-        alert(`LINEテキストを読み込みました！\n🔒 暗号コードから未着・帰宅メンバーのステータスを安全に復元しました。`);
-    } else {
-        alert(`前回のLINEテキストから ${activeMembers.length} 名を読み込みました！`);
-    }
-}
-
-function recordPairings(memberList) {
-    if (memberList.length < 2) return;
-    for (let i = 0; i < memberList.length; i++) {
-        for (let j = i + 1; j < memberList.length; j++) {
-            const pairKey = [memberList[i], memberList[j]].sort().join('-');
-            historyMatrix[pairKey] = 1; 
-        }
-    }
-}
-
-function addRoomRow(type, defaultCap) {
-    const container = document.getElementById('roomsContainer');
-    const rowId = `roomRow_${roomCounter++}`;
-    let roomName = type;
-    if (type === '号室') {
-        const existingCount = container.querySelectorAll('.room-name').length;
-        roomName = `${101 + existingCount}号室`;
-    }
+function addRoomRow() {
     const div = document.createElement('div');
     div.className = 'room-input';
-    div.id = rowId;
-    div.innerHTML = `
-        <input type="text" class="room-name" value="${roomName}" placeholder="部屋名">
-        <button class="room-select-btn" onclick="toggleRoomPreset(this)">部屋名切替</button>
-        <input type="number" class="room-cap" value="${defaultCap}" min="1"> 人
-        <button class="btn btn-danger" style="margin:0; padding:5px 10px;" onclick="removeRoomRow(this)">削除</button>
-    `;
-    container.appendChild(div);
+    div.innerHTML = `<input type="text" class="room-name" value="新部屋"> <input type="number" class="room-cap" value="5" style="width:50px;"> 人`;
+    document.getElementById('roomsContainer').appendChild(div);
 }
 
-function removeRoomRow(button) { button.parentElement.remove(); }
+// 👥 新しい独立したグループセッションを開始する
+function startNewGroupSession() {
+    groupDisplayName = document.getElementById('groupNameInput').value.trim();
+    if (!groupDisplayName) { alert("イベント名を入力してください"); return; }
 
-function toggleRoomPreset(button) {
-    const input = button.parentElement.querySelector('.room-name');
-    if (input.value.includes('号室')) { input.value = 'パーティールーム'; }
-    else if (input.value === 'パーティールーム') { input.value = '大部屋'; }
-    else { input.value = '101号室'; }
-}
-
-function addMemberDirectly(status) {
-    const nameInput = document.getElementById('newMemberName');
-    const name = nameInput.value.trim();
-    if (!name) return;
-    if (activeMembers.some(m => m.name === name)) { alert("その名前は側に存在します。"); return; }
-    activeMembers.push({ id: `u_direct_${Date.now()}`, name: name, status: status });
-    nameInput.value = "";
-    renderMemberList();
-}
-
-function changeMemberStatus(memberId, newStatus) {
-    activeMembers = activeMembers.map(m => m.id === memberId ? { ...m, status: newStatus } : m);
-    renderMemberList();
-}
-
-function removeMember(memberId) {
-    activeMembers = activeMembers.filter(m => m.id !== memberId);
-    renderMemberList();
-}
-
-function renderMemberList() {
-    const listArea = document.getElementById('memberListArea');
-    if (activeMembers.length === 0) {
-        listArea.innerHTML = `<span style="color:#999; font-size:13px;">メンバーが登録されていません</span>`;
-        return;
+    // 以前保存したセッション（リロード対策）がなければ新規発行、あれば再利用
+    if (!uniqueGroupId) {
+        const cleanName = encodeURIComponent(groupDisplayName).replace(/%/g, '');
+        uniqueGroupId = cleanName + "_" + Date.now(); // 例: Colorful_171812345678
     }
-    listArea.innerHTML = activeMembers.map(m => {
-        let tagClass = 'member-tag';
-        let statusText = '';
-        let actionButtons = '';
 
-        if (m.status === 'absent') {
-            tagClass = 'member-tag is-absent';
-            statusText = '（未）';
-            actionButtons = `<button class="member-toggle-btn" onclick="changeMemberStatus('${m.id}', 'present')">到着に変更</button>`;
-        } else if (m.status === 'returned') {
-            tagClass = 'member-tag is-returned';
-            statusText = '（帰）';
-            actionButtons = `<button class="member-toggle-btn" onclick="changeMemberStatus('${m.id}', 'present')">復活(出席)</button>`;
-        } else {
-            actionButtons = `
-                <button class="member-toggle-btn" onclick="changeMemberStatus('${m.id}', 'absent')">未着にする</button>
-                <button class="member-toggle-btn" style="color:#dc3545;" onclick="changeMemberStatus('${m.id}', 'returned')">帰宅</button>
-            `;
-        }
+    // 参加者用URLに「groupId」を付与
+    const guestUrl = window.location.href.replace('kanji.html', 'guest.html') + `?groupId=${uniqueGroupId}`;
+    document.getElementById('shareUrl').value = guestUrl;
+    document.getElementById('shareArea').style.display = 'block';
 
-        return `
-            <span class="${tagClass}">
-                <strong>${m.name}${statusText}</strong>
-                ${actionButtons}
-                <button class="member-remove" onclick="removeMember('${m.id}')">✕</button>
-            </span>
-        `;
-    }).join('');
+    if (unsubscribeMembers) unsubscribeMembers();
+
+    // このグループID専用のメンバーリストをリアルタイム監視
+    unsubscribeMembers = db.collection("multigroups").doc(uniqueGroupId).collection("members")
+    .onSnapshot((snapshot) => {
+        currentPresentMembers = [];
+        let html = "";
+        snapshot.forEach((doc) => {
+            const m = doc.data();
+            currentPresentMembers.push(m.name);
+            html += `<span class="member-tag">👤 ${m.name}</span>`;
+        });
+        document.getElementById('joinedMembersArea').innerHTML = html || '<span style="color:#999;">誰も登録していません。待機中...</span>';
+    });
+
+    // イベント名単位（例：「カラフル定例会」）の過去履歴を読み込む（グループ名が同じなら過去履歴を引き継ぐ）
+    db.collection("history_logs").doc(groupDisplayName).collection("logs").get().then((snapshot) => {
+        historyMatrix = {};
+        snapshot.forEach((doc) => {
+            const rData = doc.data();
+            if (rData.rooms) {
+                rData.rooms.forEach(room => {
+                    const members = room.members;
+                    for (let i = 0; i < members.length; i++) {
+                        for (let j = i + 1; j < members.length; j++) {
+                            const pairKey = [members[i], members[j]].sort().join('-');
+                            historyMatrix[pairKey] = (historyMatrix[pairKey] || 0) + 1;
+                        }
+                    }
+                });
+            }
+        });
+    });
 }
 
-function getRoomsConfig() {
+function executeSmartShuffle() {
+    if (!uniqueGroupId) { alert("最初に受付URLを発行してください"); return; }
+    if (currentPresentMembers.length === 0) { alert("参加者が一人もいません"); return; }
+    
     const names = document.querySelectorAll('.room-name');
     const caps = document.querySelectorAll('.room-cap');
-    const rooms = [];
-    names.forEach((nameInput, index) => {
-        if(nameInput.value.trim()) {
-            rooms.push({ id: `r_${index}`, name: nameInput.value, capacity: parseInt(caps[index].value) || 0, members: [] });
-        }
+    let rooms = [];
+    names.forEach((n, i) => {
+        rooms.push({ name: n.value, capacity: parseInt(caps[i].value), members: [] });
     });
-    return rooms;
-}
 
-function shuffle(array) {
-    for (let i = array.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [array[i], array[array[j]]] = [array[j], array[i]];
-    }
-}
-
-function executeRoomShuffle() {
-    let eligibleMembers = activeMembers.filter(m => m.status === 'present');
-    if (eligibleMembers.length === 0) { alert("部屋割りに参加できる出席者がいません。"); return; }
-    
-    const rooms = getRoomsConfig();
-    const totalCapacity = rooms.reduce((sum, r) => sum + r.capacity, 0);
-    if (eligibleMembers.length > totalCapacity) { alert(`定員オーバーです（現在出席${eligibleMembers.length}人 / 最大${totalCapacity}人分）`); return; }
-
-    let unassigned = [...eligibleMembers];
-    shuffle(unassigned);
-    currentRoomsData = rooms.map(r => ({ ...r, members: [] }));
+    let unassigned = [...currentPresentMembers];
+    unassigned.sort(() => Math.random() - 0.5);
 
     while (unassigned.length > 0) {
         const member = unassigned.pop();
-        let bestRoomIndex = -1;
-        let minScore = Infinity;
+        let bestRoomIdx = -1;
+        let minPenalty = Infinity;
 
-        for (let i = 0; i < currentRoomsData.length; i++) {
-            const room = currentRoomsData[i];
-            if (room.members.length >= room.capacity) continue;
-            let score = 0;
-            room.members.forEach(mName => {
-                const pairKey = [member.name, mName].sort().join('-');
-                score += (historyMatrix[pairKey] || 0); 
+        for (let i = 0; i < rooms.length; i++) {
+            if (rooms[i].members.length >= rooms[i].capacity) continue;
+            let penalty = 0;
+            rooms[i].members.forEach(existingMember => {
+                const pairKey = [member, existingMember].sort().join('-');
+                penalty += (historyMatrix[pairKey] || 0) * 10;
             });
-            if (score < minScore) { minScore = score; bestRoomIndex = i; }
-            else if (score === minScore) {
-                if (bestRoomIndex === -1 || room.members.length < currentRoomsData[bestRoomIndex].members.length) { bestRoomIndex = i; }
-            }
+            penalty += rooms[i].members.length;
+            if (penalty < minPenalty) { minPenalty = penalty; bestRoomIdx = i; }
         }
-        if (bestRoomIndex !== -1) currentRoomsData[bestRoomIndex].members.push(member.name);
+        if (bestRoomIdx !== -1) { rooms[bestRoomIdx].members.push(member); } 
+        else { alert("部屋の定員が不足しています！"); return; }
     }
 
-    renderRoomsResult();
-}
-
-function renderRoomsResult() {
-    let eligibleCount = activeMembers.filter(m => m.status === 'present').length;
-    let absentMembers = activeMembers.filter(m => m.status === 'absent');
-    let returnedMembers = activeMembers.filter(m => m.status === 'returned');
-    
-    let htmlResult = `<div class="result-header">🎉 部屋割り結果（出席: ${eligibleCount}名）</div>`;
-
-    currentRoomsData.forEach(room => {
-        const badgesHtml = room.members.map(name => `
-            <span class="result-member-badge" onclick="openMoveModal('${name}', '${room.id}')">${name}</span>
-        `).join(' ');
-
-        htmlResult += `
-            <div class="room-box">
-                <div class="room-title">${room.name} （${room.members.length} / ${room.capacity}人）</div>
-                <div class="room-members-dest">${badgesHtml || '<span style="color:#999;font-size:13px;">（空き部屋）</span>'}</div>
-            </div>
-        `;
+    // このグループID専用のドキュメントに結果を保存
+    db.collection("multigroups").doc(uniqueGroupId).set({
+        title: groupDisplayName,
+        currentResult: rooms,
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+        status: "active"
     });
 
-    if (absentMembers.length > 0 || returnedMembers.length > 0) {
-        let listHtml = '';
-        absentMembers.forEach(m => {
-            listHtml += `<span class="result-member-badge" style="background:#fff3cd;color:#856404;border-color:#ffeeba;" onclick="openMoveModal('${m.name}', 'ABSENT')">${m.name}(未)</span> `;
+    // 表示名単位のログコレクションに履歴を蓄積
+    db.collection("history_logs").doc(groupDisplayName).collection("logs").add({
+        rooms: rooms,
+        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+
+    renderKanjiView(rooms);
+    alert("🎉 部屋割りを確定・配信しました！");
+}
+
+function renderKanjiView(rooms) {
+    let html = '<h4>確定した部屋割り</h4>';
+    rooms.forEach(r => {
+        html += `<div class="room-box"><strong>■ ${r.name} (${r.members.length}/${r.capacity}人)</strong><br>`;
+        html += r.members.map(m => `<span class="badge">${m}</span>`).join(' ') + '</div>';
+    });
+    document.getElementById('resultInside').innerHTML = html;
+}
+
+async function resetCurrentEvent() {
+    if (!uniqueGroupId) return;
+    if (!confirm("本当に今回のイベントを終了してデータをリresetしますか？")) return;
+
+    try {
+        await db.collection("multigroups").doc(uniqueGroupId).set({
+            currentResult: null,
+            status: "reset",
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
         });
-        returnedMembers.forEach(m => {
-            listHtml += `<span class="result-member-badge" style="background:#e2e3e5;color:#6c757d;border-color:#ced4da;text-decoration:line-through;" onclick="openMoveModal('${m.name}', 'RETURNED')">${m.name}(帰)</span> `;
-        });
 
-        htmlResult += `
-            <div class="room-box" style="box-shadow: inset 3px 0 0 #6c757d; background: #fafafa;">
-                <div class="room-title" style="color: #495057;">部屋割り対象外（未着・帰宅）</div>
-                <div class="room-members-dest" style="background:none;border:none;">${listHtml}</div>
-            </div>
-        `;
+        const snapshot = await db.collection("multigroups").doc(uniqueGroupId).collection("members").get();
+        const batch = db.batch();
+        snapshot.forEach((doc) => { batch.delete(doc.ref); });
+        await batch.commit();
+
+        document.getElementById('resultInside').innerHTML = "";
+        uniqueGroupId = ""; // IDをクリアして次回新しいIDを生成可能にする
+        alert("🧹 リセット完了しました！");
+    } catch (error) {
+        alert("エラー: " + error);
     }
-
-    document.getElementById('resultInside').innerHTML = htmlResult;
 }
 
-function openMoveModal(memberName, fromRoomId) {
-    selectedMemberName = memberName;
-    selectedSourceRoomId = fromRoomId;
-    
-    document.getElementById('modalTitle').innerText = `「${memberName}」さんをどこへ移動しますか？`;
-    const optionsContainer = document.getElementById('modalOptions');
-    optionsContainer.innerHTML = "";
-
-    currentRoomsData.forEach(room => {
-        if (room.id === fromRoomId) return;
-        const isFull = room.members.length >= room.capacity;
-        const btn = document.createElement('button');
-        btn.className = 'btn';
-        btn.style.background = isFull ? '#6c757d' : '#007bff';
-        btn.innerText = `👉 ${room.name} へ移動 (${room.members.length}/${room.capacity}人) ${isFull ? '⚠️満室':''}`;
-        btn.onclick = function() { moveMemberToRoom(room.id); };
-        optionsContainer.appendChild(btn);
-    });
-
-    if (fromRoomId !== 'ABSENT') {
-        const btnAbsent = document.createElement('button');
-        btnAbsent.className = 'btn';
-        btnAbsent.style.background = '#e0a800'; btnAbsent.style.color = '#333';
-        btnAbsent.innerText = `⏰ 一旦「未着リスト（未）」へ外す`;
-        btnAbsent.onclick = function() { changeStatusAndRemove('absent'); };
-        optionsContainer.appendChild(btnAbsent);
-    }
-
-    if (fromRoomId !== 'RETURNED') {
-        const btnReturn = document.createElement('button');
-        btnReturn.className = 'btn';
-        btnReturn.style.background = '#dc3545';
-        btnReturn.innerText = `🚪 イベント終了・帰宅（帰）にする`;
-        btnReturn.onclick = function() { changeStatusAndRemove('returned'); };
-        optionsContainer.appendChild(btnReturn);
-    }
-
-    document.getElementById('moveModal').style.display = 'flex';
-}
-
-function closeModal() { document.getElementById('moveModal').style.display = 'none'; }
-
-function moveMemberToRoom(targetRoomId) {
-    if (selectedSourceRoomId === 'ABSENT' || selectedSourceRoomId === 'RETURNED') {
-        activeMembers = activeMembers.map(m => m.name === selectedMemberName ? { ...m, status: 'present' } : m);
-    } else {
-        const sourceRoom = currentRoomsData.find(r => r.id === selectedSourceRoomId);
-        if (sourceRoom) sourceRoom.members = sourceRoom.members.filter(name => name !== selectedMemberName);
-    }
-    const targetRoom = currentRoomsData.find(r => r.id === targetRoomId);
-    if (targetRoom) targetRoom.members.push(selectedMemberName);
-
-    closeModal(); renderRoomsResult(); renderMemberList();
-}
-
-function changeStatusAndRemove(newStatus) {
-    const sourceRoom = currentRoomsData.find(r => r.id === selectedSourceRoomId);
-    if (sourceRoom) sourceRoom.members = sourceRoom.members.filter(name => name !== selectedMemberName);
-    activeMembers = activeMembers.map(m => m.name === selectedMemberName ? { ...m, status: newStatus } : m);
-    closeModal(); renderRoomsResult(); renderMemberList();
-}
-
-function copyResultFromCurrentState() {
-    if (currentRoomsData.length === 0) { alert("まだ部屋割りがありません。"); return; }
-    const privacyMode = document.querySelector('input[name="privacyMode"]:checked').value;
-
-    let copyText = `【カラオケ部屋割り結果】\n\n`;
-    currentRoomsData.forEach(room => {
-        const namesString = room.members.join(', ');
-        copyText += `${room.name}\n${namesString || '（空き部屋）'}\n\n`;
-    });
-
-    let absentMembers = activeMembers.filter(m => m.status === 'absent');
-    let returnedMembers = activeMembers.filter(m => m.status === 'returned');
-
-    if (privacyMode === 'open') {
-        if (absentMembers.length > 0) {
-            copyText += `未着（連絡待ちなど）\n${absentMembers.map(m => `${m.name}（未）`).join(', ')}\n\n`;
-        }
-        if (returnedMembers.length > 0) {
-            copyText += `帰宅メンバー\n${returnedMembers.map(m => `${m.name}（帰）`).join(', ')}\n`;
-        }
-    } else {
-        if (absentMembers.length > 0 || returnedMembers.length > 0) {
-            const secretObj = {
-                absent: absentMembers.map(m => m.name),
-                returned: returnedMembers.map(m => m.name)
-            };
-            const jsonStr = JSON.stringify(secretObj);
-            const b64Str = utf8_to_b64(jsonStr);
-            
-            copyText += `未着・帰宅データ（幹事管理用コード）\n#SECRET:${b64Str}\n`;
-        }
-    }
-
-    navigator.clipboard.writeText(copyText.trim()).then(() => {
-        if (privacyMode === 'secret' && (absentMembers.length > 0 || returnedMembers.length > 0)) {
-            alert("未着・帰宅メンバーを【暗号化コード化】してLINE用にコピーしました！");
-        } else {
-            alert("部屋割りテキストをLINE用にコピーしました！");
-        }
-    });
-}
-
-function downloadResultAsImage() {
-    if (currentRoomsData.length === 0) { alert("まだ結果が表示されていません。"); return; }
-    const target = document.getElementById("captureArea");
-    html2canvas(target).then(canvas => {
-        const link = document.createElement("a");
-        link.href = canvas.toDataURL("image/png");
-        link.download = `カラオケ部屋割り.png`;
-        link.click();
-    });
+function copyShareUrl() {
+    const input = document.getElementById('shareUrl');
+    input.select();
+    navigator.clipboard.writeText(input.value);
+    alert("コピーしました！");
 }
 </script>
 </body>
