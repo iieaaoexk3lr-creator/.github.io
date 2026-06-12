@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>運ゲー採点 ULTRA - FULL CONTROL</title>
+    <title>運ゲー採点 ULTRA - REFIX</title>
     <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
     <style>
         :root {
@@ -196,15 +196,18 @@
         .history-item { display: flex; justify-content: space-between; padding: 8px 10px; border-bottom: 1px solid rgba(255,255,255,0.1); font-size: 14px; }
         .status { text-align: center; font-weight: bold; color: #fbc531; margin: 10px 0; min-height: 20px; font-size: 14px;}
 
-        /* 管理パネル関連 */
+        /* 🛠️ 管理パネル・レスポンシブ調整 */
         .debug-panel { max-width: 480px; width: 100%; background: #1e272e; border: 2px dashed #718093; border-radius: 15px; box-sizing: border-box; overflow: hidden; }
         .debug-toggle-btn { background: #7f8c8d; color: white; border: none; width: 100%; padding: 10px; font-weight: bold; cursor: pointer; text-align: left; display: flex; justify-content: space-between; }
         .debug-content { padding: 15px; display: none; }
-        .debug-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; font-size: 13px; }
+        
+        /* 📱 スマホ画面で枠が重ならないようにラップ配置化 */
+        .debug-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; font-size: 13px; flex-wrap: wrap; gap: 8px; }
+        .debug-row > div { display: flex; align-items: center; gap: 5px; flex-wrap: wrap; }
+        
         .debug-input { width: 45px; text-align: center; font-size: 14px; font-weight: bold; }
         .debug-input-wide { width: 60px; text-align: center; font-size: 14px; }
         
-        /* Panelマニュアル用 */
         .panel-instruction {
             background: #2f3640;
             padding: 10px;
@@ -320,7 +323,7 @@
                     <option value="all">画像を全部読む</option>
                     <option value="limit">上限数を指定して読む</option>
                 </select>
-                <span id="dbLimitSpan" style="display:none; margin-left:5px;">
+                <span id="dbLimitSpan" style="display:none; white-space: nowrap;">
                     上限: <input type="number" id="dbOcrLimitNum" class="debug-input" min="3" max="20" value="5">つ
                 </span>
             </div>
@@ -367,7 +370,6 @@
     let zoromeBaseNum = 0;
     let zoromeFinalDigits = [0, 0, 0];
 
-    // ゲーム進行ガイドの表示更新
     function updateGuideState(stateText) {
         const guideTitle = document.getElementById('guideCurrentStep');
         if (stateText) {
@@ -409,6 +411,7 @@
                 document.getElementById('preview').src = originalImageSrc;
                 document.getElementById('preview').style.display = 'block';
                 document.getElementById('scanBtn').style.display = 'block';
+                document.getElementById('scanBtn').disabled = false; // 💡 2回目以降のために確実に有効化
                 document.getElementById('playerName').disabled = true;
                 document.getElementById('status').innerText = "📸 写真読込完了！下のボタンを押してスキャン＆スロットを始動！";
                 updateGuideState("スロット始動待機中");
@@ -435,7 +438,6 @@
             const worker = await Tesseract.createWorker('eng', 1, {
                 logger: m => {
                     if (m.status === 'recognizing text') {
-                        // 📊 進捗率をバーとテキストに反映
                         const percent = Math.round(m.progress * 100);
                         statusDiv.innerText = `⏳ 内部スキャン中... (${percent}%)`;
                         progBar.style.width = `${percent}%`;
@@ -448,9 +450,8 @@
             let allNumbers = data.text.replace(/[^0-9]/g, '').split('');
             await worker.terminate();
 
-            progBox.style.display = 'none'; // 解析完了でバーを隠す
+            progBox.style.display = 'none';
 
-            // 🛠️ 上限指定モードが有効な場合の切り出し
             const ocrMode = document.getElementById('dbOcrMode').value;
             if (ocrMode === 'limit') {
                 const limitNum = parseInt(document.getElementById('dbOcrLimitNum').value, 10) || 3;
@@ -462,7 +463,6 @@
                 document.getElementById('scanBtn').style.display = 'none';
                 updateGuideState("スロット回転中（STOPボタンを押してください）");
                 
-                // 読み込んだ全ての数字（プール）をパネルに可視化
                 document.getElementById('dbOcrRaw').innerText = allNumbers.join(', ');
 
                 if (document.getElementById('dbForceEnable').checked) {
@@ -471,7 +471,6 @@
                     const n2 = parseInt(document.getElementById('dbNum2').value, 10) || 0;
                     ocrDigits = [n0, n1, n2];
                 } else {
-                    // 🎲 読み込んだ数字プールから「ランダムに3つ選出」してスロットの出目にする
                     let selectedDigits = [];
                     let poolCopy = [...allNumbers];
                     for(let i=0; i<3; i++) {
@@ -513,7 +512,7 @@
 
     function handleStopTrigger() {
         if (!isSpinning) return;
-        if (isZorMode = isZoromeMode) stopZoromeReels();
+        if (isZoromeMode) stopZoromeReels();
         else stopAllReels();
     }
 
@@ -605,7 +604,6 @@
 
     function triggerZoromeFeverMode() {
         isZoromeMode = true;
-        isSpinning = true;
         document.getElementById('status').innerText = `🚨 ゾロ目発生！【${zoromeBaseNum}】or【9】の超2択再抽選突入！！`;
         updateGuideState("ゾロ目限定！暴走2択再抽選中！");
         document.getElementById('machineBox').classList.add('zorome-fever');
@@ -622,6 +620,8 @@
             zoromeFinalDigits[i] = (Math.random() < probabilityOfNine) ? 9 : zoromeBaseNum;
         }
 
+        // 💡 既存のタイマーが重複しないようにクリアしてからセット
+        clearInterval(spinTimer);
         spinTimer = setInterval(() => {
             for(let i=0; i<3; i++) {
                 document.getElementById(`numReel${i}`).innerText = Math.random() < 0.5 ? zoromeBaseNum : 9;
@@ -630,8 +630,6 @@
     }
 
     function stopZoromeReels() {
-        isSpinning = false;
-        document.getElementById('globalStopBtn').disabled = true;
         clearInterval(spinTimer);
 
         const stopOrder = [0, 1, 2];
@@ -691,13 +689,28 @@
         });
     }
 
+    // 💡 完全に状態を更地にするリセット関数
     function resetForNextPlayer() {
+        clearInterval(spinTimer);
+        spinTimer = null;
+        isSpinning = false;
+        isZoromeMode = false;
+        originalImageSrc = null;
+
         document.getElementById('playerName').disabled = false;
         document.getElementById('playerName').value = "";
         document.getElementById('preview').style.display = 'none';
         document.getElementById('cameraInput').value = "";
         document.getElementById('folderInput').value = "";
-        for(let i=0; i<3; i++) { const r = document.getElementById(`numReel${i}`); r.innerText = "？"; r.className = "reel"; }
+        document.getElementById('scanBtn').style.display = 'none';
+        document.getElementById('scanBtn').disabled = false;
+        
+        for(let i=0; i<3; i++) { 
+            const r = document.getElementById(`numReel${i}`); 
+            r.innerText = "？"; 
+            r.className = "reel"; 
+        }
+        
         document.getElementById('machineBox').className = "slot-machine";
         document.getElementById('actionBlock').style.display = 'none';
         document.getElementById('status').innerText = "";
@@ -724,7 +737,6 @@
         });
     }
     
-    // 初期化用案内
     updateGuideState();
 </script>
 
