@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>デバッグ管理パネル搭載・カラオケ運ゲー採点</title>
+    <title>運ゲー採点 ULTRA - FULL CONTROL</title>
     <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
     <style>
         :root {
@@ -37,6 +37,29 @@
             margin: 0 0 15px 0;
             text-shadow: 0 0 10px rgba(251, 197, 49, 0.5);
         }
+
+        /* 📋 ガイド・操作説明セクション */
+        .guide-box {
+            background: rgba(0, 0, 0, 0.3);
+            border-left: 4px solid #00a8ff;
+            padding: 12px;
+            border-radius: 4px;
+            font-size: 13px;
+            line-height: 1.5;
+            margin-bottom: 20px;
+        }
+        .guide-box ul { margin: 5px 0 0 0; padding-left: 20px; }
+        .guide-step {
+            display: inline-block;
+            background: #00a8ff;
+            color: white;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-weight: bold;
+            font-size: 11px;
+            margin-right: 5px;
+        }
+
         .input-group {
             margin-bottom: 15px;
             display: flex;
@@ -49,6 +72,24 @@
             border: none;
             font-size: 16px;
         }
+        
+        /* 📊 進捗バーのスタイル */
+        .progress-container {
+            width: 100%;
+            background-color: #1e272e;
+            border-radius: 10px;
+            margin: 10px 0;
+            display: none;
+            overflow: hidden;
+            border: 1px solid #718093;
+        }
+        .progress-bar {
+            width: 0%;
+            height: 12px;
+            background: linear-gradient(90deg, #00a8ff, #00cb82);
+            transition: width 0.1s ease;
+        }
+
         .slot-machine {
             background: var(--slot-bg);
             border: 4px solid var(--slot-border);
@@ -145,9 +186,8 @@
         .main-btn { background: #00a8ff; color: white; border: none; padding: 14px; font-size: 16px; font-weight: bold; border-radius: 25px; cursor: pointer; width: 100%; box-shadow: 0 4px 10px rgba(0, 168, 255, 0.3); margin-bottom: 10px; }
         .main-btn:disabled { background: #718093; box-shadow: none; }
         
-        .action-btns { display: flex; gap: 10px; }
-        .btn-retry { background: #e1b12c; border:none; padding:12px; color:white; font-weight:bold; border-radius:25px; flex:1; cursor:pointer;}
-        .btn-confirm { background: #4cd137; border:none; padding:12px; color:white; font-weight:bold; border-radius:25px; flex:1; cursor:pointer;}
+        .action-btns { display: flex; justify-content: center; }
+        .btn-confirm { background: #4cd137; box-shadow: 0 4px 10px rgba(76, 209, 55, 0.3); border:none; padding:14px; color:white; font-size: 16px; font-weight:bold; border-radius:25px; width: 100%; cursor:pointer;}
         
         .history-section { margin-top: 20px; background: rgba(0,0,0,0.2); padding: 15px; border-radius: 12px; }
         .history-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
@@ -156,49 +196,43 @@
         .history-item { display: flex; justify-content: space-between; padding: 8px 10px; border-bottom: 1px solid rgba(255,255,255,0.1); font-size: 14px; }
         .status { text-align: center; font-weight: bold; color: #fbc531; margin: 10px 0; min-height: 20px; font-size: 14px;}
 
-        /* --- 🛠️ デバッグ管理パネルのスタイル --- */
-        .debug-panel {
-            max-width: 480px;
-            width: 100%;
-            background: #1e272e;
-            border: 2px dashed #718093;
-            border-radius: 15px;
-            box-sizing: border-box;
-            overflow: hidden;
-        }
-        .debug-toggle-btn {
-            background: #7f8c8d;
-            color: white;
-            border: none;
-            width: 100%;
-            padding: 10px;
-            font-weight: bold;
-            cursor: pointer;
-            text-align: left;
-            display: flex;
-            justify-content: space-between;
-        }
-        .debug-content {
-            padding: 15px;
-            display: none; /* 初期状態は非表示 */
-        }
-        .debug-row {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 12px;
-            font-size: 13px;
-        }
+        /* 管理パネル関連 */
+        .debug-panel { max-width: 480px; width: 100%; background: #1e272e; border: 2px dashed #718093; border-radius: 15px; box-sizing: border-box; overflow: hidden; }
+        .debug-toggle-btn { background: #7f8c8d; color: white; border: none; width: 100%; padding: 10px; font-weight: bold; cursor: pointer; text-align: left; display: flex; justify-content: space-between; }
+        .debug-content { padding: 15px; display: none; }
+        .debug-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; font-size: 13px; }
         .debug-input { width: 45px; text-align: center; font-size: 14px; font-weight: bold; }
+        .debug-input-wide { width: 60px; text-align: center; font-size: 14px; }
+        
+        /* Panelマニュアル用 */
+        .panel-instruction {
+            background: #2f3640;
+            padding: 10px;
+            border-radius: 8px;
+            font-size: 12px;
+            color: #dcdde1;
+            margin-bottom: 15px;
+            border: 1px solid #718093;
+            line-height: 1.4;
+        }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h2>🎰 運ゲー採点 ULTRA EDITION</h2>
+    <h2>🎰 運ゲー採点 ULTRA CONTROL</h2>
+
+    <div class="guide-box">
+        <div id="guideCurrentStep"><strong>💡 遊び方の手順:</strong></div>
+        <ul id="guideList">
+            <li><span class="guide-step">1</span>挑戦者の名前を入力する</li>
+            <li><span class="guide-step">2</span>カラオケの「採点画面」を撮影、またはフォルダから選ぶ</li>
+            <li><span class="guide-step">3</span>始動ボタンを押し、タイミングを狙って【STOP】を押す！</li>
+        </ul>
+    </div>
 
     <div class="input-group">
-        <input type="text" id="playerName" placeholder="挑戦者の名前（例：たかし）">
+        <input type="text" id="playerName" placeholder="挑戦者の名前（例：たかし）" oninput="updateGuideState()">
     </div>
 
     <div id="uploadGroup">
@@ -234,11 +268,14 @@
     </div>
 
     <button class="main-btn" id="scanBtn" style="display:none;" onclick="startOcrAndSpinSlot()">運命のスキャン＆スロット回転！</button>
+    
     <div id="status" class="status"></div>
+    <div class="progress-container" id="progressBox">
+        <div class="progress-bar" id="progressBar"></div>
+    </div>
 
     <div class="action-btns" id="actionBlock" style="display: none;">
-        <button class="btn-retry" id="retryBtn" onclick="rematch()">🙅‍♂️ 不服！引き直す(1回迄)</button>
-        <button class="btn-confirm" onclick="confirmScore()">🎯 この得点で確定</button>
+        <button class="btn-confirm" onclick="confirmScore()">🎯 この得点で確定して次へ</button>
     </div>
 
     <div class="history-section">
@@ -260,6 +297,35 @@
         <span id="debugArrow">▼</span>
     </button>
     <div class="debug-content" id="debugContent">
+        
+        <div class="panel-instruction">
+            <strong>📖 パネルの機能説明・操作方法:</strong><br>
+            ・<b>停止待機時間</b>: STOPを押してから百の位のリーチ演出に入るまでの猶予秒数。<br>
+            ・<b>読込モード選択</b>: 「全読み」は画面の全数字を抽出。「上限指定」は指定文字数に達した時点で高速スキャン終了。<br>
+            ・<b>出目強制</b>: スキャン結果を完全に無視し、指定した好きなゾロ目や出目を100%出すデバッグ用イカサマスイッチ。<br>
+            ・<b>演出固定</b>: 百の位のパチンコ風リーチ演出をテスト用に固定可能。
+        </div>
+
+        <div class="debug-row">
+            <label><strong>⏱️ 通常時の停止待機時間:</strong></label>
+            <div>
+                <input type="number" id="dbWaitTime" class="debug-input-wide" min="0" max="5" step="0.5" value="1.0"> 秒
+            </div>
+        </div>
+
+        <div class="debug-row">
+            <label><strong>🔍 画像数字の読込モード:</strong></label>
+            <div>
+                <select id="dbOcrMode" class="debug-select" onchange="toggleLimitInput()">
+                    <option value="all">画像を全部読む</option>
+                    <option value="limit">上限数を指定して読む</option>
+                </select>
+                <span id="dbLimitSpan" style="display:none; margin-left:5px;">
+                    上限: <input type="number" id="dbOcrLimitNum" class="debug-input" min="3" max="20" value="5">つ
+                </span>
+            </div>
+        </div>
+
         <div class="debug-row">
             <label><strong>🔮 出目の強制指定（イカサマ）:</strong></label>
             <div>
@@ -280,8 +346,8 @@
             </select>
         </div>
         <div class="debug-row">
-            <label>🔎 OCR検知データ（生数字）:</label>
-            <span id="dbOcrRaw" style="color: #4cd137; font-family: monospace; font-weight: bold;">[まだデータがありません]</span>
+            <label>🔎 読み込まれた全数字プール:</label>
+            <span id="dbOcrRaw" style="color: #4cd137; font-family: monospace; font-weight: bold; word-break: break-all;">[まだデータがありません]</span>
         </div>
     </div>
 </div>
@@ -291,7 +357,6 @@
 <script>
     let chosenDirIndex = null;
     let originalImageSrc = null;
-    let hasRetried = false;
     let historyData = [];
 
     let spinTimer = null;
@@ -302,17 +367,31 @@
     let zoromeBaseNum = 0;
     let zoromeFinalDigits = [0, 0, 0];
 
-    // パネルの開閉制御
+    // ゲーム進行ガイドの表示更新
+    function updateGuideState(stateText) {
+        const guideTitle = document.getElementById('guideCurrentStep');
+        if (stateText) {
+            guideTitle.innerHTML = `<strong>📢 現在のステータス: <span style="color:#00a8ff;">${stateText}</span></strong>`;
+            return;
+        }
+        const name = document.getElementById('playerName').value.trim();
+        if(!name) {
+            guideTitle.innerHTML = `<strong>💡 ステップ1: 名前を入れてください</strong>`;
+        } else if(!originalImageSrc) {
+            guideTitle.innerHTML = `<strong>💡 ステップ2: 写真を選んでアップロードしてください</strong>`;
+        }
+    }
+
     function toggleDebugPanel() {
         const content = document.getElementById('debugContent');
         const arrow = document.getElementById('debugArrow');
-        if (content.style.display === 'block') {
-            content.style.display = 'none';
-            arrow.innerText = '▼';
-        } else {
-            content.style.display = 'block';
-            arrow.innerText = '▲';
-        }
+        if (content.style.display === 'block') { content.style.display = 'none'; arrow.innerText = '▼'; }
+        else { content.style.display = 'block'; arrow.innerText = '▲'; }
+    }
+
+    function toggleLimitInput() {
+        const mode = document.getElementById('dbOcrMode').value;
+        document.getElementById('dbLimitSpan').style.display = (mode === 'limit') ? 'inline-block' : 'none';
     }
 
     function checkNameAndTrigger(inputId) {
@@ -331,7 +410,8 @@
                 document.getElementById('preview').style.display = 'block';
                 document.getElementById('scanBtn').style.display = 'block';
                 document.getElementById('playerName').disabled = true;
-                document.getElementById('status').innerText = "📸 写真OK！ボタンを押してスロットを始動せよ！";
+                document.getElementById('status').innerText = "📸 写真読込完了！下のボタンを押してスキャン＆スロットを始動！";
+                updateGuideState("スロット始動待機中");
             }
             reader.readAsDataURL(file);
         }
@@ -340,44 +420,78 @@
     async function startOcrAndSpinSlot() {
         document.getElementById('scanBtn').disabled = true;
         const statusDiv = document.getElementById('status');
-        statusDiv.innerText = "⏳ 内部スキャン中...";
+        const progBox = document.getElementById('progressBox');
+        const progBar = document.getElementById('progressBar');
+        
+        statusDiv.innerText = "⏳ 内部スキャン中... (0%)";
+        progBox.style.display = 'block';
+        progBar.style.width = '0%';
+        updateGuideState("OCR画像解析中...");
 
         chosenDirIndex = Math.floor(Math.random() * 4);
         const rotatedBlob = await rotateImage(originalImageSrc, chosenDirIndex);
 
         try {
-            const worker = await Tesseract.createWorker('eng');
+            const worker = await Tesseract.createWorker('eng', 1, {
+                logger: m => {
+                    if (m.status === 'recognizing text') {
+                        // 📊 進捗率をバーとテキストに反映
+                        const percent = Math.round(m.progress * 100);
+                        statusDiv.innerText = `⏳ 内部スキャン中... (${percent}%)`;
+                        progBar.style.width = `${percent}%`;
+                    }
+                }
+            });
+            
             await worker.setParameters({ tessedit_char_whitelist: '0123456789' });
             const { data } = await worker.recognize(rotatedBlob);
-            const allNumbers = data.text.replace(/[^0-9]/g, '').split('');
+            let allNumbers = data.text.replace(/[^0-9]/g, '').split('');
             await worker.terminate();
+
+            progBox.style.display = 'none'; // 解析完了でバーを隠す
+
+            // 🛠️ 上限指定モードが有効な場合の切り出し
+            const ocrMode = document.getElementById('dbOcrMode').value;
+            if (ocrMode === 'limit') {
+                const limitNum = parseInt(document.getElementById('dbOcrLimitNum').value, 10) || 3;
+                allNumbers = allNumbers.slice(0, limitNum);
+            }
 
             if (allNumbers.length >= 3) {
                 statusDiv.innerText = "🎰 高速回転スタート！タイミングを合わせてSTOPを押せ！";
                 document.getElementById('scanBtn').style.display = 'none';
+                updateGuideState("スロット回転中（STOPボタンを押してください）");
                 
-                // 生の検出データをデバッグパネルに表示
-                document.getElementById('dbOcrRaw').innerText = allNumbers.slice(0, 10).join(', ');
+                // 読み込んだ全ての数字（プール）をパネルに可視化
+                document.getElementById('dbOcrRaw').innerText = allNumbers.join(', ');
 
-                // 🌟 デバッグ：出目指定が有効なら強制上書き
                 if (document.getElementById('dbForceEnable').checked) {
                     const n0 = parseInt(document.getElementById('dbNum0').value, 10) || 0;
                     const n1 = parseInt(document.getElementById('dbNum1').value, 10) || 0;
                     const n2 = parseInt(document.getElementById('dbNum2').value, 10) || 0;
                     ocrDigits = [n0, n1, n2];
                 } else {
-                    ocrDigits = allNumbers.slice(0, 3).map(Number);
+                    // 🎲 読み込んだ数字プールから「ランダムに3つ選出」してスロットの出目にする
+                    let selectedDigits = [];
+                    let poolCopy = [...allNumbers];
+                    for(let i=0; i<3; i++) {
+                        const randIdx = Math.floor(Math.random() * poolCopy.length);
+                        selectedDigits.push(Number(poolCopy.splice(randIdx, 1)[0]));
+                    }
+                    ocrDigits = selectedDigits;
                 }
                 
                 startReelSpinning();
             } else {
-                statusDiv.innerText = `❌ 数字が足りません。別の写真を選んでね。`;
+                statusDiv.innerText = `❌ 画像から数字が3つ以上検出できませんでした。別の写真でお試しください。`;
                 document.getElementById('scanBtn').disabled = false;
+                updateGuideState("スキャン失敗・写真再選定");
             }
         } catch (e) {
             console.error(e);
             statusDiv.innerText = "⚠️ エラーが発生しました。";
             document.getElementById('scanBtn').disabled = false;
+            progBox.style.display = 'none';
         }
     }
 
@@ -399,7 +513,7 @@
 
     function handleStopTrigger() {
         if (!isSpinning) return;
-        if (isZoromeMode) stopZoromeReels();
+        if (isZorMode = isZoromeMode) stopZoromeReels();
         else stopAllReels();
     }
 
@@ -407,17 +521,24 @@
         isSpinning = false;
         document.getElementById('globalStopBtn').disabled = true;
         clearInterval(spinTimer);
+        updateGuideState("リール停止中...");
+
+        const baseWaitSeconds = parseFloat(document.getElementById('dbWaitTime').value) || 1.0;
+        const baseWaitMs = baseWaitSeconds * 1000;
 
         setTimeout(() => {
             document.getElementById('numReel2').innerText = ocrDigits[2];
             document.getElementById('numReel2').classList.add('active-num');
-        }, 200);
+        }, baseWaitMs * 0.2);
 
         setTimeout(() => {
             document.getElementById('numReel1').innerText = ocrDigits[1];
             document.getElementById('numReel1').classList.add('active-num');
+        }, baseWaitMs * 0.5);
+
+        setTimeout(() => {
             executeHundredthReelShowdown();
-        }, 500);
+        }, baseWaitMs);
     }
 
     function executeHundredthReelShowdown() {
@@ -425,7 +546,6 @@
         const reel0 = document.getElementById('numReel0');
         const finalDigit = ocrDigits[0];
 
-        // 🌟 デバッグ：演出パターンの指定を取得
         const dbPattern = document.getElementById('dbReachPattern').value;
         let pattern = "normal";
 
@@ -439,11 +559,11 @@
                 if (r < 0.15) pattern = "long";
             }
         } else {
-            pattern = dbPattern; // 強制指定された演出を代入
+            pattern = dbPattern;
         }
 
         if (pattern === "normal") {
-            setTimeout(() => { reel0.innerText = finalDigit; reel0.classList.add('active-num'); checkZoromeTrigger(); }, 300);
+            setTimeout(() => { reel0.innerText = finalDigit; reel0.classList.add('active-num'); checkZoromeTrigger(); }, 200);
         } else if (pattern === "long") {
             reel0.classList.add('reach');
             const duration = Math.floor(Math.random() * 2000) + 1000;
@@ -469,7 +589,7 @@
                     let retryTimer = setInterval(() => { reel0.innerText = Math.floor(Math.random() * 10); }, 40);
                     setTimeout(() => { clearInterval(retryTimer); reel0.classList.remove('reach'); reel0.innerText = finalDigit; reel0.classList.add('active-num'); checkZoromeTrigger(); }, 1500);
                 }, 800);
-            }, 300);
+            }, 200);
         }
     }
 
@@ -487,6 +607,7 @@
         isZoromeMode = true;
         isSpinning = true;
         document.getElementById('status').innerText = `🚨 ゾロ目発生！【${zoromeBaseNum}】or【9】の超2択再抽選突入！！`;
+        updateGuideState("ゾロ目限定！暴走2択再抽選中！");
         document.getElementById('machineBox').classList.add('zorome-fever');
         
         const stopBtn = document.getElementById('globalStopBtn');
@@ -513,7 +634,7 @@
         document.getElementById('globalStopBtn').disabled = true;
         clearInterval(spinTimer);
 
-        const stopOrder = [0, 1, 2]; // 左から停止
+        const stopOrder = [0, 1, 2];
         stopOrder.forEach((reelIdx, orderIdx) => {
             setTimeout(() => {
                 const reelEl = document.getElementById(`numReel${reelIdx}`);
@@ -522,6 +643,7 @@
                 if (orderIdx === 2) {
                     document.getElementById('status').innerText = "⚡⚡ 運命の2択再抽選、終了！！！ ⚡⚡";
                     document.getElementById('actionBlock').style.display = 'flex';
+                    updateGuideState("最終スコア確定。下部で確定してください");
                 }
             }, (orderIdx + 1) * 300);
         });
@@ -530,35 +652,24 @@
     function finishSlot() {
         document.getElementById('status').innerText = "🎉 すべてのリールが停止しました！";
         document.getElementById('actionBlock').style.display = 'flex';
-    }
-
-    function rematch() {
-        hasRetried = true;
-        addHistory(true);
-        document.getElementById('actionBlock').style.display = 'none';
-        document.getElementById('status').innerText = "🔄 ラストチャンス！もう一度高速スロットが回ります！";
-        setTimeout(() => { startReelSpinning(); }, 1000);
+        updateGuideState("スコア確定。下部で確定ボタンを押してください");
     }
 
     function confirmScore() {
-        addHistory(false);
+        addHistory();
         alert("スコア確定！次のプレイヤーへ交代！");
         resetForNextPlayer();
     }
 
-    function addHistory(isRematchTrigger) {
+    function addHistory() {
         const name = document.getElementById('playerName').value.trim();
         const d0 = document.getElementById('numReel0').innerText;
         const d1 = document.getElementById('numReel1').innerText;
         const d2 = document.getElementById('numReel2').innerText;
         const scoreStr = `${d0}${d1}${d2}`;
         const displayScore = parseInt(scoreStr, 10);
-        
-        let label = "";
-        if (isRematchTrigger) label = " (※引き直し前)";
-        else if (hasRetried) label = " (※引き直し後)";
 
-        historyData.push({ name: name, score: displayScore, scoreStr: scoreStr, label: label, time: new Date() });
+        historyData.push({ name: name, score: displayScore, scoreStr: scoreStr, time: new Date() });
         renderHistory();
     }
 
@@ -574,14 +685,13 @@
         sortedData.forEach(item => {
             const li = document.createElement('li');
             li.className = "history-item";
-            li.innerHTML = `<span>👤 <strong>${item.name}</strong>${item.label}</span>
+            li.innerHTML = `<span>👤 <strong>${item.name}</strong></span>
                             <span style="color:#fbc531; font-weight:bold;">${item.scoreStr} 点</span>`;
             list.appendChild(li);
         });
     }
 
     function resetForNextPlayer() {
-        hasRetried = false;
         document.getElementById('playerName').disabled = false;
         document.getElementById('playerName').value = "";
         document.getElementById('preview').style.display = 'none';
@@ -591,6 +701,7 @@
         document.getElementById('machineBox').className = "slot-machine";
         document.getElementById('actionBlock').style.display = 'none';
         document.getElementById('status').innerText = "";
+        updateGuideState();
     }
 
     function rotateImage(imageSrc, dirIndex) {
@@ -612,6 +723,9 @@
             img.src = imageSrc;
         });
     }
+    
+    // 初期化用案内
+    updateGuideState();
 </script>
 
 </body>
