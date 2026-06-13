@@ -276,12 +276,12 @@
         let rowStyle = "hover:bg-white/5 transition-colors";
         
         if (rank === 1 && total > 0) {
-          rankBadge = `<span class="gold-bg px-3 py-1 rounded-xl text-sm font-black shadow-xl">👑 総合優勝</span>`;
+          rankBadge = `<span class="gold-bg px-3 py-1 rounded-xl text-sm font-black shadow-xl">👑1</span>`;
           rowStyle = "bg-yellow-500/5 hover:bg-yellow-500/10 border-l-4 border-yellow-500";
         } else if (rank === 2 && total > 0) {
-          rankBadge = `<span class="silver-bg px-3 py-1 rounded-xl text-sm font-black shadow-lg">準優勝</span>`;
+          rankBadge = `<span class="silver-bg px-3 py-1 rounded-xl text-sm font-black shadow-lg">2</span>`;
         } else if (rank === 3 && total > 0) {
-          rankBadge = `<span class="bronze-bg px-3 py-1 rounded-xl text-sm font-black shadow-lg">3位</span>`;
+          rankBadge = `<span class="bronze-bg px-3 py-1 rounded-xl text-sm font-black shadow-lg">3</span>`;
         }
 
         const tr = document.createElement("tr");
