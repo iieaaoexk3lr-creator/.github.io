@@ -3,12 +3,12 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>逆再生伝言ゲーム - 連動システム（最新版）</title>
+<title>🔄 逆再生伝言ゲーム - MCコントロール＆連動システム</title>
 <script src="https://cdn.tailwindcss.com"></script>
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@700;900&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght=700;900&display=swap');
   body {
-    font-family: 'Noto+Sans+JP', sans-serif;
+    font-family: 'Noto Sans JP', sans-serif;
     background: #0f0f15;
     color: #fff;
   }
@@ -28,67 +28,74 @@
 </head>
 <body class="p-4 min-h-screen flex flex-col items-center">
 
-  <div class="w-full max-w-md flex flex-col min-h-screen justify-between pb-6">
+  <div class="w-full max-w-xl flex flex-col min-h-screen justify-between pb-6">
     
     <div>
-      <div class="mb-4 flex justify-end items-center gap-2">
-        <input type="password" id="adminKeyInput" placeholder="管理キー" class="w-24 bg-gray-800 text-white px-3 py-1 rounded-xl border border-gray-700 text-xs focus:outline-none">
-        <button id="authBtn" class="bg-gray-700 hover:bg-gray-600 px-3 py-1 rounded-xl text-xs font-bold transition-all">Panel</button>
+      <div class="mb-4 flex justify-center items-center gap-2">
+        <input type="password" id="adminKeyInput" placeholder="管理キー" class="w-24 bg-gray-800 text-white px-3 py-1.5 rounded-xl border border-gray-700 text-xs focus:outline-none">
+        <button id="authBtn" class="bg-gray-700 hover:bg-gray-600 px-3 py-1.5 rounded-xl text-xs font-bold transition-all">⚙️ 操作パネル表示</button>
       </div>
 
-      <div id="adminPanel" class="hidden bg-gray-900 border-2 border-pink-500 rounded-3xl p-4 mb-6 shadow-2xl">
-        <h2 class="text-lg font-black text-pink-500 mb-3 flex justify-between items-center">
-          <span>🛠️ 管理者パネル (操作用)</span>
-          <button onclick="resetSync()" class="text-xs bg-red-900 px-2 py-0.5 rounded text-red-200">全リセット</button>
+      <div id="adminPanel" class="hidden bg-slate-900 text-white border-4 border-pink-500 rounded-3xl p-5 mb-6 shadow-2xl space-y-4">
+        <h2 class="text-base font-black text-pink-400 flex justify-between items-center">
+          <span>⚙️ 逆再生伝言 MC専用コントロール</span>
+          <button onclick="resetSync()" class="text-xs bg-gray-800 px-2 py-1 rounded border border-gray-700 text-white">システムリセット</button>
         </h2>
-        
-        <p class="text-xs font-bold text-gray-400 mb-1">1. 出題する問題を選択（全員に配信）</p>
-        <div class="flex gap-1.5 overflow-x-auto pb-2 mb-4" id="adminButtons">
-          </div>
 
-        <p class="text-xs font-bold text-gray-400 mb-1">2. 答えの表示コントロール</p>
-        <div class="grid grid-cols-2 gap-2">
-          <button onclick="setAnswerVisibility(true)" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 rounded-xl text-sm shadow">
-            🔓 答えを全員に公開
-          </button>
-          <button onclick="setAnswerVisibility(false)" class="bg-gray-700 hover:bg-gray-600 text-white font-bold py-2 rounded-xl text-sm shadow">
-            🔒 答えを隠す
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 bg-black/30 p-3 rounded-xl border border-gray-800">
+          <div>
+            <label class="block text-xs font-bold text-gray-400 mb-1">■ スコア加算先チーム</label>
+            <div class="grid grid-cols-2 gap-2">
+              <button id="setTeamA" onclick="selectTargetTeam('Aチーム')" class="py-2 rounded-lg border-2 border-gray-700 font-bold text-xs bg-gray-800 text-white">Aチーム</button>
+              <button id="setTeamB" onclick="selectTargetTeam('Bチーム')" class="py-2 rounded-lg border-2 border-gray-700 font-bold text-xs bg-gray-800 text-white">Bチーム</button>
+            </div>
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-gray-400 mb-1">■ 1問あたりの配点設定</label>
+            <select id="pointPerAnswer" class="w-full text-black p-2 rounded-lg font-bold text-sm">
+              <option value="10" selected>10 点</option>
+              <option value="12">12 点</option>
+              <option value="13">13 点</option>
+              <option value="15">15 点</option>
+              <option value="20">20 点</option>
+            </select>
+          </div>
+        </div>
+
+        <div>
+          <p class="text-xs font-bold text-gray-400 mb-1">■ 1. 出題する問題を選択（全員へリアルタイム配信）</p>
+          <div class="flex gap-1.5 overflow-x-auto pb-2" id="adminButtons"></div>
+        </div>
+
+        <div>
+          <p class="text-xs font-bold text-gray-400 mb-1">■ 2. 答えの表示コントロール</p>
+          <div class="grid grid-cols-2 gap-2">
+            <button onclick="setAnswerVisibility(true)" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 rounded-xl text-xs shadow">
+              🔓 答えを全員に公開
+            </button>
+            <button onclick="setAnswerVisibility(false)" class="bg-gray-700 hover:bg-gray-600 text-white font-bold py-2 rounded-xl text-xs shadow">
+              🔒 答えを隠す
+            </button>
+          </div>
+        </div>
+
+        <div class="border-t border-gray-800 pt-3">
+          <div class="flex justify-between items-center text-xs bg-black/20 p-2 rounded mb-2">
+            <span>加算ターゲット: <b id="adminTargetDisplay" class="text-pink-400 text-sm">Aチーム</b></span>
+          </div>
+          <button onclick="submitFinalScore()" class="w-full bg-pink-600 hover:bg-pink-700 text-white font-black py-3 rounded-xl text-sm shadow-lg transition-all">
+            現在の問題の得点をチームへ確定送信（手元自動リセット）
           </button>
         </div>
       </div>
 
-      <div id="loginScreen" class="w-full glass-box p-8 rounded-3xl shadow-2xl my-12">
-        <div class="text-center mb-8">
-          <span class="text-5xl">🔄</span>
-          <h1 class="text-3xl font-black mt-4 tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-pink-500 to-orange-400">
-            逆再生ゲーム
-          </h1>
-          <p class="text-sm text-gray-400 mt-1">チーム名と名前を入力して参加</p>
-        </div>
-
-        <div class="space-y-4">
-          <div>
-            <label class="block text-xs font-bold text-gray-400 mb-1 uppercase tracking-wider">部屋名 / チーム名</label>
-            <input type="text" id="roomInput" placeholder="例: Aチーム" class="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-3 text-lg font-bold focus:outline-none focus:border-pink-500 text-white">
-          </div>
-          <div>
-            <label class="block text-xs font-bold text-gray-400 mb-1 uppercase tracking-wider">あなたの名前</label>
-            <input type="text" id="nameInput" placeholder="例: たろう" class="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-3 text-lg font-bold focus:outline-none focus:border-pink-500 text-white">
-          </div>
-          <button id="loginBtn" class="w-full app-gradient hover:opacity-90 text-white font-black py-4 rounded-xl text-xl shadow-lg transition-all active:scale-95 mt-4">
-            ゲーム画面に入る
-          </button>
-        </div>
-      </div>
-
-      <div id="gameScreen" class="hidden w-full flex flex-col">
+      <div id="gameScreen" class="w-full flex flex-col">
         
-        <div class="flex justify-between items-center glass-box px-4 py-2.5 rounded-2xl mb-4 text-xs font-bold">
-          <div class="flex items-center gap-1 text-pink-400">🏠 <span id="displayRoom" class="text-white"></span></div>
-          <div class="flex items-center gap-1 text-orange-400">👤 <span id="displayName" class="text-white"></span></div>
-        </div>
+        <div class="glass-box rounded-3xl p-6 text-center shadow-xl mb-6 min-h-[220px] flex flex-col justify-center border-2 border-white/10 relative">
+          <div class="absolute top-3 left-4 text-[10px] font-bold text-pink-400 flex items-center gap-1">
+            📢 ターゲット: <span id="displayRoom" class="text-white">Aチーム</span>
+          </div>
 
-        <div class="glass-box rounded-3xl p-6 text-center shadow-xl mb-6 min-h-[220px] flex flex-col justify-center border-2 border-white/10">
           <div class="text-xs font-black text-gray-400 uppercase tracking-widest mb-1" id="syncStatusLabel">待機中</div>
           <div class="text-xs font-bold text-pink-500 mb-3" id="quizNumDisplay">管理者が出題するまでお待ちください</div>
           
@@ -102,13 +109,15 @@
         </div>
 
         <div class="bg-black/40 border border-white/10 p-4 rounded-2xl">
-          <div class="text-xs font-bold text-center text-gray-400 mb-2">答え合わせ後の結果を送信</div>
+          <div class="text-xs font-bold text-center text-gray-400 mb-2">手元結果入力（選択中のチームに得点権利が与えられます）</div>
           <div class="grid grid-cols-2 gap-3">
-            <button onclick="submitResult(true)" class="bg-emerald-600 hover:bg-emerald-700 text-white font-black py-3 rounded-xl flex items-center justify-center gap-2 text-md active:scale-95 transition-all shadow">
-              ⭕ 正解 (+10点)
+            <button id="btnCorrect" onclick="markResult(true)" class="bg-gray-800 hover:opacity-90 border-2 border-gray-700 text-white font-black py-4 rounded-xl flex flex-col items-center justify-center gap-1 text-base active:scale-95 transition-all shadow">
+              <span class="text-2xl">⭕</span>
+              <span>正解判定にする</span>
             </button>
-            <button onclick="submitResult(false)" class="bg-red-600 hover:bg-red-700 text-white font-black py-3 rounded-xl flex items-center justify-center gap-2 text-md active:scale-95 transition-all shadow">
-              ❌ 不正解
+            <button id="btnWrong" onclick="markResult(false)" class="bg-gray-800 hover:opacity-90 border-2 border-gray-700 text-white font-black py-4 rounded-xl flex flex-col items-center justify-center gap-1 text-base active:scale-95 transition-all shadow">
+              <span class="text-2xl">❌</span>
+              <span>不正解判定にする</span>
             </button>
           </div>
         </div>
@@ -141,18 +150,17 @@
       measurementId: "G-3636W6LC4F"
     };
     
-    // Firebase初期化
     firebase.initializeApp(firebaseConfig);
-    const db = firebase.database();       // 同期用のRealtime DB
-    const firestore = firebase.firestore(); // スコア集計用のFirestore
+    const db = firebase.database();       
+    const firestore = firebase.firestore(); 
 
     // クイズデータ
     const quiz = [
-      { q: "あいさか", a: "アカシア" },
-      { q: "うたかひあ", a: "愛は勝つ" },
+      { q: "さか", a: "アカ" },
+      { q: "ひあ", a: "愛" },
       { q: "にずおひ", a: "異邦人" },
       { q: "あぼとくるこ", a: "贈る言葉" },
-      { q: "うぐにしるべ", a: "EVERYTHING" },
+      { q: "るべ", a: "EVERY" },
       { q: "にらあだ", a: "ダーリン" },
       { q: "いけしか", a: "キセキ" },
       { q: "あばたなは", a: "花束" },
@@ -160,21 +168,17 @@
       { q: "いすもつばか", a: "カブトムシ" }
     ];
 
-    let currentRoom = "";
-    let currentPlayerName = "";
+    // 状態管理変数 (マイクボンバー統合仕様)
+    let activeTeam = "Aチーム";
     let serverCurrentIndex = -1;
+    let currentJudgeStatus = null; // true = 正解判定保持, false = 不正解判定保持
 
     // DOM要素
     const adminKeyInput = document.getElementById("adminKeyInput");
     const authBtn = document.getElementById("authBtn");
     const adminPanel = document.getElementById("adminPanel");
-    const loginScreen = document.getElementById("loginScreen");
     const gameScreen = document.getElementById("gameScreen");
-    const roomInput = document.getElementById("roomInput");
-    const nameInput = document.getElementById("nameInput");
-    const loginBtn = document.getElementById("loginBtn");
     const displayRoom = document.getElementById("displayRoom");
-    const displayName = document.getElementById("displayName");
     
     const syncStatusLabel = document.getElementById("syncStatusLabel");
     const quizNumDisplay = document.getElementById("quizNumDisplay");
@@ -186,10 +190,31 @@
       if (adminKeyInput.value === "0001") {
         adminPanel.classList.toggle("hidden");
         adminKeyInput.value = "";
+        syncAdminUI();
       } else {
         alert("管理キーが正しくありません。");
       }
     };
+
+    // チームターゲット選択
+    window.selectTargetTeam = (teamName) => {
+      activeTeam = teamName;
+      syncAdminUI();
+    };
+
+    function syncAdminUI() {
+      document.getElementById("adminTargetDisplay").textContent = activeTeam;
+      displayRoom.textContent = activeTeam;
+      const btnA = document.getElementById("setTeamA");
+      const btnB = document.getElementById("setTeamB");
+      if(activeTeam === "Aチーム") {
+        btnA.className = "py-2 rounded-lg border-2 border-pink-500 font-black text-xs bg-pink-950 text-pink-200";
+        btnB.className = "py-2 rounded-lg border-2 border-gray-700 font-bold text-xs bg-gray-800 text-white";
+      } else {
+        btnA.className = "py-2 rounded-lg border-2 border-gray-700 font-bold text-xs bg-gray-800 text-white";
+        btnB.className = "py-2 rounded-lg border-2 border-pink-500 font-black text-xs bg-pink-950 text-pink-200";
+      }
+    }
 
     // --- 2. 管理者用：10問のボタンを生成 ---
     const adminButtonsArea = document.getElementById("adminButtons");
@@ -198,47 +223,49 @@
       btn.textContent = index + 1;
       btn.className = "w-10 h-10 flex-shrink-0 bg-gray-800 text-white font-bold rounded-xl text-sm border border-gray-700 transition-all";
       btn.onclick = () => {
-        // Realtime DB上の「現在の問題インデックス」を更新
         db.ref('syncState/currentIndex').set(index);
-        // 問題切り替え時は、自動で答えを非表示(false)にする
         db.ref('syncState/showAnswer').set(false);
+        clearJudgeVisual(); // 問題が変わったら判定状態もクリア
       };
       adminButtonsArea.appendChild(btn);
     });
 
-    // 管理者用：答えの表示・非表示を設定
     window.setAnswerVisibility = (visible) => {
       db.ref('syncState/showAnswer').set(visible);
     };
 
-    // 管理者用：初期状態に戻す
     window.resetSync = () => {
-      if(confirm("全参加者の同期状態を初期化しますか？")) {
+      if(confirm("システム全体の同期状態を初期化しますか？")) {
         db.ref('syncState').set({
           currentIndex: -1,
           showAnswer: false
         });
+        clearJudgeVisual();
       }
     };
 
-    // --- 3. 参加者：ログイン処理 ---
-    loginBtn.onclick = () => {
-      currentRoom = roomInput.value.trim();
-      currentPlayerName = nameInput.value.trim();
+    // --- 3. 手元の○✕判定トグルシステム ---
+    function markResult(isCorrect) {
+      currentJudgeStatus = isCorrect;
+      const btnCorrect = document.getElementById("btnCorrect");
+      const btnWrong = document.getElementById("btnWrong");
 
-      if (!currentRoom || !currentPlayerName) {
-        alert("部屋名と名前を入力してください。");
-        return;
+      if (isCorrect) {
+        btnCorrect.className = "bg-emerald-950 text-emerald-200 border-2 border-emerald-500 font-black py-4 rounded-xl flex flex-col items-center justify-center gap-1 text-base active:scale-95 transition-all shadow-lg scale-102";
+        btnWrong.className = "bg-gray-800 border-2 border-gray-700 text-gray-500 font-bold py-4 rounded-xl flex flex-col items-center justify-center gap-1 text-base active:scale-95 transition-all opacity-60";
+      } else {
+        btnCorrect.className = "bg-gray-800 border-2 border-gray-700 text-gray-500 font-bold py-4 rounded-xl flex flex-col items-center justify-center gap-1 text-base active:scale-95 transition-all opacity-60";
+        btnWrong.className = "bg-red-950 text-red-200 border-2 border-red-500 font-black py-4 rounded-xl flex flex-col items-center justify-center gap-1 text-base active:scale-95 transition-all shadow-lg scale-102";
       }
+    }
 
-      displayRoom.textContent = currentRoom;
-      displayName.textContent = currentPlayerName;
+    function clearJudgeVisual() {
+      currentJudgeStatus = null;
+      document.getElementById("btnCorrect").className = "bg-gray-800 hover:opacity-90 border-2 border-gray-700 text-white font-black py-4 rounded-xl flex flex-col items-center justify-center gap-1 text-base active:scale-95 transition-all shadow";
+      document.getElementById("btnWrong").className = "bg-gray-800 hover:opacity-90 border-2 border-gray-700 text-white font-black py-4 rounded-xl flex flex-col items-center justify-center gap-1 text-base active:scale-95 transition-all shadow";
+    }
 
-      loginScreen.classList.add("hidden");
-      gameScreen.classList.remove("hidden");
-    };
-
-    // --- 4. 全員の画面をリアルタイム同期するリスナー (Realtime DB) ---
+    // --- 4. リアルタイム同期リスナー (Realtime DB) ---
     db.ref('syncState').on('value', (snapshot) => {
       const data = snapshot.val() || { currentIndex: -1, showAnswer: false };
       serverCurrentIndex = data.currentIndex;
@@ -253,7 +280,7 @@
         }
       });
 
-      // 表示ボードの書き換え
+      // 表示ボード書き換え
       if (serverCurrentIndex === -1) {
         syncStatusLabel.textContent = "待機中";
         quizNumDisplay.textContent = "管理者が出題するまでお待ちください";
@@ -265,7 +292,6 @@
         quizNumDisplay.textContent = `QUESTION 0${serverCurrentIndex + 1}`;
         questionText.textContent = quiz[serverCurrentIndex].q;
         
-        // 答えの公開状態による分岐
         if (showAnswer) {
           answerText.textContent = quiz[serverCurrentIndex].a;
           answerText.classList.remove("score-hidden");
@@ -276,47 +302,58 @@
       }
     });
 
-    // --- 5. 🚀 最新版：参加者結果（スコア）送信（Firestore統合版） ---
-    window.submitResult = (isCorrect) => {
+    // --- 5. 🚀 チームポイント確定送信システム（Firestoreリザルト直結） ---
+    window.submitFinalScore = async () => {
       if (serverCurrentIndex === -1) {
-        alert("現在問題が出題されていません。");
+        alert("現在クイズが出題されていません。");
+        return;
+      }
+      if (currentJudgeStatus === null) {
+        alert("手元の「⭕ 正解」または「❌ 不正解」判定を選択してください。");
         return;
       }
 
-      const scoreValue = isCorrect ? 10 : 0;
-      
-      // 統合集計画面と共通のドキュメント（部屋名_ユーザー名）
-      const docRef = firestore.collection("gameResults").doc(`${currentRoom}_${currentPlayerName}`);
+      // 配点計算
+      const pointPerAnswer = parseInt(document.getElementById("pointPerAnswer").value) || 10;
+      const finalCalculatedScore = currentJudgeStatus ? pointPerAnswer : 0;
 
-      // Firestoreへマージ保存（正解なら10点加算）
-      docRef.set({
-        room: currentRoom,
-        name: currentPlayerName,
-        score_reverse: firebase.firestore.FieldValue.increment(scoreValue),
-        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-      }, { merge: true }).then(() => {
-        // 3ゲームの合計値(totalScore)をリアルタイムに自動再計算
-        recalculateTotalScore(docRef);
-        alert(`問題 ${serverCurrentIndex + 1} の結果（${isCorrect ? "⭕ 正解 (+10点)" : "❌ 不正解"}）を保存しました！`);
-      }).catch((error) => {
-        alert("スコア送信失敗: " + error.message);
-      });
-    };
+      if (finalCalculatedScore === 0) {
+        if (!confirm("不正解（0点）のまま送信しますか？")) return;
+      }
 
-    // 🏆 合計値を再計算して格納する共通関数
-    function recalculateTotalScore(docRef) {
-      docRef.get().then((doc) => {
-        if (doc.exists) {
-          const data = doc.data();
+      try {
+        // 結果発表画面(6gatukekka.html)と同一の統合用ドキュメント
+        const docRef = firestore.collection("gameResults").doc(`${activeTeam}_総合スコア`);
+        
+        // score_reverse フィールドへスコアをインクリメント加算
+        await docRef.set({
+          room: activeTeam,
+          name: "チーム合計",
+          score_reverse: firebase.firestore.FieldValue.increment(finalCalculatedScore),
+          updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        }, { merge: true });
+
+        // トータルスコアを再集計してマージ更新
+        const docSnap = await docRef.get();
+        if (docSnap.exists()) {
+          const data = docSnap.data();
           const bomb = data.score_bomb || 0;
           const trans = data.score_translate || 0;
           const rev = data.score_reverse || 0;
-          
-          // 全ゲームの合計値をtotalScoreフィールドに更新
-          docRef.update({ totalScore: bomb + trans + rev });
+          await docRef.update({ totalScore: bomb + trans + rev });
         }
-      });
-    }
+
+        alert(`🏆 【${activeTeam}】へ逆再生ゲームの得点を送信しました！\n（判定: ${currentJudgeStatus ? "⭕ 正解" : "❌ 不正解"} ＝ ＋${finalCalculatedScore}点）`);
+        
+        // 送信が完了したら手元の○✕選択状態だけをリセット
+        clearJudgeVisual();
+      } catch (error) {
+        alert("送信・集計エラー: " + error.message);
+      }
+    };
+
+    // 初期起動時のUI同期
+    syncAdminUI();
   </script>
 
 </body>
