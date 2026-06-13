@@ -6,9 +6,9 @@
 <title>🏆 3大ゲーム・チーム対抗リアルタイム総合リザルト</title>
 <script src="https://cdn.tailwindcss.com"></script>
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@700;900&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght=700;900&display=swap');
   body {
-    font-family: 'Noto+Sans+JP', sans-serif;
+    font-family: 'Noto Sans JP', sans-serif;
     background: #09090d;
     color: #fff;
   }
@@ -51,7 +51,7 @@
 
     <div class="glow-card bg-white/5 rounded-3xl p-6 backdrop-blur-lg mb-8">
       <h2 id="currentGameTitle" class="text-xl font-black text-pink-400 mb-4 flex items-center gap-2">
-        🔄 第1ゲーム：逆再生伝言ゲーム チーム合計順位
+        🔄 第1ゲーム：逆再生伝言ゲーム チーム合計一覧
       </h2>
       
       <div class="overflow-x-auto rounded-2xl border border-white/5">
@@ -165,10 +165,18 @@
           };
         }
 
-        teamMap[teamName].score_reverse += (p.score_reverse || 0);
-        teamMap[teamName].score_translate += (p.score_translate || 0);
-        teamMap[teamName].score_bomb += (p.score_bomb || 0);
-        teamMap[teamName].totalScore += (p.totalScore || 0);
+        // 各ゲームの数値を安全に抜き出す
+        const rev = (p.score_reverse || 0);
+        const trans = (p.score_translate || 0);
+        const bomb = (p.score_bomb || 0);
+
+        // 各ゲームの枠にプラスする
+        teamMap[teamName].score_reverse += rev;
+        teamMap[teamName].score_translate += trans;
+        teamMap[teamName].score_bomb += bomb;
+        
+        // ★修正点：3つのゲームすべての点数をしっかり合計点に合算する
+        teamMap[teamName].totalScore += (rev + trans + bomb);
       });
 
       return Object.values(teamMap);
@@ -297,7 +305,6 @@
         finalResultWrap.classList.remove("hidden");
         revealBtn.innerText = "🔒 最終結果を隠す";
         revealBtn.className = "w-full sm:w-auto bg-gray-800 hover:bg-gray-700 text-gray-300 font-bold px-6 py-3 rounded-xl text-sm shadow transition-all transform active:scale-95";
-        // 表示した瞬間に最下部へスムーズスクロール
         finalResultWrap.scrollIntoView({ behavior: 'smooth' });
       } else {
         finalResultWrap.classList.add("hidden");
