@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>🏆 3大ゲーム・リアルタイム総合リザルト</title>
+<title>🏆 3大ゲーム・チーム対抗リアルタイム総合リザルト</title>
 <script src="https://cdn.tailwindcss.com"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@700;900&display=swap');
@@ -16,26 +16,25 @@
   .silver-bg { background: linear-gradient(135deg, #c0c0c0, #708090); color: #000; }
   .bronze-bg { background: linear-gradient(135deg, #cd7f32, #8b4513); color: #fff; }
   
-  /* アニメーション演出 */
   .glow-card {
-    box-shadow: 0 0 20px rgba(138, 43, 226, 0.15);
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 0 25px rgba(138, 43, 226, 0.15);
+    border: 1px solid rgba(255, 255, 255, 0.08);
   }
   .animate-pulse-slow {
     animation: pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
   }
 </style>
 </head>
-<body class="p-6 min-h-screen flex flex-col items-center">
+<body class="p-6 min-h-screen flex flex-col items-center justify-start">
 
-  <div class="w-full max-w-5xl">
+  <div class="w-full max-w-4xl">
     
     <div class="text-center mb-8">
       <span class="text-5xl animate-bounce inline-block">👑</span>
       <h1 class="text-4xl font-black tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-yellow-400 via-pink-500 to-purple-500 mt-2">
-        GAME RESULTS DASHBOARD
+        TEAM RANKING DASHBOARD
       </h1>
-      <p class="text-gray-400 text-xs mt-1">各ゲームの結果切り替え ＆ リアルタイム最終集計</p>
+      <p class="text-gray-400 text-xs mt-1">チーム対抗戦・リアルタイム自動集計システム</p>
     </div>
 
     <div class="grid grid-cols-3 gap-3 mb-6">
@@ -46,58 +45,62 @@
         第2ゲーム<br><span class="text-base font-black">🔤 翻訳クイズ</span>
       </button>
       <button id="tab_bomb" onclick="switchGameView('bomb')" class="py-4 rounded-2xl font-black text-sm transition-all border border-white/10 bg-white/5 text-gray-400 hover:text-white">
-        第3ゲーム<br><span class="text-base font-black">💣 ボンバー</span>
+        第3ゲーム<br><span class="text-base font-black">💣 マイクボンバー</span>
       </button>
     </div>
 
     <div class="glow-card bg-white/5 rounded-3xl p-6 backdrop-blur-lg mb-8">
       <h2 id="currentGameTitle" class="text-xl font-black text-pink-400 mb-4 flex items-center gap-2">
-        🔄 第1ゲーム：逆再生伝言ゲーム結果一覧
+        🔄 第1ゲーム：逆再生伝言ゲーム チーム合計順位
       </h2>
       
-      <div class="overflow-hidden rounded-2xl border border-white/5">
-        <table class="w-full text-left border-collapse">
+      <div class="overflow-x-auto rounded-2xl border border-white/5">
+        <table class="w-full text-left border-collapse min-w-[500px]">
           <thead>
             <tr class="bg-white/10 text-gray-400 text-xs font-bold uppercase border-b border-white/10">
-              <th class="py-3 px-6 text-center w-24">単体順位</th>
-              <th class="py-3 px-6">チーム</th>
-              <th class="py-3 px-6">プレイヤー名</th>
-              <th class="py-3 px-6 text-right text-sm font-black" id="gameScoreHeader">獲得スコア</th>
+              <th class="py-3.5 px-6 text-center w-28">チーム順位</th>
+              <th class="py-3.5 px-6">チーム名</th>
+              <th class="py-3.5 px-6 text-right text-sm font-black w-48" id="gameScoreHeader">チーム合計スコア</th>
             </tr>
           </thead>
-          <tbody id="gameTableBody" class="divide-y divide-white/5 font-bold text-sm">
+          <tbody id="gameTableBody" class="divide-y divide-white/5 font-black text-base">
             </tbody>
         </table>
       </div>
     </div>
 
-    <div class="border-2 border-yellow-500/30 bg-gradient-to-b from-yellow-950/20 to-purple-950/20 rounded-3xl p-6 shadow-2xl relative overflow-hidden">
-      <div class="absolute top-0 right-0 p-4 opacity-10 text-7xl font-black text-yellow-500 select-none">FINAL</div>
+    <div class="border-2 border-yellow-500/30 bg-gradient-to-b from-yellow-950/10 to-purple-950/10 rounded-3xl p-6 shadow-2xl relative overflow-hidden">
+      <div class="absolute top-0 right-0 p-4 opacity-5 text-7xl font-black text-yellow-500 select-none">FINAL</div>
       
-      <h2 class="text-2xl font-black text-yellow-400 mb-4 flex items-center gap-2 animate-pulse-slow">
-        🏆 最終結果（現在の3ゲーム合計ランキング）
-      </h2>
+      <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
+        <h2 class="text-2xl font-black text-yellow-400 flex items-center gap-2 animate-pulse-slow">
+          🏆 最終結果（全ゲーム総合チームランキング）
+        </h2>
+        <button id="revealBtn" onclick="revealFinalResult()" class="w-full sm:w-auto bg-gradient-to-r from-yellow-500 to-amber-600 hover:from-yellow-400 hover:to-amber-500 text-black font-black px-6 py-3 rounded-xl text-sm shadow-xl transition-all transform active:scale-95">
+          🎉 最終総合結果を発表する！
+        </button>
+      </div>
 
-      <div class="overflow-hidden rounded-2xl border border-yellow-500/10 bg-black/40">
-        <table class="w-full text-left border-collapse">
+      <div id="finalResultWrap" class="hidden overflow-x-auto rounded-2xl border border-yellow-500/20 bg-black/60 transition-all duration-500">
+        <table class="w-full text-left border-collapse min-w-[600px]">
           <thead>
             <tr class="bg-yellow-500/10 text-yellow-200 text-xs font-bold uppercase border-b border-yellow-500/20">
-              <th class="py-4 px-6 text-center w-24">総合順位</th>
-              <th class="py-4 px-6">チーム</th>
-              <th class="py-4 px-6">プレイヤー名</th>
-              <th class="py-4 px-6 text-center text-gray-400">1:逆再生</th>
-              <th class="py-4 px-6 text-center text-gray-400">2:翻訳</th>
-              <th class="py-4 px-6 text-center text-gray-400">3:ボンバー</th>
-              <th class="py-4 px-6 text-right text-base text-yellow-400 bg-yellow-500/5">総合スコア</th>
+              <th class="py-4 px-6 text-center w-28">総合順位</th>
+              <th class="py-4 px-6">チーム名</th>
+              <th class="py-4 px-6 text-center text-gray-400 font-medium">1:逆再生 合計</th>
+              <th class="py-4 px-6 text-center text-gray-400 font-medium">2:翻訳 合計</th>
+              <th class="py-4 px-6 text-center text-gray-400 font-medium">3:ボンバー 合計</th>
+              <th class="py-4 px-6 text-right text-base text-yellow-400 bg-yellow-500/5 w-48">総合合計スコア</th>
             </tr>
           </thead>
-          <tbody id="finalTableBody" class="divide-y divide-white/5 font-black">
+          <tbody id="finalTableBody" class="divide-y divide-white/5 font-black text-base">
             </tbody>
         </table>
       </div>
       
-      <div class="mt-4 flex justify-end">
-        <button onclick="resetScores()" class="text-[10px] bg-red-950 text-red-300 border border-red-900/50 px-2 py-1 rounded hover:bg-red-900 transition-all">全員のスコアを全面リセット</button>
+      <div class="mt-6 flex justify-between items-center text-[10px] text-gray-600">
+        <span>※プレイヤー全員の数値をチーム名ごとに自動合算しています</span>
+        <button onclick="resetScores()" class="bg-red-950 text-red-300 border border-red-900/50 px-2 py-1 rounded hover:bg-red-900 transition-all">全面スコアリセット</button>
       </div>
     </div>
 
@@ -122,32 +125,58 @@
     firebase.initializeApp(firebaseConfig);
     const firestore = firebase.firestore();
 
-    // 表示管理ステート
-    let currentActiveGame = "reverse"; // reverse, translate, bomb
-    let rawScoreData = [];             // リアルタイムキャッシュ保持用
+    let currentActiveGame = "reverse"; 
+    let rawScoreData = [];             
 
-    // DOM要素
     const gameTableBody = document.getElementById("gameTableBody");
     const finalTableBody = document.getElementById("finalTableBody");
     const currentGameTitle = document.getElementById("currentGameTitle");
     const gameScoreHeader = document.getElementById("gameScoreHeader");
+    const finalResultWrap = document.getElementById("finalResultWrap");
+    const revealBtn = document.getElementById("revealBtn");
 
-    // --- 1. リアルタイムデータ受信リスナー (Firestoreから全自動同期) ---
+    // --- 1. リアルタイムFirestoreリスナー ---
     firestore.collection("gameResults").onSnapshot((snapshot) => {
       rawScoreData = [];
       snapshot.forEach((doc) => {
         rawScoreData.push(doc.data());
       });
       
-      // データが更新されたら、現在選択中のゲーム画面と、最終結果画面の両方を再描画する
-      renderGameResult();
-      renderFinalResult();
+      // データのチーム集計・再描画
+      renderTeamGameResult();
+      renderTeamFinalResult();
     });
 
-    // --- 2. タブ切り替えロジック ---
+    // チームごとに各ゲームの点数を合算・集計するコア関数
+    function aggregateTeamData() {
+      const teamMap = {};
+
+      rawScoreData.forEach(p => {
+        const teamName = p.room ? p.room.trim() : "未所属";
+        if (!teamName) return;
+
+        if (!teamMap[teamName]) {
+          teamMap[teamName] = {
+            room: teamName,
+            score_reverse: 0,
+            score_translate: 0,
+            score_bomb: 0,
+            totalScore: 0
+          };
+        }
+
+        teamMap[teamName].score_reverse += (p.score_reverse || 0);
+        teamMap[teamName].score_translate += (p.score_translate || 0);
+        teamMap[teamName].score_bomb += (p.score_bomb || 0);
+        teamMap[teamName].totalScore += (p.totalScore || 0);
+      });
+
+      return Object.values(teamMap);
+    }
+
+    // --- 2. タブ切り替え ---
     window.switchGameView = (gameKey) => {
       currentActiveGame = gameKey;
-      
       const tabs = ["reverse", "translate", "bomb"];
       const colors = {
         reverse: { border: "border-pink-500/50", bg: "bg-pink-950/40", text: "text-pink-300" },
@@ -164,121 +193,63 @@
         }
       });
 
-      renderGameResult();
+      renderTeamGameResult();
     };
 
-    // --- 3. 【個別ゲーム】リザルトの描画（並び替え） ---
-    function renderGameResult() {
+    // --- 3. 単体ゲームリザルトの描画 (チーム合計) ---
+    function renderTeamGameResult() {
       gameTableBody.innerHTML = "";
+      const teamData = aggregateTeamData();
       
       let fieldKey = "score_reverse";
       if (currentActiveGame === "reverse") {
-        currentGameTitle.innerHTML = "🔄 第1ゲーム：逆再生伝言ゲーム結果一覧";
-        gameScoreHeader.textContent = "逆再生スコア";
+        currentGameTitle.innerHTML = "🔄 第1ゲーム：逆再生伝言ゲーム チーム合計一覧";
+        gameScoreHeader.textContent = "チーム合計スコア";
         fieldKey = "score_reverse";
       } else if (currentActiveGame === "translate") {
-        currentGameTitle.innerHTML = "🔤 第2ゲーム：万能・翻訳クイズ結果一覧";
-        gameScoreHeader.textContent = "翻訳クイズスコア";
+        currentGameTitle.innerHTML = "🔤 第2ゲーム：万能・翻訳クイズ チーム合計一覧";
+        gameScoreHeader.textContent = "チーム合計スコア";
         fieldKey = "score_translate";
       } else if (currentActiveGame === "bomb") {
-        currentGameTitle.innerHTML = "💣 第3ゲーム：マイクボンバー結果一覧";
-        gameScoreHeader.textContent = "ボンバースコア";
+        currentGameTitle.innerHTML = "💣 第3ゲーム：マイクボンバー チーム合計一覧";
+        gameScoreHeader.textContent = "チーム合計スコア";
         fieldKey = "score_bomb";
       }
 
-      // 該当ゲームの点数が高い順にソート（データがないプレイヤーは0点扱い）
-      const sortedData = [...rawScoreData].sort((a, b) => {
-        return (b[fieldKey] || 0) - (a[fieldKey] || 0);
-      });
+      // スコア順にソート
+      teamData.sort((a, b) => (b[fieldKey] || 0) - (a[fieldKey] || 0));
 
-      if (sortedData.length === 0) {
-        gameTableBody.innerHTML = `<tr><td colspan="4" class="py-8 text-center text-gray-500">ゲーム結果データがありません</td></tr>`;
+      if (teamData.length === 0) {
+        gameTableBody.innerHTML = `<tr><td colspan="3" class="py-8 text-center text-gray-500">ゲーム結果データがありません</td></tr>`;
         return;
       }
 
       let rank = 1;
-      sortedData.forEach(p => {
-        const score = p[fieldKey] !== undefined ? p[fieldKey] : 0;
-        
+      teamData.forEach(t => {
+        const score = t[fieldKey] || 0;
         let rankBadge = `<span class="text-gray-400">${rank}</span>`;
-        if (rank === 1 && score > 0) rankBadge = `<span class="gold-bg px-2 py-0.5 rounded text-xs font-black shadow">1位</span>`;
-        else if (rank === 2 && score > 0) rankBadge = `<span class="silver-bg px-2 py-0.5 rounded text-xs font-black shadow">2位</span>`;
-        else if (rank === 3 && score > 0) rankBadge = `<span class="bronze-bg px-2 py-0.5 rounded text-xs font-black shadow">3位</span>`;
+        if (rank === 1 && score > 0) rankBadge = `<span class="gold-bg px-2.5 py-0.5 rounded text-xs font-black shadow">1位</span>`;
+        else if (rank === 2 && score > 0) rankBadge = `<span class="silver-bg px-2.5 py-0.5 rounded text-xs font-black shadow">2位</span>`;
+        else if (rank === 3 && score > 0) rankBadge = `<span class="bronze-bg px-2.5 py-0.5 rounded text-xs font-black shadow">3位</span>`;
 
         const tr = document.createElement("tr");
         tr.className = "hover:bg-white/5 transition-all border-b border-white/5";
         tr.innerHTML = `
-          <td class="py-3 px-6 text-center">${rankBadge}</td>
-          <td class="py-3 px-6 text-gray-300">${p.room || '-'}</td>
-          <td class="py-3 px-6 text-white text-base">${p.name || '-'}</td>
-          <td class="py-3 px-6 text-right text-base text-cyan-400">${score} 点</td>
+          <td class="py-3.5 px-6 text-center">${rankBadge}</td>
+          <td class="py-3.5 px-6 text-white text-lg font-black">${t.room}</td>
+          <td class="py-3.5 px-6 text-right text-lg text-cyan-400">${score} 点</td>
         `;
         gameTableBody.appendChild(tr);
         rank++;
       });
     }
 
-    // --- 4. 【総合最終結果】リザルトの描画（並び替え） ---
-    function renderFinalResult() {
+    // --- 4. 総合最終結果リザルトの描画 (チーム合計) ---
+    function renderTeamFinalResult() {
       finalTableBody.innerHTML = "";
+      const teamData = aggregateTeamData();
 
-      // 総合合計点（totalScore）が高い順にソート
-      const sortedFinalData = [...rawScoreData].sort((a, b) => {
-        return (b.totalScore || 0) - (a.totalScore || 0);
-      });
+      // 総合合計点でソート
+      teamData.sort((a, b) => (b.totalScore || 0) - (a.totalScore || 0));
 
-      if (sortedFinalData.length === 0) {
-        finalTableBody.innerHTML = `<tr><td colspan="7" class="py-8 text-center text-gray-600">最終集計データを待機中...</td></tr>`;
-        return;
-      }
-
-      let rank = 1;
-      sortedFinalData.forEach(p => {
-        const rev = p.score_reverse !== undefined ? p.score_reverse : "-";
-        const trans = p.score_translate !== undefined ? p.score_translate : "-";
-        const bomb = p.score_bomb !== undefined ? p.score_bomb : "-";
-        const total = p.totalScore !== undefined ? p.totalScore : 0;
-
-        let rankBadge = `<span class="text-gray-400 text-base">${rank}</span>`;
-        let rowStyle = "hover:bg-white/5 transition-colors";
-        
-        if (rank === 1 && total > 0) {
-          rankBadge = `<span class="gold-bg px-3 py-1 rounded-xl text-sm font-black shadow-xl animate-pulse">👑 1位</span>`;
-          rowStyle = "bg-yellow-500/5 hover:bg-yellow-500/10 font-bold border-l-4 border-yellow-500";
-        } else if (rank === 2 && total > 0) {
-          rankBadge = `<span class="silver-bg px-3 py-1 rounded-xl text-sm font-black shadow-lg">2位</span>`;
-        } else if (rank === 3 && total > 0) {
-          rankBadge = `<span class="bronze-bg px-3 py-1 rounded-xl text-sm font-black shadow-lg">3位</span>`;
-        }
-
-        const tr = document.createElement("tr");
-        tr.className = `${rowStyle} border-b border-white/5`;
-        tr.innerHTML = `
-          <td class="py-4 px-6 text-center">${rankBadge}</td>
-          <td class="py-4 px-6 text-white text-sm">${p.room || '-'}</td>
-          <td class="py-4 px-6 text-white text-lg">${p.name || '-'}</td>
-          <td class="py-4 px-6 text-center text-gray-400 font-medium">${rev}</td>
-          <td class="py-4 px-6 text-center text-gray-400 font-medium">${trans}</td>
-          <td class="py-4 px-6 text-center text-gray-400 font-medium">${bomb}</td>
-          <td class="py-4 px-6 text-right text-xl text-yellow-400 bg-yellow-500/5 font-black">${total}点</td>
-        `;
-        finalTableBody.appendChild(tr);
-        rank++;
-      });
-    }
-
-    // スコア全面リセット（管理者用）
-    window.resetScores = () => {
-      if (confirm("本当に全員の全ゲーム記録（スコア）を完全に初期化しますか？")) {
-        firestore.collection("gameResults").get().then((snapshot) => {
-          const batch = firestore.batch();
-          snapshot.forEach((doc) => batch.delete(doc.ref));
-          return batch.commit();
-        }).then(() => {
-          alert("すべてのスコアを初期化しました！");
-        }).catch(err => alert("エラー: " + err.message));
-      }
-    };
-  </script>
-</body>
-</html>
+      if (teamData.length === 0) {
