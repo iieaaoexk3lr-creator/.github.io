@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>擬音カラオケお題メーカー</title>
+
+<link href="https://fonts.googleapis.com/css2?family=Mochiy+Pop+One&display=swap" rel="stylesheet">
+
+<style>
+*{
+    box-sizing:border-box;
+    margin:0;
+    padding:0;
+}
+
+body{
+    font-family:'Mochiy Pop One',sans-serif;
+    min-height:100vh;
+
+    background:
+    linear-gradient(135deg,
+    #ff9ed8,
+    #ffd6f6,
+    #b8f5ff);
+
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    padding:20px;
+}
+
+.container{
+    width:100%;
+    max-width:500px;
+    text-align:center;
+}
+
+.title{
+    font-size:1.8rem;
+    color:white;
+    text-shadow:
+    0 4px 10px rgba(0,0,0,.2);
+    margin-bottom:20px;
+}
+
+.card{
+    background:white;
+    border-radius:30px;
+    padding:30px 20px;
+    box-shadow:
+    0 10px 30px rgba(0,0,0,.15);
+}
+
+.result{
+    min-height:180px;
+
+    display:flex;
+    justify-content:center;
+    align-items:center;
+
+    font-size:3rem;
+    color:#ff4fa3;
+
+    text-shadow:
+    0 0 15px rgba(255,79,163,.4);
+
+    transition:.3s;
+    word-break:break-word;
+}
+
+.pop{
+    animation:pop .4s;
+}
+
+@keyframes pop{
+    0%{
+        transform:scale(.4) rotate(-8deg);
+        opacity:0;
+    }
+
+    60%{
+        transform:scale(1.15) rotate(3deg);
+    }
+
+    100%{
+        transform:scale(1);
+        opacity:1;
+    }
+}
+
+.buttons{
+    display:flex;
+    gap:10px;
+    margin-top:20px;
+}
+
+button{
+    flex:1;
+    border:none;
+    border-radius:20px;
+    padding:15px;
+
+    font-size:1rem;
+    font-family:inherit;
+
+    color:white;
+    cursor:pointer;
+}
+
+.randomBtn{
+    background:#ff5fa9;
+}
+
+.selectBtn{
+    background:#57b8ff;
+}
+
+select{
+    width:100%;
+    margin-top:15px;
+
+    padding:12px;
+
+    border-radius:15px;
+    border:3px solid #ffd1ec;
+
+    font-size:1rem;
+    font-family:inherit;
+}
+
+.desc{
+    margin-top:15px;
+    color:#888;
+    font-size:.9rem;
+}
+</style>
+</head>
+<body>
+
+<div class="container">
+
+    <div class="title">
+        🎤 擬音カラオケお題 🎤
+    </div>
+
+    <div class="card">
+
+        <div id="result" class="result">
+            ワー
+        </div>
+
+        <div class="buttons">
+            <button class="randomBtn" onclick="randomTheme()">
+                ランダム
+            </button>
+
+            <button class="selectBtn" onclick="selectTheme()">
+                選択
+            </button>
+        </div>
+
+        <select id="themeSelect"></select>
+
+        <div class="desc">
+            この擬音っぽい曲を歌え！
+        </div>
+
+    </div>
+
+</div>
+
+<script>
+
+const themes = [
+
+"ワー",
+"ドワーッ",
+"シーン",
+"スッ...",
+"ぎょぎょぎょ",
+"ザワザワ",
+"キラーン",
+"キュン",
+"ドドドド",
+"ポワワ",
+"グワー",
+"ピタッ",
+"モヤァ",
+"シャキーン",
+"ワクワク",
+"ギラギラ",
+"フワァ",
+"ズーン",
+"ビシッ",
+"トコトコ"
+
+];
+
+const result =
+document.getElementById("result");
+
+const select =
+document.getElementById("themeSelect");
+
+themes.forEach(theme=>{
+    const option =
+    document.createElement("option");
+
+    option.value = theme;
+    option.textContent = theme;
+
+    select.appendChild(option);
+});
+
+function showTheme(theme){
+
+    result.classList.remove("pop");
+
+    void result.offsetWidth;
+
+    result.textContent = theme;
+
+    result.classList.add("pop");
+}
+
+function randomTheme(){
+
+    const theme =
+    themes[
+        Math.floor(
+            Math.random()*themes.length
+        )
+    ];
+
+    showTheme(theme);
+}
+
+function selectTheme(){
+
+    showTheme(select.value);
+}
+
+</script>
+
+</body>
+</html>
