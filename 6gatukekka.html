@@ -253,3 +253,71 @@
       teamData.sort((a, b) => (b.totalScore || 0) - (a.totalScore || 0));
 
       if (teamData.length === 0) {
+        finalTableBody.innerHTML = `<tr><td colspan="6" class="py-8 text-center text-gray-600">最終データを待機中...</td></tr>`;
+        return;
+      }
+
+      let rank = 1;
+      teamData.forEach(t => {
+        const rev = t.score_reverse;
+        const trans = t.score_translate;
+        const bomb = t.score_bomb;
+        const total = t.totalScore;
+
+        let rankBadge = `<span class="text-gray-400 text-base">${rank}</span>`;
+        let rowStyle = "hover:bg-white/5 transition-colors";
+        
+        if (rank === 1 && total > 0) {
+          rankBadge = `<span class="gold-bg px-3 py-1 rounded-xl text-sm font-black shadow-xl">👑 総合優勝</span>`;
+          rowStyle = "bg-yellow-500/5 hover:bg-yellow-500/10 border-l-4 border-yellow-500";
+        } else if (rank === 2 && total > 0) {
+          rankBadge = `<span class="silver-bg px-3 py-1 rounded-xl text-sm font-black shadow-lg">準優勝</span>`;
+        } else if (rank === 3 && total > 0) {
+          rankBadge = `<span class="bronze-bg px-3 py-1 rounded-xl text-sm font-black shadow-lg">3位</span>`;
+        }
+
+        const tr = document.createElement("tr");
+        tr.className = `${rowStyle} border-b border-white/5`;
+        tr.innerHTML = `
+          <td class="py-4 px-6 text-center">${rankBadge}</td>
+          <td class="py-4 px-6 text-white text-xl font-black">${t.room}</td>
+          <td class="py-4 px-6 text-center text-gray-400">${rev} 点</td>
+          <td class="py-4 px-6 text-center text-gray-400">${trans} 点</td>
+          <td class="py-4 px-6 text-center text-gray-400">${bomb} 点</td>
+          <td class="py-4 px-6 text-right text-2xl text-yellow-400 bg-yellow-500/5 font-black">${total} 点</td>
+        `;
+        finalTableBody.appendChild(tr);
+        rank++;
+      });
+    }
+
+    // ✨ 最終総合結果のトグル表示演出スイッチ
+    window.revealFinalResult = () => {
+      if (finalResultWrap.classList.contains("hidden")) {
+        finalResultWrap.classList.remove("hidden");
+        revealBtn.innerText = "🔒 最終結果を隠す";
+        revealBtn.className = "w-full sm:w-auto bg-gray-800 hover:bg-gray-700 text-gray-300 font-bold px-6 py-3 rounded-xl text-sm shadow transition-all transform active:scale-95";
+        // 表示した瞬間に最下部へスムーズスクロール
+        finalResultWrap.scrollIntoView({ behavior: 'smooth' });
+      } else {
+        finalResultWrap.classList.add("hidden");
+        revealBtn.innerText = "🎉 最終総合結果を発表する！";
+        revealBtn.className = "w-full sm:w-auto bg-gradient-to-r from-yellow-500 to-amber-600 hover:from-yellow-400 hover:to-amber-500 text-black font-black px-6 py-3 rounded-xl text-sm shadow-xl transition-all transform active:scale-95";
+      }
+    };
+
+    // スコア一括クリア
+    window.resetScores = () => {
+      if (confirm("本当に全員の全ゲーム記録（スコア）を完全に初期化しますか？")) {
+        firestore.collection("gameResults").get().then((snapshot) => {
+          const batch = firestore.batch();
+          snapshot.forEach((doc) => batch.delete(doc.ref));
+          return batch.commit();
+        }).then(() => {
+          alert("すべてのスコアを初期化しました！");
+        }).catch(err => alert("エラー: " + err.message));
+      }
+    };
+  </script>
+</body>
+</html>
