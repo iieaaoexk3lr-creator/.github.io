@@ -3,17 +3,17 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>逆再生伝言ゲーム - 連動システム（最新版）</title>
+<title>万能・自動翻訳クイズシステム（最新版）</title>
 <script src="https://cdn.tailwindcss.com"></script>
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@700;900&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght=700;900&display=swap');
   body {
     font-family: 'Noto+Sans+JP', sans-serif;
     background: #0f0f15;
     color: #fff;
   }
   .app-gradient {
-    background: linear-gradient(135deg, #ff3366, #ff6633);
+    background: linear-gradient(135deg, #8a2be2, #4a00e0);
   }
   .glass-box {
     background: rgba(255, 255, 255, 0.05);
@@ -36,32 +36,92 @@
         <button id="authBtn" class="bg-gray-700 hover:bg-gray-600 px-3 py-1 rounded-xl text-xs font-bold transition-all">Panel</button>
       </div>
 
-      <div id="adminPanel" class="hidden bg-gray-900 border-2 border-pink-500 rounded-3xl p-4 mb-6 shadow-2xl">
-        <h2 class="text-lg font-black text-pink-500 mb-3 flex justify-between items-center">
-          <span>🛠️ 管理者パネル (操作用)</span>
-          <button onclick="resetSync()" class="text-xs bg-red-900 px-2 py-0.5 rounded text-red-200">全リセット</button>
+      <div id="adminPanel" class="hidden bg-gray-900 border-2 border-purple-500 rounded-3xl p-4 mb-6 shadow-2xl space-y-4">
+        <h2 class="text-lg font-black text-purple-400 flex justify-between items-center">
+          <span>🛠️ 出題者マルチパネル</span>
+          <button onclick="resetRoomData()" class="text-xs bg-red-900 px-2 py-0.5 rounded text-red-200">出題クリア</button>
         </h2>
         
-        <p class="text-xs font-bold text-gray-400 mb-1">1. 出題する問題を選択（全員に配信）</p>
-        <div class="flex gap-1.5 overflow-x-auto pb-2 mb-4" id="adminButtons">
+        <div>
+          <label class="block text-xs font-bold text-gray-400 mb-2">🎯 出題モードを選択</label>
+          <div class="grid grid-cols-2 gap-1 bg-gray-800 p-1 rounded-xl text-xs font-bold text-center">
+            <label class="cursor-pointer py-1.5 rounded-lg transition-all" id="lblModeMix">
+              <input type="radio" name="quizMode" value="mix" class="hidden" checked onclick="switchInputs('mix')">
+              和英MIX
+            </label>
+            <label class="cursor-pointer py-1.5 rounded-lg transition-all text-gray-400" id="lblModeMixEJ">
+              <input type="radio" name="quizMode" value="mix_ej" class="hidden" onclick="switchInputs('mix_ej')">
+              英和MIX
+            </label>
+            <label class="cursor-pointer py-1.5 rounded-lg transition-all text-gray-400" id="lblModeEn">
+              <input type="radio" name="quizMode" value="en" class="hidden" onclick="switchInputs('en')">
+              全英訳
+            </label>
+            <label class="cursor-pointer py-1.5 rounded-lg transition-all text-gray-400" id="lblModeJa">
+              <input type="radio" name="quizMode" value="ja" class="hidden" onclick="switchInputs('ja')">
+              全和訳
+            </label>
+          </div>
+        </div>
+
+        <div class="space-y-3">
+          <div id="inputGroupMix" class="space-y-3">
+            <div>
+              <label class="block text-xs font-bold text-cyan-400 mb-1">前半部分：英語を入力（自動で日本語になります）</label>
+              <input type="text" id="mixFirstInput" placeholder="例: Perfect" class="w-full bg-gray-800 text-white px-3 py-2 rounded-xl border border-gray-700 text-sm focus:outline-none">
+            </div>
+            <div>
+              <label class="block text-xs font-bold text-amber-400 mb-1">後半部分：日本語を入力（自動で英語になります）</label>
+              <input type="text" id="mixSecondInput" placeholder="例: 夢想家" class="w-full bg-gray-800 text-white px-3 py-2 rounded-xl border border-gray-700 text-sm focus:outline-none">
+            </div>
           </div>
 
-        <p class="text-xs font-bold text-gray-400 mb-1">2. 答えの表示コントロール</p>
-        <div class="grid grid-cols-2 gap-2">
-          <button onclick="setAnswerVisibility(true)" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 rounded-xl text-sm shadow">
-            🔓 答えを全員に公開
-          </button>
-          <button onclick="setAnswerVisibility(false)" class="bg-gray-700 hover:bg-gray-600 text-white font-bold py-2 rounded-xl text-sm shadow">
-            🔒 答えを隠す
-          </button>
+          <div id="inputGroupMixEJ" class="space-y-3 hidden">
+            <div>
+              <label class="block text-xs font-bold text-amber-400 mb-1">前半部分：日本語を入力（自動で英語になります）</label>
+              <input type="text" id="mixEJFirstInput" placeholder="例: 青" class="w-full bg-gray-800 text-white px-3 py-2 rounded-xl border border-gray-700 text-sm focus:outline-none">
+            </div>
+            <div>
+              <label class="block text-xs font-bold text-cyan-400 mb-1">後半部分：英語を入力（自動で日本語になります）</label>
+              <input type="text" id="mixEJSecondInput" placeholder="例: Summer" class="w-full bg-gray-800 text-white px-3 py-2 rounded-xl border border-gray-700 text-sm focus:outline-none">
+            </div>
+          </div>
+
+          <div id="inputGroupEn" class="hidden">
+            <label class="block text-xs font-bold text-amber-400 mb-1">クイズの正解（日本語）を入力</label>
+            <input type="text" id="enSingleInput" placeholder="例: 赤いスイートピー" class="w-full bg-gray-800 text-white px-3 py-2 rounded-xl border border-gray-700 text-sm focus:outline-none">
+          </div>
+
+          <div id="inputGroupJa" class="hidden">
+            <label class="block text-xs font-bold text-cyan-400 mb-1">クイズの正解（英語）を入力</label>
+            <input type="text" id="jaSingleInput" placeholder="例: We Are The Champions" class="w-full bg-gray-800 text-white px-3 py-2 rounded-xl border border-gray-700 text-sm focus:outline-none">
+          </div>
+        </div>
+
+        <button id="submitQuizBtn" class="w-full bg-purple-600 hover:bg-purple-700 text-white font-black py-3 rounded-xl text-sm shadow transition-all active:scale-95">
+          🚀 翻訳して即時出題
+        </button>
+
+        <hr class="border-gray-800">
+
+        <div>
+          <label class="block text-xs font-bold text-gray-400 mb-1">答え公開制御</label>
+          <div class="grid grid-cols-2 gap-2">
+            <button onclick="setAnswerVisibility(true)" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 rounded-xl text-xs shadow">
+              🔓 答えを全員に公開
+            </button>
+            <button onclick="setAnswerVisibility(false)" class="bg-gray-700 hover:bg-gray-600 text-white font-bold py-2 rounded-xl text-xs shadow">
+              🔒 答えを隠す
+            </button>
+          </div>
         </div>
       </div>
 
       <div id="loginScreen" class="w-full glass-box p-8 rounded-3xl shadow-2xl my-12">
         <div class="text-center mb-8">
-          <span class="text-5xl">🔄</span>
-          <h1 class="text-3xl font-black mt-4 tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-pink-500 to-orange-400">
-            逆再生ゲーム
+          <span class="text-5xl">🤖</span>
+          <h1 class="text-3xl font-black mt-4 tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-purple-400 to-indigo-400">
+            翻訳マルチクイズ
           </h1>
           <p class="text-sm text-gray-400 mt-1">チーム名と名前を入力して参加</p>
         </div>
@@ -69,11 +129,11 @@
         <div class="space-y-4">
           <div>
             <label class="block text-xs font-bold text-gray-400 mb-1 uppercase tracking-wider">部屋名 / チーム名</label>
-            <input type="text" id="roomInput" placeholder="例: Aチーム" class="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-3 text-lg font-bold focus:outline-none focus:border-pink-500 text-white">
+            <input type="text" id="roomInput" placeholder="例: Bチーム" class="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-3 text-lg font-bold focus:outline-none focus:border-purple-500 text-white">
           </div>
           <div>
             <label class="block text-xs font-bold text-gray-400 mb-1 uppercase tracking-wider">あなたの名前</label>
-            <input type="text" id="nameInput" placeholder="例: たろう" class="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-3 text-lg font-bold focus:outline-none focus:border-pink-500 text-white">
+            <input type="text" id="nameInput" placeholder="例: じろう" class="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-3 text-lg font-bold focus:outline-none focus:border-purple-500 text-white">
           </div>
           <button id="loginBtn" class="w-full app-gradient hover:opacity-90 text-white font-black py-4 rounded-xl text-xl shadow-lg transition-all active:scale-95 mt-4">
             ゲーム画面に入る
@@ -84,25 +144,25 @@
       <div id="gameScreen" class="hidden w-full flex flex-col">
         
         <div class="flex justify-between items-center glass-box px-4 py-2.5 rounded-2xl mb-4 text-xs font-bold">
-          <div class="flex items-center gap-1 text-pink-400">🏠 <span id="displayRoom" class="text-white"></span></div>
-          <div class="flex items-center gap-1 text-orange-400">👤 <span id="displayName" class="text-white"></span></div>
+          <div class="flex items-center gap-1 text-purple-400">🏠 <span id="displayRoom" class="text-white"></span></div>
+          <div class="flex items-center gap-1 text-indigo-400">👤 <span id="displayName" class="text-white"></span></div>
         </div>
 
-        <div class="glass-box rounded-3xl p-6 text-center shadow-xl mb-6 min-h-[220px] flex flex-col justify-center border-2 border-white/10">
+        <div class="glass-box rounded-3xl p-6 text-center shadow-xl mb-6 min-h-[220px] flex flex-col justify-center border-2 border-white/10 relative">
           <div class="text-xs font-black text-gray-400 uppercase tracking-widest mb-1" id="syncStatusLabel">待機中</div>
-          <div class="text-xs font-bold text-pink-500 mb-3" id="quizNumDisplay">管理者が出題するまでお待ちください</div>
+          <div class="text-xs font-bold text-purple-400 mb-3" id="modeDisplay">問題を待機中...</div>
           
-          <div class="text-4xl font-black text-white tracking-wide min-h-[48px] flex items-center justify-center mb-4" id="question">
+          <div class="text-2xl font-black text-white tracking-wide min-h-[48px] flex items-center justify-center mb-4 px-2 whitespace-pre-line" id="convertedQuestion">
             ーーー
           </div>
           
-          <div class="text-2xl font-black text-emerald-400 min-h-[36px] flex items-center justify-center border-t border-white/10 pt-4" id="answerContainer">
+          <div class="text-xl font-black text-emerald-400 min-h-[36px] flex items-center justify-center border-t border-white/10 pt-4" id="answerContainer">
             <span id="answer" class="score-hidden">？ ？ ？</span>
           </div>
         </div>
 
         <div class="bg-black/40 border border-white/10 p-4 rounded-2xl">
-          <div class="text-xs font-bold text-center text-gray-400 mb-2">答え合わせ後の結果を送信</div>
+          <div class="text-xs font-bold text-center text-gray-400 mb-2">クイズの結果（スコア）を送信</div>
           <div class="grid grid-cols-2 gap-3">
             <button onclick="submitResult(true)" class="bg-emerald-600 hover:bg-emerald-700 text-white font-black py-3 rounded-xl flex items-center justify-center gap-2 text-md active:scale-95 transition-all shadow">
               ⭕ 正解 (+10点)
@@ -125,7 +185,6 @@
   </div>
 
   <script src="https://www.gstatic.com/firebasejs/9.1.3/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.1.3/firebase-database-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.1.3/firebase-firestore-compat.js"></script>
 
   <script>
@@ -141,28 +200,12 @@
       measurementId: "G-3636W6LC4F"
     };
     
-    // Firebase初期化
     firebase.initializeApp(firebaseConfig);
-    const db = firebase.database();       // 同期用のRealtime DB
-    const firestore = firebase.firestore(); // スコア集計用のFirestore
-
-    // クイズデータ
-    const quiz = [
-      { q: "あいさか", a: "アカシア" },
-      { q: "うたかひあ", a: "愛は勝つ" },
-      { q: "にずおひ", a: "異邦人" },
-      { q: "あぼとくるこ", a: "贈る言葉" },
-      { q: "うぐにしるべ", a: "EVERYTHING" },
-      { q: "にらあだ", a: "ダーリン" },
-      { q: "いけしか", a: "キセキ" },
-      { q: "あばたなは", a: "花束" },
-      { q: "おぶなるかさ", a: "さくらんぼ" },
-      { q: "いすもつばか", a: "カブトムシ" }
-    ];
+    const firestore = firebase.firestore();
 
     let currentRoom = "";
     let currentPlayerName = "";
-    let serverCurrentIndex = -1;
+    let currentQuizId = ""; 
 
     // DOM要素
     const adminKeyInput = document.getElementById("adminKeyInput");
@@ -176,12 +219,13 @@
     const displayRoom = document.getElementById("displayRoom");
     const displayName = document.getElementById("displayName");
     
+    const submitQuizBtn = document.getElementById("submitQuizBtn");
     const syncStatusLabel = document.getElementById("syncStatusLabel");
-    const quizNumDisplay = document.getElementById("quizNumDisplay");
-    const questionText = document.getElementById("question");
+    const modeDisplay = document.getElementById("modeDisplay");
+    const convertedQuestion = document.getElementById("convertedQuestion");
     const answerText = document.getElementById("answer");
 
-    // --- 1. 管理者認証トグル (キー: 0001) ---
+    // 出題者認証トグル (0001)
     authBtn.onclick = () => {
       if (adminKeyInput.value === "0001") {
         adminPanel.classList.toggle("hidden");
@@ -191,119 +235,221 @@
       }
     };
 
-    // --- 2. 管理者用：10問のボタンを生成 ---
-    const adminButtonsArea = document.getElementById("adminButtons");
-    quiz.forEach((item, index) => {
-      const btn = document.createElement("button");
-      btn.textContent = index + 1;
-      btn.className = "w-10 h-10 flex-shrink-0 bg-gray-800 text-white font-bold rounded-xl text-sm border border-gray-700 transition-all";
-      btn.onclick = () => {
-        // Realtime DB上の「現在の問題インデックス」を更新
-        db.ref('syncState/currentIndex').set(index);
-        // 問題切り替え時は、自動で答えを非表示(false)にする
-        db.ref('syncState/showAnswer').set(false);
-      };
-      adminButtonsArea.appendChild(btn);
-    });
+    // 🔄 タブ（選択モード）の切り替えデザイン制御
+    window.switchInputs = (mode) => {
+      const gMix = document.getElementById("inputGroupMix");
+      const gMixEJ = document.getElementById("inputGroupMixEJ");
+      const gEn = document.getElementById("inputGroupEn");
+      const gJa = document.getElementById("inputGroupJa");
+      const lblMix = document.getElementById("lblModeMix");
+      const lblMixEJ = document.getElementById("lblModeMixEJ");
+      const lblEn = document.getElementById("lblModeEn");
+      const lblJa = document.getElementById("lblModeJa");
 
-    // 管理者用：答えの表示・非表示を設定
-    window.setAnswerVisibility = (visible) => {
-      db.ref('syncState/showAnswer').set(visible);
-    };
+      gMix.classList.add("hidden");
+      gMixEJ.classList.add("hidden");
+      gEn.classList.add("hidden");
+      gJa.classList.add("hidden");
+      lblMix.className = "cursor-pointer py-1.5 rounded-lg transition-all text-gray-400";
+      lblMixEJ.className = "cursor-pointer py-1.5 rounded-lg transition-all text-gray-400";
+      lblEn.className = "cursor-pointer py-1.5 rounded-lg transition-all text-gray-400";
+      lblJa.className = "cursor-pointer py-1.5 rounded-lg transition-all text-gray-400";
 
-    // 管理者用：初期状態に戻す
-    window.resetSync = () => {
-      if(confirm("全参加者の同期状態を初期化しますか？")) {
-        db.ref('syncState').set({
-          currentIndex: -1,
-          showAnswer: false
-        });
+      if (mode === 'mix') {
+        gMix.classList.remove("hidden");
+        lblMix.className = "cursor-pointer py-1.5 rounded-lg transition-all bg-purple-600 text-white";
+      } else if (mode === 'mix_ej') {
+        gMixEJ.classList.remove("hidden");
+        lblMixEJ.className = "cursor-pointer py-1.5 rounded-lg transition-all bg-purple-600 text-white";
+      } else if (mode === 'en') {
+        gEn.classList.remove("hidden");
+        lblEn.className = "cursor-pointer py-1.5 rounded-lg transition-all bg-purple-600 text-white";
+      } else if (mode === 'ja') {
+        gJa.classList.remove("hidden");
+        lblJa.className = "cursor-pointer py-1.5 rounded-lg transition-all bg-purple-600 text-white";
       }
     };
+    switchInputs('mix'); // 初期設定
 
-    // --- 3. 参加者：ログイン処理 ---
+    // 🌐 Google翻訳関数
+    async function translateWithGoogle(text, fromLang, toLang) {
+      if (!text) return "";
+      try {
+        const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=${fromLang}&tl=${toLang}&dt=t&q=${encodeURIComponent(text)}`;
+        const response = await fetch(url);
+        const data = await response.json();
+        return data[0][0][0];
+      } catch (error) {
+        console.error("Google翻訳エラー:", error);
+        return "（翻訳エラー）";
+      }
+    }
+
+    // --- 🚀 クイズ送信処理 ---
+    submitQuizBtn.onclick = async () => {
+      const mode = document.querySelector('input[name="quizMode"]:checked').value;
+      
+      let finalOriginal = "";   
+      let finalConverted = "";  
+      let modeTextLabel = "";
+
+      submitQuizBtn.disabled = true;
+      submitQuizBtn.innerText = "⏳ AI翻訳＆生成中...";
+
+      if (mode === "mix") {
+        const firstInput = document.getElementById("mixFirstInput").value.trim();  
+        const secondInput = document.getElementById("mixSecondInput").value.trim(); 
+
+        if (!firstInput || !secondInput) {
+          alert("前半（英語）と後半（日本語）の両方を入力してください。");
+          submitQuizBtn.disabled = false;
+          submitQuizBtn.innerText = "🚀 翻訳して即時出題";
+          return;
+        }
+        const translatedFirst = await translateWithGoogle(firstInput, "en", "ja");
+        const translatedSecond = await translateWithGoogle(secondInput, "ja", "en");
+        finalOriginal = `${firstInput} ＋ ${secondInput}`; 
+        finalConverted = `${translatedFirst} ＋ ${translatedSecond}`; 
+        modeTextLabel = "mix";
+
+      } else if (mode === "mix_ej") {
+        const firstInput = document.getElementById("mixEJFirstInput").value.trim();  
+        const secondInput = document.getElementById("mixEJSecondInput").value.trim(); 
+
+        if (!firstInput || !secondInput) {
+          alert("前半（日本語）と後半（英語）の両方を入力してください。");
+          submitQuizBtn.disabled = false;
+          submitQuizBtn.innerText = "🚀 翻訳して即時出題";
+          return;
+        }
+        const translatedFirst = await translateWithGoogle(firstInput, "ja", "en");
+        const translatedSecond = await translateWithGoogle(secondInput, "en", "ja");
+        finalOriginal = `${firstInput} ＋ ${secondInput}`; 
+        finalConverted = `${translatedFirst} ＋ ${translatedSecond}`; 
+        modeTextLabel = "mix_ej";
+
+      } else if (mode === "en") {
+        const originalText = document.getElementById("enSingleInput").value.trim();
+        if (!originalText) { alert("正解を入力してください。"); submitQuizBtn.disabled = false; submitQuizBtn.innerText = "🚀 翻訳して即時出題"; return; }
+        finalOriginal = originalText;
+        finalConverted = await translateWithGoogle(originalText, "ja", "en"); 
+        modeTextLabel = "en";
+
+      } else if (mode === "ja") {
+        const originalText = document.getElementById("jaSingleInput").value.trim();
+        if (!originalText) { alert("正解を入力してください。"); submitQuizBtn.disabled = false; submitQuizBtn.innerText = "🚀 翻訳して即時出題"; return; }
+        finalOriginal = originalText;
+        finalConverted = await translateWithGoogle(originalText, "en", "ja"); 
+        modeTextLabel = "ja";
+      }
+
+      const timestampId = Date.now().toString();
+      
+      firestore.collection("rooms").doc("currentRoom").set({
+        quizId: timestampId,
+        original: finalOriginal,
+        converted: finalConverted,
+        mode: modeTextLabel,
+        showAnswer: false,
+        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+      }).then(() => {
+        document.getElementById("mixFirstInput").value = "";
+        document.getElementById("mixSecondInput").value = "";
+        document.getElementById("mixEJFirstInput").value = "";
+        document.getElementById("mixEJSecondInput").value = "";
+        document.getElementById("enSingleInput").value = "";
+        document.getElementById("jaSingleInput").value = "";
+        
+        submitQuizBtn.disabled = false;
+        submitQuizBtn.innerText = "🚀 翻訳して即時出題";
+      }).catch((error) => {
+        alert("配信エラー: " + error.message);
+        submitQuizBtn.disabled = false;
+        submitQuizBtn.innerText = "🚀 翻訳して即時出題";
+      });
+    };
+
+    window.setAnswerVisibility = (visible) => {
+      firestore.collection("rooms").doc("currentRoom").update({ showAnswer: visible });
+    };
+
+    window.resetRoomData = () => {
+      firestore.collection("rooms").doc("currentRoom").set({
+        quizId: "", original: "", converted: "", mode: "", showAnswer: false
+      });
+    };
+
     loginBtn.onclick = () => {
       currentRoom = roomInput.value.trim();
       currentPlayerName = nameInput.value.trim();
-
-      if (!currentRoom || !currentPlayerName) {
-        alert("部屋名と名前を入力してください。");
-        return;
-      }
+      if (!currentRoom || !currentPlayerName) { alert("部屋名と名前を入力してください。"); return; }
 
       displayRoom.textContent = currentRoom;
       displayName.textContent = currentPlayerName;
-
       loginScreen.classList.add("hidden");
       gameScreen.classList.remove("hidden");
     };
 
-    // --- 4. 全員の画面をリアルタイム同期するリスナー (Realtime DB) ---
-    db.ref('syncState').on('value', (snapshot) => {
-      const data = snapshot.val() || { currentIndex: -1, showAnswer: false };
-      serverCurrentIndex = data.currentIndex;
-      const showAnswer = data.showAnswer;
-
-      // 管理者パネル内ボタンのスタイル同期
-      document.querySelectorAll("#adminButtons button").forEach((b, idx) => {
-        if (idx === serverCurrentIndex) {
-          b.className = "w-10 h-10 flex-shrink-0 bg-pink-600 text-white font-bold rounded-xl text-sm border border-pink-400 scale-105 shadow-lg";
-        } else {
-          b.className = "w-10 h-10 flex-shrink-0 bg-gray-800 text-white font-bold rounded-xl text-sm border border-gray-700";
-        }
-      });
-
-      // 表示ボードの書き換え
-      if (serverCurrentIndex === -1) {
+    // --- Firestore リアルタイム同期 ---
+    firestore.collection("rooms").doc("currentRoom").onSnapshot((doc) => {
+      if (!doc.exists || !doc.data().converted) {
         syncStatusLabel.textContent = "待機中";
-        quizNumDisplay.textContent = "管理者が出題するまでお待ちください";
-        questionText.textContent = "ーーー";
+        modeDisplay.textContent = "問題を待機中... ";
+        convertedQuestion.textContent = "ーーー";
         answerText.textContent = "？ ？ ？";
         answerText.className = "score-hidden";
+        currentQuizId = "";
+        return;
+      }
+
+      const data = doc.data();
+      currentQuizId = data.quizId || "default";
+      syncStatusLabel.textContent = "🔴 LIVE 同期中";
+
+      if (data.mode === "mix") modeDisplay.textContent = "🔀 和英MIXクイズ（前半和訳 ＋ 後半英訳）";
+      else if (data.mode === "mix_ej") modeDisplay.textContent = "🔄 英和MIXクイズ（前半英訳 ＋ 後半和訳）";
+      else if (data.mode === "en") modeDisplay.textContent = "🔤 自動英訳クイズ（日本語禁止！）";
+      else if (data.mode === "ja") modeDisplay.textContent = "🇯🇵 自動和訳クイズ（元の英語を当てろ！）";
+
+      convertedQuestion.textContent = data.converted;
+
+      if (data.showAnswer) {
+        answerText.textContent = data.original;
+        answerText.classList.remove("score-hidden");
       } else {
-        syncStatusLabel.textContent = "🔴 LIVE 同期中";
-        quizNumDisplay.textContent = `QUESTION 0${serverCurrentIndex + 1}`;
-        questionText.textContent = quiz[serverCurrentIndex].q;
-        
-        // 答えの公開状態による分岐
-        if (showAnswer) {
-          answerText.textContent = quiz[serverCurrentIndex].a;
-          answerText.classList.remove("score-hidden");
-        } else {
-          answerText.textContent = "？ ？ ？";
-          answerText.classList.add("score-hidden");
-        }
+        answerText.textContent = "？ ？ ？";
+        answerText.classList.add("score-hidden");
       }
     });
 
-    // --- 5. 🚀 最新版：参加者結果（スコア）送信（Firestore統合版） ---
+    // --- 5. 🚀 最新版：参加者スコア送信処理（Firestore統合・合計点リアルタイム再計算） ---
     window.submitResult = (isCorrect) => {
-      if (serverCurrentIndex === -1) {
-        alert("現在問題が出題されていません。");
+      if (!currentQuizId) {
+        alert("現在クイズが配信されていません。");
         return;
       }
 
       const scoreValue = isCorrect ? 10 : 0;
       
-      // 統合集計画面と共通のドキュメント（部屋名_ユーザー名）
+      // 集計画面（ranking.html）と共通の一意なドキュメントID
       const docRef = firestore.collection("gameResults").doc(`${currentRoom}_${currentPlayerName}`);
 
-      // Firestoreへマージ保存（正解なら10点加算）
+      // Firestore上のスコアを加算 (merge: trueで他ゲームのスコアを上書きしない)
       docRef.set({
         room: currentRoom,
         name: currentPlayerName,
-        score_reverse: firebase.firestore.FieldValue.increment(scoreValue),
+        score_translate: firebase.firestore.FieldValue.increment(scoreValue),
         updatedAt: firebase.firestore.FieldValue.serverTimestamp()
       }, { merge: true }).then(() => {
-        // 3ゲームの合計値(totalScore)をリアルタイムに自動再計算
+        // 3ゲームの総合得点（totalScore）を再計算して自動更新
         recalculateTotalScore(docRef);
-        alert(`問題 ${serverCurrentIndex + 1} の結果（${isCorrect ? "⭕ 正解 (+10点)" : "❌ 不正解"}）を保存しました！`);
+        alert(`結果（${isCorrect ? "⭕ 正解 (+10点)" : "❌ 不正解"}）を保存しました！`);
       }).catch((error) => {
-        alert("スコア送信失敗: " + error.message);
+        alert("送信失敗: " + error.message);
       });
     };
 
-    // 🏆 合計値を再計算して格納する共通関数
+    // 🏆 全ゲームの合計値を再計算して自動同期する共通ロジック
     function recalculateTotalScore(docRef) {
       docRef.get().then((doc) => {
         if (doc.exists) {
@@ -312,7 +458,7 @@
           const trans = data.score_translate || 0;
           const rev = data.score_reverse || 0;
           
-          // 全ゲームの合計値をtotalScoreフィールドに更新
+          // 最新の合計点をFirestoreに反映
           docRef.update({ totalScore: bomb + trans + rev });
         }
       });
