@@ -1,304 +1,284 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>3大ゲーム特化型リアルタイムスコアボード</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@700;900&display=swap');
-        body {
-            font-family: 'Noto+Sans+JP', sans-serif;
-            background-color: #1a202c;
-            color: #f7fafc;
-        }
-        .score-hidden {
-            filter: blur(12px);
-            user-select: none;
-        }
-        .glass-card {
-            background: rgba(255, 255, 255, 0.05);
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-        }
-        .rank-1 { background: linear-gradient(135deg, #ffd700, #b8860b); color: #000; }
-        .rank-2 { background: linear-gradient(135deg, #c0c0c0, #708090); color: #000; }
-        .rank-3 { background: linear-gradient(135deg, #cd7f32, #8b4513); color: #000; }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🏆 3大ゲーム・リアルタイム総合リザルト</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@700;900&display=swap');
+  body {
+    font-family: 'Noto+Sans+JP', sans-serif;
+    background: #09090d;
+    color: #fff;
+  }
+  .gold-bg { background: linear-gradient(135deg, #ffd700, #b8860b); color: #000; }
+  .silver-bg { background: linear-gradient(135deg, #c0c0c0, #708090); color: #000; }
+  .bronze-bg { background: linear-gradient(135deg, #cd7f32, #8b4513); color: #fff; }
+  
+  /* アニメーション演出 */
+  .glow-card {
+    box-shadow: 0 0 20px rgba(138, 43, 226, 0.15);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+  }
+  .animate-pulse-slow {
+    animation: pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+</style>
 </head>
-<body class="p-4 md:p-8">
-    <div class="max-w-7xl mx-auto">
-        
-        <!-- 管理者ログインエリア -->
-        <div class="mb-6 flex justify-end items-center gap-2">
-            <input type="password" id="adminKeyInput" placeholder="管理キーを入力" class="bg-gray-800 text-white px-4 py-1.5 rounded-lg border border-gray-700 text-sm focus:outline-none focus:border-blue-500">
-            <button id="authBtn" class="bg-gray-700 hover:bg-gray-600 px-4 py-1.5 rounded-lg text-sm font-bold transition-all">ログイン</button>
-        </div>
+<body class="p-6 min-h-screen flex flex-col items-center">
 
-        <!-- 管理者コントロールパネル -->
-        <div id="adminPanel" class="hidden bg-gray-800/80 border-2 border-blue-500 rounded-3xl p-6 mb-10 shadow-2xl">
-            <h2 class="text-2xl font-black text-blue-400 mb-4">🛠️ 3大ゲーム特化ボード 管理パネル</h2>
-            
-            <!-- 全体コントロール -->
-            <div class="flex flex-wrap gap-4 mb-6 border-b border-gray-700 pb-4">
-                <button id="toggleMode" class="bg-blue-600 hover:bg-blue-700 px-6 py-2.5 rounded-xl text-lg font-bold transition-all shadow">
-                    モード切替 (個人/グループ)
-                </button>
-                <button id="toggleScores" class="bg-red-600 hover:bg-red-700 px-6 py-2.5 rounded-xl text-lg font-bold transition-all shadow">
-                    スコア公開/秘匿の切替
-                </button>
-            </div>
-
-            <!-- 新規追加フォーム -->
-            <div class="flex flex-wrap gap-2 items-center">
-                <input type="text" id="newNameInput" placeholder="新しい名前（個人名またはチーム名）" class="bg-gray-700 text-white px-4 py-2.5 rounded-xl border border-gray-600 font-bold focus:outline-none focus:border-blue-500 w-full sm:w-80">
-                <button id="addParticipantBtn" class="bg-emerald-600 hover:bg-emerald-700 px-6 py-2.5 rounded-xl font-bold text-lg transition-all shadow w-full sm:w-auto">
-                    参加者/チームを追加
-                </button>
-            </div>
-        </div>
-
-        <!-- メインヘッダー表示 -->
-        <div class="text-center md:text-left mb-10">
-            <h1 class="text-4xl md:text-6xl font-black tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-emerald-400 inline-block">
-                3大ゲーム総合 SCORE BOARD
-            </h1>
-            <p id="currentModeLabel" class="text-xl text-gray-400 font-bold mt-2">読み込み中...</p>
-        </div>
-
-        <!-- スコアボード表示グリッド -->
-        <div id="boardGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            <!-- 動的カード生成エリア -->
-        </div>
+  <div class="w-full max-w-5xl">
+    
+    <div class="text-center mb-8">
+      <span class="text-5xl animate-bounce inline-block">👑</span>
+      <h1 class="text-4xl font-black tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-yellow-400 via-pink-500 to-purple-500 mt-2">
+        GAME RESULTS DASHBOARD
+      </h1>
+      <p class="text-gray-400 text-xs mt-1">各ゲームの結果切り替え ＆ リアルタイム最終集計</p>
     </div>
 
-    <!-- Firebase SDK -->
-    <script src="https://www.gstatic.com/firebasejs/9.1.3/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.1.3/firebase-database-compat.js"></script>
+    <div class="grid grid-cols-3 gap-3 mb-6">
+      <button id="tab_reverse" onclick="switchGameView('reverse')" class="py-4 rounded-2xl font-black text-sm transition-all border-2 border-pink-500/50 bg-pink-950/40 text-pink-300 shadow-lg scale-105">
+        第1ゲーム<br><span class="text-base font-black">🔄 逆再生伝言</span>
+      </button>
+      <button id="tab_translate" onclick="switchGameView('translate')" class="py-4 rounded-2xl font-black text-sm transition-all border border-white/10 bg-white/5 text-gray-400 hover:text-white">
+        第2ゲーム<br><span class="text-base font-black">🔤 翻訳クイズ</span>
+      </button>
+      <button id="tab_bomb" onclick="switchGameView('bomb')" class="py-4 rounded-2xl font-black text-sm transition-all border border-white/10 bg-white/5 text-gray-400 hover:text-white">
+        第3ゲーム<br><span class="text-base font-black">💣 ボンバー</span>
+      </button>
+    </div>
 
-    <script>
-        const firebaseConfig = {
-            apiKey: "AIzaSyC4DQhH_swesAD98Xyjg8d1lcWEkkrHrgw",
-            authDomain: "gamehistory-m84.firebaseapp.com",
-            databaseURL: "https://gamehistory-m84-default-rtdb.firebaseio.com",
-            projectId: "gamehistory-m84",
-            storageBucket: "gamehistory-m84.firebasestorage.app",
-            messagingSenderId: "475761727837",
-            appId: "1:475761727837:web:06d07e1ab4120a7ccaf0b4",
-            measurementId: "G-3636W6LC4F"
-        };
+    <div class="glow-card bg-white/5 rounded-3xl p-6 backdrop-blur-lg mb-8">
+      <h2 id="currentGameTitle" class="text-xl font-black text-pink-400 mb-4 flex items-center gap-2">
+        🔄 第1ゲーム：逆再生伝言ゲーム結果一覧
+      </h2>
+      
+      <div class="overflow-hidden rounded-2xl border border-white/5">
+        <table class="w-full text-left border-collapse">
+          <thead>
+            <tr class="bg-white/10 text-gray-400 text-xs font-bold uppercase border-b border-white/10">
+              <th class="py-3 px-6 text-center w-24">単体順位</th>
+              <th class="py-3 px-6">チーム</th>
+              <th class="py-3 px-6">プレイヤー名</th>
+              <th class="py-3 px-6 text-right text-sm font-black" id="gameScoreHeader">獲得スコア</th>
+            </tr>
+          </thead>
+          <tbody id="gameTableBody" class="divide-y divide-white/5 font-bold text-sm">
+            </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="border-2 border-yellow-500/30 bg-gradient-to-b from-yellow-950/20 to-purple-950/20 rounded-3xl p-6 shadow-2xl relative overflow-hidden">
+      <div class="absolute top-0 right-0 p-4 opacity-10 text-7xl font-black text-yellow-500 select-none">FINAL</div>
+      
+      <h2 class="text-2xl font-black text-yellow-400 mb-4 flex items-center gap-2 animate-pulse-slow">
+        🏆 最終結果（現在の3ゲーム合計ランキング）
+      </h2>
+
+      <div class="overflow-hidden rounded-2xl border border-yellow-500/10 bg-black/40">
+        <table class="w-full text-left border-collapse">
+          <thead>
+            <tr class="bg-yellow-500/10 text-yellow-200 text-xs font-bold uppercase border-b border-yellow-500/20">
+              <th class="py-4 px-6 text-center w-24">総合順位</th>
+              <th class="py-4 px-6">チーム</th>
+              <th class="py-4 px-6">プレイヤー名</th>
+              <th class="py-4 px-6 text-center text-gray-400">1:逆再生</th>
+              <th class="py-4 px-6 text-center text-gray-400">2:翻訳</th>
+              <th class="py-4 px-6 text-center text-gray-400">3:ボンバー</th>
+              <th class="py-4 px-6 text-right text-base text-yellow-400 bg-yellow-500/5">総合スコア</th>
+            </tr>
+          </thead>
+          <tbody id="finalTableBody" class="divide-y divide-white/5 font-black">
+            </tbody>
+        </table>
+      </div>
+      
+      <div class="mt-4 flex justify-end">
+        <button onclick="resetScores()" class="text-[10px] bg-red-950 text-red-300 border border-red-900/50 px-2 py-1 rounded hover:bg-red-900 transition-all">全員のスコアを全面リセット</button>
+      </div>
+    </div>
+
+  </div>
+
+  <script src="https://www.gstatic.com/firebasejs/9.1.3/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.1.3/firebase-firestore-compat.js"></script>
+
+  <script>
+    // --- Firebase Configuration ---
+    const firebaseConfig = {
+      apiKey: "AIzaSyC4DQhH_swesAD98Xyjg8d1lcWEkkrHrgw",
+      authDomain: "gamehistory-m84.firebaseapp.com",
+      databaseURL: "https://gamehistory-m84-default-rtdb.firebaseio.com",
+      projectId: "gamehistory-m84",
+      storageBucket: "gamehistory-m84.firebasestorage.app",
+      messagingSenderId: "475761727837",
+      appId: "1:475761727837:web:06d07e1ab4120a7ccaf0b4",
+      measurementId: "G-3636W6LC4F"
+    };
+    
+    firebase.initializeApp(firebaseConfig);
+    const firestore = firebase.firestore();
+
+    // 表示管理ステート
+    let currentActiveGame = "reverse"; // reverse, translate, bomb
+    let rawScoreData = [];             // リアルタイムキャッシュ保持用
+
+    // DOM要素
+    const gameTableBody = document.getElementById("gameTableBody");
+    const finalTableBody = document.getElementById("finalTableBody");
+    const currentGameTitle = document.getElementById("currentGameTitle");
+    const gameScoreHeader = document.getElementById("gameScoreHeader");
+
+    // --- 1. リアルタイムデータ受信リスナー (Firestoreから全自動同期) ---
+    firestore.collection("gameResults").onSnapshot((snapshot) => {
+      rawScoreData = [];
+      snapshot.forEach((doc) => {
+        rawScoreData.push(doc.data());
+      });
+      
+      // データが更新されたら、現在選択中のゲーム画面と、最終結果画面の両方を再描画する
+      renderGameResult();
+      renderFinalResult();
+    });
+
+    // --- 2. タブ切り替えロジック ---
+    window.switchGameView = (gameKey) => {
+      currentActiveGame = gameKey;
+      
+      const tabs = ["reverse", "translate", "bomb"];
+      const colors = {
+        reverse: { border: "border-pink-500/50", bg: "bg-pink-950/40", text: "text-pink-300" },
+        translate: { border: "border-purple-500/50", bg: "bg-purple-950/40", text: "text-purple-300" },
+        bomb: { border: "border-red-500/50", bg: "bg-red-950/40", text: "text-red-300" }
+      };
+
+      tabs.forEach(t => {
+        const element = document.getElementById(`tab_${t}`);
+        if (t === gameKey) {
+          element.className = `py-4 rounded-2xl font-black text-sm transition-all border-2 ${colors[t].border} ${colors[t].bg} ${colors[t].text} shadow-lg scale-105`;
+        } else {
+          element.className = "py-4 rounded-2xl font-black text-sm transition-all border border-white/10 bg-white/5 text-gray-400 hover:text-white";
+        }
+      });
+
+      renderGameResult();
+    };
+
+    // --- 3. 【個別ゲーム】リザルトの描画（並び替え） ---
+    function renderGameResult() {
+      gameTableBody.innerHTML = "";
+      
+      let fieldKey = "score_reverse";
+      if (currentActiveGame === "reverse") {
+        currentGameTitle.innerHTML = "🔄 第1ゲーム：逆再生伝言ゲーム結果一覧";
+        gameScoreHeader.textContent = "逆再生スコア";
+        fieldKey = "score_reverse";
+      } else if (currentActiveGame === "translate") {
+        currentGameTitle.innerHTML = "🔤 第2ゲーム：万能・翻訳クイズ結果一覧";
+        gameScoreHeader.textContent = "翻訳クイズスコア";
+        fieldKey = "score_translate";
+      } else if (currentActiveGame === "bomb") {
+        currentGameTitle.innerHTML = "💣 第3ゲーム：マイクボンバー結果一覧";
+        gameScoreHeader.textContent = "ボンバースコア";
+        fieldKey = "score_bomb";
+      }
+
+      // 該当ゲームの点数が高い順にソート（データがないプレイヤーは0点扱い）
+      const sortedData = [...rawScoreData].sort((a, b) => {
+        return (b[fieldKey] || 0) - (a[fieldKey] || 0);
+      });
+
+      if (sortedData.length === 0) {
+        gameTableBody.innerHTML = `<tr><td colspan="4" class="py-8 text-center text-gray-500">ゲーム結果データがありません</td></tr>`;
+        return;
+      }
+
+      let rank = 1;
+      sortedData.forEach(p => {
+        const score = p[fieldKey] !== undefined ? p[fieldKey] : 0;
         
-        firebase.initializeApp(firebaseConfig);
-        const db = firebase.database();
+        let rankBadge = `<span class="text-gray-400">${rank}</span>`;
+        if (rank === 1 && score > 0) rankBadge = `<span class="gold-bg px-2 py-0.5 rounded text-xs font-black shadow">1位</span>`;
+        else if (rank === 2 && score > 0) rankBadge = `<span class="silver-bg px-2 py-0.5 rounded text-xs font-black shadow">2位</span>`;
+        else if (rank === 3 && score > 0) rankBadge = `<span class="bronze-bg px-2 py-0.5 rounded text-xs font-black shadow">3位</span>`;
 
-        const ADMIN_SECRET = "admin123"; 
-        let isAdmin = false;
+        const tr = document.createElement("tr");
+        tr.className = "hover:bg-white/5 transition-all border-b border-white/5";
+        tr.innerHTML = `
+          <td class="py-3 px-6 text-center">${rankBadge}</td>
+          <td class="py-3 px-6 text-gray-300">${p.room || '-'}</td>
+          <td class="py-3 px-6 text-white text-base">${p.name || '-'}</td>
+          <td class="py-3 px-6 text-right text-base text-cyan-400">${score} 点</td>
+        `;
+        gameTableBody.appendChild(tr);
+        rank++;
+      });
+    }
 
-        let state = {
-            mode: 'individual',
-            showScores: false,
-            data: []
-        };
+    // --- 4. 【総合最終結果】リザルトの描画（並び替え） ---
+    function renderFinalResult() {
+      finalTableBody.innerHTML = "";
 
-        // DOM要素取得
-        const adminKeyInput = document.getElementById('adminKeyInput');
-        const authBtn = document.getElementById('authBtn');
-        const adminPanel = document.getElementById('adminPanel');
-        const boardGrid = document.getElementById('boardGrid');
-        const toggleModeBtn = document.getElementById('toggleMode');
-        const toggleScoresBtn = document.getElementById('toggleScores');
-        const currentModeLabel = document.getElementById('currentModeLabel');
-        const newNameInput = document.getElementById('newNameInput');
-        const addParticipantBtn = document.getElementById('addParticipantBtn');
+      // 総合合計点（totalScore）が高い順にソート
+      const sortedFinalData = [...rawScoreData].sort((a, b) => {
+        return (b.totalScore || 0) - (a.totalScore || 0);
+      });
 
-        // 正しい3つのゲーム設定
-        const GAME_SETTINGS = [
-            { label: "🔄 逆生成伝言", sub: "獲得ポイント" },
-            { label: "🌐 翻訳曲当て", sub: "獲得ポイント" },
-            { label: "🗣️ 古今東西曲出し", sub: "正解曲数" }
-        ];
+      if (sortedFinalData.length === 0) {
+        finalTableBody.innerHTML = `<tr><td colspan="7" class="py-8 text-center text-gray-600">最終集計データを待機中...</td></tr>`;
+        return;
+      }
 
-        // 認証
-        authBtn.onclick = () => {
-            if (adminKeyInput.value === ADMIN_SECRET) {
-                isAdmin = true;
-                adminPanel.classList.remove('hidden');
-                adminKeyInput.disabled = true;
-                authBtn.disabled = true;
-                authBtn.innerText = "ログイン中";
-                authBtn.className = "bg-emerald-600 px-4 py-1.5 rounded-lg text-sm font-bold text-white";
-                render(); 
-            } else {
-                alert("管理キーが違います。");
-            }
-        };
+      let rank = 1;
+      sortedFinalData.forEach(p => {
+        const rev = p.score_reverse !== undefined ? p.score_reverse : "-";
+        const trans = p.score_translate !== undefined ? p.score_translate : "-";
+        const bomb = p.score_bomb !== undefined ? p.score_bomb : "-";
+        const total = p.totalScore !== undefined ? p.totalScore : 0;
 
-        // スコア合計計算ヘルパー (全ゲーム一律で加算)
-        function calculateGameTotal(scores, manualAdjust) {
-            const g1 = parseInt(scores[0]) || 0;
-            const g2 = parseInt(scores[1]) || 0;
-            const g3 = parseInt(scores[2]) || 0;
-            const adj = parseInt(manualAdjust) || 0;
-            return g1 + g2 + g3 + adj;
+        let rankBadge = `<span class="text-gray-400 text-base">${rank}</span>`;
+        let rowStyle = "hover:bg-white/5 transition-colors";
+        
+        if (rank === 1 && total > 0) {
+          rankBadge = `<span class="gold-bg px-3 py-1 rounded-xl text-sm font-black shadow-xl animate-pulse">👑 1位</span>`;
+          rowStyle = "bg-yellow-500/5 hover:bg-yellow-500/10 font-bold border-l-4 border-yellow-500";
+        } else if (rank === 2 && total > 0) {
+          rankBadge = `<span class="silver-bg px-3 py-1 rounded-xl text-sm font-black shadow-lg">2位</span>`;
+        } else if (rank === 3 && total > 0) {
+          rankBadge = `<span class="bronze-bg px-3 py-1 rounded-xl text-sm font-black shadow-lg">3位</span>`;
         }
 
-        // データベース更新
-        window.updateScoreValue = (id, fieldType, indexOrValue, val) => {
-            const path = state.mode === 'individual' ? `participants/${id}` : `groups/${id}`;
-            const target = state.data.find(item => item.id === id);
-            if (!target) return;
+        const tr = document.createElement("tr");
+        tr.className = `${rowStyle} border-b border-white/5`;
+        tr.innerHTML = `
+          <td class="py-4 px-6 text-center">${rankBadge}</td>
+          <td class="py-4 px-6 text-white text-sm">${p.room || '-'}</td>
+          <td class="py-4 px-6 text-white text-lg">${p.name || '-'}</td>
+          <td class="py-4 px-6 text-center text-gray-400 font-medium">${rev}</td>
+          <td class="py-4 px-6 text-center text-gray-400 font-medium">${trans}</td>
+          <td class="py-4 px-6 text-center text-gray-400 font-medium">${bomb}</td>
+          <td class="py-4 px-6 text-right text-xl text-yellow-400 bg-yellow-500/5 font-black">${total}点</td>
+        `;
+        finalTableBody.appendChild(tr);
+        rank++;
+      });
+    }
 
-            let newScores = [...target.scores];
-            let newAdjust = target.manualAdjust || 0;
-
-            if (fieldType === 'score') {
-                newScores[indexOrValue] = parseInt(val) || 0;
-            } else if (fieldType === 'adjust') {
-                newAdjust = parseInt(indexOrValue) || 0;
-            }
-
-            let newTotal = calculateGameTotal(newScores, newAdjust);
-
-            db.ref(path).update({
-                scores: newScores,
-                manualAdjust: newAdjust,
-                total: newTotal
-            });
-        };
-
-        // 削除
-        window.deleteItem = (id) => {
-            if(confirm("本当に削除しますか？")) {
-                const path = state.mode === 'individual' ? `participants/${id}` : `groups/${id}`;
-                db.ref(path).remove();
-            }
-        };
-
-        // 描画ロジック
-        function render() {
-            boardGrid.innerHTML = '';
-            currentModeLabel.innerText = `${state.mode === 'individual' ? '👥 個人戦モード' : '🚩 グループ戦モード'} ｜ スコア：${state.showScores ? '🔓 公開中' : '🔒 秘匿中'}`;
-            
-            // トータルスコアが高い順にソート
-            const sortedData = [...state.data].sort((a, b) => b.total - a.total);
-
-            sortedData.forEach((item, index) => {
-                const isTop3 = index < 3;
-                const rankClass = index === 0 ? 'rank-1' : index === 1 ? 'rank-2' : index === 2 ? 'rank-3' : 'glass-card';
-                const textCol = isTop3 ? 'text-gray-900' : 'text-white';
-                const opacityCol = isTop3 ? 'opacity-70' : 'opacity-50';
-                
-                const card = document.createElement('div');
-                card.className = `${rankClass} p-6 rounded-3xl shadow-2xl flex flex-col justify-between transition-all duration-300`;
-                
-                // ゲーム3つ分のブロック生成
-                let gamesHtml = '';
-                for(let i=0; i<3; i++) {
-                    const currentScore = item.scores && item.scores[i] !== undefined ? item.scores[i] : 0;
-                    
-                    gamesHtml += `
-                        <div class="text-center bg-black/20 rounded-xl p-2">
-                            <div class="text-[11px] ${opacityCol} font-bold mb-0.5">${GAME_SETTINGS[i].label}</div>
-                            <div class="text-[9px] ${opacityCol} mb-1">${GAME_SETTINGS[i].sub}</div>
-                            ${isAdmin ? `
-                                <input type="number" value="${currentScore}" 
-                                    onchange="updateScoreValue('${item.id}', 'score', ${i}, this.value)" 
-                                    class="w-full bg-white/20 text-center font-black text-xl rounded p-1 focus:outline-none focus:bg-white/40 ${textCol}">
-                            ` : `
-                                <div class="text-2xl font-black ${state.showScores ? '' : 'score-hidden'}">${currentScore}${i === 2 ? ' 曲' : ' pt'}</div>
-                            `}
-                        </div>
-                    `;
-                }
-
-                // 微調整枠 (スピードボーナスやルール違反ペナルティ等に自由に使用可能)
-                const adjustHtml = `
-                    <div class="text-center bg-black/20 rounded-xl p-2 col-span-3 mt-1">
-                        <div class="text-xs ${opacityCol} font-bold mb-1">⚙️ ボーナス・ペナルティ等の手動微調整</div>
-                        ${isAdmin ? `
-                            <input type="number" value="${item.manualAdjust || 0}" 
-                                onchange="updateScoreValue('${item.id}', 'adjust', this.value)" 
-                                class="w-1/2 mx-auto bg-white/20 text-center font-black text-lg rounded p-0.5 focus:outline-none focus:bg-white/40 ${textCol}">
-                        ` : `
-                            <div class="text-lg font-black ${state.showScores ? '' : 'score-hidden'}">${item.manualAdjust >= 0 ? '+' : ''}${item.manualAdjust || 0} 点</div>
-                        `}
-                    </div>
-                `;
-
-                card.innerHTML = `
-                    <div class="flex justify-between items-start mb-4">
-                        <div class="flex items-center gap-2">
-                            <span class="text-2xl font-black ${opacityCol}">#${index + 1}</span>
-                            <span class="text-3xl font-black truncate max-w-[180px] ${textCol}">${item.name}</span>
-                        </div>
-                        ${isAdmin ? `
-                            <button onclick="deleteItem('${item.id}')" class="text-xs bg-red-900/50 hover:bg-red-900 text-red-200 px-2 py-1 rounded">削除</button>
-                        ` : ''}
-                    </div>
-                    
-                    <div class="grid grid-cols-3 gap-2 mb-4">
-                        ${gamesHtml}
-                        ${adjustHtml}
-                    </div>
-                    
-                    <div class="border-t border-white/20 pt-4 flex justify-between items-baseline">
-                        <span class="text-lg font-bold ${opacityCol} uppercase">Total Score</span>
-                        <span class="text-5xl font-black ${state.showScores || isAdmin ? '' : 'score-hidden'} ${textCol}">${item.total}</span>
-                    </div>
-                `;
-                boardGrid.appendChild(card);
-            });
-        }
-
-        // Firebase同期
-        db.ref('gameState').on('value', (snap) => {
-            const val = snap.val() || {};
-            state.mode = val.mode || 'individual';
-            state.showScores = val.showScores || false;
-            
-            const path = state.mode === 'individual' ? 'participants' : 'groups';
-            db.ref(path).on('value', (dataSnap) => {
-                const dataRaw = dataSnap.val() || {};
-                state.data = Object.keys(dataRaw).map(key => {
-                    return {
-                        id: key,
-                        name: dataRaw[key].name,
-                        scores: dataRaw[key].scores || [0, 0, 0],
-                        manualAdjust: dataRaw[key].manualAdjust || 0,
-                        total: dataRaw[key].total || 0
-                    };
-                });
-                render();
-            });
-        });
-
-        // モード切替
-        toggleModeBtn.onclick = () => {
-            const nextMode = state.mode === 'individual' ? 'group' : 'individual';
-            db.ref('gameState/mode').set(nextMode);
-        };
-
-        // スコア公開・秘匿
-        toggleScoresBtn.onclick = () => {
-            db.ref('gameState/showScores').set(!state.showScores);
-        };
-
-        // 参加者追加
-        addParticipantBtn.onclick = () => {
-            const name = newNameInput.value.trim();
-            if(!name) return;
-
-            const path = state.mode === 'individual' ? 'participants' : 'groups';
-            const newRef = db.ref(path).push();
-            newRef.set({
-                name: name,
-                scores: [0, 0, 0],
-                manualAdjust: 0,
-                total: 0
-            }).then(() => {
-                newNameInput.value = '';
-            });
-        };
-    </script>
+    // スコア全面リセット（管理者用）
+    window.resetScores = () => {
+      if (confirm("本当に全員の全ゲーム記録（スコア）を完全に初期化しますか？")) {
+        firestore.collection("gameResults").get().then((snapshot) => {
+          const batch = firestore.batch();
+          snapshot.forEach((doc) => batch.delete(doc.ref));
+          return batch.commit();
+        }).then(() => {
+          alert("すべてのスコアを初期化しました！");
+        }).catch(err => alert("エラー: " + err.message));
+      }
+    };
+  </script>
 </body>
 </html>
