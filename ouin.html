@@ -55,6 +55,7 @@
             gap: 8px;
             cursor: pointer;
             font-size: 15px;
+            margin-top: 8px;
         }
         .btn {
             background-color: #ff4757;
@@ -130,6 +131,14 @@
         
         <div style="margin-top: 15px;">
             <label class="checkbox-label">
+                <input type="checkbox" id="use-n" checked>
+                🔠 「ん」を含める
+            </label>
+            <label class="checkbox-label">
+                <input type="checkbox" id="use-tsu" checked>
+                🔠 「っ」を含める
+            </label>
+            <label class="checkbox-label">
                 <input type="checkbox" id="use-joker" checked>
                 🃏 ジョーカールールを有効にする（確率15%）
             </label>
@@ -147,13 +156,21 @@
 
 <script>
     const normalVowels = ['あ', 'い', 'う', 'え', 'お'];
-    const specialVowels = ['ん', 'っ'];
-    const allVowels = [...normalVowels, ...specialVowels];
 
     function generateOdai() {
         const difficultySelect = document.getElementById('difficulty');
         const length = parseInt(difficultySelect.value);
         const useJoker = document.getElementById('use-joker').checked;
+        
+        // 「ん」と「っ」の使用状況を取得してプールを作成
+        const useN = document.getElementById('use-n').checked;
+        const useTsu = document.getElementById('use-tsu').checked;
+        
+        let specialVowels = [];
+        if (useN) specialVowels.push('ん');
+        if (useTsu) specialVowels.push('っ');
+        
+        const allVowels = [...normalVowels, ...specialVowels];
 
         let resultVowels = [];
         let lastWasSpecial = false;
@@ -161,7 +178,8 @@
         for (let i = 0; i < length; i++) {
             let chosen;
             
-            if (lastWasSpecial || i === 0) {
+            // 直前が特殊文字、または1文字目、または特殊文字が1つも有効化されていない場合
+            if (lastWasSpecial || i === 0 || specialVowels.length === 0) {
                 const randomIndex = Math.floor(Math.random() * normalVowels.length);
                 chosen = normalVowels[randomIndex];
                 lastWasSpecial = false;
@@ -174,7 +192,7 @@
             resultVowels.push(chosen);
         }
 
-        document.getElementById('result-title').innerText = '💡 この母音・リズムで歌える曲は？';
+        document.getElementById('result-title').innerText = '💡 この母音で歌える曲は？';
         document.getElementById('vowel-display').innerText = resultVowels.join('');
 
         const jokerDisplay = document.getElementById('joker-display');
