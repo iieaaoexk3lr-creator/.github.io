@@ -3,322 +3,152 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>部屋割り・受付管理（幹事用）</title>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    <title>【幹事用】ID固定型スマート部屋割り</title>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
     <style>
         :root {
-            --primary: #4a90e2;
-            --success: #2ecc71;
-            --warning: #f1c40f;
-            --danger: #e74c3c;
-            --dark: #2c3e50;
+            --primary: #6f42c1;
+            --success: #28a745;
+            --info: #17a2b8;
+            --danger: #dc3545;
+            --dark: #343a40;
             --light: #f8f9fa;
         }
-        body {
-            font-family: 'Helvetica Neue', Arial, sans-serif;
-            background-color: #eef2f5;
-            margin: 0;
-            padding: 12px;
-            color: #333;
-        }
-        .container {
-            max-width: 600px;
-            margin: 0 auto;
-            background: #fff;
-            padding: 16px;
-            border-radius: 12px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
-        }
-        h2, h3 {
-            margin-top: 0;
-            color: var(--dark);
-        }
-        .card {
-            background: var(--light);
-            padding: 12px;
-            border-radius: 8px;
-            margin-bottom: 16px;
-            border: 1px solid #e1e8ed;
-        }
-        .btn {
-            background-color: var(--primary);
-            color: white;
-            border: none;
-            padding: 10px 16px;
-            font-size: 14px;
-            font-weight: bold;
-            border-radius: 6px;
-            cursor: pointer;
-            width: 100%;
-            margin-bottom: 8px;
-            box-sizing: border-box;
-        }
-        .btn:hover { opacity: 0.9; }
-        .btn-success { background-color: var(--success); }
-        .btn-danger { background-color: var(--danger); }
-        .btn-outline {
-            background-color: transparent;
-            color: var(--primary);
-            border: 2px solid var(--primary);
-        }
-        .btn-danger-sm {
-            background-color: var(--danger);
-            color: white;
-            border: none;
-            padding: 4px 8px;
-            font-size: 11px;
-            border-radius: 4px;
-            cursor: pointer;
-        }
-        .input-group {
-            margin-bottom: 12px;
-        }
-        .input-group label {
-            display: block;
-            font-size: 12px;
-            font-weight: bold;
-            margin-bottom: 4px;
-            color: #666;
-        }
-        input[type="text"], textarea {
-            width: 100%;
-            padding: 10px;
-            border: 1px solid #ccc;
-            border-radius: 6px;
-            box-sizing: border-box;
-            font-size: 14px;
-        }
-        /* タブ切り替え */
-        .tabs {
-            display: flex;
-            border-bottom: 2px solid #ddd;
-            margin-bottom: 16px;
-        }
-        .tab-btn {
-            flex: 1;
-            padding: 10px;
-            text-align: center;
-            background: #eee;
-            cursor: pointer;
-            font-weight: bold;
-            font-size: 13px;
-            border: none;
-            outline: none;
-        }
-        .tab-btn.active {
-            background: var(--primary);
-            color: white;
-        }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Sans-Serif; max-width: 600px; margin: 0 auto; padding: 10px; background: #e9ecef; color: #333; word-break: break-all; }
+        h1 { text-align: center; font-size: 20px; color: var(--dark); margin: 10px 0; }
+        .card { background: white; padding: 15px; border-radius: 12px; margin-bottom: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); box-sizing: border-box; }
+        
+        .btn { display: inline-flex; align-items: center; justify-content: center; background: #007bff; color: white; border: none; padding: 12px; border-radius: 8px; font-size: 15px; font-weight: bold; cursor: pointer; width: 100%; box-sizing: border-box; margin-bottom: 8px; -webkit-appearance: none; }
+        .btn-sm { padding: 6px 10px; font-size: 12px; width: auto; margin-bottom: 0; }
+        .btn-danger-sm { background: var(--danger); padding: 4px 8px; font-size: 11px; width: auto; margin-bottom: 0; border-radius: 4px; color: white; border: none; font-weight: bold; }
+        .btn-outline { background: transparent; color: #666; border: 1px solid #ccc; }
+        
+        label { display: block; font-weight: bold; font-size: 13px; margin-bottom: 5px; color: #555; text-align: left; }
+        .input-field { width: 100%; padding: 12px; font-size: 16px; box-sizing: border-box; border: 1px solid #ced4da; border-radius: 8px; margin-bottom: 12px; background: var(--light); }
+        
+        /* 💡 テンプレート用ボタンスタイル */
+        .template-btn-group { display: flex; gap: 8px; margin-bottom: 8px; flex-wrap: wrap; }
+        .btn-tmpl { background: #6c757d; color: white; font-size: 11px; padding: 4px 8px; border-radius: 4px; border: none; cursor: pointer; font-weight: bold; }
+        .btn-tmpl:hover { background: #5a6268; }
+
+        .tab-container { display: flex; background: #dee2e6; border-radius: 8px; padding: 4px; margin-bottom: 15px; box-sizing: border-box; }
+        .tab-btn { flex: 1; border: none; background: transparent; padding: 10px; font-size: 13px; font-weight: bold; color: #555; cursor: pointer; text-align: center; border-radius: 6px; min-width: 0; white-space: nowrap; }
+        .tab-btn.active { background: white; color: var(--primary); box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
         .tab-content { display: none; }
         .tab-content.active { display: block; }
 
-        /* 部屋設定行 */
-        .room-row {
-            background: #fff;
-            padding: 10px;
-            border-radius: 6px;
-            border: 1px solid #ddd;
-            margin-bottom: 10px;
-            position: relative;
-        }
-        .room-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 8px;
-            margin-bottom: 6px;
-        }
+        .room-row { background: var(--light); padding: 12px; border-radius: 8px; margin-bottom: 10px; border: 1px solid #dee2e6; position: relative; box-sizing: border-box; }
+        .room-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 8px; }
+        .room-box-result { border-left: 4px solid var(--primary); background: #fff; padding: 12px; margin-bottom: 10px; border-radius: 0 8px 8px 0; box-shadow: 0 1px 3px rgba(0,0,0,0.05); box-sizing: border-box; }
+        .room-title-bar { display: flex; justify-content: space-between; align-items: center; font-weight: bold; font-size: 14px; border-bottom: 1px dashed #eee; padding-bottom: 4px; margin-bottom: 8px; color: #495057; flex-wrap: wrap; gap: 4px; }
+        
+        .member-container-flex { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+        .member-wrapper { display: inline-flex; align-items: center; background: #e2f0d9; color: #385723; padding: 4px 8px; border-radius: 6px; font-size: 13px; font-weight: bold; max-width: 100%; box-sizing: border-box; }
+        .member-name-span { max-width: 80px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .move-select { background: transparent; border: none; font-size: 11px; color: #007bff; margin-left: 3px; font-weight: bold; outline: none; padding-right: 2px; }
+        
+        .member-list-item { display: flex; justify-content: space-between; align-items: center; background: var(--light); padding: 10px; border-radius: 8px; margin-bottom: 6px; border: 1px solid #dee2e6; font-size: 14px; font-weight: bold; box-sizing: border-box; }
+        .st-indicator { font-size: 11px; padding: 2px 6px; border-radius: 4px; margin-left: 6px; font-weight: normal; }
 
-        /* 部屋割表示ボックス */
-        .room-box-result {
-            padding: 12px;
-            border-radius: 8px;
-            margin-bottom: 12px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.02);
-        }
-        .room-title-bar {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            border-bottom: 1px solid #eee;
-            padding-bottom: 6px;
-            margin-bottom: 8px;
-        }
-        .member-container-flex {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 6px;
-        }
-        .member-wrapper {
-            background: #fff;
-            padding: 4px 8px;
-            border-radius: 20px;
-            border: 1px solid #ddd;
-            font-size: 13px;
-            display: inline-flex;
-            align-items: center;
-            gap: 4px;
-        }
-        .move-select {
-            font-size: 10px;
-            padding: 2px;
-            border-radius: 4px;
-            border: 1px solid #ccc;
-            background: #fdfdfd;
-        }
-        .member-list-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 8px;
-            background: #fff;
-            border-radius: 6px;
-            margin-bottom: 6px;
-            border: 1px solid #eee;
-            font-size: 13px;
-        }
-        .st-indicator {
-            font-size: 10px;
-            padding: 2px 6px;
-            border-radius: 10px;
-            margin-left: 4px;
-            font-weight: bold;
-        }
-        .pay-btn {
-            font-size: 11px;
-            padding: 2px 6px;
-            border-radius: 4px;
-            border: none;
-            cursor: pointer;
-            margin-left: 8px;
-            font-weight: bold;
-        }
-        .pay-unpaid { background: #ffeeba; color: #856404; }
-        .pay-paid { background: #c3e6cb; color: #155724; }
+        /* 💡 追加：会計バッジ用のスタイル */
+        .pay-btn { font-size: 11px; padding: 3px 8px; border-radius: 4px; font-weight: bold; border: 1px solid #ccc; cursor: pointer; margin-left: 6px; }
+        .pay-unpaid { background: #fff; color: var(--danger); border-color: var(--danger); }
+        .pay-paid { background: var(--success); color: white; border-color: var(--success); }
 
-        /* 履歴一覧 */
-        .history-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 8px;
-            background: #fff;
-            border-radius: 6px;
-            margin-bottom: 6px;
-            border: 1px solid #ddd;
-        }
-        .history-link {
-            cursor: pointer;
-            color: var(--primary);
-            font-weight: bold;
-            font-size: 13px;
-            flex: 1;
-        }
-        .history-code {
-            font-size: 10px;
-            color: #999;
-            display: block;
-        }
+        .status-header { background: #e2e3e5; padding: 10px; border-radius: 8px; font-size: 13px; margin-bottom: 15px; text-align: center; font-weight: bold; box-sizing: border-box; }
+        .badge-code { background: #fff; padding: 4px 8px; border-radius: 4px; font-family: monospace; color: var(--danger); font-size: 13px; border: 1px solid #ccc; max-width: 100%; display: inline-block; overflow: hidden; text-overflow: ellipsis; }
+        hr { border: 0; border-top: 1px dashed #ccc; margin: 15px 0; }
+
+        /* 💡 追加：管理履歴リスト用のスタイル */
+        .history-list { margin-top: 15px; text-align: left; }
+        .history-item { display: flex; justify-content: space-between; align-items: center; padding: 10px; background: var(--light); border: 1px solid #ced4da; border-radius: 8px; margin-bottom: 8px; font-size: 14px; }
+        .history-link { font-weight: bold; color: var(--primary); cursor: pointer; text-decoration: none; flex-grow: 1; margin-right: 10px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .history-code { font-size: 11px; color: #666; font-weight: normal; display: block; }
     </style>
 </head>
 <body>
 
-<div class="container">
-    <div id="step1_connection">
-        <h2>🎤 カラオケ部屋割り（幹事画面）</h2>
+    <datalist id="modelOptions"><option value="DAM"><option value="JOYSOUND"></datalist>
+    <datalist id="capacityOptions"><option value="5"><option value="8"><option value="10"><option value="15"><option value="20"></datalist>
+    <datalist id="memoOptions"><option value="企画部屋"><option value="アニソン部屋"><option value="懐メロ部屋"><option value="休憩部屋"><option value="着替え部屋"></datalist>
+
+    <h1>🔑 部屋割り管理室（幹事用）</h1>
+
+    <div id="step1_connection" class="card">
+        <h3 style="margin-top:0; text-align:center; font-size:16px;">イベント管理室への入室</h3>
+        <input type="text" id="groupNameInput" class="input-field" placeholder="例: カラオケサークル集会">
+        <button class="btn" style="background: var(--primary);" onclick="createNewGroupSession()">👥 新規グループ部屋を作成</button>
+        <div style="text-align: center; color: #888; font-size: 12px; margin: 10px 0;">ー または ー</div>
+        <input type="text" id="existingCodeInput" class="input-field" placeholder="コードを貼り付け">
+        <button class="btn" style="background: var(--info);" onclick="joinExistingGroupSession()">🔑 コードでログイン</button>
         
-        <div class="card" style="background:#e8f4fd;">
-            <h3>新規イベントを作成</h3>
-            <div class="input-group">
-                <label>イベント名（例: 5月10日アニソンオフ）</label>
-                <input type="text" id="groupNameInput" placeholder="イベント名を入力">
-            </div>
-            <button class="btn" onclick="createNewGroupSession()">🚀 新規イベント作成</button>
-        </div>
-
-        <div class="card">
-            <h3>既存のイベントに接続</h3>
-            <div class="input-group">
-                <label>ルームコード</label>
-                <input type="text" id="existingCodeInput" placeholder="コードを貼り付け">
-            </div>
-            <button class="btn btn-outline" onclick="joinExistingGroupSession()">🔗 接続する</button>
-        </div>
-
-        <div id="historyContainer" class="card" style="display:none; background:#fdfdfd;">
-            <h3 style="font-size:14px; color:#666;">🕒 最近管理したイベント履歴</h3>
-            <div id="historyListArea"></div>
+        <div id="historyContainer" style="display: none;">
+            <hr>
+            <h4 style="margin: 10px 0; font-size: 14px; color: var(--dark); text-align: center;">📂 作成済みのイベント履歴</h4>
+            <div id="historyListArea" class="history-list"></div>
         </div>
     </div>
 
-    <div id="step2_mainDashboard" style="display:none;">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
-            <h2 id="activeGroupName" style="margin:0; font-size:18px;">イベント名</h2>
-            <button class="btn-danger-sm" onclick="exitToMainMenu()">◀ 戻る</button>
+    <div id="step2_mainDashboard" style="display: none;">
+        <div class="status-header">
+            <span id="activeGroupName" style="color:var(--primary);"></span><br>
+            <span style="font-weight:normal; font-size:12px; color:#666;">部屋コード:</span> 
+            <span id="displayCodeText" class="badge-code"></span>
+            <button class="btn btn-sm btn-outline" style="margin-left:5px; padding:2px 6px;" onclick="copyRoomCode()">コピー</button>
+            <button class="btn btn-sm btn-outline" style="margin-left:5px; padding:2px 6px; border-color: var(--primary); color: var(--primary);" onclick="exitToMainMenu()">⚙️ 履歴・別イベントへ</button>
         </div>
 
-        <div class="card" style="background:#fff3cd; padding:8px 12px; font-size:12px; margin-bottom:12px;">
-            <strong>ルームコード:</strong> <span id="displayCodeText" style="font-family:monospace; font-size:14px; font-weight:bold;"></span>
-            <button onclick="copyRoomCode()" style="margin-left:8px; padding:2px 6px; font-size:11px;">コピー</button>
-            <div style="margin-top:6px;">
-                <label style="font-weight:bold; font-size:11px; color:#666;">参加者用登録URL:</label>
-                <input type="text" id="shareUrl" readonly style="font-size:11px; padding:4px; margin-top:2px;">
-                <button class="btn btn-sm" onclick="copyShareUrl()" style="margin-top:4px; padding:4px; font-size:11px; width:auto;">📋 参加者用URLをコピー</button>
+        <button class="btn btn-outline" style="font-size:13px; padding:8px; margin-bottom:10px; background:#fff;" onclick="toggleDescriptionArea()">
+            📢 コメント記入欄の表示 / 非表示を切り替え
+        </button>
+
+        <div id="descriptionCardContainer" class="card" style="background: #f1f3f5; border: 1px solid #ced4da; display: block;">
+            <label for="eventDescriptionInput">📢 カラオケ会の説明文（いつでも変更可能）</label>
+            
+            <div class="template-btn-group">
+                <span style="font-size: 11px; color: #666; align-self: center;">⚡テンプレ挿入：</span>
+                <button type="button" class="btn-tmpl" onclick="applyTemplate('karaoke')">🎵 カラオケ会</button>
+                <button type="button" class="btn-tmpl" onclick="applyTemplate('nijikai')">🍻 二次会・飲み会</button>
+                <button type="button" class="btn-tmpl" style="background:#dc3545;" onclick="applyTemplate('clear')">🧹 クリア</button>
             </div>
+
+            <textarea id="eventDescriptionInput" rows="7" class="input-field" style="font-size:14px; font-family:inherit; resize:vertical; margin-bottom:8px; line-height:1.4;" placeholder="上のボタンを押すか、自由に説明文を入力してください。"></textarea>
+            <button class="btn btn-sm" style="background: var(--primary); width:100%;" onclick="saveEventDescription()">📝 説明文を更新して配信</button>
         </div>
 
-        <div class="tabs">
-            <button class="tab-btn active" onclick="switchTab('tab_rooms')">🏢 受付＆部屋割り</button>
-            <button class="tab-btn" onclick="switchTab('tab_members')">👤 参加者（会計）</button>
-            <button class="tab-btn" onclick="switchTab('tab_config')">⚙ 部屋・案内設定</button>
+        <div class="tab-container">
+            <button class="tab-btn active" onclick="switchTab('tab_settings')">🛠️ 部屋設定</button>
+            <button class="tab-btn" onclick="switchTab('tab_members')">👥 参加者状況</button>
+            <button class="tab-btn" onclick="switchTab('tab_shuffle')">🔀 受付＆部屋割り</button>
         </div>
 
-        <div id="tab_rooms" class="tab-content active">
-            <div style="margin-bottom:12px;">
-                <button class="btn btn-success" onclick="executeSmartShuffle()">⚡ 部屋をシャッフル（履歴考慮）</button>
+        <div id="tab_settings" class="tab-content active card">
+            <div id="roomsSetupContainer"></div>
+            <button class="btn btn-outline" style="font-size:13px; padding:8px;" onclick="addRoomRowSetup('', '', 5, '', '')">＋ 新しい部屋を追加</button>
+            <hr>
+            <button class="btn" style="background: var(--success);" onclick="saveRoomsSetupOnly()">💾 部屋構成の変更を保存</button>
+        </div>
+
+        <div id="tab_members" class="tab-content card">
+            <div style="background:#e9ecef; padding:10px; border-radius:8px; margin-bottom:15px; font-size:12px;">
+                <b style="color:var(--success)">📢 LINE配布用URL:</b>
+                <input type="text" id="shareUrl" class="input-field" style="margin: 5px 0; padding:8px; font-size:12px;" readonly>
+                <button class="btn btn-success" style="padding:8px; font-size:12px; margin-bottom:0;" onclick="copyShareUrl()">📋 LINE用URLをコピー</button>
             </div>
-            <div id="resultInside"></div>
-        </div>
-
-        <div id="tab_members" class="tab-content">
-            <h3>登録された参加者</h3>
             <div id="joinedMembersArea"></div>
         </div>
 
-        <div id="tab_config" class="tab-content">
-            <div class="card">
-                <h3>📢 参加者画面への案内文・説明文</h3>
-                <div style="margin-bottom: 8px;">
-                    <button class="btn-danger-sm" style="background:#6c757d;" onclick="applyTemplate('karaoke')">🎤 カラオケ用テンプレ</button>
-                    <button class="btn-danger-sm" style="background:#6c757d;" onclick="applyTemplate('nijikai')">🍻 二次会用テンプレ</button>
-                    <button class="btn-danger-sm" style="background:#dae0e5; color:#333;" onclick="applyTemplate('clear')">クリア</button>
-                </div>
-                <textarea id="eventDescriptionInput" rows="5" placeholder="集合場所や会費、連絡事項など（自動で参加者画面に表示されます）" style="font-size:12px;"></textarea>
-                <button class="btn" style="margin-top:6px;" onclick="saveEventDescription()">📢 案内文を更新・配信</button>
-            </div>
+        <div id="tab_shuffle" class="tab-content card">
+            <button class="btn" style="background: var(--primary); padding:13px;" onclick="executeSmartShuffle()">🔀 部屋にいるメンバーだけで自動シャッフル配信</button>
+            <p style="font-size:11px; color:#666; margin-top:-5px; text-align:center;">※「未参加枠」「未定枠」「不参加枠」の人はシャッフルされずキープされます</p>
+            <div id="resultInside"></div>
+        </div>
 
-            <div class="card">
-                <h3>🏢 部屋の構成設定</h3>
-                <div id="roomsSetupContainer"></div>
-                <button class="btn btn-outline" onclick="addRoomRowSetup()">➕ 部屋を追加</button>
-                <button class="btn btn-success" onclick="saveRoomsSetupOnly()" style="margin-top:12px;">💾 部屋の構成を保存・適用</button>
-            </div>
-
-            <hr style="margin:20px 0; border:none; border-top:1px dashed #ccc;">
-            <button class="btn btn-danger" onclick="resetCurrentEvent()">🧹 このイベントの全データを完全削除(解散)</button>
+        <div class="card" style="border: 1px solid #f5c6cb; background-color: #fdf3f4; margin-top:20px;">
+            <button class="btn btn-danger" style="padding:10px; font-size:13px; margin-bottom:0;" onclick="resetCurrentEvent()">🧹 グループデータを完全に削除して終了</button>
         </div>
     </div>
-</div>
-
-<datalist id="capacityOptions">
-    <option value="3"><option value="4"><option value="5"><option value="6"><option value="8"><option value="10">
-</datalist>
-<datalist id="modelOptions">
-    <option value="DAM"><option value="JOYSOUND"><option value="LIVEDAM AI"><option value="JOYSOUND MAX GO">
-</datalist>
-<datalist id="memoOptions">
-    <option value="禁煙ルーム"><option value="喫煙ルーム"><option value="プロジェクターあり"><option value="大部屋">
-</datalist>
 
 <script>
 const firebaseConfig = {
@@ -425,6 +255,15 @@ function exitToMainMenu() {
     document.getElementById('step2_mainDashboard').style.display = 'none';
     document.getElementById('step1_connection').style.display = 'block';
     renderHistoryList();
+}
+
+function toggleDescriptionArea() {
+    const container = document.getElementById('descriptionCardContainer');
+    if (container.style.display === 'none') {
+        container.style.display = 'block';
+    } else {
+        container.style.display = 'none';
+    }
 }
 
 function applyTemplate(type) {
