@@ -500,7 +500,7 @@ function syncAndRenderRooms(dbRooms) {
                 if (oldRoom.id === "special_unconfirmed") unconfirmed.members = unconfirmed.members.concat(validM);
                 if (oldRoom.id === "special_left_home") leftHome.members = leftHome.members.concat(validM);
             }
-        OldRoom.id === "special_not_arrived" ? notArrived.members = notArrived.members.concat(validM) : null;
+        oldRoom.id === "special_not_arrived" ? notArrived.members = notArrived.members.concat(validM) : null;
         });
     }
 
