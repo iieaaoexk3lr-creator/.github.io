@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>【幹事用】出欠統合スマート部屋割り</title>
+    <title>【幹事用】ID固定型スマート部屋割り</title>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
     <style>
@@ -27,6 +27,11 @@
         label { display: block; font-weight: bold; font-size: 13px; margin-bottom: 5px; color: #555; text-align: left; }
         .input-field { width: 100%; padding: 12px; font-size: 16px; box-sizing: border-box; border: 1px solid #ced4da; border-radius: 8px; margin-bottom: 12px; background: var(--light); }
         
+        /* 💡 テンプレート用ボタンスタイル */
+        .template-btn-group { display: flex; gap: 8px; margin-bottom: 8px; flex-wrap: wrap; }
+        .btn-tmpl { background: #6c757d; color: white; font-size: 11px; padding: 4px 8px; border-radius: 4px; border: none; cursor: pointer; font-weight: bold; }
+        .btn-tmpl:hover { background: #5a6268; }
+
         .tab-container { display: flex; background: #dee2e6; border-radius: 8px; padding: 4px; margin-bottom: 15px; box-sizing: border-box; }
         .tab-btn { flex: 1; border: none; background: transparent; padding: 10px; font-size: 13px; font-weight: bold; color: #555; cursor: pointer; text-align: center; border-radius: 6px; min-width: 0; white-space: nowrap; }
         .tab-btn.active { background: white; color: var(--primary); box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
@@ -76,6 +81,20 @@
             <button class="btn btn-sm btn-outline" style="margin-left:5px; padding:2px 6px;" onclick="copyRoomCode()">コピー</button>
         </div>
 
+        <div class="card" style="background: #f1f3f5; border: 1px solid #ced4da;">
+            <label for="eventDescriptionInput">📢 カラオケ会の説明文（いつでも変更可能）</label>
+            
+            <div class="template-btn-group">
+                <span style="font-size: 11px; color: #666; align-self: center;">⚡テンプレ挿入：</span>
+                <button type="button" class="btn-tmpl" onclick="applyTemplate('karaoke')">🎵 カラオケ会</button>
+                <button type="button" class="btn-tmpl" onclick="applyTemplate('nijikai')">🍻 二次会・飲み会</button>
+                <button type="button" class="btn-tmpl" style="background:#dc3545;" onclick="applyTemplate('clear')">🧹 クリア</button>
+            </div>
+
+            <textarea id="eventDescriptionInput" rows="7" class="input-field" style="font-size:14px; font-family:inherit; resize:vertical; margin-bottom:8px; line-height:1.4;" placeholder="上のボタンを押すか、自由に説明文を入力してください。"></textarea>
+            <button class="btn btn-sm" style="background: var(--primary); width:100%;" onclick="saveEventDescription()">📝 説明文を更新して配信</button>
+        </div>
+
         <div class="tab-container">
             <button class="tab-btn active" onclick="switchTab('tab_settings')">🛠️ 部屋設定</button>
             <button class="tab-btn" onclick="switchTab('tab_members')">👥 参加者状況</button>
@@ -84,7 +103,7 @@
 
         <div id="tab_settings" class="tab-content active card">
             <div id="roomsSetupContainer"></div>
-            <button class="btn btn-outline" style="font-size:13px; padding:8px;" onclick="addRoomRowSetup('', 5, '', '')">＋ 新しい部屋を追加</button>
+            <button class="btn btn-outline" style="font-size:13px; padding:8px;" onclick="addRoomRowSetup('', '', 5, '', '')">＋ 新しい部屋を追加</button>
             <hr>
             <button class="btn" style="background: var(--success);" onclick="saveRoomsSetupOnly()">💾 部屋構成の変更を保存</button>
         </div>
@@ -132,16 +151,39 @@ let cachedRoomsSetup = [];
 let historyMatrix = {};
 let unsubscribeMembers = null;
 let unsubscribeStatus = null;
+let isFirstDescriptionLoad = true;
 
 window.onload = function() {
     const savedGroupId = localStorage.getItem(kanjiStorageKey);
     if (savedGroupId) { uniqueGroupId = savedGroupId; resumeGroupSession(); }
 };
 
+// 💡 追加：テンプレート文字列を挿入する関数
+function applyTemplate(type) {
+    const textarea = document.getElementById('eventDescriptionInput');
+    
+    if (type === 'clear') {
+        if(confirm("入力内容をクリアしますか？")) textarea.value = "";
+        return;
+    }
+
+    if (textarea.value.trim() !== "") {
+        if (!confirm("現在入力されている内容が上書きされますが、よろしいですか？")) return;
+    }
+
+    if (type === 'karaoke') {
+        textarea.value = `【日時】2026年○月○日(土) ○○:○○〜○○:○○\n【場所】カラオケ館 ○○店\n【会費】○○○○円（ドリンクバー込み）\n【締め切り】○月○日 ○○:○○まで\n【備考・コメント】\n遅れて参加、途中退席される方は事前に幹事までご連絡ください。各自、受付を済ませたら下の「⭕参加」ボタンを押してください！`;
+    } else if (type === 'nijikai') {
+        textarea.value = `【日時】2026年○月○日(金) ○○:○○キックオフ\n【場所】居酒屋 ○○ 鳥丸\n【会費】男性：○○○○円 / 女性：○○○○円\n【締め秒読み】○月○日中まで\n【備考・コメント】\nコース料理＋2時間飲み放題です。遅刻しそうな場合は必ずスレッドに一言書き込みをお願いします！`;
+    }
+}
+
 function switchTab(tabId) {
     document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
     document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
-    event.currentTarget.classList.add('active');
+    if(event && event.currentTarget) {
+        event.currentTarget.classList.add('active');
+    }
     document.getElementById(tabId).classList.add('active');
 }
 
@@ -152,11 +194,18 @@ function handleRoomNameBlur(input) {
     if (/^\d+$/.test(normalized) && !val.endsWith("号室")) { input.value = val + "号室"; }
 }
 
-function addRoomRowSetup(name="", cap=5, model="", memo="") {
+function addRoomRowSetup(roomId="", name="", cap=5, model="", memo="") {
     const container = document.getElementById('roomsSetupContainer');
+    if(!roomId) {
+        roomId = "room_" + (Date.now() + Math.floor(Math.random() * 1000));
+    }
+    const currentCount = container.children.length + 1;
+
     const div = document.createElement('div');
     div.className = 'room-row';
+    div.setAttribute('data-room-id', roomId);
     div.innerHTML = `
+        <div style="font-size:11px; color:#666; font-weight:bold; margin-bottom:4px;">部屋通し番号: No.${currentCount}</div>
         <div class="room-grid">
             <div><label>部屋番号/名:</label><input type="text" class="setup-room-name" value="${name}" placeholder="例: 101" onblur="handleRoomNameBlur(this)" style="width:100%; padding:6px; border-radius:4px; border:1px solid #ccc; box-sizing:border-box;"></div>
             <div><label>キャパ(定員):</label><input type="text" inputmode="numeric" list="capacityOptions" class="setup-room-cap" value="${cap}" style="width:100%; padding:6px; border-radius:4px; border:1px solid #ccc; box-sizing:border-box;"></div>
@@ -175,11 +224,13 @@ function createNewGroupSession() {
     if (!groupDisplayName) { alert("イベント名を入力してください"); return; }
     uniqueGroupId = encodeURIComponent(groupDisplayName).replace(/%/g, '') + "_" + Date.now();
 
+    const initialRoomId = "room_" + Date.now();
     db.collection("multigroups").doc(uniqueGroupId).set({
         title: groupDisplayName,
-        roomsSetup: [{ name: "101号室", capacity: 5, model: "DAM", memo: "", members: [] }],
+        description: "", 
+        roomsSetup: [{ id: initialRoomId, name: "101号室", capacity: 5, model: "DAM", memo: "", members: [] }],
         currentResult: null, status: "active", createdAt: firebase.firestore.FieldValue.serverTimestamp()
-    }).then(() => { localStorage.setItem(kanjiStorageKey, uniqueGroupId); resumeGroupSession(); });
+    }).then(() => { localStorage.setItem(kanjiStorageKey, uniqueGroupId); isFirstDescriptionLoad = true; resumeGroupSession(); });
 }
 
 function joinExistingGroupSession() {
@@ -187,7 +238,7 @@ function joinExistingGroupSession() {
     if (!inputCode) return;
     db.collection("multigroups").doc(inputCode).get().then(doc => {
         if (doc.exists && doc.data().status !== "reset") {
-            uniqueGroupId = inputCode; localStorage.setItem(kanjiStorageKey, uniqueGroupId); resumeGroupSession();
+            uniqueGroupId = inputCode; localStorage.setItem(kanjiStorageKey, uniqueGroupId); isFirstDescriptionLoad = true; resumeGroupSession();
         } else { alert("有効なコードが見つかりません。"); }
     });
 }
@@ -205,8 +256,13 @@ function resumeGroupSession() {
         document.getElementById('step2_mainDashboard').style.display = 'block';
         document.getElementById('activeGroupName').innerText = groupDisplayName;
 
+        if (isFirstDescriptionLoad) {
+            document.getElementById('eventDescriptionInput').value = data.description || "";
+            isFirstDescriptionLoad = false;
+        }
+
         if (document.getElementById('roomsSetupContainer').children.length === 0) {
-            cachedRoomsSetup.forEach(r => addRoomRowSetup(r.name, r.capacity, r.model, r.memo));
+            cachedRoomsSetup.forEach(r => addRoomRowSetup(r.id, r.name, r.capacity, r.model, r.memo));
         }
         syncAndRenderRooms(data.currentResult);
         document.getElementById('shareUrl').value = window.location.href.replace('heyawari.html', 'heyawari2.html') + `?groupId=${uniqueGroupId}`;
@@ -229,9 +285,17 @@ function resumeGroupSession() {
         });
         document.getElementById('joinedMembersArea').innerHTML = html || '<span style="color:#999; font-size:13px;">参加登録を待っています。</span>';
         
-        // ユーザーリストに変動があったら部屋の配置も再計算・同期描写
         db.collection("multigroups").doc(uniqueGroupId).get().then(d => { if(d.exists) syncAndRenderRooms(d.data().currentResult); });
     });
+}
+
+function saveEventDescription() {
+    const descText = document.getElementById('eventDescriptionInput').value;
+    db.collection("multigroups").doc(uniqueGroupId).update({
+        description: descText
+    }).then(() => {
+        alert("📢 説明文を更新し、参加者画面へリアルタイム配信しました！");
+    }).catch(e => alert("エラー: " + e));
 }
 
 function removeMemberFromFirebase(name) {
@@ -240,46 +304,69 @@ function removeMemberFromFirebase(name) {
 }
 
 function saveRoomsSetupOnly() {
-    const names = document.querySelectorAll('.setup-room-name');
-    const caps = document.querySelectorAll('.setup-room-cap');
-    const models = document.querySelectorAll('.setup-room-model');
-    const memos = document.querySelectorAll('.setup-room-memo');
+    const rows = document.querySelectorAll('.room-row');
     
     let newSetup = [];
-    names.forEach((n, i) => {
+    rows.forEach((row, i) => {
+        const roomId = row.getAttribute('data-room-id');
+        const name = row.querySelector('.setup-room-name').value.trim() || `部屋${i+1}`;
+        const cap = parseInt(row.querySelector('.setup-room-cap').value) || 5;
+        const model = row.querySelector('.setup-room-model').value.trim();
+        const memo = row.querySelector('.setup-room-memo').value.trim();
+        
         newSetup.push({
-            name: n.value.trim() || `部屋${i+1}`,
-            capacity: parseInt(caps[i].value) || 5,
-            model: models[i].value.trim(), memo: memos[i].value.trim(), members: []
+            id: roomId,
+            name: name,
+            capacity: cap,
+            model: model, memo: memo, members: []
         });
     });
-    db.collection("multigroups").doc(uniqueGroupId).update({ roomsSetup: newSetup }).then(() => alert("💾 保存しました"));
+    
+    db.collection("multigroups").doc(uniqueGroupId).update({ 
+        roomsSetup: newSetup 
+    }).then(() => {
+        db.collection("multigroups").doc(uniqueGroupId).get().then(doc => {
+            if(doc.exists) syncAndRenderRooms(doc.data().currentResult);
+        });
+        alert("💾 部屋構成を上書き保存しました！部屋名が変わってもメンバーは維持されます。");
+    });
 }
 
-// 🔄 メンバー情報(出欠)と現在の部屋割りオブジェクトを高度同期してマージ描写
 function syncAndRenderRooms(dbRooms) {
-    if (!dbRooms || dbRooms.length === 0) {
-        dbRooms = JSON.parse(JSON.stringify(cachedRoomsSetup || []));
+    let baseNormalRooms = JSON.parse(JSON.stringify(cachedRoomsSetup || []));
+    baseNormalRooms.forEach(r => r.members = []); 
+
+    let notArrived = { id: "special_not_arrived", name: "⚠️ 未参加（受付待ち・固定枠）", members: [], isSpecial: true };
+    let unconfirmed = { id: "special_unconfirmed", name: "🔺 保留・未確定（固定枠）", members: [], isSpecial: true };
+    let leftHome = { id: "special_left_home", name: "❌ 帰宅・不参加（固定枠）", members: [], isSpecial: true };
+
+    let allValidNames = currentFullMemberObjects.map(obj => obj.name);
+
+    if (dbRooms && dbRooms.length > 0) {
+        dbRooms.forEach(oldRoom => {
+            if (!oldRoom.isSpecial) {
+                let targetRoom = baseNormalRooms.find(r => r.id === oldRoom.id);
+                if (targetRoom && oldRoom.members) {
+                    targetRoom.members = oldRoom.members.filter(m => allValidNames.includes(m));
+                } else if (!targetRoom && oldRoom.members) {
+                    notArrived.members = notArrived.members.concat(oldRoom.members.filter(m => allValidNames.includes(m)));
+                }
+            } else {
+                let validM = oldRoom.members ? oldRoom.members.filter(m => allValidNames.includes(m)) : [];
+                if (oldRoom.id === "special_not_arrived") notArrived.members = notArrived.members.concat(validM);
+                if (oldRoom.id === "special_unconfirmed") unconfirmed.members = unconfirmed.members.concat(validM);
+                if (oldRoom.id === "special_left_home") leftHome.members = leftHome.members.concat(validM);
+            }
+        });
     }
 
-    // ３つの特設固定枠を確実に確保
-    let notArrived = dbRooms.find(r => r.id === "special_not_arrived") || { id: "special_not_arrived", name: "⚠️ 未参加（受付待ち・固定枠）", members: [], isSpecial: true };
-    let unconfirmed = dbRooms.find(r => r.id === "special_unconfirmed") || { id: "special_unconfirmed", name: "🔺 保留・未確定（固定枠）", members: [], isSpecial: true };
-    let leftHome = dbRooms.find(r => r.id === "special_left_home") || { id: "special_left_home", name: "❌ 帰宅・不参加（固定枠）", members: [], isSpecial: true };
+    notArrived.members = [...new Set(notArrived.members)];
+    unconfirmed.members = [...new Set(unconfirmed.members)];
+    leftHome.members = [...new Set(leftHome.members)];
 
-    // 1. 一度全部屋から「現在Firebaseに存在しない人」を綺麗に消去
-    let allValidNames = currentFullMemberObjects.map(obj => obj.name);
-    dbRooms.forEach(r => { if(r.members) r.members = r.members.filter(m => allValidNames.includes(m)); });
-    notArrived.members = notArrived.members.filter(m => allValidNames.includes(m));
-    unconfirmed.members = unconfirmed.members.filter(m => allValidNames.includes(m));
-    leftHome.members = leftHome.members.filter(m => allValidNames.includes(m));
-
-    // 2. 「まだどこの部屋・枠にも属していない新人」を、本人の出欠ステータスに合わせて自動振り分け
     let assignedNames = [];
-    dbRooms.forEach(r => { if(r.members) assignedNames = assignedNames.concat(r.members); });
-    if(notArrived.members) assignedNames = assignedNames.concat(notArrived.members);
-    if(unconfirmed.members) assignedNames = assignedNames.concat(unconfirmed.members);
-    if(leftHome.members) assignedNames = assignedNames.concat(leftHome.members);
+    baseNormalRooms.forEach(r => { assignedNames = assignedNames.concat(r.members); });
+    assignedNames = assignedNames.concat(notArrived.members, unconfirmed.members, leftHome.members);
 
     currentFullMemberObjects.forEach(obj => {
         if (!assignedNames.includes(obj.name)) {
@@ -289,33 +376,28 @@ function syncAndRenderRooms(dbRooms) {
         }
     });
 
-    // 3. 本人がスマホから「❌帰宅」「🔺未確定」に変えた場合のリアルタイム自動強制回収ロジック
     currentFullMemberObjects.forEach(obj => {
         if (obj.status === "❌不参加" && !leftHome.members.includes(obj.name)) {
-            // 他の部屋から引き剥がして不参加枠へ
-            dbRooms.forEach(r => { if(r.members) r.members = r.members.filter(m => m !== obj.name); });
+            baseNormalRooms.forEach(r => { r.members = r.members.filter(m => m !== obj.name); });
             notArrived.members = notArrived.members.filter(m => m !== obj.name);
             unconfirmed.members = unconfirmed.members.filter(m => m !== obj.name);
-            leftHome.members.push(obj.name);
+            if(!leftHome.members.includes(obj.name)) leftHome.members.push(obj.name);
         }
         if (obj.status === "🔺未確定" && !unconfirmed.members.includes(obj.name) && !leftHome.members.includes(obj.name)) {
-            dbRooms.forEach(r => { if(r.members) r.members = r.members.filter(m => m !== obj.name); });
+            baseNormalRooms.forEach(r => { r.members = r.members.filter(m => m !== obj.name); });
             notArrived.members = notArrived.members.filter(m => m !== obj.name);
-            unconfirmed.members.push(obj.name);
+            leftHome.members = leftHome.members.filter(m => m !== obj.name);
+            if(!unconfirmed.members.includes(obj.name)) unconfirmed.members.push(obj.name);
         }
         if (obj.status === "⭕参加" && (leftHome.members.includes(obj.name) || unconfirmed.members.includes(obj.name))) {
-            // 不参加や保留から参加に戻った場合は未参加(受付待ち)へ移動
             leftHome.members = leftHome.members.filter(m => m !== obj.name);
             unconfirmed.members = unconfirmed.members.filter(m => m !== obj.name);
-            notArrived.members.push(obj.name);
+            if(!notArrived.members.includes(obj.name)) notArrived.members.push(obj.name);
         }
     });
 
-    // 配列構造のクリーンアップ＆合体
-    let cleanBaseRooms = dbRooms.filter(r => !r.isSpecial);
-    let finalRoomsStructure = [...cleanBaseRooms, notArrived, unconfirmed, leftHome];
+    let finalRoomsStructure = [...baseNormalRooms, notArrived, unconfirmed, leftHome];
 
-    // 表示レンダリング
     let html = '';
     finalRoomsStructure.forEach((r, roomIdx) => {
         const isSpec = r.isSpecial;
@@ -359,7 +441,6 @@ function syncAndRenderRooms(dbRooms) {
     });
     document.getElementById('resultInside').innerHTML = html;
 
-    // FirebaseのDBを現在のマージ結果で静かにバックグラウンド更新
     db.collection("multigroups").doc(uniqueGroupId).update({ currentResult: finalRoomsStructure });
 }
 
@@ -372,7 +453,6 @@ function moveMemberManually(memberName, fromRoomIdx, toRoomIdx) {
         rooms[fromRoomIdx].members = rooms[fromRoomIdx].members.filter(m => m !== memberName);
         rooms[toRoomIdx].members.push(memberName);
 
-        // 移動先が特設枠なら、出欠ステータスも裏側で連動書き換えしてあげる親切設計
         let targetId = rooms[toRoomIdx].id;
         if (targetId === "special_unconfirmed") {
             db.collection("multigroups").doc(uniqueGroupId).collection("members").doc(memberName).update({ status: "🔺未確定" });
@@ -386,7 +466,6 @@ function moveMemberManually(memberName, fromRoomIdx, toRoomIdx) {
     });
 }
 
-// 🔀 【Aパターン】部屋に入っている受付済みメンバーのみをシャッフル
 function executeSmartShuffle() {
     db.collection("multigroups").doc(uniqueGroupId).get().then(doc => {
         if (!doc.exists) return;
@@ -394,12 +473,10 @@ function executeSmartShuffle() {
         let rooms = data.currentResult || [];
         if (rooms.length === 0) return;
 
-        // 特設固定枠３種を隔離抽出
         let notArrived = rooms.find(r => r.id === "special_not_arrived");
         let unconfirmed = rooms.find(r => r.id === "special_unconfirmed");
         let leftHome = rooms.find(r => r.id === "special_left_home");
 
-        // シャッフル対象 ＝ 「すでにカラオケの通常各部屋に割り振られていたメンバー」のみ
         let normalRooms = rooms.filter(r => !r.isSpecial);
         let shuffleTargets = [];
         normalRooms.forEach(r => { shuffleTargets = shuffleTargets.concat(r.members); r.members = []; });
@@ -411,7 +488,6 @@ function executeSmartShuffle() {
 
         shuffleTargets.sort(() => Math.random() - 0.5);
 
-        // 通常部屋への割り振りロジック
         while (shuffleTargets.length > 0) {
             const member = shuffleTargets.pop();
             let bestRoomIdx = -1; let minPenalty = Infinity;
