@@ -19,15 +19,12 @@
         h1 { text-align: center; font-size: 20px; color: var(--dark); margin: 10px 0; }
         .card { background: white; padding: 15px; border-radius: 12px; margin-bottom: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); box-sizing: border-box; }
         
-        /* 💡 追加：説明文ボード用スタイル */
         .info-board { border-left: 5px solid var(--info); background: #eef7f9; color: #1f5058; padding: 12px; border-radius: 4px 12px 12px 4px; font-size: 14px; line-height: 1.5; white-space: pre-wrap; margin-bottom: 15px; box-shadow: 0 2px 4px rgba(0,0,0,0.02); }
 
         .btn { display: inline-flex; align-items: center; justify-content: center; background: #007bff; color: white; border: none; padding: 12px; border-radius: 8px; font-size: 15px; font-weight: bold; cursor: pointer; width: 100%; box-sizing: border-box; margin-bottom: 8px; -webkit-appearance: none; }
         .input-field { width: 100%; padding: 12px; font-size: 16px; box-sizing: border-box; border: 1px solid #ced4da; border-radius: 8px; margin-bottom: 12px; background: var(--light); }
         
-        .status-header { background: #e2e3e5; padding: 10px; border-radius: 8px; font-size: 13px; margin-bottom: 15px; text-align: center; font-weight: bold; }
-        
-        .radio-tile-group { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 15px; }
+        .radio-tile-group { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 12px; }
         .radio-tile-label { border: 2px solid #dee2e6; border-radius: 8px; padding: 10px; text-align: center; cursor: pointer; font-weight: bold; font-size: 14px; background: white; display: block; }
         .radio-tile-input { display: none; }
         .radio-tile-input:checked + .radio-tile-label.ok { border-color: var(--success); background: #e2f0d9; color: #385723; }
@@ -38,6 +35,14 @@
         .room-title-bar { display: flex; justify-content: space-between; align-items: center; font-weight: bold; font-size: 14px; border-bottom: 1px dashed #eee; padding-bottom: 4px; margin-bottom: 8px; color: #495057; }
         .member-container-flex { display: flex; flex-wrap: wrap; gap: 6px; }
         .member-wrapper { display: inline-block; background: #e2f0d9; color: #385723; padding: 4px 10px; border-radius: 6px; font-size: 13px; font-weight: bold; }
+
+        /* 💡 追加：出欠集計・コメント一覧用のスタイル */
+        .summary-box { display: flex; justify-content: space-around; background: var(--light); padding: 10px; border-radius: 8px; margin-bottom: 12px; font-size: 14px; font-weight: bold; text-align: center; border: 1px solid #dee2e6; }
+        .comment-row { padding: 10px 4px; border-bottom: 1px solid #eee; font-size: 14px; }
+        .comment-row:last-child { border-bottom: none; }
+        .comment-user { display: flex; justify-content: space-between; align-items: center; font-weight: bold; margin-bottom: 4px; }
+        .comment-text { color: #555; font-size: 13px; white-space: pre-wrap; padding-left: 4px; line-height: 1.4; }
+        .badge-status { font-size: 11px; padding: 2px 6px; border-radius: 4px; font-weight: bold; }
     </style>
 </head>
 <body>
@@ -47,7 +52,7 @@
     <div id="eventDescriptionBoard" class="info-board" style="display: none;"></div>
 
     <div class="card">
-        <h3 style="margin-top:0; font-size:15px; text-align:center;">📋 あなたの出欠・現在の状況</h3>
+        <h3 style="margin-top:0; font-size:15px; text-align:center;">📋 あなたの出欠・状況を登録</h3>
         <input type="text" id="memberNameInput" class="input-field" placeholder="あなたの名前（ニックネーム）">
         
         <div class="radio-tile-group">
@@ -65,6 +70,8 @@
             </div>
         </div>
 
+        <input type="text" id="memberCommentInput" class="input-field" placeholder="一言コメント（例：遅れて参加します！、楽しみ！）" maxlength="100">
+
         <button class="btn" style="background: var(--success);" onclick="submitAttendance()">送信する / 状況を更新</button>
         <p id="myCurrentStatusText" style="text-align:center; font-size:12px; font-weight:bold; color:#666; margin:5px 0 0 0;"></p>
     </div>
@@ -72,6 +79,20 @@
     <div class="card">
         <h3 style="margin-top:0; font-size:15px; text-align:center;">🎤 現在の部屋割り結果</h3>
         <div id="resultInside"><span style="color:#888; font-size:13px;">幹事さんが部屋割りを準備中です⏳</span></div>
+    </div>
+
+    <div class="card">
+        <h3 style="margin-top:0; font-size:15px; text-align:center;">👥 みんなの出欠・コメント</h3>
+        
+        <div class="summary-box">
+            <span style="color:#28a745;">⭕ 参加: <span id="count_ok">0</span>人</span>
+            <span style="color:#ffc107;">🔺 保留: <span id="count_hold">0</span>人</span>
+            <span style="color:#dc3545;">❌ 不参加: <span id="count_ng">0</span>人</span>
+        </div>
+
+        <div id="commentsListArea">
+            <span style="color:#888; font-size:13px; display:block; text-align:center;">登録メンバーはまだいません。</span>
+        </div>
     </div>
 
 <script>
@@ -106,7 +127,7 @@ function initParticipantSession() {
         checkMyCurrentStatusOnServer(savedName);
     }
 
-    // 📢 グループデータのリアルタイム監視
+    // 1. グループ全体の基本データ（タイトル・案内文・部屋割り）の監視
     db.collection("multigroups").doc(groupId).onSnapshot(doc => {
         if (!doc.exists || doc.data().status === "reset") {
             document.body.innerHTML = '<div class="card" style="text-align:center;margin-top:50px;"><h3>解散しました👋</h3>このイベントデータは幹事によって削除されました。</div>';
@@ -115,7 +136,6 @@ function initParticipantSession() {
         const data = doc.data();
         document.getElementById('groupTitleHeader').innerText = "🎤 " + data.title;
 
-        // 💡 変更：説明文のリアルタイム反映（空っぽなら隠す）
         const board = document.getElementById('eventDescriptionBoard');
         if (data.description && data.description.trim() !== "") {
             board.innerText = data.description;
@@ -125,6 +145,45 @@ function initParticipantSession() {
         }
 
         renderRoomsResult(data.currentResult);
+    });
+
+    // 2. 💡 追加：メンバー一覧（出欠状況とコメント）のリアルタイム監視
+    db.collection("multigroups").doc(groupId).collection("members").onSnapshot(snapshot => {
+        let countOk = 0; let countHold = 0; let countNg = 0;
+        let html = "";
+
+        snapshot.forEach(doc => {
+            const m = doc.data();
+            
+            // 出欠集計のカウント
+            if (m.status === "⭕参加") countOk++;
+            else if (m.status === "🔺未確定") countHold++;
+            else if (m.status === "❌不参加") countNg++;
+
+            // バッジの色分け
+            let badgeStyle = m.status === "⭕参加" ? "background:#e2f0d9;color:#385723;" : (m.status === "🔺未確定" ? "background:#fff3cd;color:#856404;" : "background:#f8d7da;color:#721c24;");
+            
+            // コメントが空欄のときは「(なし)」ではなくスッキリ空白、ある場合はそのまま表示
+            let commentText = m.comment ? m.comment : "";
+
+            html += `
+                <div class="comment-row">
+                    <div class="comment-user">
+                        <span>👤 ${m.name}</span>
+                        <span class="badge-status" style="${badgeStyle}">${m.status}</span>
+                    </div>
+                    ${commentText ? `<div class="comment-text">${commentText}</div>` : ''}
+                </div>
+            `;
+        });
+
+        // カウンターを画面に反映
+        document.getElementById('count_ok').innerText = countOk;
+        document.getElementById('count_hold').innerText = countHold;
+        document.getElementById('count_ng').innerText = countNg;
+
+        // リストを画面に反映
+        document.getElementById('commentsListArea').innerHTML = html || '<span style="color:#888; font-size:13px; display:block; text-align:center;">登録メンバーはまだいません。</span>';
     });
 }
 
@@ -136,23 +195,29 @@ function checkMyCurrentStatusOnServer(name) {
             if (m.status === "⭕参加") document.getElementById('st_ok').checked = true;
             if (m.status === "🔺未確定") document.getElementById('st_hold').checked = true;
             if (m.status === "❌不参加") document.getElementById('st_ng').checked = true;
+            if (m.comment) document.getElementById('memberCommentInput').value = m.comment;
         }
     });
 }
 
 function submitAttendance() {
     const name = document.getElementById('memberNameInput').value.trim();
+    const comment = document.getElementById('memberCommentInput').value.trim();
+    
     if (!name) { alert("名前を入力してください"); return; }
     if (name.includes('-')) { alert("名前にハイフン(-)は使用できません"); return; }
 
     const status = document.querySelector('input[name="userStatus"]:checked').value;
 
     db.collection("multigroups").doc(groupId).collection("members").doc(name).set({
-        name: name, status: status, updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        name: name, 
+        status: status, 
+        comment: comment, // 💡 一言コメントをFirebaseへ保存
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
     }).then(() => {
         localStorage.setItem(userStorageKey, name);
         document.getElementById('myCurrentStatusText').innerText = `あなたの登録状況: 【${status}】`;
-        alert(`出欠を「${status}」で送信しました！`);
+        alert(`出欠状況を更新しました！`);
     });
 }
 
@@ -164,7 +229,7 @@ function renderRoomsResult(rooms) {
 
     let html = '';
     rooms.forEach(r => {
-        if (r.isSpecial) return; // 特設枠（未参加・保留・帰宅）は参加者画面には見せない
+        if (r.isSpecial) return; 
         
         const extraInfo = [r.model, r.memo].filter(Boolean).join(' / ');
         html += `
