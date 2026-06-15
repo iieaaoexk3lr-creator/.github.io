@@ -1,155 +1,3 @@
-<!DOCTYPE html>
-<html lang="ja">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>【幹事用】ID固定型スマート部屋割り</title>
-    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
-    <style>
-        :root {
-            --primary: #6f42c1;
-            --success: #28a745;
-            --info: #17a2b8;
-            --danger: #dc3545;
-            --dark: #343a40;
-            --light: #f8f9fa;
-        }
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Sans-Serif; max-width: 600px; margin: 0 auto; padding: 10px; background: #e9ecef; color: #333; word-break: break-all; }
-        h1 { text-align: center; font-size: 20px; color: var(--dark); margin: 10px 0; }
-        .card { background: white; padding: 15px; border-radius: 12px; margin-bottom: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); box-sizing: border-box; }
-        
-        .btn { display: inline-flex; align-items: center; justify-content: center; background: #007bff; color: white; border: none; padding: 12px; border-radius: 8px; font-size: 15px; font-weight: bold; cursor: pointer; width: 100%; box-sizing: border-box; margin-bottom: 8px; -webkit-appearance: none; }
-        .btn-sm { padding: 6px 10px; font-size: 12px; width: auto; margin-bottom: 0; }
-        .btn-danger-sm { background: var(--danger); padding: 4px 8px; font-size: 11px; width: auto; margin-bottom: 0; border-radius: 4px; color: white; border: none; font-weight: bold; }
-        .btn-outline { background: transparent; color: #666; border: 1px solid #ccc; }
-        
-        label { display: block; font-weight: bold; font-size: 13px; margin-bottom: 5px; color: #555; text-align: left; }
-        .input-field { width: 100%; padding: 12px; font-size: 16px; box-sizing: border-box; border: 1px solid #ced4da; border-radius: 8px; margin-bottom: 12px; background: var(--light); }
-        
-        /* 💡 テンプレート用ボタンスタイル */
-        .template-btn-group { display: flex; gap: 8px; margin-bottom: 8px; flex-wrap: wrap; }
-        .btn-tmpl { background: #6c757d; color: white; font-size: 11px; padding: 4px 8px; border-radius: 4px; border: none; cursor: pointer; font-weight: bold; }
-        .btn-tmpl:hover { background: #5a6268; }
-
-        .tab-container { display: flex; background: #dee2e6; border-radius: 8px; padding: 4px; margin-bottom: 15px; box-sizing: border-box; }
-        .tab-btn { flex: 1; border: none; background: transparent; padding: 10px; font-size: 13px; font-weight: bold; color: #555; cursor: pointer; text-align: center; border-radius: 6px; min-width: 0; white-space: nowrap; }
-        .tab-btn.active { background: white; color: var(--primary); box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-        .tab-content { display: none; }
-        .tab-content.active { display: block; }
-
-        .room-row { background: var(--light); padding: 12px; border-radius: 8px; margin-bottom: 10px; border: 1px solid #dee2e6; position: relative; box-sizing: border-box; }
-        .room-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 8px; }
-        .room-box-result { border-left: 4px solid var(--primary); background: #fff; padding: 12px; margin-bottom: 10px; border-radius: 0 8px 8px 0; box-shadow: 0 1px 3px rgba(0,0,0,0.05); box-sizing: border-box; }
-        .room-title-bar { display: flex; justify-content: space-between; align-items: center; font-weight: bold; font-size: 14px; border-bottom: 1px dashed #eee; padding-bottom: 4px; margin-bottom: 8px; color: #495057; flex-wrap: wrap; gap: 4px; }
-        
-        .member-container-flex { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
-        .member-wrapper { display: inline-flex; align-items: center; background: #e2f0d9; color: #385723; padding: 4px 8px; border-radius: 6px; font-size: 13px; font-weight: bold; max-width: 100%; box-sizing: border-box; }
-        .member-name-span { max-width: 80px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        .move-select { background: transparent; border: none; font-size: 11px; color: #007bff; margin-left: 3px; font-weight: bold; outline: none; padding-right: 2px; }
-        
-        .member-list-item { display: flex; justify-content: space-between; align-items: center; background: var(--light); padding: 10px; border-radius: 8px; margin-bottom: 6px; border: 1px solid #dee2e6; font-size: 14px; font-weight: bold; box-sizing: border-box; }
-        .st-indicator { font-size: 11px; padding: 2px 6px; border-radius: 4px; margin-left: 6px; font-weight: normal; }
-
-        /* 💡 追加：会計バッジ用のスタイル */
-        .pay-btn { font-size: 11px; padding: 3px 8px; border-radius: 4px; font-weight: bold; border: 1px solid #ccc; cursor: pointer; margin-left: 6px; }
-        .pay-unpaid { background: #fff; color: var(--danger); border-color: var(--danger); }
-        .pay-paid { background: var(--success); color: white; border-color: var(--success); }
-
-        .status-header { background: #e2e3e5; padding: 10px; border-radius: 8px; font-size: 13px; margin-bottom: 15px; text-align: center; font-weight: bold; box-sizing: border-box; }
-        .badge-code { background: #fff; padding: 4px 8px; border-radius: 4px; font-family: monospace; color: var(--danger); font-size: 13px; border: 1px solid #ccc; max-width: 100%; display: inline-block; overflow: hidden; text-overflow: ellipsis; }
-        hr { border: 0; border-top: 1px dashed #ccc; margin: 15px 0; }
-
-        /* 💡 追加：管理履歴リスト用のスタイル */
-        .history-list { margin-top: 15px; text-align: left; }
-        .history-item { display: flex; justify-content: space-between; align-items: center; padding: 10px; background: var(--light); border: 1px solid #ced4da; border-radius: 8px; margin-bottom: 8px; font-size: 14px; }
-        .history-link { font-weight: bold; color: var(--primary); cursor: pointer; text-decoration: none; flex-grow: 1; margin-right: 10px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        .history-code { font-size: 11px; color: #666; font-weight: normal; display: block; }
-    </style>
-</head>
-<body>
-
-    <datalist id="modelOptions"><option value="DAM"><option value="JOYSOUND"></datalist>
-    <datalist id="capacityOptions"><option value="5"><option value="8"><option value="10"><option value="15"><option value="20"></datalist>
-    <datalist id="memoOptions"><option value="企画部屋"><option value="アニソン部屋"><option value="懐メロ部屋"><option value="休憩部屋"><option value="着替え部屋"></datalist>
-
-    <h1>🔑 部屋割り管理室（幹事用）</h1>
-
-    <div id="step1_connection" class="card">
-        <h3 style="margin-top:0; text-align:center; font-size:16px;">イベント管理室への入室</h3>
-        <input type="text" id="groupNameInput" class="input-field" placeholder="例: カラオケサークル集会">
-        <button class="btn" style="background: var(--primary);" onclick="createNewGroupSession()">👥 新規グループ部屋を作成</button>
-        <div style="text-align: center; color: #888; font-size: 12px; margin: 10px 0;">ー または ー</div>
-        <input type="text" id="existingCodeInput" class="input-field" placeholder="コードを貼り付け">
-        <button class="btn" style="background: var(--info);" onclick="joinExistingGroupSession()">🔑 コードでログイン</button>
-        
-        <div id="historyContainer" style="display: none;">
-            <hr>
-            <h4 style="margin: 10px 0; font-size: 14px; color: var(--dark); text-align: center;">📂 作成済みのイベント履歴</h4>
-            <div id="historyListArea" class="history-list"></div>
-        </div>
-    </div>
-
-    <div id="step2_mainDashboard" style="display: none;">
-        <div class="status-header">
-            <span id="activeGroupName" style="color:var(--primary);"></span><br>
-            <span style="font-weight:normal; font-size:12px; color:#666;">部屋コード:</span> 
-            <span id="displayCodeText" class="badge-code"></span>
-            <button class="btn btn-sm btn-outline" style="margin-left:5px; padding:2px 6px;" onclick="copyRoomCode()">コピー</button>
-            <button class="btn btn-sm btn-outline" style="margin-left:5px; padding:2px 6px; border-color: var(--primary); color: var(--primary);" onclick="exitToMainMenu()">⚙️ 履歴・別イベントへ</button>
-        </div>
-
-        <button class="btn btn-outline" style="font-size:13px; padding:8px; margin-bottom:10px; background:#fff;" onclick="toggleDescriptionArea()">
-            📢 コメント記入欄の表示 / 非表示を切り替え
-        </button>
-
-        <div id="descriptionCardContainer" class="card" style="background: #f1f3f5; border: 1px solid #ced4da; display: block;">
-            <label for="eventDescriptionInput">📢 カラオケ会の説明文（いつでも変更可能）</label>
-            
-            <div class="template-btn-group">
-                <span style="font-size: 11px; color: #666; align-self: center;">⚡テンプレ挿入：</span>
-                <button type="button" class="btn-tmpl" onclick="applyTemplate('karaoke')">🎵 カラオケ会</button>
-                <button type="button" class="btn-tmpl" onclick="applyTemplate('nijikai')">🍻 二次会・飲み会</button>
-                <button type="button" class="btn-tmpl" style="background:#dc3545;" onclick="applyTemplate('clear')">🧹 クリア</button>
-            </div>
-
-            <textarea id="eventDescriptionInput" rows="7" class="input-field" style="font-size:14px; font-family:inherit; resize:vertical; margin-bottom:8px; line-height:1.4;" placeholder="上のボタンを押すか、自由に説明文を入力してください。"></textarea>
-            <button class="btn btn-sm" style="background: var(--primary); width:100%;" onclick="saveEventDescription()">📝 説明文を更新して配信</button>
-        </div>
-
-        <div class="tab-container">
-            <button class="tab-btn active" onclick="switchTab('tab_settings')">🛠️ 部屋設定</button>
-            <button class="tab-btn" onclick="switchTab('tab_members')">👥 参加者状況</button>
-            <button class="tab-btn" onclick="switchTab('tab_shuffle')">🔀 受付＆部屋割り</button>
-        </div>
-
-        <div id="tab_settings" class="tab-content active card">
-            <div id="roomsSetupContainer"></div>
-            <button class="btn btn-outline" style="font-size:13px; padding:8px;" onclick="addRoomRowSetup('', '', 5, '', '')">＋ 新しい部屋を追加</button>
-            <hr>
-            <button class="btn" style="background: var(--success);" onclick="saveRoomsSetupOnly()">💾 部屋構成の変更を保存</button>
-        </div>
-
-        <div id="tab_members" class="tab-content card">
-            <div style="background:#e9ecef; padding:10px; border-radius:8px; margin-bottom:15px; font-size:12px;">
-                <b style="color:var(--success)">📢 LINE配布用URL:</b>
-                <input type="text" id="shareUrl" class="input-field" style="margin: 5px 0; padding:8px; font-size:12px;" readonly>
-                <button class="btn btn-success" style="padding:8px; font-size:12px; margin-bottom:0;" onclick="copyShareUrl()">📋 LINE用URLをコピー</button>
-            </div>
-            <div id="joinedMembersArea"></div>
-        </div>
-
-        <div id="tab_shuffle" class="tab-content card">
-            <button class="btn" style="background: var(--primary); padding:13px;" onclick="executeSmartShuffle()">🔀 部屋にいるメンバーだけで自動シャッフル配信</button>
-            <p style="font-size:11px; color:#666; margin-top:-5px; text-align:center;">※「未参加枠」「未定枠」「不参加枠」の人はシャッフルされずキープされます</p>
-            <div id="resultInside"></div>
-        </div>
-
-        <div class="card" style="border: 1px solid #f5c6cb; background-color: #fdf3f4; margin-top:20px;">
-            <button class="btn btn-danger" style="padding:10px; font-size:13px; margin-bottom:0;" onclick="resetCurrentEvent()">🧹 グループデータを完全に削除して終了</button>
-        </div>
-    </div>
-
 <script>
 const firebaseConfig = {
   apiKey: "AIzaSyDfMGBuQYpuyOMGt_hEdPgR_z42d92E8Lo",
@@ -165,7 +13,7 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 const kanjiStorageKey = "heyawari_kanji_group_id";
-const historyStorageKey = "heyawari_kanji_history_list"; // 💡 追加：履歴データ用キー
+const historyStorageKey = "heyawari_kanji_history_list";
 
 let uniqueGroupId = "";
 let groupDisplayName = "";
@@ -177,12 +25,11 @@ let unsubscribeStatus = null;
 let isFirstDescriptionLoad = true;
 
 window.onload = function() {
-    renderHistoryList(); // 💡 起動時に履歴リストを描画
+    renderHistoryList();
     const savedGroupId = localStorage.getItem(kanjiStorageKey);
     if (savedGroupId) { uniqueGroupId = savedGroupId; resumeGroupSession(); }
 };
 
-// 💡 追加：管理履歴リストをローカルストレージから読み込んで描画する関数
 function renderHistoryList() {
     const historyData = localStorage.getItem(historyStorageKey);
     const historyList = historyData ? JSON.parse(historyData) : [];
@@ -210,13 +57,11 @@ function renderHistoryList() {
     area.innerHTML = html;
 }
 
-// 💡 追加：作成・ログインに成功したイベントを履歴に保存（重複排除）
 function saveToHistoryList(id, title) {
     if (!id || !title) return;
     const historyData = localStorage.getItem(historyStorageKey);
     let historyList = historyData ? JSON.parse(historyData) : [];
     
-    // 既存の同じIDがあれば削除して、常に最新が上（または上書き）になるように調整
     historyList = historyList.filter(item => item.id !== id);
     historyList.unshift({ id: id, title: title });
     
@@ -224,9 +69,8 @@ function saveToHistoryList(id, title) {
     renderHistoryList();
 }
 
-// 💡 追加：履歴から特定のイベントを非表示（削除）にする処理
 function removeFromHistoryList(id, event) {
-    event.stopPropagation(); // 親要素のクリックイベント発火を防止
+    event.stopPropagation();
     if (!confirm("このイベントを履歴から削除しますか？\n（Firebase上のデータは削除されません）")) return;
     
     const historyData = localStorage.getItem(historyStorageKey);
@@ -237,13 +81,11 @@ function removeFromHistoryList(id, event) {
     localStorage.setItem(historyStorageKey, JSON.stringify(historyList));
     renderHistoryList();
     
-    // 今開いているイベントを消した場合は初期画面に戻す
     if (uniqueGroupId === id) {
         clearKanjiState();
     }
 }
 
-// 💡 追加：履歴から選んでイベント部屋をロードする
 function loadFromHistory(id) {
     uniqueGroupId = id;
     localStorage.setItem(kanjiStorageKey, uniqueGroupId);
@@ -251,11 +93,10 @@ function loadFromHistory(id) {
     resumeGroupSession();
 }
 
-// 💡 追加：メイン画面からメニュー（履歴画面）へ安全に一時離脱するボタン用の関数
 function exitToMainMenu() {
     if (unsubscribeMembers) unsubscribeMembers();
     if (unsubscribeStatus) unsubscribeStatus();
-    localStorage.removeItem(kanjiStorageKey); // アクティブ状態を外す
+    localStorage.removeItem(kanjiStorageKey);
     uniqueGroupId = "";
     document.getElementById('roomsSetupContainer').innerHTML = "";
     document.getElementById('resultInside').innerHTML = '';
@@ -286,7 +127,7 @@ function applyTemplate(type) {
     }
 
     if (type === 'karaoke') {
-        textarea.value = `【日時】 月 日()  : 〜 : \n【場所】店\n【会費】円（ドリンクバー込み）\n【締め切り】 月 日まで\n【備考・コメント】\n途中退世紀される方は幹事までご連絡ください。`;
+        textarea.value = `【日時】 月 日()  : 〜 : \n【場所】店\n【会費】円（ドリンクバー込み）\n【締め切り】 月 日まで\n【備考・コメント】\n途中退室される方は幹事までご連絡ください。`;
     } else if (type === 'nijikai') {
         textarea.value = `【日時】 月 日()  : ~\n【場所】\n【会費】\n【締め秒読み】 月 日中まで\n【備考・コメント】\n遅刻しそうな場合は一言書き込みをお願いします！`;
     }
@@ -346,7 +187,7 @@ function createNewGroupSession() {
         currentResult: null, status: "active", createdAt: firebase.firestore.FieldValue.serverTimestamp()
     }).then(() => { 
         localStorage.setItem(kanjiStorageKey, uniqueGroupId); 
-        saveToHistoryList(uniqueGroupId, groupDisplayName); // 💡 履歴へ追加
+        saveToHistoryList(uniqueGroupId, groupDisplayName);
         isFirstDescriptionLoad = true; 
         resumeGroupSession(); 
     });
@@ -359,7 +200,7 @@ function joinExistingGroupSession() {
         if (doc.exists && doc.data().status !== "reset") {
             uniqueGroupId = inputCode; 
             localStorage.setItem(kanjiStorageKey, uniqueGroupId); 
-            saveToHistoryList(uniqueGroupId, doc.data().title); // 💡 履歴へ追加
+            saveToHistoryList(uniqueGroupId, doc.data().title);
             isFirstDescriptionLoad = true; 
             resumeGroupSession();
         } else { alert("有効なコードが見つかりません。"); }
@@ -379,14 +220,13 @@ function resumeGroupSession() {
         document.getElementById('step2_mainDashboard').style.display = 'block';
         document.getElementById('activeGroupName').innerText = groupDisplayName;
         
-        saveToHistoryList(uniqueGroupId, groupDisplayName); // 💡 同期を兼ねて履歴を最新に
+        saveToHistoryList(uniqueGroupId, groupDisplayName);
 
         if (isFirstDescriptionLoad) {
             document.getElementById('eventDescriptionInput').value = data.description || "";
             isFirstDescriptionLoad = false;
         }
 
-        // 重複描画を防ぐため一旦クリアしてから追加
         const container = document.getElementById('roomsSetupContainer');
         if (container.children.length === 0) {
             cachedRoomsSetup.forEach(r => addRoomRowSetup(r.id, r.name, r.capacity, r.model, r.memo));
@@ -500,7 +340,6 @@ function syncAndRenderRooms(dbRooms) {
                 if (oldRoom.id === "special_unconfirmed") unconfirmed.members = unconfirmed.members.concat(validM);
                 if (oldRoom.id === "special_left_home") leftHome.members = leftHome.members.concat(validM);
             }
-        oldRoom.id === "special_not_arrived" ? notArrived.members = notArrived.members.concat(validM) : null;
         });
     }
 
@@ -654,7 +493,6 @@ function executeSmartShuffle() {
 }
 
 function clearKanjiState() {
-    // 💡 該当イベントの履歴データ自体は履歴リスト側に残し、アクティブIDだけを消去
     localStorage.removeItem(kanjiStorageKey);
     if (unsubscribeMembers) unsubscribeMembers();
     if (unsubscribeStatus) unsubscribeStatus();
@@ -663,7 +501,7 @@ function clearKanjiState() {
     document.getElementById('resultInside').innerHTML = '';
     document.getElementById('step2_mainDashboard').style.display = 'none';
     document.getElementById('step1_connection').style.display = 'block';
-    renderHistoryList(); // メニューに戻る際に履歴を再描画
+    renderHistoryList();
 }
 
 async function resetCurrentEvent() {
@@ -674,7 +512,6 @@ async function resetCurrentEvent() {
         const snapshot = await db.collection("multigroups").doc(targetId).collection("members").get();
         const batch = db.batch(); snapshot.forEach(doc => batch.delete(doc.ref)); await batch.commit();
         
-        // 💡 イベント自体が消滅したため、管理履歴リストからも自動排除する
         const historyData = localStorage.getItem(historyStorageKey);
         if (historyData) {
             let historyList = JSON.parse(historyData);
