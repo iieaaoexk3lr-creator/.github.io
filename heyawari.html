@@ -59,6 +59,12 @@
         .status-header { background: #e2e3e5; padding: 10px; border-radius: 8px; font-size: 13px; margin-bottom: 15px; text-align: center; font-weight: bold; box-sizing: border-box; }
         .badge-code { background: #fff; padding: 4px 8px; border-radius: 4px; font-family: monospace; color: var(--danger); font-size: 13px; border: 1px solid #ccc; max-width: 100%; display: inline-block; overflow: hidden; text-overflow: ellipsis; }
         hr { border: 0; border-top: 1px dashed #ccc; margin: 15px 0; }
+
+        /* 💡 追加：管理履歴リスト用のスタイル */
+        .history-list { margin-top: 15px; text-align: left; }
+        .history-item { display: flex; justify-content: space-between; align-items: center; padding: 10px; background: var(--light); border: 1px solid #ced4da; border-radius: 8px; margin-bottom: 8px; font-size: 14px; }
+        .history-link { font-weight: bold; color: var(--primary); cursor: pointer; text-decoration: none; flex-grow: 1; margin-right: 10px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .history-code { font-size: 11px; color: #666; font-weight: normal; display: block; }
     </style>
 </head>
 <body>
@@ -76,6 +82,12 @@
         <div style="text-align: center; color: #888; font-size: 12px; margin: 10px 0;">ー または ー</div>
         <input type="text" id="existingCodeInput" class="input-field" placeholder="コードを貼り付け">
         <button class="btn" style="background: var(--info);" onclick="joinExistingGroupSession()">🔑 コードでログイン</button>
+        
+        <div id="historyContainer" style="display: none;">
+            <hr>
+            <h4 style="margin: 10px 0; font-size: 14px; color: var(--dark); text-align: center;">📂 作成済みのイベント履歴</h4>
+            <div id="historyListArea" class="history-list"></div>
+        </div>
     </div>
 
     <div id="step2_mainDashboard" style="display: none;">
@@ -84,6 +96,7 @@
             <span style="font-weight:normal; font-size:12px; color:#666;">部屋コード:</span> 
             <span id="displayCodeText" class="badge-code"></span>
             <button class="btn btn-sm btn-outline" style="margin-left:5px; padding:2px 6px;" onclick="copyRoomCode()">コピー</button>
+            <button class="btn btn-sm btn-outline" style="margin-left:5px; padding:2px 6px; border-color: var(--primary); color: var(--primary);" onclick="exitToMainMenu()">⚙️ 履歴・別イベントへ</button>
         </div>
 
         <button class="btn btn-outline" style="font-size:13px; padding:8px; margin-bottom:10px; background:#fff;" onclick="toggleDescriptionArea()">
@@ -152,6 +165,7 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 const kanjiStorageKey = "heyawari_kanji_group_id";
+const historyStorageKey = "heyawari_kanji_history_list"; // 💡 追加：履歴データ用キー
 
 let uniqueGroupId = "";
 let groupDisplayName = "";
@@ -163,11 +177,93 @@ let unsubscribeStatus = null;
 let isFirstDescriptionLoad = true;
 
 window.onload = function() {
+    renderHistoryList(); // 💡 起動時に履歴リストを描画
     const savedGroupId = localStorage.getItem(kanjiStorageKey);
     if (savedGroupId) { uniqueGroupId = savedGroupId; resumeGroupSession(); }
 };
 
-// 💡 追加：コメント記入欄の表示非表示切り替え関数
+// 💡 追加：管理履歴リストをローカルストレージから読み込んで描画する関数
+function renderHistoryList() {
+    const historyData = localStorage.getItem(historyStorageKey);
+    const historyList = historyData ? JSON.parse(historyData) : [];
+    const container = document.getElementById('historyContainer');
+    const area = document.getElementById('historyListArea');
+    
+    if (historyList.length === 0) {
+        container.style.display = 'none';
+        return;
+    }
+    
+    container.style.display = 'block';
+    let html = "";
+    historyList.forEach(item => {
+        html += `
+            <div class="history-item">
+                <div class="history-link" onclick="loadFromHistory('${item.id}')">
+                    🎤 ${item.title}
+                    <span class="history-code">コード: ${item.id}</span>
+                </div>
+                <button class="btn-danger-sm" style="padding: 4px 6px; font-size:10px;" onclick="removeFromHistoryList('${item.id}', event)">❌</button>
+            </div>
+        `;
+    });
+    area.innerHTML = html;
+}
+
+// 💡 追加：作成・ログインに成功したイベントを履歴に保存（重複排除）
+function saveToHistoryList(id, title) {
+    if (!id || !title) return;
+    const historyData = localStorage.getItem(historyStorageKey);
+    let historyList = historyData ? JSON.parse(historyData) : [];
+    
+    // 既存の同じIDがあれば削除して、常に最新が上（または上書き）になるように調整
+    historyList = historyList.filter(item => item.id !== id);
+    historyList.unshift({ id: id, title: title });
+    
+    localStorage.setItem(historyStorageKey, JSON.stringify(historyList));
+    renderHistoryList();
+}
+
+// 💡 追加：履歴から特定のイベントを非表示（削除）にする処理
+function removeFromHistoryList(id, event) {
+    event.stopPropagation(); // 親要素のクリックイベント発火を防止
+    if (!confirm("このイベントを履歴から削除しますか？\n（Firebase上のデータは削除されません）")) return;
+    
+    const historyData = localStorage.getItem(historyStorageKey);
+    if (!historyData) return;
+    let historyList = JSON.parse(historyData);
+    historyList = historyList.filter(item => item.id !== id);
+    
+    localStorage.setItem(historyStorageKey, JSON.stringify(historyList));
+    renderHistoryList();
+    
+    // 今開いているイベントを消した場合は初期画面に戻す
+    if (uniqueGroupId === id) {
+        clearKanjiState();
+    }
+}
+
+// 💡 追加：履歴から選んでイベント部屋をロードする
+function loadFromHistory(id) {
+    uniqueGroupId = id;
+    localStorage.setItem(kanjiStorageKey, uniqueGroupId);
+    isFirstDescriptionLoad = true;
+    resumeGroupSession();
+}
+
+// 💡 追加：メイン画面からメニュー（履歴画面）へ安全に一時離脱するボタン用の関数
+function exitToMainMenu() {
+    if (unsubscribeMembers) unsubscribeMembers();
+    if (unsubscribeStatus) unsubscribeStatus();
+    localStorage.removeItem(kanjiStorageKey); // アクティブ状態を外す
+    uniqueGroupId = "";
+    document.getElementById('roomsSetupContainer').innerHTML = "";
+    document.getElementById('resultInside').innerHTML = '';
+    document.getElementById('step2_mainDashboard').style.display = 'none';
+    document.getElementById('step1_connection').style.display = 'block';
+    renderHistoryList();
+}
+
 function toggleDescriptionArea() {
     const container = document.getElementById('descriptionCardContainer');
     if (container.style.display === 'none') {
@@ -190,7 +286,7 @@ function applyTemplate(type) {
     }
 
     if (type === 'karaoke') {
-        textarea.value = `【日時】 月 日()  : 〜 : \n【場所】店\n【会費】円（ドリンクバー込み）\n【締め切り】 月 日まで\n【備考・コメント】\n途中退席される方は幹事までご連絡ください。`;
+        textarea.value = `【日時】 月 日()  : 〜 : \n【場所】店\n【会費】円（ドリンクバー込み）\n【締め切り】 月 日まで\n【備考・コメント】\n途中退世紀される方は幹事までご連絡ください。`;
     } else if (type === 'nijikai') {
         textarea.value = `【日時】 月 日()  : ~\n【場所】\n【会費】\n【締め秒読み】 月 日中まで\n【備考・コメント】\n遅刻しそうな場合は一言書き込みをお願いします！`;
     }
@@ -248,7 +344,12 @@ function createNewGroupSession() {
         description: "", 
         roomsSetup: [{ id: initialRoomId, name: "101号室", capacity: 5, model: "DAM", memo: "", members: [] }],
         currentResult: null, status: "active", createdAt: firebase.firestore.FieldValue.serverTimestamp()
-    }).then(() => { localStorage.setItem(kanjiStorageKey, uniqueGroupId); isFirstDescriptionLoad = true; resumeGroupSession(); });
+    }).then(() => { 
+        localStorage.setItem(kanjiStorageKey, uniqueGroupId); 
+        saveToHistoryList(uniqueGroupId, groupDisplayName); // 💡 履歴へ追加
+        isFirstDescriptionLoad = true; 
+        resumeGroupSession(); 
+    });
 }
 
 function joinExistingGroupSession() {
@@ -256,7 +357,11 @@ function joinExistingGroupSession() {
     if (!inputCode) return;
     db.collection("multigroups").doc(inputCode).get().then(doc => {
         if (doc.exists && doc.data().status !== "reset") {
-            uniqueGroupId = inputCode; localStorage.setItem(kanjiStorageKey, uniqueGroupId); isFirstDescriptionLoad = true; resumeGroupSession();
+            uniqueGroupId = inputCode; 
+            localStorage.setItem(kanjiStorageKey, uniqueGroupId); 
+            saveToHistoryList(uniqueGroupId, doc.data().title); // 💡 履歴へ追加
+            isFirstDescriptionLoad = true; 
+            resumeGroupSession();
         } else { alert("有効なコードが見つかりません。"); }
     });
 }
@@ -273,13 +378,17 @@ function resumeGroupSession() {
         document.getElementById('step1_connection').style.display = 'none';
         document.getElementById('step2_mainDashboard').style.display = 'block';
         document.getElementById('activeGroupName').innerText = groupDisplayName;
+        
+        saveToHistoryList(uniqueGroupId, groupDisplayName); // 💡 同期を兼ねて履歴を最新に
 
         if (isFirstDescriptionLoad) {
             document.getElementById('eventDescriptionInput').value = data.description || "";
             isFirstDescriptionLoad = false;
         }
 
-        if (document.getElementById('roomsSetupContainer').children.length === 0) {
+        // 重複描画を防ぐため一旦クリアしてから追加
+        const container = document.getElementById('roomsSetupContainer');
+        if (container.children.length === 0) {
             cachedRoomsSetup.forEach(r => addRoomRowSetup(r.id, r.name, r.capacity, r.model, r.memo));
         }
         syncAndRenderRooms(data.currentResult);
@@ -296,7 +405,6 @@ function resumeGroupSession() {
             
             let stColor = m.status === "⭕参加" ? "background:#e2f0d9;color:#385723;" : (m.status === "🔺未確定" ? "background:#fff3cd;color:#856404;" : "background:#f8d7da;color:#721c24;");
             
-            // 💡 追加：会計ステータス（未・済）の切り替えボタン生成
             const isPaid = (m.paymentStatus === "済");
             const payClass = isPaid ? "pay-paid" : "pay-unpaid";
             const payText = isPaid ? "💰 領収" : "💸 未収";
@@ -317,7 +425,6 @@ function resumeGroupSession() {
     });
 }
 
-// 💡 追加：会計ステータスをデータベース上で切り替える関数
 function togglePaymentStatus(memberName, currentStatus) {
     const nextStatus = (currentStatus === "済") ? "未" : "済";
     db.collection("multigroups").doc(uniqueGroupId).collection("members").doc(memberName).update({
@@ -393,6 +500,7 @@ function syncAndRenderRooms(dbRooms) {
                 if (oldRoom.id === "special_unconfirmed") unconfirmed.members = unconfirmed.members.concat(validM);
                 if (oldRoom.id === "special_left_home") leftHome.members = leftHome.members.concat(validM);
             }
+        OldRoom.id === "special_not_arrived" ? notArrived.members = notArrived.members.concat(validM) : null;
         });
     }
 
@@ -546,6 +654,7 @@ function executeSmartShuffle() {
 }
 
 function clearKanjiState() {
+    // 💡 該当イベントの履歴データ自体は履歴リスト側に残し、アクティブIDだけを消去
     localStorage.removeItem(kanjiStorageKey);
     if (unsubscribeMembers) unsubscribeMembers();
     if (unsubscribeStatus) unsubscribeStatus();
@@ -554,14 +663,25 @@ function clearKanjiState() {
     document.getElementById('resultInside').innerHTML = '';
     document.getElementById('step2_mainDashboard').style.display = 'none';
     document.getElementById('step1_connection').style.display = 'block';
+    renderHistoryList(); // メニューに戻る際に履歴を再描画
 }
 
 async function resetCurrentEvent() {
-    if (!confirm("完全にデータを削除して解散しますか？")) return;
+    if (!confirm("完全にデータを削除して解散しますか？\n(この操作をすると、他の幹事や参加者もアクセスできなくなります)")) return;
     try {
-        await db.collection("multigroups").doc(uniqueGroupId).update({ currentResult: null, status: "reset" });
-        const snapshot = await db.collection("multigroups").doc(uniqueGroupId).collection("members").get();
+        const targetId = uniqueGroupId;
+        await db.collection("multigroups").doc(targetId).update({ currentResult: null, status: "reset" });
+        const snapshot = await db.collection("multigroups").doc(targetId).collection("members").get();
         const batch = db.batch(); snapshot.forEach(doc => batch.delete(doc.ref)); await batch.commit();
+        
+        // 💡 イベント自体が消滅したため、管理履歴リストからも自動排除する
+        const historyData = localStorage.getItem(historyStorageKey);
+        if (historyData) {
+            let historyList = JSON.parse(historyData);
+            historyList = historyList.filter(item => item.id !== targetId);
+            localStorage.setItem(historyStorageKey, JSON.stringify(historyList));
+        }
+        
         clearKanjiState(); alert("🧹 初期化しました");
     } catch (e) { alert(e); }
 }
