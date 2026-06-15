@@ -1,0 +1,716 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>カラオケ演奏停止 ゼロ・ターゲット・レース EXTRA</title>
+    <style>
+        :root {
+            --bg-color: #0d1117;
+            --panel-bg: #161b22;
+            --panel-border: #30363d;
+            --accent-color: #58a6ff;
+            --active-blue: #00d2ff;
+            --text-color: #c9d1d9;
+            --team1-color: #ff4d4d;
+            --team2-color: #2ea44f;
+            --perfect-color: #ffea00;
+            --near-color: #00ffaa;
+        }
+
+        *, *::before, *::after {
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Helvetica Neue', Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 20px;
+            padding-bottom: 100px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            text-align: center;
+            color: #ffffff;
+            text-shadow: 0 0 15px rgba(88, 166, 255, 0.6);
+            margin-bottom: 5px;
+        }
+
+        .sub-title-game {
+            text-align: center;
+            color: #8b949e;
+            margin-bottom: 30px;
+            font-size: 1.1rem;
+            letter-spacing: 1px;
+        }
+
+        /* トグルボタンエリア */
+        .button-group-top {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+        }
+
+        .toggle-btn {
+            background: #21262d;
+            color: #c9d1d9;
+            border: 1px solid var(--panel-border);
+            padding: 10px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: 0.2s;
+        }
+        .toggle-btn:hover {
+            background: #30363d;
+        }
+
+        /* 設定セクション */
+        .config-section {
+            background: var(--panel-bg);
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 25px;
+            border: 1px solid var(--panel-border);
+        }
+        .config-section.hidden {
+            display: none;
+        }
+
+        .config-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 15px;
+        }
+
+        .config-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .config-group label {
+            font-size: 0.85rem;
+            margin-bottom: 5px;
+            color: #8b949e;
+        }
+
+        .config-group input {
+            background: #0d1117;
+            border: 1px solid var(--panel-border);
+            color: white;
+            padding: 8px;
+            border-radius: 6px;
+            font-size: 1rem;
+        }
+        .config-group input:focus {
+            border-color: var(--accent-color);
+            outline: none;
+        }
+
+        /* ルール・説明セクション */
+        .rule-section {
+            background: rgba(88, 166, 255, 0.05);
+            border: 1px solid var(--panel-border);
+            padding: 20px;
+            margin-bottom: 25px;
+            border-radius: 8px;
+        }
+        .rule-section.hidden {
+            display: none;
+        }
+
+        .rule-explanation-box {
+            font-size: 1.1rem;
+            line-height: 1.8;
+            color: #ecf2f8;
+        }
+
+        .rule-sub-title {
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: var(--accent-color);
+            margin-top: 15px;
+            margin-bottom: 5px;
+            border-bottom: 1px solid var(--panel-border);
+            padding-bottom: 5px;
+        }
+
+        /* タイマーセクション */
+        .timer-section {
+            background: #161b22;
+            border: 1px solid var(--panel-border);
+            text-align: center;
+            padding: 25px;
+            border-radius: 12px;
+            margin-bottom: 25px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+        }
+
+        .timer-screen-box {
+            background: #0d1117;
+            border: 2px solid var(--panel-border);
+            border-radius: 8px;
+            padding: 20px 10px;
+            margin: 15px auto;
+            width: 100%;
+            min-height: 140px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            transition: all 0.3s;
+            overflow: hidden;
+        }
+
+        .timer-screen-hidden {
+            background: #000000 !important;
+            border-color: #555 !important;
+        }
+        .timer-screen-hidden #timer-display {
+            display: none !important;
+        }
+        .timer-screen-hidden::after {
+            content: "🔒 タイマー非表示中 (自動隠蔽発動中)";
+            color: #ff9e3b;
+            font-size: 1.5rem;
+            font-weight: bold;
+            letter-spacing: 1px;
+        }
+
+        #timer-display {
+            font-size: clamp(2.5rem, 8vw, 5rem);
+            font-family: 'Courier New', Courier, monospace;
+            font-weight: bold;
+            color: #58a6ff;
+            text-shadow: 0 0 20px rgba(88, 166, 255, 0.5);
+            letter-spacing: 2px;
+            white-space: nowrap;
+        }
+
+        .btn {
+            background: #238636;
+            color: white;
+            border: none;
+            padding: 14px 35px;
+            font-size: 1.1rem;
+            font-weight: bold;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+            margin: 5px;
+        }
+
+        .btn:hover {
+            opacity: 0.9;
+            transform: scale(1.02);
+        }
+
+        .btn-stop { background: #da3637; }
+        .btn-stop:disabled { background: #552222; color: #888; cursor: not-allowed; transform: none; }
+        .btn-reset { background: #21262d; border: 1px solid var(--panel-border); color: #c9d1d9; }
+        
+        .btn-blind { background: #4f5d75; color: white; font-size: 0.95rem; padding: 8px 20px; }
+
+        /* チームセクション */
+        .game-boards {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        @media (max-width: 768px) {
+            .game-boards { grid-template-columns: 1fr; }
+        }
+
+        .team-board {
+            background: var(--panel-bg);
+            padding: 20px;
+            border-radius: 8px;
+            border: 1px solid var(--panel-border);
+        }
+
+        .team-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 2px solid var(--panel-border);
+            padding-bottom: 10px;
+            margin-bottom: 15px;
+        }
+
+        .team-title { font-size: 1.6rem; font-weight: bold; }
+        .team-score { font-size: 1.8rem; font-weight: bold; color: #ffea00; }
+
+        /* プレイヤー選択枠 */
+        .member-row {
+            display: grid;
+            grid-template-columns: 2fr 1.6fr 1.2fr 1.4fr;
+            gap: 8px;
+            align-items: center;
+            margin-bottom: 12px;
+            background: #0d1117;
+            padding: 10px;
+            border-radius: 6px;
+            border: 2px solid transparent;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .member-row.selected-player {
+            border-color: var(--active-blue);
+            box-shadow: 0 0 12px rgba(0, 210, 255, 0.6);
+            background: #121e2e;
+        }
+
+        .member-row input[type="text"], .member-row input[type="number"] {
+            background: #161b22;
+            border: 1px solid var(--panel-border);
+            color: white;
+            padding: 8px;
+            border-radius: 4px;
+            width: 100%;
+            font-size: 0.95rem;
+        }
+        .member-row input:focus { outline: none; }
+
+        .result-diff { font-weight: bold; text-align: center; font-size: 0.95rem; }
+        .result-score { font-weight: bold; text-align: center; font-size: 1.0rem; white-space: nowrap; }
+
+        /* 特殊点数の色分け */
+        .perfect-text { color: var(--perfect-color) !important; text-shadow: 0 0 8px rgba(255,234,0,0.6); }
+        .near-text { color: var(--near-color) !important; text-shadow: 0 0 5px rgba(0,255,170,0.4); }
+        .minus-text { color: var(--team1-color) !important; }
+        .plus-text { color: var(--accent-color) !important; }
+
+        .add-member-btn {
+            background: transparent;
+            color: #8b949e;
+            border: 1px dashed var(--panel-border);
+            width: 100%;
+            padding: 10px;
+            cursor: pointer;
+            border-radius: 6px;
+            margin-top: 10px;
+            font-weight: bold;
+            transition: 0.2s;
+        }
+        .add-member-btn:hover { background: rgba(255,255,255,0.03); color: white; border-color: #8b949e; }
+
+        /* 結果発表セクション */
+        .result-trigger-section {
+            text-align: center;
+            margin-top: 40px;
+        }
+        .btn-result {
+            background: linear-gradient(135deg, #ffea00, #ff9e3b);
+            color: #000;
+            font-size: 1.5rem;
+            padding: 15px 50px;
+            border-radius: 30px;
+            box-shadow: 0 0 20px rgba(255, 234, 0, 0.4);
+        }
+
+        /* ポップアップ演出 */
+        .overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.9);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            padding: 15px;
+        }
+        .modal {
+            background: #161b22;
+            border: 3px solid var(--accent-color);
+            border-radius: 15px;
+            padding: 30px;
+            text-align: center;
+            width: 100%;
+            max-width: 650px;
+            box-shadow: 0 0 40px rgba(88,166,255,0.6);
+            animation: pop 0.3s ease-out;
+        }
+        @keyframes pop {
+            0% { transform: scale(0.8); opacity: 0; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        
+        .modal-winner-title {
+            font-size: clamp(1.8rem, 5vw, 2.8rem); 
+            font-weight: bold;
+            margin: 0 0 20px 0;
+            white-space: nowrap;
+        }
+        
+        .modal-scores {
+            display: flex;
+            justify-content: space-around;
+            margin: 20px 0;
+            font-size: 1.3rem;
+            background: #0d1117;
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid var(--panel-border);
+        }
+
+        .winner-team-members-box {
+            text-align: left;
+            background: rgba(255,255,255,0.03);
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 15px;
+            border-left: 4px solid var(--perfect-color);
+        }
+        .winner-team-members-box h4 {
+            margin: 0 0 10px 0;
+            color: var(--perfect-color);
+            font-size: 1.1rem;
+        }
+        .winner-member-list {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 5px 15px;
+            font-size: 1rem;
+            color: #ecf2f8;
+        }
+
+        .close-modal {
+            background: #21262d; border: 1px solid var(--panel-border);
+            color: white; padding: 12px 30px; border-radius: 6px;
+            margin-top: 25px; cursor: pointer; font-weight: bold; font-size: 1rem;
+        }
+        .close-modal:hover { background: #30363d; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>🎤 歌時計カラオケ</h1>
+    <div class="sub-title-game">〜 タイム相殺レース 〜</div>
+
+    <div class="button-group-top">
+        <button class="toggle-btn" onclick="toggleConfig()">🛠️ 設定の表示/非表示</button>
+        <button class="toggle-btn" onclick="toggleRules()">📖 ルール説明の表示/非表示</button>
+    </div>
+
+    <div class="config-section hidden" id="config-panel">
+        <h3>🛠️ ルール・条件設定</h3>
+        <div class="config-grid">
+            <div class="config-group">
+                <label>設定秒数 (秒)</label>
+                <input type="number" id="cfg-target-sec" value="120" step="1" oninput="updateRules()">
+            </div>
+            <div class="config-group">
+                <label>自動隠蔽タイミング (目標の何秒前か)</label>
+                <input type="number" id="cfg-stealth-before" value="90" oninput="updateRules()">
+            </div>
+        </div>
+    </div>
+
+    <div class="rule-section" id="rule-panel">
+        <div class="rule-explanation-box">
+            <div class="rule-sub-title">📋 ゲーム進行の流れ</div>
+            1. 下のチーム表から、これから挑戦するプレイヤーの枠をタップ（<b>青枠化</b>）します。<br>
+            2. 「<b>歌い出しスタート</b>」を押し、体内時計で測って「<b>演奏停止</b>」を押します。
+
+            <div class="rule-sub-title">🎮 限界相殺ルールの配点</div>
+            <div id="rule-text"></div>
+        </div>
+    </div>
+
+    <div class="timer-section">
+        <h3>⏱️ 歌唱タイマー画面</h3>
+        <div class="timer-screen-box" id="timer-box">
+            <div id="timer-display">00:00.00</div>
+        </div>
+        <button class="btn btn-blind" id="btn-toggle-blind" onclick="toggleBlind()">🙈 手動でタイム表示を隠す / 見せる</button>
+        <hr style="border:0; border-top:1px solid var(--panel-border); margin:20px 0;">
+        <button class="btn" id="btn-start" onclick="startTimer()">歌い出しスタート</button>
+        <button class="btn btn-stop" id="btn-stop" onclick="stopTimer()" disabled>演奏停止</button>
+        <button class="btn btn-reset" onclick="resetTimer()">リセット</button>
+    </div>
+
+    <div class="game-boards">
+        <div class="team-board" id="team1-board">
+            <div class="team-header">
+                <div class="team-title" style="color:var(--team1-color);">紅組</div>
+                <div class="team-score">TOTAL差: <span id="team1-total">0.0</span>秒</div>
+            </div>
+            <div id="team1-members"></div>
+            <button class="add-member-btn" onclick="addMemberRow('team1')">+ メンバーを追加</button>
+        </div>
+
+        <div class="team-board" id="team2-board">
+            <div class="team-header">
+                <div class="team-title" style="color:var(--team2-color);">白組</div>
+                <div class="team-score">TOTAL差: <span id="team2-total">0.0</span>秒</div>
+            </div>
+            <div id="team2-members"></div>
+            <button class="add-member-btn" onclick="addMemberRow('team2')">+ メンバーを追加</button>
+        </div>
+    </div>
+
+    <div class="result-trigger-section">
+        <button class="btn btn-result" onclick="announceWinner()">🏆 最終結果発表 🏆</button>
+    </div>
+</div>
+
+<div class="overlay" id="result-overlay">
+    <div class="modal" id="result-modal">
+        <div class="modal-winner-title" id="modal-winner-title">勝者発表</div>
+        <div class="modal-scores">
+            <div style="color:var(--team1-color); font-weight:bold;">紅組 最終差: <span id="modal-team1-final"></span>秒</div>
+            <div style="color:var(--team2-color); font-weight:bold;">白組 最終差: <span id="modal-team2-final"></span>秒</div>
+        </div>
+        <div class="winner-team-members-box" id="winner-members-box" style="display:none;">
+            <h4 id="winner-box-title">👑 勝利チームメンバー一覧</h4>
+            <div class="winner-member-list" id="modal-winner-list"></div>
+        </div>
+        <button class="close-modal" onclick="closeModal()">閉じる</button>
+    </div>
+</div>
+
+<script>
+    let startTime;
+    let elapsedTime = 0;
+    let timerInterval;
+    let selectedPlayerRowId = null; 
+    let memberCounter = 0;
+    let manualBlind = false;
+
+    window.onload = function() {
+        for(let i=0; i<3; i++) {
+            addMemberRow('team1');
+            addMemberRow('team2');
+        }
+        updateRules();
+    };
+
+    function toggleConfig() { document.getElementById('config-panel').classList.toggle('hidden'); }
+    function toggleRules() { document.getElementById('rule-panel').classList.toggle('hidden'); }
+    function toggleBlind() { manualBlind = !manualBlind; applyBlindState(); }
+
+    function applyBlindState(isAutoHidden = false) {
+        const box = document.getElementById('timer-box');
+        if (manualBlind || isAutoHidden) { box.classList.add('timer-screen-hidden'); } 
+        else { box.classList.remove('timer-screen-hidden'); }
+    }
+
+    function updateRules() {
+        const targetSec = parseFloat(document.getElementById('cfg-target-sec').value) || 0;
+        const stealthBefore = parseInt(document.getElementById('cfg-stealth-before').value) || 0;
+        const stealthSec = targetSec - stealthBefore;
+
+        let explanation = "";
+        explanation += `・上から順に歌っていき、チームのTOTAL差を「<strong>0.0秒</strong>」に保つリレーゲームです。<br>`;
+        explanation += `・👑 <strong>ピタリ賞 (誤差0〜0.99秒)</strong>: <span class="perfect-text"><strong>それまでのチームのズレを全消し（一撃で0秒にリセット）</strong></span><br>`;
+        explanation += `・🌟 <strong>ニアピン賞 (誤差1.0〜1.99秒)</strong>: <span class="near-text"><strong>それまでのチームのズレを「半分(50%カット)」に軽減</strong></span><br>`;
+        explanation += `・📉 <strong>通常未満 (2.00秒以上早い)</strong>: 不足秒数がそのままマイナス蓄積（例: -3.5秒）<br>`;
+        explanation += `・📈 <strong>通常超過 (2.00秒以上遅い)</strong>: 超過秒数がそのままプラス蓄積（例: +4.2秒）<br>`;
+        explanation += `・⏰ <strong>自動隠蔽</strong>: 歌い出しから <strong>${stealthSec}秒</strong> 経過するとタイマーが自動で隠れます。`;
+
+        document.getElementById('rule-text').innerHTML = explanation;
+        calculateScores();
+    }
+
+    function addMemberRow(teamId) {
+        memberCounter++;
+        const container = document.getElementById(`${teamId}-members`);
+        const rowId = `row-${memberCounter}`;
+        const teamName = teamId === 'team1' ? '紅組' : '白組';
+        
+        const rowHtml = `
+            <div class="member-row" id="${rowId}" onclick="selectPlayer('${rowId}')">
+                <input type="text" class="player-name-input" value="${teamName} P${container.children.length + 1}" onclick="event.stopPropagation()">
+                <input type="number" id="time-${rowId}" placeholder="秒数" step="0.01" oninput="calculateScores()" onclick="event.stopPropagation()">
+                <div class="result-diff" id="diff-${rowId}">-</div>
+                <div class="result-score" id="score-${rowId}">-</div>
+            </div>
+        `;
+        container.insertAdjacentHTML('beforeend', rowHtml);
+    }
+
+    function selectPlayer(rowId) {
+        document.querySelectorAll('.member-row').forEach(row => row.classList.remove('selected-player'));
+        document.getElementById(rowId).classList.add('selected-player');
+        selectedPlayerRowId = rowId;
+    }
+
+    function calculateScores() {
+        const targetSec = parseFloat(document.getElementById('cfg-target-sec').value);
+
+        ['team1', 'team2'].forEach(teamId => {
+            let currentTotal = 0.0;
+            const rows = document.getElementById(`${teamId}-members`).children;
+
+            for (let row of rows) {
+                const rowId = row.id;
+                const timeInput = document.getElementById(`time-${rowId}`);
+                const diffDiv = document.getElementById(`diff-${rowId}`);
+                const scoreDiv = document.getElementById(`score-${rowId}`);
+
+                const val = parseFloat(timeInput.value);
+
+                if (isNaN(val)) {
+                    diffDiv.innerText = "-";
+                    scoreDiv.innerText = "-";
+                    scoreDiv.className = "result-score";
+                    continue;
+                }
+
+                const diff = val - targetSec;
+                const absDiff = Math.abs(diff);
+                diffDiv.innerText = (diff >= 0 ? "+" : "") + diff.toFixed(2) + "秒";
+
+                if (absDiff < 1.0) {
+                    currentTotal = 0.0;
+                    scoreDiv.innerText = "👑 ピタリ(全消し)";
+                    scoreDiv.className = "result-score perfect-text";
+                } 
+                else if (absDiff < 2.0) {
+                    currentTotal = currentTotal / 2.0;
+                    scoreDiv.innerText = "🌟 ニアピン(半減)";
+                    scoreDiv.className = "result-score near-text";
+                } 
+                else {
+                    let playerDiff = parseFloat(diff.toFixed(1));
+                    scoreDiv.innerText = (playerDiff >= 0 ? "+" : "") + playerDiff.toFixed(1);
+                    currentTotal += playerDiff;
+                    scoreDiv.className = playerDiff < 0 ? "result-score minus-text" : "result-score plus-text";
+                }
+            }
+
+            if (Object.is(currentTotal, -0)) currentTotal = 0;
+            document.getElementById(`${teamId}-total`).innerText = (currentTotal >= 0 ? "+" : "") + currentTotal.toFixed(1);
+        });
+    }
+
+    function startTimer() {
+        startTime = Date.now() - elapsedTime;
+        timerInterval = setInterval(updateTimerDisplay, 10);
+        document.getElementById('btn-start').disabled = true;
+        document.getElementById('btn-stop').disabled = false;
+    }
+
+    function stopTimer() {
+        clearInterval(timerInterval);
+        document.getElementById('btn-start').disabled = false;
+        document.getElementById('btn-stop').disabled = true;
+
+        const box = document.getElementById('timer-box');
+        box.classList.remove('timer-screen-hidden');
+
+        const finalSeconds = (elapsedTime / 1000).toFixed(2);
+        
+        let min = Math.floor(elapsedTime / 60000);
+        let sec = Math.floor((elapsedTime % 60000) / 1000);
+        let ms = Math.floor((elapsedTime % 1000) / 10);
+        
+        document.getElementById('timer-display').innerText = `${String(min).padStart(2,'0')}:${String(sec).padStart(2,'0')}.${String(ms).padStart(2,'0')}`;
+
+        if (selectedPlayerRowId) {
+            document.getElementById(`time-${selectedPlayerRowId}`).value = finalSeconds;
+            calculateScores();
+        } else {
+            alert("プレイヤーを選択（青枠化）してから計測してください。");
+        }
+    }
+
+    function resetTimer() {
+        clearInterval(timerInterval);
+        elapsedTime = 0;
+        applyBlindState(false);
+        document.getElementById('timer-display').innerText = "00:00.00";
+        document.getElementById('btn-start').disabled = false;
+        document.getElementById('btn-stop').disabled = true;
+    }
+
+    function updateTimerDisplay() {
+        elapsedTime = Date.now() - startTime;
+        
+        const targetSec = parseFloat(document.getElementById('cfg-target-sec').value);
+        const stealthBefore = parseInt(document.getElementById('cfg-stealth-before').value) || 0;
+        const stealthTimeMs = (targetSec - stealthBefore) * 1000;
+
+        let min = Math.floor(elapsedTime / 60000);
+        let sec = Math.floor((elapsedTime % 60000) / 1000);
+        let ms = Math.floor((elapsedTime % 1000) / 10);
+
+        let isAutoHidden = false;
+        if (elapsedTime >= stealthTimeMs && stealthTimeMs > 0) { isAutoHidden = true; }
+
+        applyBlindState(isAutoHidden);
+
+        min = String(min).padStart(2, '0');
+        sec = String(sec).padStart(2, '0');
+        ms = String(ms).padStart(2, '0');
+        document.getElementById('timer-display').innerText = `${min}:${sec}.${ms}`;
+    }
+
+    function announceWinner() {
+        const t1 = parseFloat(document.getElementById('team1-total').innerText);
+        const t2 = parseFloat(document.getElementById('team2-total').innerText);
+
+        const abs1 = Math.abs(t1);
+        const abs2 = Math.abs(t2);
+
+        const modalTitle = document.getElementById('modal-winner-title');
+        const modalT1 = document.getElementById('modal-team1-final');
+        const modalT2 = document.getElementById('modal-team2-final');
+        const memberBox = document.getElementById('winner-members-box');
+        const memberListDiv = document.getElementById('modal-winner-list');
+
+        modalT1.innerText = (t1 >= 0 ? "+" : "") + t1.toFixed(1);
+        modalT2.innerText = (t2 >= 0 ? "+" : "") + t2.toFixed(1);
+        memberListDiv.innerHTML = "";
+
+        const modal = document.getElementById('result-modal');
+        let winnerTeamId = null;
+
+        if (abs1 < abs2) {
+            modalTitle.innerText = "👑 紅組の勝利！";
+            modalTitle.style.color = "var(--team1-color)";
+            modal.style.borderColor = "var(--team1-color)";
+            winnerTeamId = 'team1';
+        } else if (abs2 < abs1) {
+            modalTitle.innerText = "👑 白組の勝利！";
+            modalTitle.style.color = "var(--team2-color)";
+            modal.style.borderColor = "var(--team2-color)";
+            winnerTeamId = 'team2';
+        } else {
+            modalTitle.innerText = "🤝 引き分け！";
+            modalTitle.style.color = "#ffffff";
+            modal.style.borderColor = "var(--accent-color)";
+        }
+
+        if (winnerTeamId) {
+            memberBox.style.display = 'block';
+            const rows = document.getElementById(`${winnerTeamId}-members`).children;
+            for (let row of rows) {
+                const nameVal = row.querySelector('.player-name-input').value;
+                const scoreVal = row.querySelector('.result-score').innerText;
+                const item = document.createElement('div');
+                item.innerHTML = `👤 ${nameVal} [${scoreVal}]`;
+                memberListDiv.appendChild(item);
+            }
+        } else {
+            memberBox.style.display = 'none';
+        }
+
+        document.getElementById('result-overlay').style.display = 'flex';
+    }
+
+    function closeModal() { document.getElementById('result-overlay').style.display = 'none'; }
+</script>
+
+</body>
+</html>
