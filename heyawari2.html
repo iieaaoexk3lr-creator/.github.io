@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>カラオケ部屋割り出欠（参加者用）</title>
+    <title>スマート部屋割り（参加者用）</title>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
     <style>
@@ -36,13 +36,16 @@
         .member-container-flex { display: flex; flex-wrap: wrap; gap: 6px; }
         .member-wrapper { display: inline-block; background: #e2f0d9; color: #385723; padding: 4px 10px; border-radius: 6px; font-size: 13px; font-weight: bold; }
 
-        /* 💡 追加：出欠集計・コメント一覧用のスタイル */
         .summary-box { display: flex; justify-content: space-around; background: var(--light); padding: 10px; border-radius: 8px; margin-bottom: 12px; font-size: 14px; font-weight: bold; text-align: center; border: 1px solid #dee2e6; }
         .comment-row { padding: 10px 4px; border-bottom: 1px solid #eee; font-size: 14px; }
         .comment-row:last-child { border-bottom: none; }
         .comment-user { display: flex; justify-content: space-between; align-items: center; font-weight: bold; margin-bottom: 4px; }
         .comment-text { color: #555; font-size: 13px; white-space: pre-wrap; padding-left: 4px; line-height: 1.4; }
         .badge-status { font-size: 11px; padding: 2px 6px; border-radius: 4px; font-weight: bold; }
+
+        /* 💡 追加：開閉用のデザインスタイル */
+        .toggle-trigger-btn { display: block; width: 100%; text-align: center; padding: 10px; font-size: 14px; font-weight: bold; background: #eef2f7; color: var(--primary); border: 1px dashed var(--primary); border-radius: 8px; cursor: pointer; box-sizing: border-box; margin-bottom: 5px; }
+        .toggle-content { display: block; margin-top: 15px; }
     </style>
 </head>
 <body>
@@ -51,28 +54,34 @@
 
     <div id="eventDescriptionBoard" class="info-board" style="display: none;"></div>
 
-    <div class="card">
-        <h3 style="margin-top:0; font-size:15px; text-align:center;">📋 あなたの出欠・状況を登録</h3>
-        <input type="text" id="memberNameInput" class="input-field" placeholder="あなたの名前（ニックネーム）">
-        
-        <div class="radio-tile-group">
-            <div>
-                <input type="radio" name="userStatus" id="st_ok" value="⭕参加" class="radio-tile-input" checked>
-                <label for="st_ok" class="radio-tile-label ok">⭕ 参加</label>
-            </div>
-            <div>
-                <input type="radio" name="userStatus" id="st_hold" value="🔺未確定" class="radio-tile-input">
-                <label for="st_hold" class="radio-tile-label hold">🔺 保留</label>
-            </div>
-            <div>
-                <input type="radio" name="userStatus" id="st_ng" value="❌不参加" class="radio-tile-input">
-                <label for="st_ng" class="radio-tile-label ng">❌ 不参加</label>
-            </div>
+    <div class="card" id="attendanceCard">
+        <div id="toggleTrigger" class="toggle-trigger-btn" style="display: none;" onclick="toggleAttendanceForm()">
+            ✏️ 出欠・状況を変更する （タップで開閉）
         </div>
+        
+        <div id="attendanceFormContent" class="toggle-content">
+            <h3 style="margin-top:0; font-size:15px; text-align:center;">📋 あなたの出欠・状況を登録</h3>
+            <input type="text" id="memberNameInput" class="input-field" placeholder="あなたの名前（ニックネーム）">
+            
+            <div class="radio-tile-group">
+                <div>
+                    <input type="radio" name="userStatus" id="st_ok" value="⭕参加" class="radio-tile-input" checked>
+                    <label for="st_ok" class="radio-tile-label ok">⭕ 参加</label>
+                </div>
+                <div>
+                    <input type="radio" name="userStatus" id="st_hold" value="🔺未確定" class="radio-tile-input">
+                    <label for="st_hold" class="radio-tile-label hold">🔺 保留</label>
+                </div>
+                <div>
+                    <input type="radio" name="userStatus" id="st_ng" value="❌不参加" class="radio-tile-input">
+                    <label for="st_ng" class="radio-tile-label ng">❌ 不参加</label>
+                </div>
+            </div>
 
-        <input type="text" id="memberCommentInput" class="input-field" placeholder="一言コメント（例：遅れて参加します！、楽しみ！）" maxlength="100">
+            <input type="text" id="memberCommentInput" class="input-field" placeholder="一言コメント（例：遅れて参加します！、楽しみ！）" maxlength="100">
 
-        <button class="btn" style="background: var(--success);" onclick="submitAttendance()">送信する / 状況を更新</button>
+            <button class="btn" style="background: var(--success);" onclick="submitAttendance()">送信する / 状況を更新</button>
+        </div>
         <p id="myCurrentStatusText" style="text-align:center; font-size:12px; font-weight:bold; color:#666; margin:5px 0 0 0;"></p>
     </div>
 
@@ -125,6 +134,10 @@ function initParticipantSession() {
     if (savedName) {
         document.getElementById('memberNameInput').value = savedName;
         checkMyCurrentStatusOnServer(savedName);
+    } else {
+        // 💡 記入履歴がない場合は、切り替えボタンを隠してフォームをそのまま常時表示
+        document.getElementById('toggleTrigger').style.display = "none";
+        document.getElementById('attendanceFormContent').style.display = "block";
     }
 
     // 1. グループ全体の基本データ（タイトル・案内文・部屋割り）の監視
@@ -135,6 +148,9 @@ function initParticipantSession() {
         }
         const data = doc.data();
         document.getElementById('groupTitleHeader').innerText = "🎤 " + data.title;
+        
+        // 💡 読み込み完了後、ブラウザのタイトルタブを「会の名前」に自動変更
+        document.title = data.title;
 
         const board = document.getElementById('eventDescriptionBoard');
         if (data.description && data.description.trim() !== "") {
@@ -147,7 +163,7 @@ function initParticipantSession() {
         renderRoomsResult(data.currentResult);
     });
 
-    // 2. 💡 追加：メンバー一覧（出欠状況とコメント）のリアルタイム監視
+    // 2. メンバー一覧（出欠状況とコメント）のリアルタイム監視
     db.collection("multigroups").doc(groupId).collection("members").onSnapshot(snapshot => {
         let countOk = 0; let countHold = 0; let countNg = 0;
         let html = "";
@@ -163,7 +179,7 @@ function initParticipantSession() {
             // バッジの色分け
             let badgeStyle = m.status === "⭕参加" ? "background:#e2f0d9;color:#385723;" : (m.status === "🔺未確定" ? "background:#fff3cd;color:#856404;" : "background:#f8d7da;color:#721c24;");
             
-            // コメントが空欄のときは「(なし)」ではなくスッキリ空白、ある場合はそのまま表示
+            // コメントが空欄のときは空白、ある場合はそのまま表示
             let commentText = m.comment ? m.comment : "";
 
             html += `
@@ -196,8 +212,26 @@ function checkMyCurrentStatusOnServer(name) {
             if (m.status === "🔺未確定") document.getElementById('st_hold').checked = true;
             if (m.status === "❌不参加") document.getElementById('st_ng').checked = true;
             if (m.comment) document.getElementById('memberCommentInput').value = m.comment;
+
+            // 💡 既に登録済みの場合はフォームを閉じ、トグル用の見出しボタンを出す
+            document.getElementById('toggleTrigger').style.display = "block";
+            document.getElementById('attendanceFormContent').style.display = "none";
+        } else {
+            // 履歴はあるがサーバー側にデータがない場合
+            document.getElementById('toggleTrigger').style.display = "none";
+            document.getElementById('attendanceFormContent').style.display = "block";
         }
     });
+}
+
+// 💡 追加：登録フォームの表示非表示を切り替える関数
+function toggleAttendanceForm() {
+    const form = document.getElementById('attendanceFormContent');
+    if (form.style.display === "none") {
+        form.style.display = "block";
+    } else {
+        form.style.display = "none";
+    }
 }
 
 function submitAttendance() {
@@ -212,11 +246,16 @@ function submitAttendance() {
     db.collection("multigroups").doc(groupId).collection("members").doc(name).set({
         name: name, 
         status: status, 
-        comment: comment, // 💡 一言コメントをFirebaseへ保存
+        comment: comment,
         updatedAt: firebase.firestore.FieldValue.serverTimestamp()
     }).then(() => {
         localStorage.setItem(userStorageKey, name);
         document.getElementById('myCurrentStatusText').innerText = `あなたの登録状況: 【${status}】`;
+        
+        // 💡 登録完了後、フォームを閉じて切り替えボタンを表示する
+        document.getElementById('toggleTrigger').style.display = "block";
+        document.getElementById('attendanceFormContent').style.display = "none";
+        
         alert(`出欠状況を更新しました！`);
     });
 }
