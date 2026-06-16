@@ -43,9 +43,13 @@
         .comment-text { color: #555; font-size: 13px; white-space: pre-wrap; padding-left: 4px; line-height: 1.4; }
         .badge-status { font-size: 11px; padding: 2px 6px; border-radius: 4px; font-weight: bold; }
 
-        /* 💡 追加：開閉用のデザインスタイル */
+        /* 追加：開閉用のデザインスタイル */
         .toggle-trigger-btn { display: block; width: 100%; text-align: center; padding: 10px; font-size: 14px; font-weight: bold; background: #eef2f7; color: var(--primary); border: 1px dashed var(--primary); border-radius: 8px; cursor: pointer; box-sizing: border-box; margin-bottom: 5px; }
         .toggle-content { display: block; margin-top: 15px; }
+
+        /* 💡 独自追加：名前変更レイアウト用の調整用スタイル */
+        .name-input-container { display: flex; gap: 8px; margin-bottom: 12px; }
+        .btn-change-name { background: #6c757d; color: white; border: none; padding: 0 15px; border-radius: 8px; font-size: 13px; font-weight: bold; cursor: pointer; white-space: nowrap; }
     </style>
 </head>
 <body>
@@ -61,7 +65,11 @@
         
         <div id="attendanceFormContent" class="toggle-content">
             <h3 style="margin-top:0; font-size:15px; text-align:center;">📋 あなたの出欠・状況を登録</h3>
-            <input type="text" id="memberNameInput" class="input-field" placeholder="あなたの名前（ニックネーム）">
+            
+            <div class="name-input-container">
+                <input type="text" id="memberNameInput" class="input-field" placeholder="あなたの名前（ニックネーム）" style="margin-bottom:0;">
+                <button type="button" id="nameChangeBtn" class="btn-change-name" style="display: none;" onclick="executeNameChange()">名前変更</button>
+            </div>
             
             <div class="radio-tile-group">
                 <div>
@@ -81,6 +89,8 @@
             <input type="text" id="memberCommentInput" class="input-field" placeholder="一言コメント（例：遅れて参加します！、楽しみ！）" maxlength="100">
 
             <button class="btn" style="background: var(--success);" onclick="submitAttendance()">送信する / 状況を更新</button>
+
+            <button type="button" id="deleteMyRecordBtn" class="btn" style="background: var(--danger); font-size:13px; padding:8px; margin-top:4px; display:none;" onclick="deleteMyAttendance()">この登録を完全に削除する（間違えて登録した場合など）</button>
         </div>
         <p id="myCurrentStatusText" style="text-align:center; font-size:12px; font-weight:bold; color:#666; margin:5px 0 0 0;"></p>
     </div>
@@ -135,9 +145,11 @@ function initParticipantSession() {
         document.getElementById('memberNameInput').value = savedName;
         checkMyCurrentStatusOnServer(savedName);
     } else {
-        // 💡 記入履歴がない場合は、切り替えボタンを隠してフォームをそのまま常時表示
+        // 💡 記入履歴がない場合は、切り替えボタンや補助ボタンを隠してフォームをそのまま常時表示
         document.getElementById('toggleTrigger').style.display = "none";
         document.getElementById('attendanceFormContent').style.display = "block";
+        document.getElementById('nameChangeBtn').style.display = "none";
+        document.getElementById('deleteMyRecordBtn').style.display = "none";
     }
 
     // 1. グループ全体の基本データ（タイトル・案内文・部屋割り）の監視
@@ -213,18 +225,21 @@ function checkMyCurrentStatusOnServer(name) {
             if (m.status === "❌不参加") document.getElementById('st_ng').checked = true;
             if (m.comment) document.getElementById('memberCommentInput').value = m.comment;
 
-            // 💡 既に登録済みの場合はフォームを閉じ、トグル用の見出しボタンを出す
+            // 💡 既に登録済みの場合はフォームを閉じ、各補助ボタンを出現させる
             document.getElementById('toggleTrigger').style.display = "block";
             document.getElementById('attendanceFormContent').style.display = "none";
+            document.getElementById('nameChangeBtn').style.display = "block";
+            document.getElementById('deleteMyRecordBtn').style.display = "block";
         } else {
-            // 履歴はあるがサーバー側にデータがない場合
+            // 履歴はあるがサーバー側にデータがない場合（リセット状態）
             document.getElementById('toggleTrigger').style.display = "none";
             document.getElementById('attendanceFormContent').style.display = "block";
+            document.getElementById('nameChangeBtn').style.display = "none";
+            document.getElementById('deleteMyRecordBtn').style.display = "none";
         }
     });
 }
 
-// 💡 追加：登録フォームの表示非表示を切り替える関数
 function toggleAttendanceForm() {
     const form = document.getElementById('attendanceFormContent');
     if (form.style.display === "none") {
@@ -252,12 +267,107 @@ function submitAttendance() {
         localStorage.setItem(userStorageKey, name);
         document.getElementById('myCurrentStatusText').innerText = `あなたの登録状況: 【${status}】`;
         
-        // 💡 登録完了後、フォームを閉じて切り替えボタンを表示する
+        // 💡 登録完了後、フォームを閉じて各種ボタンをアクティブにする
         document.getElementById('toggleTrigger').style.display = "block";
         document.getElementById('attendanceFormContent').style.display = "none";
+        document.getElementById('nameChangeBtn').style.display = "block";
+        document.getElementById('deleteMyRecordBtn').style.display = "block";
         
         alert(`出欠状況を更新しました！`);
     });
+}
+
+// 💡 独自追加：自分の間違えた登録データをFirebaseおよび部屋割り内の名簿から完全に消去する関数
+async function deleteMyAttendance() {
+    const savedName = localStorage.getItem(userStorageKey);
+    if (!savedName) return;
+
+    if (!confirm(`⚠️「${savedName}」さんの登録データを完全に消去して初期状態に戻しますか？\n（すでに配置されている部屋割リストからも自動的に削除されます）`)) return;
+
+    try {
+        // 1. membersコレクションからドキュメントを完全削除
+        await db.collection("multigroups").doc(groupId).collection("members").doc(savedName).delete();
+
+        // 2. 部屋割り結果(currentResult)の配列からも名前を消し去る同期処理
+        const doc = await db.collection("multigroups").doc(groupId).get();
+        if (doc.exists && doc.data().currentResult) {
+            let rooms = doc.data().currentResult;
+            rooms.forEach(r => {
+                if (r.members) r.members = r.members.filter(m => m !== savedName);
+            });
+            await db.collection("multigroups").doc(groupId).update({ currentResult: rooms });
+        }
+
+        // 3. ローカルストレージおよび入力フォームを「未登録の初期状態」へと戻す
+        localStorage.removeItem(userStorageKey);
+        document.getElementById('memberNameInput').value = "";
+        document.getElementById('memberCommentInput').value = "";
+        document.getElementById('myCurrentStatusText').innerText = "";
+        
+        document.getElementById('toggleTrigger').style.display = "none";
+        document.getElementById('attendanceFormContent').style.display = "block";
+        document.getElementById('nameChangeBtn').style.display = "none";
+        document.getElementById('deleteMyRecordBtn').style.display = "none";
+
+        alert("登録データを完全に削除しました。正しい名前で再度お試しください。");
+    } catch(e) {
+        alert("削除処理中にエラーが発生しました: " + e);
+    }
+}
+
+// 💡 独自追加：登録済みの名前を、部屋割りデータを維持したまま変更する関数
+async function executeNameChange() {
+    const oldName = localStorage.getItem(userStorageKey);
+    const newName = document.getElementById('memberNameInput').value.trim();
+
+    if (!oldName) return;
+    if (!newName) { alert("新しい名前を入力してください。"); return; }
+    if (newName.includes('-')) { alert("名前にハイフン(-)は使用できません"); return; }
+    if (oldName === newName) { alert("名前が変更されていません。"); return; }
+
+    if (!confirm(`名前を「${oldName}」から「${newName}」に変更しますか？\n（現在の部屋割りの配置もそのまま引き継がれます）`)) return;
+
+    try {
+        // 新しい名前の重複チェック
+        const targetDoc = await db.collection("multigroups").doc(groupId).collection("members").doc(newName).get();
+        if (targetDoc.exists) {
+            alert(`⚠️「${newName}」さんは既に別の参加者が使用しています。異なる名前を入力してください。`);
+            return;
+        }
+
+        // 1. 新しい名前でドキュメントをコピー作成し、古いドキュメントを削除
+        const oldDoc = await db.collection("multigroups").doc(groupId).collection("members").doc(oldName).get();
+        if (oldDoc.exists) {
+            const currentData = oldDoc.data();
+            currentData.name = newName; // 内部のnameフィールドを上書き
+            
+            await db.collection("multigroups").doc(groupId).collection("members").doc(newName).set(currentData);
+            await db.collection("multigroups").doc(groupId).collection("members").doc(oldName).delete();
+        }
+
+        // 2. 部屋割り結果(currentResult)の配列内に存在する名前文字列を書き換える
+        const groupDoc = await db.collection("multigroups").doc(groupId).get();
+        if (groupDoc.exists && groupDoc.data().currentResult) {
+            let rooms = groupDoc.data().currentResult;
+            rooms.forEach(r => {
+                if (r.members) {
+                    r.members = r.members.map(m => m === oldName ? newName : m);
+                }
+            });
+            await db.collection("multigroups").doc(groupId).update({ currentResult: rooms });
+        }
+
+        // 3. ブラウザ側のlocalStorageの記憶を新しい名前に更新
+        localStorage.setItem(userStorageKey, newName);
+        
+        // 画面表記の同期
+        document.getElementById('myCurrentStatusText').innerText = `あなたの登録状況: 【${document.querySelector('input[name="userStatus"]:checked').value}】`;
+        
+        alert(`名前を「${newName}」に変更しました！`);
+        
+    } catch (e) {
+        alert("名前の変更処理中にエラーが発生しました: " + e);
+    }
 }
 
 function renderRoomsResult(rooms) {
