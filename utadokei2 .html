@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>カラオケ演奏停止 ゼロ・ターゲット・レース EXTRA</title>
+    <title>カラオケ演奏停止レース EXTRA</title>
     <style>
         :root {
             --bg-color: #0d1117;
@@ -102,7 +102,7 @@
             color: #8b949e;
         }
 
-        .config-group input {
+        .config-group input, .config-group select {
             background: #0d1117;
             border: 1px solid var(--panel-border);
             color: white;
@@ -110,7 +110,7 @@
             border-radius: 6px;
             font-size: 1rem;
         }
-        .config-group input:focus {
+        .config-group input:focus, .config-group select:focus {
             border-color: var(--accent-color);
             outline: none;
         }
@@ -413,6 +413,13 @@
                 <label>自動隠蔽タイミング (目標の何秒前か)</label>
                 <input type="number" id="cfg-stealth-before" value="90" oninput="updateRules()">
             </div>
+            <div class="config-group">
+                <label>スコア計算モード</label>
+                <select id="cfg-score-mode" onchange="updateRules()">
+                    <option value="offset">【相殺】早いとマイナス / 遅いとプラス</option>
+                    <option value="absolute">【累積】早いのも遅いのもすべてプラス（絶対値）</option>
+                </select>
+            </div>
         </div>
     </div>
 
@@ -508,14 +515,25 @@
     function updateRules() {
         const targetSec = parseFloat(document.getElementById('cfg-target-sec').value) || 0;
         const stealthBefore = parseInt(document.getElementById('cfg-stealth-before').value) || 0;
+        const scoreMode = document.getElementById('cfg-score-mode').value;
         const stealthSec = targetSec - stealthBefore;
 
         let explanation = "";
-        explanation += `・上から順に歌っていき、チームのTOTAL差を「<strong>0.0秒</strong>」に保つリレーゲームです。<br>`;
+        if (scoreMode === 'offset') {
+            explanation += `・上から順に歌っていき、チームのTOTAL差を「<strong>0.0秒</strong>」に保つリレーゲームです。<br>`;
+        } else {
+            explanation += `・上から順に歌っていき、チームのTOTALズレ（絶対値）をどれだけ小さく抑えられるかを競うゲームです。<br>`;
+        }
         explanation += `・👑 <strong>ピタリ賞 (誤差0〜0.99秒)</strong>: <span class="perfect-text"><strong>それまでのチームのズレを全消し（一撃で0秒にリセット）</strong></span><br>`;
         explanation += `・🌟 <strong>ニアピン賞 (誤差1.0〜1.99秒)</strong>: <span class="near-text"><strong>それまでのチームのズレを「半分(50%カット)」に軽減</strong></span><br>`;
-        explanation += `・📉 <strong>通常未満 (2.00秒以上早い)</strong>: 不足秒数がそのままマイナス蓄積（例: -3.5秒）<br>`;
-        explanation += `・📈 <strong>通常超過 (2.00秒以上遅い)</strong>: 超過秒数がそのままプラス蓄積（例: +4.2秒）<br>`;
+        
+        if (scoreMode === 'offset') {
+            explanation += `・📉 <strong>通常未満 (2.00秒以上早い)</strong>: 不足秒数がそのままマイナス蓄積（例: -3.5秒）<br>`;
+            explanation += `・📈 <strong>通常超過 (2.00秒以上遅い)</strong>: 超過秒数がそのままプラス蓄積（例: +4.2秒）<br>`;
+        } else {
+            explanation += `・📉 <strong>通常未満 (2.00秒以上早い)</strong>: 不足秒数の<strong>絶対値がプラス</strong>蓄積（例: +3.5秒）<br>`;
+            explanation += `：📈 <strong>通常超過 (2.00秒以上遅い)</strong>: 超過秒数がそのままプラス蓄積（例: +4.2秒）<br>`;
+        }
         explanation += `・⏰ <strong>自動隠蔽</strong>: 歌い出しから <strong>${stealthSec}秒</strong> 経過するとタイマーが自動で隠れます。`;
 
         document.getElementById('rule-text').innerHTML = explanation;
@@ -547,6 +565,7 @@
 
     function calculateScores() {
         const targetSec = parseFloat(document.getElementById('cfg-target-sec').value);
+        const scoreMode = document.getElementById('cfg-score-mode').value;
 
         ['team1', 'team2'].forEach(teamId => {
             let currentTotal = 0.0;
@@ -583,6 +602,12 @@
                 } 
                 else {
                     let playerDiff = parseFloat(diff.toFixed(1));
+                    
+                    // モードが「absolute(累積)」かつ、誤差がマイナス(足りない)の場合は絶対値にする
+                    if (scoreMode === 'absolute') {
+                        playerDiff = Math.abs(playerDiff);
+                    }
+
                     scoreDiv.innerText = (playerDiff >= 0 ? "+" : "") + playerDiff.toFixed(1);
                     currentTotal += playerDiff;
                     scoreDiv.className = playerDiff < 0 ? "result-score minus-text" : "result-score plus-text";
