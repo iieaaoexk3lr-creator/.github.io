@@ -3,603 +3,680 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Multi-Room Quiz Score Board</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <title>【幹事用】ID固定型スマート部屋割り</title>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@700;900&display=swap');
-        body { font-family: 'Noto+Sans+JP', sans-serif; background-color: #1a202c; color: #f7fafc; }
-        .score-hidden { filter: blur(12px); user-select: none; }
-        .glass-card { background: rgba(255, 255, 255, 0.05); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.1); }
-        .rank-1 { background: linear-gradient(135deg, #ffd700, #b8860b); color: #000; }
-        .rank-2 { background: linear-gradient(135deg, #c0c0c0, #708090); color: #000; }
-        .rank-3 { background: linear-gradient(135deg, #cd7f32, #8b4513); color: #000; }
+        :root {
+            --primary: #6f42c1;
+            --success: #28a745;
+            --info: #17a2b8;
+            --danger: #dc3545;
+            --dark: #343a40;
+            --light: #f8f9fa;
+        }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Sans-Serif; max-width: 600px; margin: 0 auto; padding: 10px; background: #e9ecef; color: #333; word-break: break-all; }
+        h1 { text-align: center; font-size: 20px; color: var(--dark); margin: 10px 0; }
+        .card { background: white; padding: 15px; border-radius: 12px; margin-bottom: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); box-sizing: border-box; }
+        
+        .btn { display: inline-flex; align-items: center; justify-content: center; background: #007bff; color: white; border: none; padding: 12px; border-radius: 8px; font-size: 15px; font-weight: bold; cursor: pointer; width: 100%; box-sizing: border-box; margin-bottom: 8px; -webkit-appearance: none; }
+        .btn-sm { padding: 6px 10px; font-size: 12px; width: auto; margin-bottom: 0; }
+        .btn-danger-sm { background: var(--danger); padding: 4px 8px; font-size: 11px; width: auto; margin-bottom: 0; border-radius: 4px; color: white; border: none; font-weight: bold; }
+        .btn-outline { background: transparent; color: #666; border: 1px solid #ccc; }
+        
+        label { display: block; font-weight: bold; font-size: 13px; margin-bottom: 5px; color: #555; text-align: left; }
+        .input-field { width: 100%; padding: 12px; font-size: 16px; box-sizing: border-box; border: 1px solid #ced4da; border-radius: 8px; margin-bottom: 12px; background: var(--light); }
+        
+        /* 💡 テンプレート用ボタンスタイル */
+        .template-btn-group { display: flex; gap: 8px; margin-bottom: 8px; flex-wrap: wrap; }
+        .btn-tmpl { background: #6c757d; color: white; font-size: 11px; padding: 4px 8px; border-radius: 4px; border: none; cursor: pointer; font-weight: bold; }
+        .btn-tmpl:hover { background: #5a6268; }
+
+        .tab-container { display: flex; background: #dee2e6; border-radius: 8px; padding: 4px; margin-bottom: 15px; box-sizing: border-box; }
+        .tab-btn { flex: 1; border: none; background: transparent; padding: 10px; font-size: 13px; font-weight: bold; color: #555; cursor: pointer; text-align: center; border-radius: 6px; min-width: 0; white-space: nowrap; }
+        .tab-btn.active { background: white; color: var(--primary); box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+
+        .room-row { background: var(--light); padding: 12px; border-radius: 8px; margin-bottom: 10px; border: 1px solid #dee2e6; position: relative; box-sizing: border-box; }
+        .room-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 8px; }
+        .room-box-result { border-left: 4px solid var(--primary); background: #fff; padding: 12px; margin-bottom: 10px; border-radius: 0 8px 8px 0; box-shadow: 0 1px 3px rgba(0,0,0,0.05); box-sizing: border-box; }
+        .room-title-bar { display: flex; justify-content: space-between; align-items: center; font-weight: bold; font-size: 14px; border-bottom: 1px dashed #eee; padding-bottom: 4px; margin-bottom: 8px; color: #495057; flex-wrap: wrap; gap: 4px; }
+        
+        .member-container-flex { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+        .member-wrapper { display: inline-flex; align-items: center; background: #e2f0d9; color: #385723; padding: 4px 8px; border-radius: 6px; font-size: 13px; font-weight: bold; max-width: 100%; box-sizing: border-box; }
+        .member-name-span { max-width: 80px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .move-select { background: transparent; border: none; font-size: 11px; color: #007bff; margin-left: 3px; font-weight: bold; outline: none; padding-right: 2px; }
+        
+        .member-list-item { display: flex; justify-content: space-between; align-items: center; background: var(--light); padding: 10px; border-radius: 8px; margin-bottom: 6px; border: 1px solid #dee2e6; font-size: 14px; font-weight: bold; box-sizing: border-box; }
+        .st-indicator { font-size: 11px; padding: 2px 6px; border-radius: 4px; margin-left: 6px; font-weight: normal; }
+
+        /* 💡 追加：会計バッジ用のスタイル */
+        .pay-btn { font-size: 11px; padding: 3px 8px; border-radius: 4px; font-weight: bold; border: 1px solid #ccc; cursor: pointer; margin-left: 6px; }
+        .pay-unpaid { background: #fff; color: var(--danger); border-color: var(--danger); }
+        .pay-paid { background: var(--success); color: white; border-color: var(--success); }
+
+        .status-header { background: #e2e3e5; padding: 10px; border-radius: 8px; font-size: 13px; margin-bottom: 15px; text-align: center; font-weight: bold; box-sizing: border-box; }
+        .badge-code { background: #fff; padding: 4px 8px; border-radius: 4px; font-family: monospace; color: var(--danger); font-size: 13px; border: 1px solid #ccc; max-width: 100%; display: inline-block; overflow: hidden; text-overflow: ellipsis; }
+        hr { border: 0; border-top: 1px dashed #ccc; margin: 15px 0; }
+
+        /* 💡 追加：管理履歴リスト用のスタイル */
+        .history-list { margin-top: 15px; text-align: left; }
+        .history-item { display: flex; justify-content: space-between; align-items: center; padding: 10px; background: var(--light); border: 1px solid #ced4da; border-radius: 8px; margin-bottom: 8px; font-size: 14px; }
+        .history-link { font-weight: bold; color: var(--primary); cursor: pointer; text-decoration: none; flex-grow: 1; margin-right: 10px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .history-code { font-size: 11px; color: #666; font-weight: normal; display: block; }
     </style>
 </head>
-<body class="p-4 md:p-8">
-    <div class="max-w-7xl mx-auto">
+<body>
+
+    <datalist id="modelOptions"><option value="DAM"><option value="JOYSOUND"></datalist>
+    <datalist id="capacityOptions"><option value="5"><option value="8"><option value="10"><option value="15"><option value="20"></datalist>
+    <datalist id="memoOptions"><option value="企画部屋"><option value="アニソン部屋"><option value="懐メロ部屋"><option value="休憩部屋"><option value="着替え部屋"></datalist>
+
+    <h1>🔑 部屋割り管理室（幹事用）</h1>
+
+    <div id="step1_connection" class="card">
+        <h3 style="margin-top:0; text-align:center; font-size:16px;">イベント管理室への入室</h3>
+        <input type="text" id="groupNameInput" class="input-field" placeholder="例: カラオケサークル集会">
+        <button class="btn" style="background: var(--primary);" onclick="createNewGroupSession()">👥 新規グループ部屋を作成</button>
+        <div style="text-align: center; color: #888; font-size: 12px; margin: 10px 0;">ー または ー</div>
+        <input type="text" id="existingCodeInput" class="input-field" placeholder="コードを貼り付け">
+        <button class="btn" style="background: var(--info);" onclick="joinExistingGroupSession()">🔑 コードでログイン</button>
         
-        <div id="loginScreen" class="bg-gray-800/90 border border-gray-700 rounded-3xl p-6 max-w-md mx-auto my-20 shadow-2xl">
-            <h2 class="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-400 text-center mb-6">クイズルーム入室</h2>
-            <div class="space-y-4">
-                <div>
-                    <label class="block text-sm text-gray-400 mb-1">部屋名</label>
-                    <input type="text" id="roomInput" value="room1" class="w-full bg-gray-700 text-white px-4 py-2 rounded-xl font-bold border border-gray-600 focus:outline-none focus:border-blue-500">
-                </div>
-                <div>
-                    <label class="block text-sm text-gray-400 mb-1">あなたの個人名</label>
-                    <input type="text" id="userInput" placeholder="例：タロウ" class="w-full bg-gray-700 text-white px-4 py-2 rounded-xl font-bold border border-gray-600 focus:outline-none focus:border-blue-500">
-                </div>
-                <button onclick="joinRoom()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl transition-all shadow">入室する</button>
-            </div>
-        </div>
-
-        <div id="mainContent" class="hidden">
-            <div class="mb-6 flex flex-wrap justify-between items-center gap-4">
-                <div class="flex flex-wrap items-center gap-3">
-                    <a href="6gatu.html" class="bg-gray-800 hover:bg-gray-700 border border-gray-700 px-4 py-1.5 rounded-lg text-sm font-bold transition-all text-gray-300">🏠 メニューへ</a>
-                    <span class="bg-blue-900/60 text-blue-300 border border-blue-700 px-3 py-1 rounded-full text-sm font-bold">部屋: <span id="currentRoomLabel">-</span></span>
-                    <span class="bg-green-900/60 text-green-300 border border-green-700 px-3 py-1 rounded-full text-sm font-bold">ユーザー: <span id="currentUserLabel">-</span></span>
-                    <span class="bg-purple-900/60 text-purple-300 border border-purple-700 px-3 py-1 rounded-full text-sm font-bold flex items-center gap-2">
-                        👥 現在人数: <span id="activeOnlineCount">0</span> 名
-                        <button onclick="syncOnlineStatus()" class="bg-purple-700 hover:bg-purple-600 text-white text-xs px-2 py-0.5 rounded-md font-bold transition-all ml-1">🔄 更新</button>
-                    </span>
-                </div>
-                <div class="flex items-center gap-2">
-                    <input type="password" id="adminKeyInput" placeholder="管理キーを入力" class="bg-gray-800 text-white px-4 py-1.5 rounded-lg border border-gray-700 text-sm focus:outline-none focus:border-blue-500">
-                    <button id="authBtn" class="bg-gray-700 hover:bg-gray-600 px-4 py-1.5 rounded-lg text-sm font-bold transition-all">ログイン</button>
-                </div>
-            </div>
-
-            <div id="adminPanel" class="hidden bg-gray-800/80 border-2 border-blue-500 rounded-3xl p-6 mb-10 shadow-2xl">
-                <h2 class="text-2xl font-black text-blue-400 mb-4">🛠️ クイズ管理者パネル</h2>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div class="border border-gray-700 p-4 rounded-xl">
-                        <p class="text-sm text-gray-400 mb-2">1. スプレッドシートから書き出したCSVを選択</p>
-                        <input type="file" id="csvFile" accept=".csv" class="block w-full text-sm text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-600 file:text-white hover:file:bg-blue-700 cursor-pointer">
-                    </div>
-                    <div class="border border-gray-700 p-4 rounded-xl flex flex-col justify-between">
-                        <div>
-                            <p class="text-sm text-gray-400">2. 問題の進行コントロール</p>
-                            <p class="text-lg font-bold text-yellow-400 mt-1">現在の読込数: <span id="quizTotalCount">0</span> 問</p>
-                        </div>
-                        <div class="flex gap-2 mt-4">
-                            <button onclick="nextQuestion(-1)" class="bg-gray-700 hover:bg-gray-600 px-4 py-2 rounded-xl font-bold text-sm">◀ 前の問題</button>
-                            <button onclick="nextQuestion(1)" class="bg-blue-600 hover:bg-blue-700 flex-1 py-2 rounded-xl font-bold text-sm text-white">次を出題 ▶</button>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="mt-4 flex flex-wrap gap-4 border-t border-gray-700 pt-4">
-                    <button id="toggleScores" class="bg-red-600 hover:bg-red-700 px-4 py-2 rounded-xl text-sm font-bold shadow">スコア表示の切替</button>
-                    <button onclick="setHintStateAdmin('small')" class="bg-amber-600 hover:bg-amber-700 px-4 py-2 rounded-xl text-sm font-bold shadow">💡 小ヒント表示</button>
-                    <button onclick="setHintStateAdmin('large')" class="bg-orange-600 hover:bg-orange-700 px-4 py-2 rounded-xl text-sm font-bold shadow">💡 大ヒント表示</button>
-                    <button onclick="setHintStateAdmin('none')" class="bg-gray-600 hover:bg-gray-700 px-4 py-2 rounded-xl text-sm font-bold shadow">❌ ヒント非表示</button>
-                    <button onclick="toggleShowAnswerAdmin()" class="bg-teal-600 hover:bg-teal-700 px-4 py-2 rounded-xl text-sm font-bold shadow">👁️ 答えを表示/非表示</button>
-                    <button onclick="resetAllScores()" class="bg-gray-900 border border-red-800 px-4 py-2 rounded-xl text-sm font-bold text-red-400">全スコアリセット</button>
-                </div>
-
-                <div class="mt-6 border-t border-gray-700 pt-4">
-                    <h3 class="text-lg font-bold text-purple-400 mb-2">📝 全員の回答履歴（リアルタイム救済システム）</h3>
-                    <div class="max-h-60 overflow-y-auto bg-black/40 rounded-xl p-4 text-sm space-y-2" id="adminHistoryLog">
-                        </div>
-                </div>
-            </div>
-
-            <div class="bg-gray-800/40 border border-gray-700 rounded-3xl p-6 mb-6 shadow-xl grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                    <h3 class="text-lg font-bold text-emerald-400 mb-2">🚩 新しいチームを作る (リーダー用)</h3>
-                    <div class="flex gap-2">
-                        <input type="text" id="newTeamInput" placeholder="チーム名を入力" class="bg-gray-700 text-white px-4 py-2 rounded-xl font-bold border border-gray-600 focus:outline-none focus:border-emerald-500 flex-1">
-                        <button onclick="createTeam()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl font-bold text-sm">作成</button>
-                    </div>
-                </div>
-                <div>
-                    <h3 class="text-lg font-bold text-blue-400 mb-2">👥 あなたの所属チームを選択</h3>
-                    <div id="teamContainerButtons" class="flex flex-wrap gap-2">
-                        </div>
-                </div>
-            </div>
-
-            <div class="bg-gradient-to-br from-indigo-900/40 to-purple-950/40 border border-purple-500/3xl rounded-3xl p-6 mb-10 shadow-xl">
-                <div class="flex justify-between items-center mb-4">
-                    <span class="bg-purple-600 text-white text-xs font-black px-3 py-1 rounded-full uppercase tracking-wider" id="quizNumLabel">Q. 0</span>
-                    <span class="text-xs text-gray-400">現在の問題（リアルタイム同期）</span>
-                </div>
-                <h2 id="displayQuestion" class="text-2xl md:text-3xl font-black text-white mb-2">問題が配信されるのを待っています...</h2>
-                <div class="space-y-1 mb-6">
-                    <p id="displaySmallHint" class="text-amber-400 font-bold text-sm hidden">小ヒント: ？？？？</p>
-                    <p id="displayLargeHint" class="text-orange-400 font-bold text-sm hidden">大ヒント: ？？？？</p>
-                    <p id="displayAnswerText" class="text-teal-400 font-black text-xl hidden">🚨 正解: ？？？？</p>
-                </div>
-                
-                <div class="flex flex-wrap gap-3 items-center bg-black/30 p-4 rounded-2xl">
-                    <input type="text" id="playerAnswerInput" placeholder="答えを入力してください" class="bg-gray-700 text-white px-4 py-3 rounded-xl border border-gray-600 font-bold focus:outline-none focus:border-purple-500 flex-1 min-w-[200px]">
-                    <button onclick="submitAnswer()" class="bg-purple-600 hover:bg-purple-700 text-white px-8 py-3 rounded-xl font-bold transition-all shadow w-full sm:w-auto">回答を送信</button>
-                </div>
-                <div id="answerLog" class="text-sm mt-3 font-bold text-center text-gray-400"></div>
-            </div>
-
-            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                <div>
-                    <h3 class="text-xl font-black text-emerald-400 mb-4">🚩 チームランキング (個人の合算)</h3>
-                    <div id="teamBoardGrid" class="space-y-4">
-                        </div>
-                </div>
-                <div>
-                    <h3 class="text-xl font-black text-blue-400 mb-4">👤 個人ランキング</h3>
-                    <div id="playerBoardGrid" class="space-y-4">
-                        </div>
-                </div>
-            </div>
-
+        <div id="historyContainer" style="display: none;">
+            <hr>
+            <h4 style="margin: 10px 0; font-size: 14px; color: var(--dark); text-align: center;">📂 作成済みのイベント履歴</h4>
+            <div id="historyListArea" class="history-list"></div>
         </div>
     </div>
 
-    <script src="https://www.gstatic.com/firebasejs/9.1.3/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.1.3/firebase-database-compat.js"></script>
+    <div id="step2_mainDashboard" style="display: none;">
+        <div class="status-header">
+            <span id="activeGroupName" style="color:var(--primary);"></span><br>
+            <span style="font-weight:normal; font-size:12px; color:#666;">部屋コード:</span> 
+            <span id="displayCodeText" class="badge-code"></span>
+            <button class="btn btn-sm btn-outline" style="margin-left:5px; padding:2px 6px;" onclick="copyRoomCode()">コピー</button>
+            <button class="btn btn-sm btn-outline" style="margin-left:5px; padding:2px 6px; border-color: var(--primary); color: var(--primary);" onclick="exitToMainMenu()">⚙️ 履歴・別イベントへ</button>
+        </div>
 
-    <script>
-        const firebaseConfig = {
-            apiKey: "AIzaSyC4DQhH_swesAD98Xyjg8d1lcWEkkrHrgw",
-            authDomain: "gamehistory-m84.firebaseapp.com",
-            databaseURL: "https://gamehistory-m84-default-rtdb.firebaseio.com",
-            projectId: "gamehistory-m84",
-            storageBucket: "gamehistory-m84.firebasestorage.app",
-            messagingSenderId: "475761727837",
-            appId: "1:475761727837:web:06d07e1ab4120a7ccaf0b4",
-            measurementId: "G-3636W6LC4F"
-        };
-        
-        firebase.initializeApp(firebaseConfig);
-        const db = firebase.database();
+        <button class="btn btn-outline" style="font-size:13px; padding:8px; margin-bottom:10px; background:#fff;" onclick="toggleDescriptionArea()">
+            📢 コメント記入欄の表示 / 非表示を切り替え
+        </button>
 
-        const ADMIN_SECRET = "admin123"; 
-        let isAdmin = false;
-        let quizList = []; 
-        
-        let roomId = "";
-        let username = "";
-        let myCurrentTeam = "";
-        let myConnectionsRef = null;
-
-        // アプリケーション状態のローカル保持
-        let state = {
-            currentIndex: -1,
-            showScores: false,
-            hintState: "none", // "none", "small", "large"
-            showAnswer: false,  // 管理者が答えを全体公開しているか
-            currentQuestion: "待機中...",
-            currentSmallHint: "待機中...",
-            currentLargeHint: "待機中...",
-            currentAnswer: "",
-            players: {},   // { username: { team, score, answeredStages: { none:true, small:true, large:true } } }
-            teams: {},     // { teamName: true }
-            history: {}    // { historyId: { username, question, playerAns, isCorrect, points } }
-        };
-
-        const authBtn = document.getElementById('authBtn');
-        const adminPanel = document.getElementById('adminPanel');
-        const toggleScoresBtn = document.getElementById('toggleScores');
-
-        // 管理者認証
-        authBtn.onclick = () => {
-            if (document.getElementById('adminKeyInput').value === ADMIN_SECRET) {
-                isAdmin = true;
-                adminPanel.classList.remove('hidden');
-                authBtn.innerText = "管理者モード";
-                authBtn.className = "bg-emerald-600 px-4 py-1.5 rounded-lg text-sm font-bold text-white";
-                render(); 
-            } else { alert("管理キーが違います。"); }
-        };
-
-        // --------------------------------------------------
-        // 🚪 部屋の入室ロジック & 🟢 リアルタイムオンライン接続処理
-        // --------------------------------------------------
-        window.joinRoom = function() {
-            roomId = document.getElementById('roomInput').value.trim();
-            username = document.getElementById('userInput').value.trim();
-
-            if (!roomId || !username) return alert("部屋名と個人名を入力してください");
-
-            document.getElementById('loginScreen').classList.add('hidden');
-            document.getElementById('mainContent').classList.remove('hidden');
-            document.getElementById('currentRoomLabel').innerText = roomId;
-            document.getElementById('currentUserLabel').innerText = username;
-
-            // 1. ユーザー基礎情報のセット
-            db.ref(`QUIZ_rooms/${roomId}/players/${username}`).update({
-                name: username
-            });
-
-            // 2. Firebaseを使用したオンライン実数カウント & 自動切断検出の実装
-            const userStatusRef = db.ref(`QUIZ_rooms/${roomId}/connections/${username}`);
+        <div id="descriptionCardContainer" class="card" style="background: #f1f3f5; border: 1px solid #ced4da; display: block;">
+            <label for="eventDescriptionInput">📢 カラオケ会の説明文（いつでも変更可能）</label>
             
-            // Firebaseの特別なノード (.info/connected) を用いて接続状態を検知
-            db.ref('.info/connected').on('value', (snapshot) => {
-                if (snapshot.val() === true) {
-                    userStatusRef.onDisconnect().remove();
-                    userStatusRef.set(true);
+            <div class="template-btn-group">
+                <span style="font-size: 11px; color: #666; align-self: center;">⚡テンプレ挿入：</span>
+                <button type="button" class="btn-tmpl" onclick="applyTemplate('karaoke')">🎵 カラオケ会</button>
+                <button type="button" class="btn-tmpl" onclick="applyTemplate('nijikai')">🍻 二次会・飲み会</button>
+                <button type="button" class="btn-tmpl" style="background:#dc3545;" onclick="applyTemplate('clear')">🧹 クリア</button>
+            </div>
+
+            <textarea id="eventDescriptionInput" rows="7" class="input-field" style="font-size:14px; font-family:inherit; resize:vertical; margin-bottom:8px; line-height:1.4;" placeholder="上のボタンを押すか、自由に説明文を入力してください。"></textarea>
+            <button class="btn btn-sm" style="background: var(--primary); width:100%;" onclick="saveEventDescription()">📝 説明文を更新して配信</button>
+        </div>
+
+        <div class="tab-container">
+            <button class="tab-btn active" onclick="switchTab('tab_settings')">🛠️ 部屋設定</button>
+            <button class="tab-btn" onclick="switchTab('tab_members')">👥 参加者状況</button>
+            <button class="tab-btn" onclick="switchTab('tab_shuffle')">🔀 受付＆部屋割り</button>
+        </div>
+
+        <div id="tab_settings" class="tab-content active card">
+            <div id="roomsSetupContainer"></div>
+            <button class="btn btn-outline" style="font-size:13px; padding:8px;" onclick="addRoomRowSetup('', '', 5, '', '')">＋ 新しい部屋を追加</button>
+            <hr>
+            <button class="btn" style="background: var(--success);" onclick="saveRoomsSetupOnly()">💾 部屋構成の変更を保存</button>
+        </div>
+
+        <div id="tab_members" class="tab-content card">
+            <div style="background:#e9ecef; padding:10px; border-radius:8px; margin-bottom:15px; font-size:12px;">
+                <b style="color:var(--success)">📢 LINE配布用URL:</b>
+                <input type="text" id="shareUrl" class="input-field" style="margin: 5px 0; padding:8px; font-size:12px;" readonly>
+                <button class="btn btn-success" style="padding:8px; font-size:12px; margin-bottom:0;" onclick="copyShareUrl()">📋 LINE用URLをコピー</button>
+            </div>
+            <div id="joinedMembersArea"></div>
+        </div>
+
+        <div id="tab_shuffle" class="tab-content card">
+            <button class="btn" style="background: var(--primary); padding:13px;" onclick="executeSmartShuffle()">🔀 部屋にいるメンバーだけで自動シャッフル配信</button>
+            <p style="font-size:11px; color:#666; margin-top:-5px; text-align:center;">※「未参加枠」「未定枠」「不参加枠」の人はシャッフルされずキープされます</p>
+            <div id="resultInside"></div>
+        </div>
+
+        <div class="card" style="border: 1px solid #f5c6cb; background-color: #fdf3f4; margin-top:20px;">
+            <button class="btn btn-danger" style="padding:10px; font-size:13px; margin-bottom:0;" onclick="resetCurrentEvent()">🧹 グループデータを完全に削除して終了</button>
+        </div>
+    </div>
+
+<script>
+const firebaseConfig = {
+  apiKey: "AIzaSyDfMGBuQYpuyOMGt_hEdPgR_z42d92E8Lo",
+  authDomain: "heyagae-84.firebaseapp.com",
+  databaseURL: "https://heyagae-84-default-rtdb.firebaseio.com",
+  projectId: "heyagae-84",
+  storageBucket: "heyagae-84.firebasestorage.app",
+  messagingSenderId: "199911902929",
+  appId: "1:199911902929:web:447aa228c15e4b80b7bff0",
+  measurementId: "G-BCG3FMW3KS"
+};
+
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+const kanjiStorageKey = "heyawari_kanji_group_id";
+const historyStorageKey = "heyawari_kanji_history_list";
+
+let uniqueGroupId = "";
+let groupDisplayName = "";
+let currentFullMemberObjects = []; 
+let cachedRoomsSetup = [];
+let historyMatrix = {};
+let unsubscribeMembers = null;
+let unsubscribeStatus = null;
+let isFirstDescriptionLoad = true;
+
+window.onload = function() {
+    renderHistoryList();
+    const savedGroupId = localStorage.getItem(kanjiStorageKey);
+    if (savedGroupId) { uniqueGroupId = savedGroupId; resumeGroupSession(); }
+};
+
+function renderHistoryList() {
+    const historyData = localStorage.getItem(historyStorageKey);
+    const historyList = historyData ? JSON.parse(historyData) : [];
+    const container = document.getElementById('historyContainer');
+    const area = document.getElementById('historyListArea');
+    
+    if (historyList.length === 0) {
+        container.style.display = 'none';
+        return;
+    }
+    
+    container.style.display = 'block';
+    let html = "";
+    historyList.forEach(item => {
+        html += `
+            <div class="history-item">
+                <div class="history-link" onclick="loadFromHistory('${item.id}')">
+                    🎤 ${item.title}
+                    <span class="history-code">コード: ${item.id}</span>
+                </div>
+                <button class="btn-danger-sm" style="padding: 4px 6px; font-size:10px;" onclick="removeFromHistoryList('${item.id}', event)">❌</button>
+            </div>
+        `;
+    });
+    area.innerHTML = html;
+}
+
+function saveToHistoryList(id, title) {
+    if (!id || !title) return;
+    const historyData = localStorage.getItem(historyStorageKey);
+    let historyList = historyData ? JSON.parse(historyData) : [];
+    
+    historyList = historyList.filter(item => item.id !== id);
+    historyList.unshift({ id: id, title: title });
+    
+    localStorage.setItem(historyStorageKey, JSON.stringify(historyList));
+    renderHistoryList();
+}
+
+function removeFromHistoryList(id, event) {
+    event.stopPropagation();
+    if (!confirm("このイベントを履歴から削除しますか？\n（Firebase上のデータは削除されません）")) return;
+    
+    const historyData = localStorage.getItem(historyStorageKey);
+    if (!historyData) return;
+    let historyList = JSON.parse(historyData);
+    historyList = historyList.filter(item => item.id !== id);
+    
+    localStorage.setItem(historyStorageKey, JSON.stringify(historyList));
+    renderHistoryList();
+    
+    if (uniqueGroupId === id) {
+        clearKanjiState();
+    }
+}
+
+function loadFromHistory(id) {
+    uniqueGroupId = id;
+    localStorage.setItem(kanjiStorageKey, uniqueGroupId);
+    isFirstDescriptionLoad = true;
+    resumeGroupSession();
+}
+
+function exitToMainMenu() {
+    if (unsubscribeMembers) unsubscribeMembers();
+    if (unsubscribeStatus) unsubscribeStatus();
+    localStorage.removeItem(kanjiStorageKey);
+    uniqueGroupId = "";
+    document.getElementById('roomsSetupContainer').innerHTML = "";
+    document.getElementById('resultInside').innerHTML = '';
+    document.getElementById('step2_mainDashboard').style.display = 'none';
+    document.getElementById('step1_connection').style.display = 'block';
+    renderHistoryList();
+}
+
+function toggleDescriptionArea() {
+    const container = document.getElementById('descriptionCardContainer');
+    if (container.style.display === 'none') {
+        container.style.display = 'block';
+    } else {
+        container.style.display = 'none';
+    }
+}
+
+function applyTemplate(type) {
+    const textarea = document.getElementById('eventDescriptionInput');
+    
+    if (type === 'clear') {
+        if(confirm("入力内容をクリアしますか？")) textarea.value = "";
+        return;
+    }
+
+    if (textarea.value.trim() !== "") {
+        if (!confirm("現在入力されている内容が上書きされますが、よろしいですか？")) return;
+    }
+
+    if (type === 'karaoke') {
+        textarea.value = `【日時】 月 日()  : 〜 : \n【場所】店\n【会費】円（ドリンクバー込み）\n【締め切り】 月 日まで\n【備考・コメント】\n途中退室される方は幹事までご連絡ください。`;
+    } else if (type === 'nijikai') {
+        textarea.value = `【日時】 月 日()  : ~\n【場所】\n【会費】\n【締め秒読み】 月 日中まで\n【備考・コメント】\n遅刻しそうな場合は一言書き込みをお願いします！`;
+    }
+}
+
+function switchTab(tabId) {
+    document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+    if(event && event.currentTarget) {
+        event.currentTarget.classList.add('active');
+    }
+    document.getElementById(tabId).classList.add('active');
+}
+
+function handleRoomNameBlur(input) {
+    let val = input.value.trim();
+    if (!val) return;
+    let normalized = val.replace(/[０-９]/g, s => String.fromCharCode(s.charCodeAt(0) - 0xFEE0));
+    if (/^\d+$/.test(normalized) && !val.endsWith("号室")) { input.value = val + "号室"; }
+}
+
+function addRoomRowSetup(roomId="", name="", cap=5, model="", memo="") {
+    const container = document.getElementById('roomsSetupContainer');
+    if(!roomId) {
+        roomId = "room_" + (Date.now() + Math.floor(Math.random() * 1000));
+    }
+    const currentCount = container.children.length + 1;
+
+    const div = document.createElement('div');
+    div.className = 'room-row';
+    div.setAttribute('data-room-id', roomId);
+    div.innerHTML = `
+        <div style="font-size:11px; color:#666; font-weight:bold; margin-bottom:4px;">部屋通し番号: No.${currentCount}</div>
+        <div class="room-grid">
+            <div><label>部屋番号/名:</label><input type="text" class="setup-room-name" value="${name}" placeholder="例: 101" onblur="handleRoomNameBlur(this)" style="width:100%; padding:6px; border-radius:4px; border:1px solid #ccc; box-sizing:border-box;"></div>
+            <div><label>キャパ(定員):</label><input type="text" inputmode="numeric" list="capacityOptions" class="setup-room-cap" value="${cap}" style="width:100%; padding:6px; border-radius:4px; border:1px solid #ccc; box-sizing:border-box;"></div>
+        </div>
+        <div class="room-grid">
+            <div><label>機種:</label><input type="text" list="modelOptions" class="setup-room-model" value="${model}" style="width:100%; padding:6px; border-radius:4px; border:1px solid #ccc; box-sizing:border-box;"></div>
+            <div><label>その他メモ:</label><input type="text" list="memoOptions" class="setup-room-memo" value="${memo}" style="width:100%; padding:6px; border-radius:4px; border:1px solid #ccc; box-sizing:border-box;"></div>
+        </div>
+        <button class="btn btn-sm btn-outline" style="color:var(--danger); border-color:var(--danger); position:absolute; right:8px; top:8px; padding:2px 6px;" onclick="this.parentElement.remove()">削除</button>
+    `;
+    container.appendChild(div);
+}
+
+function createNewGroupSession() {
+    groupDisplayName = document.getElementById('groupNameInput').value.trim();
+    if (!groupDisplayName) { alert("イベント名を入力してください"); return; }
+    uniqueGroupId = encodeURIComponent(groupDisplayName).replace(/%/g, '') + "_" + Date.now();
+
+    const initialRoomId = "room_" + Date.now();
+    db.collection("multigroups").doc(uniqueGroupId).set({
+        title: groupDisplayName,
+        description: "", 
+        roomsSetup: [{ id: initialRoomId, name: "101号室", capacity: 5, model: "DAM", memo: "", members: [] }],
+        currentResult: null, status: "active", createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    }).then(() => { 
+        localStorage.setItem(kanjiStorageKey, uniqueGroupId); 
+        saveToHistoryList(uniqueGroupId, groupDisplayName);
+        isFirstDescriptionLoad = true; 
+        resumeGroupSession(); 
+    });
+}
+
+function joinExistingGroupSession() {
+    const inputCode = document.getElementById('existingCodeInput').value.trim();
+    if (!inputCode) return;
+    db.collection("multigroups").doc(inputCode).get().then(doc => {
+        if (doc.exists && doc.data().status !== "reset") {
+            uniqueGroupId = inputCode; 
+            localStorage.setItem(kanjiStorageKey, uniqueGroupId); 
+            saveToHistoryList(uniqueGroupId, doc.data().title);
+            isFirstDescriptionLoad = true; 
+            resumeGroupSession();
+        } else { alert("有効なコードが見つかりません。"); }
+    });
+}
+
+function resumeGroupSession() {
+    document.getElementById('displayCodeText').innerText = uniqueGroupId;
+
+    if (unsubscribeStatus) unsubscribeStatus();
+    unsubscribeStatus = db.collection("multigroups").doc(uniqueGroupId).onSnapshot(doc => {
+        if (!doc.exists || doc.data().status === "reset") { clearKanjiState(); return; }
+        const data = doc.data();
+        groupDisplayName = data.title;
+        cachedRoomsSetup = data.roomsSetup || [];
+        document.getElementById('step1_connection').style.display = 'none';
+        document.getElementById('step2_mainDashboard').style.display = 'block';
+        document.getElementById('activeGroupName').innerText = groupDisplayName;
+        
+        saveToHistoryList(uniqueGroupId, groupDisplayName);
+
+        if (isFirstDescriptionLoad) {
+            document.getElementById('eventDescriptionInput').value = data.description || "";
+            isFirstDescriptionLoad = false;
+        }
+
+        const container = document.getElementById('roomsSetupContainer');
+        if (container.children.length === 0) {
+            cachedRoomsSetup.forEach(r => addRoomRowSetup(r.id, r.name, r.capacity, r.model, r.memo));
+        }
+        syncAndRenderRooms(data.currentResult);
+        document.getElementById('shareUrl').value = window.location.href.replace('heyawari.html', 'heyawari2.html') + `?groupId=${uniqueGroupId}`;
+    });
+
+    if (unsubscribeMembers) unsubscribeMembers();
+    unsubscribeMembers = db.collection("multigroups").doc(uniqueGroupId).collection("members").onSnapshot(snapshot => {
+        currentFullMemberObjects = [];
+        let html = "";
+        snapshot.forEach(doc => {
+            const m = doc.data();
+            currentFullMemberObjects.push(m);
+            
+            let stColor = m.status === "⭕参加" ? "background:#e2f0d9;color:#385723;" : (m.status === "🔺未確定" ? "background:#fff3cd;color:#856404;" : "background:#f8d7da;color:#721c24;");
+            
+            const isPaid = (m.paymentStatus === "済");
+            const payClass = isPaid ? "pay-paid" : "pay-unpaid";
+            const payText = isPaid ? "💰 領収" : "💸 未収";
+
+            html += `
+                <div class="member-list-item">
+                    <div>
+                        <span>👤 ${m.name} <span class="st-indicator" style="${stColor}">${m.status}</span></span>
+                        <button class="pay-btn ${payClass}" onclick="togglePaymentStatus('${m.name}', '${m.paymentStatus || '未'}')">${payText}</button>
+                    </div>
+                    <button class="btn-danger-sm" onclick="removeMemberFromFirebase('${m.name}')">削除</button>
+                </div>
+            `;
+        });
+        document.getElementById('joinedMembersArea').innerHTML = html || '<span style="color:#999; font-size:13px;">参加登録を待っています。</span>';
+        
+        db.collection("multigroups").doc(uniqueGroupId).get().then(d => { if(d.exists) syncAndRenderRooms(d.data().currentResult); });
+    });
+}
+
+function togglePaymentStatus(memberName, currentStatus) {
+    const nextStatus = (currentStatus === "済") ? "未" : "済";
+    db.collection("multigroups").doc(uniqueGroupId).collection("members").doc(memberName).update({
+        paymentStatus: nextStatus
+    }).catch(e => alert("会計更新エラー: " + e));
+}
+
+function saveEventDescription() {
+    const descText = document.getElementById('eventDescriptionInput').value;
+    db.collection("multigroups").doc(uniqueGroupId).update({
+        description: descText
+    }).then(() => {
+        alert("📢 説明文を更新し、参加者画面へリアルタイム配信しました！");
+    }).catch(e => alert("エラー: " + e));
+}
+
+function removeMemberFromFirebase(name) {
+    if(!confirm(`「${name}」さんを完全削除しますか？`)) return;
+    db.collection("multigroups").doc(uniqueGroupId).collection("members").doc(name).delete();
+}
+
+function saveRoomsSetupOnly() {
+    const rows = document.querySelectorAll('.room-row');
+    
+    let newSetup = [];
+    rows.forEach((row, i) => {
+        const roomId = row.getAttribute('data-room-id');
+        const name = row.querySelector('.setup-room-name').value.trim() || `部屋${i+1}`;
+        const cap = parseInt(row.querySelector('.setup-room-cap').value) || 5;
+        const model = row.querySelector('.setup-room-model').value.trim();
+        const memo = row.querySelector('.setup-room-memo').value.trim();
+        
+        newSetup.push({
+            id: roomId,
+            name: name,
+            capacity: cap,
+            model: model, memo: memo, members: []
+        });
+    });
+    
+    db.collection("multigroups").doc(uniqueGroupId).update({ 
+        roomsSetup: newSetup 
+    }).then(() => {
+        db.collection("multigroups").doc(uniqueGroupId).get().then(doc => {
+            if(doc.exists) syncAndRenderRooms(doc.data().currentResult);
+        });
+        alert("💾 部屋構成を上書き保存しました！部屋名が変わってもメンバーは維持されます。");
+    });
+}
+
+function syncAndRenderRooms(dbRooms) {
+    let baseNormalRooms = JSON.parse(JSON.stringify(cachedRoomsSetup || []));
+    baseNormalRooms.forEach(r => r.members = []); 
+
+    let notArrived = { id: "special_not_arrived", name: "⚠️ 未参加（受付待ち・固定枠）", members: [], isSpecial: true };
+    let unconfirmed = { id: "special_unconfirmed", name: "🔺 保留・未確定（固定枠）", members: [], isSpecial: true };
+    let leftHome = { id: "special_left_home", name: "❌ 帰宅・不参加（固定枠）", members: [], isSpecial: true };
+
+    let allValidNames = currentFullMemberObjects.map(obj => obj.name);
+
+    if (dbRooms && dbRooms.length > 0) {
+        dbRooms.forEach(oldRoom => {
+            if (!oldRoom.isSpecial) {
+                let targetRoom = baseNormalRooms.find(r => r.id === oldRoom.id);
+                if (targetRoom && oldRoom.members) {
+                    targetRoom.members = oldRoom.members.filter(m => allValidNames.includes(m));
+                } else if (!targetRoom && oldRoom.members) {
+                    notArrived.members = notArrived.members.concat(oldRoom.members.filter(m => allValidNames.includes(m)));
                 }
-            });
-
-            startFirebaseListeners();
-        };
-
-        window.syncOnlineStatus = function() {
-            db.ref(`QUIZ_rooms/${roomId}/connections`).once('value', (snap) => {
-                const data = snap.val() || {};
-                const activeCount = Object.keys(data).length;
-                document.getElementById('activeOnlineCount').innerText = activeCount;
-            });
-        };
-
-        // --------------------------------------------------
-        // 🚩 チーム作成・所属ロジック
-        // --------------------------------------------------
-        window.createTeam = function() {
-            const teamName = document.getElementById('newTeamInput').value.trim();
-            if(!teamName) return alert("チーム名を入力してください");
-            
-            db.ref(`QUIZ_rooms/${roomId}/teams/${teamName}`).set(true);
-            document.getElementById('newTeamInput').value = "";
-            
-            joinTeam(teamName);
-        };
-
-        window.joinTeam = function(teamName) {
-            myCurrentTeam = teamName;
-            db.ref(`QUIZ_rooms/${roomId}/players/${username}`).update({
-                team: teamName
-            });
-        };
-
-        // --------------------------------------------------
-        // 🗑️ プレイヤー・チーム削除ロジック
-        // --------------------------------------------------
-        window.deletePlayerAdmin = function(targetUser) {
-            if(confirm(`プレイヤー「${targetUser}」をランキングおよび部屋データから完全に削除しますか？`)) {
-                db.ref(`QUIZ_rooms/${roomId}/players/${targetUser}`).remove();
-                db.ref(`QUIZ_rooms/${roomId}/connections/${targetUser}`).remove();
-                alert(`${targetUser} を削除しました。`);
+            } else {
+                let validM = oldRoom.members ? oldRoom.members.filter(m => allValidNames.includes(m)) : [];
+                if (oldRoom.id === "special_not_arrived") notArrived.members = notArrived.members.concat(validM);
+                if (oldRoom.id === "special_unconfirmed") unconfirmed.members = unconfirmed.members.concat(validM);
+                if (oldRoom.id === "special_left_home") leftHome.members = leftHome.members.concat(validM);
             }
-        };
+        });
+    }
 
-        window.deleteTeamAdmin = function(targetTeam) {
-            if(confirm(`チーム「${targetTeam}」を完全に削除しますか？(所属していた個人は未所属になります)`)) {
-                db.ref(`QUIZ_rooms/${roomId}/teams/${targetTeam}`).remove();
-                Object.keys(state.players).forEach(pName => {
-                    if(state.players[pName].team === targetTeam) {
-                        db.ref(`QUIZ_rooms/${roomId}/players/${pName}/team`).set("未所属");
+    notArrived.members = [...new Set(notArrived.members)];
+    unconfirmed.members = [...new Set(unconfirmed.members)];
+    leftHome.members = [...new Set(leftHome.members)];
+
+    let assignedNames = [];
+    baseNormalRooms.forEach(r => { assignedNames = assignedNames.concat(r.members); });
+    assignedNames = assignedNames.concat(notArrived.members, unconfirmed.members, leftHome.members);
+
+    currentFullMemberObjects.forEach(obj => {
+        if (!assignedNames.includes(obj.name)) {
+            if (obj.status === "⭕参加") notArrived.members.push(obj.name);
+            else if (obj.status === "🔺未確定") unconfirmed.members.push(obj.name);
+            else if (obj.status === "❌不参加") leftHome.members.push(obj.name);
+        }
+    });
+
+    currentFullMemberObjects.forEach(obj => {
+        if (obj.status === "❌不参加" && !leftHome.members.includes(obj.name)) {
+            baseNormalRooms.forEach(r => { r.members = r.members.filter(m => m !== obj.name); });
+            notArrived.members = notArrived.members.filter(m => m !== obj.name);
+            unconfirmed.members = unconfirmed.members.filter(m => m !== obj.name);
+            if(!leftHome.members.includes(obj.name)) leftHome.members.push(obj.name);
+        }
+        if (obj.status === "🔺未確定" && !unconfirmed.members.includes(obj.name) && !leftHome.members.includes(obj.name)) {
+            baseNormalRooms.forEach(r => { r.members = r.members.filter(m => m !== obj.name); });
+            notArrived.members = notArrived.members.filter(m => m !== obj.name);
+            leftHome.members = leftHome.members.filter(m => m !== obj.name);
+            if(!unconfirmed.members.includes(obj.name)) unconfirmed.members.push(obj.name);
+        }
+        if (obj.status === "⭕参加" && (leftHome.members.includes(obj.name) || unconfirmed.members.includes(obj.name))) {
+            leftHome.members = leftHome.members.filter(m => m !== obj.name);
+            unconfirmed.members = unconfirmed.members.filter(m => m !== obj.name);
+            if(!notArrived.members.includes(obj.name)) notArrived.members.push(obj.name);
+        }
+    });
+
+    let finalRoomsStructure = [...baseNormalRooms, notArrived, unconfirmed, leftHome];
+
+    let html = '';
+    finalRoomsStructure.forEach((r, roomIdx) => {
+        const isSpec = r.isSpecial;
+        const extraInfo = [r.model, r.memo].filter(Boolean).join(' / ');
+        let boxColor = 'border-left:4px solid var(--primary); background:#fff;';
+        if(r.id === "special_not_arrived") boxColor = 'border-left:4px solid var(--success); background:#f2faf4;';
+        if(r.id === "special_unconfirmed") boxColor = 'border-left:4px solid var(--warning); background:#fffdf2;';
+        if(r.id === "special_left_home") boxColor = 'border-left:4px solid var(--danger); background:#fdf3f4;';
+
+        html += `
+            <div class="room-box-result" style="${boxColor}">
+                <div class="room-title-bar">
+                    <span style="font-weight:bold;">${r.name} ${extraInfo ? `<span>(${extraInfo})</span>` : ''}</span>
+                    <span style="color:#666; font-size:12px;">${r.members.length}人</span>
+                </div>
+                <div class="member-container-flex">
+        `;
+        
+        if (r.members.length === 0) {
+            html += `<span style="color:#ccc; font-size:11px; padding:4px 0;">空き</span>`;
+        } else {
+            r.members.forEach(m => {
+                let selectHtml = `<select class="move-select" onchange="moveMemberManually('${m}', ${roomIdx}, this.value)">`;
+                selectHtml += `<option value="" disabled selected>➡部屋移動</option>`;
+                finalRoomsStructure.forEach((targetRoom, targetIdx) => {
+                    if (roomIdx !== targetIdx) {
+                        selectHtml += `<option value="${targetIdx}">${targetRoom.name.substring(0,8)}</option>`;
                     }
                 });
-                alert(`チーム ${targetTeam} を削除しました。`);
-            }
-        };
-
-        // --------------------------------------------------
-        // 📁 CSV読み込み [4列対応: 問題,小ヒント,大ヒント,答え] (管理者用)
-        // --------------------------------------------------
-        if(document.getElementById('csvFile')) {
-            document.getElementById('csvFile').addEventListener('change', function(e) {
-                const file = e.target.files[0];
-                if (!file) return;
-                const reader = new FileReader();
-                reader.onload = function(evt) {
-                    const text = evt.target.result;
-                    quizList = text.split(/\r\n|\n/).map(line => {
-                        const columns = line.split(',');
-                        return {
-                            question: columns[0] ? columns[0].replace(/"/g, '').trim() : "",
-                            smallHint: columns[1] ? columns[1].replace(/"/g, '').trim() : "なし",
-                            largeHint: columns[2] ? columns[2].replace(/"/g, '').trim() : "なし",
-                            answer: columns[3] ? columns[3].replace(/"/g, '').trim() : ""
-                        };
-                    }).filter(q => q.question !== "" && q.question !== "問題");
-
-                    document.getElementById('quizTotalCount').innerText = quizList.length;
-                    alert(`${quizList.length}問のクイズを読み込みました！`);
-                    if(quizList.length > 0) nextQuestion(1); 
-                };
-                reader.readAsText(file, 'UTF-8');
-            });
-        }
-
-        // 管理者：問題進行（新しい問題になったらヒント・答えの表示状態を全消去、全プレイヤーの回答権を復活）
-        window.nextQuestion = (step) => {
-            if (quizList.length === 0) return alert("先にCSVを読み込んでください");
-            let nextIdx = state.currentIndex + step;
-            if (nextIdx < 0 || nextIdx >= quizList.length) return alert("これ以上問題はありません");
-
-            // 全プレイヤーの回答履歴ステージ（フラグ）を一括リセットするための準備
-            const updates = {};
-            Object.keys(state.players).forEach(pName => {
-                updates[`players/${pName}/answeredStages`] = { none: false, small: false, large: false };
-            });
-
-            // 共通ステートの更新
-            updates['quizState'] = {
-                currentIndex: nextIdx,
-                currentQuestion: quizList[nextIdx].question,
-                currentSmallHint: quizList[nextIdx].smallHint || "なし",
-                currentLargeHint: quizList[nextIdx].largeHint || "なし",
-                currentAnswer: quizList[nextIdx].answer,
-                hintState: "none",      // 新問題ではヒントを消去
-                showAnswer: false,      // 前の問題の答えは消去
-                showScores: state.showScores
-            };
-
-            db.ref(`QUIZ_rooms/${roomId}`).update(updates);
-        };
-
-        // 管理者：ヒント状態の個別切り替え
-        window.setHintStateAdmin = (stage) => {
-            db.ref(`QUIZ_rooms/${roomId}/quizState/hintState`).set(stage);
-        };
-
-        // 管理者：正解（答え）の表示非表示切り替え
-        window.toggleShowAnswerAdmin = () => {
-            db.ref(`QUIZ_rooms/${roomId}/quizState/showAnswer`).set(!state.showAnswer);
-        };
-
-        // --------------------------------------------------
-        // 🎮 回答送信＆段階別権限管理（無1回:3点 / 小1回:2点 / 大1回:1点）
-        // --------------------------------------------------
-        window.submitAnswer = function() {
-            const playerAns = document.getElementById('playerAnswerInput').value.trim();
-            const logBox = document.getElementById('answerLog');
-
-            if(!playerAns) return alert("回答を入力してください");
-            if(!state.currentAnswer) return alert("現在出題されている問題がありません");
-
-            const currentStage = state.hintState; // "none", "small", "large"
-            
-            // ローカル及びFirebaseの回答状況チェック
-            const myData = state.players[username] || {};
-            const answeredStages = myData.answeredStages || {};
-
-            if (answeredStages[currentStage] === true) {
-                let stageName = currentStage === "none" ? "無ヒント" : currentStage === "small" ? "小ヒント" : "大ヒント";
-                return alert(`【${stageName}】での回答権はすでに使用済みです。次のヒント開示か次の問題をお待ちください。`);
-            }
-
-            // 配点ロジック
-            let points = 0;
-            if (currentStage === "none") points = 3;
-            else if (currentStage === "small") points = 2;
-            else if (currentStage === "large") points = 1;
-
-            const isCorrect = playerAns.toLowerCase() === state.currentAnswer.toLowerCase();
-
-            // 1. 今回の回答フェーズの権利を消費（ロック）
-            db.ref(`QUIZ_rooms/${roomId}/players/${username}/answeredStages/${currentStage}`).set(true);
-
-            // 2. 履歴への送信ログ書き込み
-            const historyRef = db.ref(`QUIZ_rooms/${roomId}/history`).push();
-            historyRef.set({
-                username: username,
-                team: myCurrentTeam || "未所属",
-                question: state.currentQuestion,
-                playerAns: playerAns,
-                isCorrect: isCorrect,
-                points: points
-            });
-
-            if(isCorrect) {
-                logBox.innerHTML = `<span class="text-emerald-400">⭕ 正解！答え: ${state.currentAnswer} (+${points}点)</span>`;
-                const currentScore = myData.score || 0;
-                db.ref(`QUIZ_rooms/${roomId}/players/${username}/score`).set(currentScore + points);
-                document.getElementById('playerAnswerInput').value = "";
-            } else {
-                logBox.innerHTML = `<span class="text-red-400">❌ 不正解！「${playerAns}」（この段階での回答権を消費しました）</span>`;
-            }
-        };
-
-        // --------------------------------------------------
-        // 🛠️ 管理者：不正解過去ログを救済変更（履歴に記録された配点を付与）
-        // --------------------------------------------------
-        window.rescueAnswer = function(historyId, targetUser, pointsEarned) {
-            db.ref(`QUIZ_rooms/${roomId}/history/${historyId}/isCorrect`).set(true);
-            const currentScore = (state.players[targetUser] && state.players[targetUser].score) || 0;
-            db.ref(`QUIZ_rooms/${roomId}/players/${targetUser}/score`).set(currentScore + pointsEarned);
-            alert(`${targetUser} さんの回答を正解扱いに修正し、当時割り当てられた ${pointsEarned} 点を付与しました。`);
-        };
-
-        // --------------------------------------------------
-        // 📡 Firebaseとのマルチリスナー接続
-        // --------------------------------------------------
-        function startFirebaseListeners() {
-            db.ref(`QUIZ_rooms/${roomId}`).on('value', (snap) => {
-                const rootData = snap.val() || {};
+                selectHtml += `</select>`;
                 
-                const qState = rootData.quizState || {};
-                state.currentIndex = qState.currentIndex !== undefined ? qState.currentIndex : -1;
-                state.currentQuestion = qState.currentQuestion || "問題がセットされていません。";
-                state.currentSmallHint = qState.currentSmallHint || "なし";
-                state.currentLargeHint = qState.currentLargeHint || "なし";
-                state.currentAnswer = qState.currentAnswer || "";
-                state.showScores = qState.showScores || false;
-                state.hintState = qState.hintState || "none";
-                state.showAnswer = qState.showAnswer || false;
-
-                state.players = rootData.players || {};
-                state.teams = rootData.teams || {};
-                state.history = rootData.history || {};
-
-                const connections = rootData.connections || {};
-                document.getElementById('activeOnlineCount').innerText = Object.keys(connections).length;
-
-                updateTeamButtonsUI();
-                render();
-            });
-        }
-
-        function updateTeamButtonsUI() {
-            const container = document.getElementById('teamContainerButtons');
-            container.innerHTML = "";
-
-            const noneBtn = document.createElement('button');
-            noneBtn.type = "button";
-            noneBtn.innerText = "❌ 未所属にする";
-            noneBtn.className = `px-3 py-1.5 rounded-xl font-bold text-xs transition-all ${!myCurrentTeam ? 'bg-red-600 text-white shadow' : 'bg-gray-700 text-gray-400 hover:bg-gray-600'}`;
-            noneBtn.onclick = () => { joinTeam(""); };
-            container.appendChild(noneBtn);
-
-            Object.keys(state.teams).forEach(teamName => {
-                const btn = document.createElement('button');
-                btn.type = "button";
-                btn.innerText = `🚩 ${teamName}`;
-                
-                if(myCurrentTeam === teamName) {
-                    btn.className = "px-3 py-1.5 rounded-xl font-bold text-xs bg-blue-600 text-white shadow ring-2 ring-blue-400 transition-all";
-                } else {
-                    btn.className = "px-3 py-1.5 rounded-xl font-bold text-xs bg-gray-700 text-gray-300 hover:bg-gray-600 transition-all";
-                }
-                
-                btn.onclick = () => { joinTeam(teamName); };
-                container.appendChild(btn);
-            });
-        }
-
-        // --------------------------------------------------
-        // 📊 スコアボード＆履歴ログの再描画
-        // --------------------------------------------------
-        function render() {
-            document.getElementById('quizNumLabel').innerText = `Q. ${state.currentIndex + 1}`;
-            document.getElementById('displayQuestion').innerText = state.currentQuestion;
-            document.getElementById('displaySmallHint').innerText = `小ヒント: ${state.currentSmallHint}`;
-            document.getElementById('displayLargeHint').innerText = `大ヒント: ${state.currentLargeHint}`;
-            document.getElementById('displayAnswerText').innerText = `🚨 正解: ${state.currentAnswer}`;
-            
-            // 状態（段階）に合わせたヒントの表示非表示を制御
-            if (state.hintState === "small") {
-                document.getElementById('displaySmallHint').classList.remove('hidden');
-                document.getElementById('displayLargeHint').classList.add('hidden');
-            } else if (state.hintState === "large") {
-                document.getElementById('displaySmallHint').classList.remove('hidden');
-                document.getElementById('displayLargeHint').classList.remove('hidden');
-            } else {
-                document.getElementById('displaySmallHint').classList.add('hidden');
-                document.getElementById('displayLargeHint').classList.add('hidden');
-            }
-
-            // 正解（答え）の表示制御
-            if (state.showAnswer) {
-                document.getElementById('displayAnswerText').classList.remove('hidden');
-            } else {
-                document.getElementById('displayAnswerText').classList.add('hidden');
-            }
-
-            // 個人ランキング
-            const playerList = Object.keys(state.players).map(name => {
-                return {
-                    name: name,
-                    team: state.players[name].team || "未所属",
-                    score: state.players[name].score || 0
-                };
-            }).sort((a, b) => b.score - a.score);
-
-            // チームランキング
-            const teamScores = {};
-            Object.keys(state.teams).forEach(tName => { teamScores[tName] = 0; }); 
-            
-            playerList.forEach(p => {
-                if(p.team !== "未所属" && teamScores[p.team] !== undefined) {
-                    teamScores[p.team] += p.score;
-                }
-            });
-
-            const teamList = Object.keys(teamScores).map(tName => {
-                return { name: tName, score: teamScores[tName] };
-            }).sort((a, b) => b.score - a.score);
-
-            // --- 個人ボード描画 ---
-            const pGrid = document.getElementById('playerBoardGrid');
-            pGrid.innerHTML = "";
-            playerList.forEach((player, index) => {
-                const card = document.createElement('div');
-                card.className = `glass-card p-4 rounded-2xl flex justify-between items-center shadow-lg`;
-                const deleteButtonHTML = isAdmin ? `<button onclick="deletePlayerAdmin('${player.name}')" class="text-xs font-bold text-red-400 bg-red-950/40 border border-red-800 px-2 py-0.5 rounded-lg ml-2 hover:bg-red-900 transition-all">削除</button>` : '';
-
-                card.innerHTML = `
-                    <div class="flex items-center gap-3">
-                        <span class="text-lg font-black text-gray-500">#${index+1}</span>
-                        <div>
-                            <div class="text-lg font-black text-white flex items-center">${player.name} ${deleteButtonHTML}</div>
-                            <div class="text-xs text-gray-400">所属: ${player.team}</div>
-                        </div>
-                    </div>
-                    <div class="text-2xl font-black text-blue-400 ${state.showScores || isAdmin ? '' : 'score-hidden'}">${player.score}点</div>
+                html += `
+                    <span class="member-wrapper" style="${isSpec ? 'background:#e9ecef; color:#495057;':''}">
+                        <span class="member-name-span">${m}</span>
+                        ${selectHtml}
+                    </span>
                 `;
-                pGrid.appendChild(card);
             });
+        }
+        html += `</div></div>`;
+    });
+    document.getElementById('resultInside').innerHTML = html;
 
-            // --- チームボード描画 ---
-            const tGrid = document.getElementById('teamBoardGrid');
-            tGrid.innerHTML = "";
-            teamList.forEach((team, index) => {
-                const rankClass = index === 0 ? 'rank-1' : index === 1 ? 'rank-2' : index === 2 ? 'rank-3' : 'glass-card';
-                const textCol = index < 3 ? 'text-gray-900' : 'text-emerald-400';
-                const deleteTeamButtonHTML = isAdmin ? `<button onclick="deleteTeamAdmin('${team.name}')" class="text-xs font-bold text-red-900 bg-red-200/50 border border-red-400 px-1.5 py-0.5 rounded ml-2 hover:bg-red-300 transition-all">削除</button>` : '';
+    db.collection("multigroups").doc(uniqueGroupId).update({ currentResult: finalRoomsStructure });
+}
 
-                const card = document.createElement('div');
-                card.className = `${rankClass} p-4 rounded-2xl flex justify-between items-center shadow-lg`;
-                card.innerHTML = `
-                    <div class="flex items-center gap-3">
-                        <span class="text-lg font-black ${index < 3 ? 'text-gray-800':'text-gray-500'}">#${index+1}</span>
-                        <div class="text-lg font-black flex items-center">${team.name} ${deleteTeamButtonHTML}</div>
-                    </div>
-                    <div class="text-2xl font-black ${textCol} ${state.showScores || isAdmin ? '' : 'score-hidden'}">${team.score}点</div>
-                `;
-                tGrid.appendChild(card);
-            });
+function moveMemberManually(memberName, fromRoomIdx, toRoomIdx) {
+    db.collection("multigroups").doc(uniqueGroupId).get().then(doc => {
+        if (!doc.exists) return;
+        let rooms = doc.data().currentResult || [];
+        if(rooms.length === 0) return;
 
-            // --- 管理者用回答ログ ---
-            if (isAdmin) {
-                const adminLog = document.getElementById('adminHistoryLog');
-                adminLog.innerHTML = "";
-                Object.entries(state.history).reverse().forEach(([hId, hData]) => {
-                    const item = document.createElement('div');
-                    item.className = `flex justify-between items-center border-b border-gray-800 pb-2`;
-                    // 当時のポイントを動的に救済ロジックへ引き渡す
-                    const pts = hData.points !== undefined ? hData.points : 1;
-                    item.innerHTML = `
-                        <div>
-                            <span class="text-blue-400 font-bold">${hData.username}</span> 
-                            <span class="text-gray-500">(${hData.team})</span>: 
-                            <span class="text-yellow-200">「${hData.playerAns}」</span>
-                            <div class="text-xs text-gray-500">問: ${hData.question} (想定得点: ${pts}点)</div>
-                        </div>
-                        <div>
-                            ${hData.isCorrect ? 
-                                `<span class="text-emerald-400 font-bold">正解済</span>` : 
-                                `<button onclick="rescueAnswer('${hId}', '${hData.username}', ${pts})" class="bg-indigo-700 hover:bg-indigo-600 px-2 py-1 rounded text-xs font-bold text-white">マルにする</button>`
-                            }
-                        </div>
-                    `;
-                    adminLog.appendChild(item);
-                });
-            }
+        rooms[fromRoomIdx].members = rooms[fromRoomIdx].members.filter(m => m !== memberName);
+        rooms[toRoomIdx].members.push(memberName);
+
+        let targetId = rooms[toRoomIdx].id;
+        if (targetId === "special_unconfirmed") {
+            db.collection("multigroups").doc(uniqueGroupId).collection("members").doc(memberName).update({ status: "🔺未確定" });
+        } else if (targetId === "special_left_home") {
+            db.collection("multigroups").doc(uniqueGroupId).collection("members").doc(memberName).update({ status: "❌不参加" });
+        } else if (targetId === "special_not_arrived") {
+            db.collection("multigroups").doc(uniqueGroupId).collection("members").doc(memberName).update({ status: "⭕参加" });
         }
 
-        // スコア表示非表示切り替え
-        toggleScoresBtn.onclick = () => {
-            db.ref(`QUIZ_rooms/${roomId}/quizState/showScores`).set(!state.showScores);
-        };
+        db.collection("multigroups").doc(uniqueGroupId).update({ currentResult: rooms });
+    });
+}
 
-        // スコア・ログ・チーム全クリア（回答ロックフラグも一緒に一括リセット）
-        window.resetAllScores = function() {
-            if(confirm("この部屋のスコア・登録チーム・回答履歴データをリセットしますか？")) {
-                const updates = {};
-                Object.keys(state.players).forEach(name => {
-                    updates[`players/${name}/score`] = 0;
-                    updates[`players/${name}/answeredStages`] = { none: false, small: false, large: false };
+function executeSmartShuffle() {
+    db.collection("multigroups").doc(uniqueGroupId).get().then(doc => {
+        if (!doc.exists) return;
+        const data = doc.data();
+        let rooms = data.currentResult || [];
+        if (rooms.length === 0) return;
+
+        let notArrived = rooms.find(r => r.id === "special_not_arrived");
+        let unconfirmed = rooms.find(r => r.id === "special_unconfirmed");
+        let leftHome = rooms.find(r => r.id === "special_left_home");
+
+        let normalRooms = rooms.filter(r => !r.isSpecial);
+        let shuffleTargets = [];
+        normalRooms.forEach(r => { shuffleTargets = shuffleTargets.concat(r.members); r.members = []; });
+
+        if (shuffleTargets.length === 0) {
+            alert("現在、各部屋に配置されている『受付済み』の参加者がいません。まずは下の未参加枠からメンバーを部屋へ移動（受付）させてください。");
+            return;
+        }
+
+        shuffleTargets.sort(() => Math.random() - 0.5);
+
+        while (shuffleTargets.length > 0) {
+            const member = shuffleTargets.pop();
+            let bestRoomIdx = -1; let minPenalty = Infinity;
+            for (let i = 0; i < normalRooms.length; i++) {
+                if (normalRooms[i].members.length >= normalRooms[i].capacity) continue;
+                let penalty = 0;
+                normalRooms[i].members.forEach(exM => {
+                    const pairKey = [member, exM].sort().join('-'); penalty += (historyMatrix[pairKey] || 0) * 10;
                 });
-                db.ref(`QUIZ_rooms/${roomId}`).update(updates);
-                db.ref(`QUIZ_rooms/${roomId}/teams`).remove();
-                db.ref(`QUIZ_rooms/${roomId}/history`).remove();
-                alert("リセットが完了しました。");
+                penalty += normalRooms[i].members.length;
+                if (penalty < minPenalty) { minPenalty = penalty; bestRoomIdx = i; }
             }
-        };
-    </script>
+            if (bestRoomIdx !== -1) normalRooms[bestRoomIdx].members.push(member);
+            else { alert("通常部屋の定員が不足しています。"); return; }
+        }
+
+        let finalRooms = [...normalRooms, notArrived, unconfirmed, leftHome];
+        db.collection("multigroups").doc(uniqueGroupId).update({ currentResult: finalRooms });
+    });
+}
+
+function clearKanjiState() {
+    localStorage.removeItem(kanjiStorageKey);
+    if (unsubscribeMembers) unsubscribeMembers();
+    if (unsubscribeStatus) unsubscribeStatus();
+    uniqueGroupId = "";
+    document.getElementById('roomsSetupContainer').innerHTML = "";
+    document.getElementById('resultInside').innerHTML = '';
+    document.getElementById('step2_mainDashboard').style.display = 'none';
+    document.getElementById('step1_connection').style.display = 'block';
+    renderHistoryList();
+}
+
+async function resetCurrentEvent() {
+    if (!confirm("完全にデータを削除して解散しますか？\n(この操作をすると、他の幹事や参加者もアクセスできなくなります)")) return;
+    try {
+        const targetId = uniqueGroupId;
+        await db.collection("multigroups").doc(targetId).update({ currentResult: null, status: "reset" });
+        const snapshot = await db.collection("multigroups").doc(targetId).collection("members").get();
+        const batch = db.batch(); snapshot.forEach(doc => batch.delete(doc.ref)); await batch.commit();
+        
+        const historyData = localStorage.getItem(historyStorageKey);
+        if (historyData) {
+            let historyList = JSON.parse(historyData);
+            historyList = historyList.filter(item => item.id !== targetId);
+            localStorage.setItem(historyStorageKey, JSON.stringify(historyList));
+        }
+        
+        clearKanjiState(); alert("🧹 初期化しました");
+    } catch (e) { alert(e); }
+}
+
+function copyRoomCode() { navigator.clipboard.writeText(uniqueGroupId); alert("コードをコピーしました"); }
+function copyShareUrl() { navigator.clipboard.writeText(document.getElementById('shareUrl').value); alert("URLをコピーしました"); }
+</script>
 </body>
 </html>
