@@ -90,6 +90,7 @@
         .chart-bar { background: linear-gradient(90deg, var(--primary), #818cf8); height: 100%; width: 0%; transition: width 1.5s cubic-bezier(0.1, 1, 0.1, 1); }
         .chart-row.winner .chart-bar { background: linear-gradient(90deg, var(--accent), #fcd34d); }
         .winner-announce { background: rgba(245, 158, 11, 0.15); border: 2px solid var(--accent); padding: 15px; border-radius: 8px; text-align: center; margin-top: 20px; font-weight: bold; color: var(--accent); font-size: 1.2rem; }
+        .draw-announce { background: rgba(239, 68, 68, 0.15); border: 2px solid var(--danger); padding: 15px; border-radius: 8px; text-align: center; margin-top: 20px; font-weight: bold; color: var(--danger); font-size: 1.2rem; }
 
         /* モザイク・秘匿用のスタイル */
         .mosaic-text { filter: blur(5px); select: none; font-weight: bold; }
@@ -216,13 +217,14 @@
         <div class="card">
             <h2>開票結果発表</h2>
             <div id="chart-container"></div>
-            <div id="winner-box" class="winner-announce"></div>
+            <div id="winner-box"></div>
         </div>
         <div class="card">
-            <h2>このラウンドの獲得点数</h2>
+            <h2 id="score-section-title">このラウンドの獲得点数</h2>
             <ul id="round-scores"></ul>
             <button class="btn" id="btn-next-round" style="margin-top:15px; display:none;" onclick="nextRound()">次のラウンドへ（主催者用）</button>
-            <p id="wait-next-msg" style="text-align:center; color:var(--text-muted); margin-top:10px;">主催者が次のラウンドへ進めるのを待っています...</p>
+            <button class="btn btn-danger" id="btn-revote" style="margin-top:15px; display:none;" onclick="triggerRevote()">🔁 同数引き分け：同じ曲で再投票を行う</button>
+            <p id="wait-next-msg" style="text-align:center; color:var(--text-muted); margin-top:10px;">主催者が次のステップへ進めるのを待っています...</p>
         </div>
     </div>
 
@@ -237,7 +239,7 @@
 
     <div class="card info-card">
         <h2>📊 選曲総選挙とは？</h2>
-        <p>歌唱者が提示した「歌える3曲（＋公約）」の中から、みんなが一番聴きたい曲を投票で決定し、実際に歌ってもらうカラオケ盛り上げゲームです。</p>
+        <p>歌唱者が提示した「歌える3曲（＋公約）」の中から、みんなが一番聴きたい曲を投票で決定し、実際に歌てもらゲームです。</p>
         
         <h3>💡 得点のルール</h3>
         <ul>
@@ -267,7 +269,6 @@
         }
     }, 100);
 
-    // 管理スペース開閉制御
     window.toggleAdminPanel = function() {
         const body = document.getElementById('admin-panel-body');
         const arrow = document.getElementById('admin-arrow');
@@ -316,7 +317,6 @@
         });
     }
 
-    // 実際の参加人数に合わせて更新・クリーンアップ（生存確認・幽霊削除）
     window.syncActivePlayers = function() {
         if (!gameState.voterSelections) return alert("現在投票フェーズではありません。");
         if (!confirm("現在実際に画面を開いている人の投票状況をベースにして、残りの未投票数をリセット（全員投票完了状態に）しますか？")) return;
@@ -337,7 +337,6 @@
         });
     }
 
-    // 部屋全体の削除
     window.resetRoom = function() {
         if (!confirm("本当にこの部屋を解散しますか？全データが削除され、参加者はロビーに戻されます。")) return;
         const { ref, remove } = window.dbRefs;
@@ -347,18 +346,14 @@
         });
     }
 
-    // 自主退室処理
     window.leaveRoom = function() {
-        if (!confirm("本当にこの部屋から退室します开？")) return;
+        if (!confirm("本当にこの部屋から退室しますか？")) return;
         const { ref, remove } = window.dbRefs;
         
         if (gameState.host === myName) {
-            // ホストなら部屋ごと消去
             remove(ref(window.db, `senkyo/${roomNo}`)).then(() => location.reload());
         } else {
-            // 一般プレイヤーなら自分だけ削除
             remove(ref(window.db, `senkyo/${roomNo}/players/${myName}`)).then(() => {
-                // もし既に投票していたらその投票情報も削除
                 if (gameState.voterSelections && gameState.voterSelections[myName] !== undefined) {
                     remove(ref(window.db, `senkyo/${roomNo}/voterSelections/${myName}`)).then(() => location.reload());
                 } else {
@@ -373,7 +368,7 @@
         document.getElementById(screenId).classList.add('active');
         if (myName && roomNo) {
             document.getElementById('ranking-bar').style.display = 'block';
-            document.getElementById('global-leave-btn').style.display = 'block'; // 退室ボタン表示
+            document.getElementById('global-leave-btn').style.display = 'block';
             updateRankingBar();
         }
     }
@@ -529,7 +524,7 @@
             }
             showScreen('screen-voter');
         } 
-        else if (gameState.status === 'result') {
+        else if (gameState.status === 'result' || gameState.status === 'draw') {
             renderResultScreen();
             showScreen('screen-result');
         } 
@@ -539,7 +534,6 @@
         }
     }
 
-    // 歌唱者専用リアルタイムモニター（新・モザイク反転システム）
     function renderSingerLiveMonitor() {
         const finalVotes = gameState.votes || [0, 0, 0];
         const selections = gameState.voterSelections || {};
@@ -554,10 +548,6 @@
         const isHalfOrMore = currentVotedCount >= halfCount;
         const isAllVoted = currentVotedCount >= totalVotersNeeded;
 
-        // 【条件変更】
-        // 0 ～ 半数未満：モザイクなし（リアルタイムでクッキリ見える）
-        // 半数 ～ 全員未満：モザイクあり（秘匿される）
-        // 全員投票完了：モザイクなし
         let isSecret = false;
         if (isHalfOrMore && !isAllVoted) {
             isSecret = true;
@@ -579,7 +569,6 @@
             `;
         }).join('');
 
-        // 全員投票が終わると初めてボタンが押せるようになる
         const revealBtn = document.getElementById('btn-reveal-result');
         if (isAllVoted) {
             revealBtn.disabled = false;
@@ -595,7 +584,35 @@
     window.revealResultBySinger = function() {
         const finalVotes = gameState.votes || [0, 0, 0];
         const finalSelections = gameState.voterSelections || {};
-        calculateScoresForRound(finalVotes, finalSelections);
+        
+        // --- 引き分け(同数)判定ロジックの追加 ---
+        const maxVote = Math.max(...finalVotes);
+        let maxCount = 0;
+        finalVotes.forEach(v => { if(v === maxVote) maxCount++; });
+
+        if (maxCount > 1) {
+            // 同数票の曲が複数あれば「引き分け状態」へ
+            const { ref, update } = window.dbRefs;
+            update(ref(window.db, `senkyo/${roomNo}`), {
+                status: 'draw',
+                voterSelections: finalSelections,
+                votes: finalVotes
+            });
+        } else {
+            // 単独1位なら通常通りスコアを計算して確定
+            calculateScoresForRound(finalVotes, finalSelections);
+        }
+    }
+
+    // 再投票をキックする（歌唱者またはホスト専用ボタン）
+    window.triggerRevote = function() {
+        if (!confirm("同じ曲・公約のまま、もう一度再投票を行います。よろしいですか？")) return;
+        const { ref, update } = window.dbRefs;
+        update(ref(window.db, `senkyo/${roomNo}`), {
+            status: 'voting',
+            votes: [0, 0, 0],
+            voterSelections: {}
+        });
     }
 
     function renderVoteOptions(disabled) {
@@ -674,7 +691,6 @@
             nextVotes[vIdx]++;
         });
 
-        // 投票情報をリアルタイムに送信（歌唱者側の画面にすぐ反映されます）
         update(ref(window.db, `senkyo/${roomNo}`), {
             voterSelections: nextSelections,
             votes: nextVotes
@@ -726,10 +742,13 @@
         const finalVotes = gameState.votes || [0, 0, 0];
         const maxVote = Math.max(...finalVotes);
         const minVote = Math.min(...finalVotes);
+        
+        // 引き分けチェック
         let winners = [];
         gameState.candidates.forEach((c, idx) => {
             if (finalVotes[idx] === maxVote) winners.push(idx);
         });
+        const isDrawMode = gameState.status === 'draw' || winners.length > 1;
         const winnerIdx = winners[0];
         const totalVotes = finalVotes.reduce((a, b) => a + b, 0);
         
@@ -739,7 +758,7 @@
         const chartContainer = document.getElementById('chart-container');
         chartContainer.innerHTML = gameState.candidates.map((c, idx) => {
             const pct = totalVotes > 0 ? Math.round((finalVotes[idx] / totalVotes) * 100) : 0;
-            const isWinner = idx === winnerIdx ? 'winner' : '';
+            const isWinner = (!isDrawMode && idx === winnerIdx) ? 'winner' : '';
             return `
                 <div class="chart-row ${isWinner}">
                     <div class="chart-info">
@@ -760,31 +779,62 @@
             });
         }, 100);
 
-        document.getElementById('winner-box').innerHTML = `👑 当選曲：${gameState.candidates[winnerIdx].title}<br><small style="color:white">👉 ${currentSingerName} さん、歌唱・公約をお願いします！</small>`;
+        const winnerBox = document.getElementById('winner-box');
+        const scoreTitle = document.getElementById('score-section-title');
+        const scoreScores = document.getElementById('round-scores');
+        const nextBtn = document.getElementById('btn-next-round');
+        const revoteBtn = document.getElementById('btn-revote');
+        const waitMsg = document.getElementById('wait-next-msg');
 
-        let scoreDetailsHTML = "";
-        pKeys.forEach(pKey => {
-            let gained = 0;
-            if (pKey === currentSingerName) {
-                gained = totalVotes > 0 ? Math.round((maxVote / totalVotes) * 100) : 0;
-                scoreDetailsHTML += `<li class="player-item"><span>🎤 ${pKey} (歌唱者支持率)</span><span style="color:var(--accent)">+${gained}点</span></li>`;
+        if (isDrawMode) {
+            // 【引き分け時の表示】
+            winnerBox.className = "draw-announce";
+            winnerBox.innerHTML = `⚖️ 票数が同数のため引き分け！<br><small style="color:white">歌唱者またはホストが決着をつけるため「再投票」を行ってください。</small>`;
+            scoreTitle.innerText = "再投票の準備中...";
+            scoreScores.innerHTML = `<li class="player-item" style="color:var(--text-muted); justify-content:center;">引き分けのため、このラウンドの点数加算は保留されています。</li>`;
+            nextBtn.style.display = 'none';
+
+            // 歌唱者、またはルームホストにだけ「再投票ボタン」を表示
+            if (currentSingerName === myName || gameState.host === myName) {
+                revoteBtn.style.display = 'block';
+                waitMsg.style.display = 'none';
             } else {
-                const pVote = gameState.voterSelections ? gameState.voterSelections[pKey] : undefined;
-                if (pVote === winnerIdx) gained = 5;
-                else if (finalVotes[pVote] === minVote) gained = 10;
-                
-                const songTitle = gameState.candidates[pVote] ? gameState.candidates[pVote].title : "未投票";
-                scoreDetailsHTML += `<li class="player-item"><span>👤 ${pKey} (${songTitle}に投票)</span><span>+${gained}点</span></li>`;
+                revoteBtn.style.display = 'none';
+                waitMsg.style.display = 'block';
+                waitMsg.innerText = "歌唱者が再投票を開始するのを待っています...";
             }
-        });
-        document.getElementById('round-scores').innerHTML = scoreDetailsHTML;
-
-        if (gameState.host === myName) {
-            document.getElementById('btn-next-round').style.display = 'block';
-            document.getElementById('wait-next-msg').style.display = 'none';
         } else {
-            document.getElementById('btn-next-round').style.display = 'none';
-            document.getElementById('wait-next-msg').style.display = 'block';
+            // 【通常当選時の表示】
+            winnerBox.className = "winner-announce";
+            winnerBox.innerHTML = `👑 当選曲：${gameState.candidates[winnerIdx].title}<br><small style="color:white">👉 ${currentSingerName} さん、歌唱・公約をお願いします！</small>`;
+            scoreTitle.innerText = "このラウンドの獲得点数";
+            revoteBtn.style.display = 'none';
+
+            let scoreDetailsHTML = "";
+            pKeys.forEach(pKey => {
+                let gained = 0;
+                if (pKey === currentSingerName) {
+                    gained = totalVotes > 0 ? Math.round((maxVote / totalVotes) * 100) : 0;
+                    scoreDetailsHTML += `<li class="player-item"><span>🎤 ${pKey} (歌唱者支持率)</span><span style="color:var(--accent)">+${gained}点</span></li>`;
+                } else {
+                    const pVote = gameState.voterSelections ? gameState.voterSelections[pKey] : undefined;
+                    if (pVote === winnerIdx) gained = 5;
+                    else if (finalVotes[pVote] === minVote) gained = 10;
+                    
+                    const songTitle = gameState.candidates[pVote] ? gameState.candidates[pVote].title : "未投票";
+                    scoreDetailsHTML += `<li class="player-item"><span>👤 ${pKey} (${songTitle}に投票)</span><span>+${gained}点</span></li>`;
+                }
+            });
+            scoreScores.innerHTML = scoreDetailsHTML;
+
+            if (gameState.host === myName) {
+                nextBtn.style.display = 'block';
+                waitMsg.style.display = 'none';
+            } else {
+                nextBtn.style.display = 'none';
+                waitMsg.style.display = 'block';
+                waitMsg.innerText = "主催者が次のラウンドへ進めるのを待っています...";
+            }
         }
     }
 
