@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>⚡ NEO空耳カラオケ ⚡</title>
+    <style>
+        /* 全体のサイバーパンク・ネオンデザイン */
+        body {
+            margin: 0;
+            padding: 0;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            background-color: #0d0e15;
+            color: #fff;
+            font-family: 'Helvetica Neue', Arial, 'Hiragino Kaku Gothic ProN', sans-serif;
+            overflow: hidden;
+        }
+
+        /* ヘッダー・操作エリア */
+        header {
+            background: linear-gradient(180deg, #161925 0%, #0d0e15 100%);
+            padding: 15px;
+            text-align: center;
+            border-bottom: 2px solid #ff0055;
+            box-shadow: 0 0 15px rgba(255, 0, 85, 0.4);
+            z-index: 10;
+        }
+
+        h1 {
+            margin: 0 0 10px 0;
+            font-size: 1.5rem;
+            letter-spacing: 2px;
+            color: #00ffff;
+            text-shadow: 0 0 10px #00ffff, 0 0 20px #00ffff;
+        }
+
+        .status {
+            font-size: 0.85rem;
+            color: #ff0055;
+            text-shadow: 0 0 5px #ff0055;
+            margin-bottom: 10px;
+            font-weight: bold;
+        }
+
+        .btn-container {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+        }
+
+        .btn {
+            font-size: 1rem;
+            padding: 10px 25px;
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.2s ease;
+            box-shadow: 0 0 10px rgba(0,0,0,0.5);
+        }
+
+        #start-btn {
+            background: #00ffcc;
+            color: #020202;
+            box-shadow: 0 0 10px #00ffcc;
+        }
+        #start-btn:hover { box-shadow: 0 0 20px #00ffcc; transform: scale(1.05); }
+
+        #stop-btn {
+            background: #ff0055;
+            color: #fff;
+            box-shadow: 0 0 10px #ff0055;
+        }
+        #stop-btn:hover { box-shadow: 0 0 20px #ff0055; transform: scale(1.05); }
+
+        /* メインコンテンツ（上下セパレート構造） */
+        .main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            height: calc(100vh - 120px);
+        }
+
+        /* 上段：カラオケリアルタイムテロップ画面 */
+        .top-screen {
+            flex: 1.2;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: radial-gradient(circle, #1a1c2e 0%, #0d0e15 100%);
+            border-bottom: 3px double #00ffff;
+            padding: 20px;
+            position: relative;
+            box-sizing: border-box;
+        }
+
+        .top-screen::before {
+            content: "REALTIME MISHEARING TELOP";
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            font-size: 0.7rem;
+            color: rgba(0, 255, 255, 0.3);
+            letter-spacing: 1px;
+        }
+
+        #telop {
+            font-size: 2.8rem;
+            font-weight: 900;
+            text-align: center;
+            color: #ffff00;
+            text-shadow: 0 0 12px #ffff00, 2px 2px 0px #ff0055;
+            line-height: 1.4;
+            word-break: break-all;
+            max-width: 90%;
+            transition: all 0.1s ease;
+        }
+
+        /* 下段：これまでの迷言ストック画面 */
+        .bottom-screen {
+            flex: 0.8;
+            background-color: #07080d;
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+            box-sizing: border-box;
+            position: relative;
+        }
+
+        .bottom-screen::before {
+            content: "MISHEARING LOGS";
+            position: absolute;
+            top: 5px;
+            left: 15px;
+            font-size: 0.7rem;
+            color: rgba(255, 0, 85, 0.4);
+            letter-spacing: 1px;
+        }
+
+        #log-box {
+            margin-top: 15px;
+            flex: 1;
+            overflow-y: auto;
+            border-left: 2px dashed #ff0055;
+            padding-left: 15px;
+        }
+
+        .log-item {
+            font-size: 1.1rem;
+            margin-bottom: 12px;
+            color: #a0a5c0;
+            animation: fadeIn 0.3s ease-out;
+            line-height: 1.4;
+        }
+
+        .log-item span {
+            color: #00ffcc;
+            font-weight: bold;
+            margin-right: 8px;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(5px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* スクロールバーのカスタム */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #07080d; }
+        ::-webkit-scrollbar-thumb { background: #ff0055; border-radius: 3px; }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>⚡ 空耳サイバーカラオケ ⚡</h1>
+        <div id="status" class="status">【スタンバイ中】</div>
+        <div class="btn-container">
+            <button id="start-btn" class="btn">🎤 歌唱開始</button>
+            <button id="stop-btn" class="btn">STOP</button>
+        }
+        </div>
+    </header>
+
+    <div class="main-content">
+        <div class="top-screen">
+            <div id="telop">（歌声を聴かせるとここに爆音で誤変換が出ます）</div>
+        </div>
+
+        <div class="bottom-screen">
+            <div id="log-box"></div>
+        </div>
+    </div>
+
+    <script>
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (!SpeechRecognition) {
+            alert("ブラウザが音声認識に対応していません。Google Chrome等でお試しください。");
+        } else {
+            const recognition = new SpeechRecognition();
+            recognition.lang = 'ja-JP';
+            recognition.continuous = true;
+            // リアルタイムに文字がガチャガチャ変わる方がカラオケ感が出るのでtrueにします！
+            recognition.interimResults = true; 
+
+            const startBtn = document.getElementById('start-btn');
+            const stopBtn = document.getElementById('stop-btn');
+            const telop = document.getElementById('telop');
+            const logBox = document.getElementById('log-box');
+            const statusDiv = document.getElementById('status');
+
+            let lastFinalText = "";
+
+            recognition.onstart = () => {
+                statusDiv.innerText = "⚡ AIがあなたの歌声を空耳変換中... ⚡";
+                statusDiv.style.color = "#00ffcc";
+                statusDiv.style.textShadow = "0 0 5px #00ffcc";
+            };
+
+            recognition.onend = () => {
+                statusDiv.innerText = "【スタンバイ中】";
+                statusDiv.style.color = "#ff0055";
+                statusDiv.style.textShadow = "0 0 5px #ff0055";
+            };
+
+            recognition.onresult = (event) => {
+                let interimTranscript = '';
+                let finalTranscript = '';
+
+                for (let i = event.resultIndex; i < event.results.length; ++i) {
+                    if (event.results[i].isFinal) {
+                        finalTranscript = event.results[i][0].transcript;
+                    } else {
+                        interimTranscript += event.results[i][0].transcript;
+                    }
+                }
+
+                // 上半分：リアルタイムテロップ（現在の発言、または確定前の文字）
+                if (interimTranscript) {
+                    telop.innerText = interimTranscript;
+                    telop.style.color = "#ffff00"; // 確定前は黄色
+                }
+
+                // 確定したら下半分のログに流し込む
+                if (finalTranscript && finalTranscript !== lastFinalText) {
+                    lastFinalText = finalTranscript;
+                    telop.innerText = finalTranscript;
+                    telop.style.color = "#00ffff"; // 確定したら一瞬サイバーブルーに
+
+                    // 履歴追加
+                    const item = document.createElement('div');
+                    item.className = 'log-item';
+                    item.innerHTML = `<span>▶</span>${finalTranscript}`;
+                    logBox.appendChild(item);
+
+                    // 自動スクロール
+                    logBox.scrollTop = logBox.scrollHeight;
+                }
+            };
+
+            startBtn.onclick = () => recognition.start();
+            stopBtn.onclick = () => recognition.stop();
+        }
+    </script>
+</body>
+</html>
