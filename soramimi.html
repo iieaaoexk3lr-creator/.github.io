@@ -3,266 +3,229 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>⚡ NEO空耳カラオケ ⚡</title>
+    <title>🎤 ポップ空耳カラオケ＋録音保存</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <style>
-        /* 全体のサイバーパンク・ネオンデザイン */
-        body {
-            margin: 0;
-            padding: 0;
-            height: 100vh;
-            display: flex;
-            flex-direction: column;
-            background-color: #0d0e15;
-            color: #fff;
-            font-family: 'Helvetica Neue', Arial, 'Hiragino Kaku Gothic ProN', sans-serif;
-            overflow: hidden;
-        }
+        body { background: #ffeefc; font-family: 'Arial Rounded MT Bold', 'Hiragino Maru Gothic ProN', sans-serif; margin: 0; display: flex; flex-direction: column; height: 100vh; color: #555; }
+        header { background: #ff9a9e; padding: 15px; text-align: center; color: white; border-bottom: 5px solid #ff6f61; }
+        h1 { margin: 0; font-size: 1.6rem; text-shadow: 2px 2px 0px #ff6f61; }
+        .status { font-size: 0.9rem; margin-top: 5px; opacity: 0.9; }
+        
+        .main-container { display: flex; flex-direction: column; flex: 1; overflow: hidden; padding: 10px; box-sizing: border-box; }
+        
+        /* 上段：テロップエリア */
+        #telop-area { flex: 1; background: #fff; margin-bottom: 10px; border-radius: 20px; border: 4px dashed #ff9a9e; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 15px; box-sizing: border-box; }
+        .telop-line { font-size: 1.8rem; font-weight: bold; color: #ff6f61; height: 2.6rem; margin: 5px 0; text-align: center; transition: all 0.2s ease; word-break: break-all; width: 90%; }
+        .telop-line:empty::before { content: "・・・"; color: #ddd; }
 
-        /* ヘッダー・操作エリア */
-        header {
-            background: linear-gradient(180deg, #161925 0%, #0d0e15 100%);
-            padding: 15px;
-            text-align: center;
-            border-bottom: 2px solid #ff0055;
-            box-shadow: 0 0 15px rgba(255, 0, 85, 0.4);
-            z-index: 10;
-        }
+        /* 下段：履歴エリア */
+        #history-area { flex: 2; background: #fff; border-radius: 20px; border: 4px solid #a1c4fd; padding: 15px; overflow-y: auto; box-sizing: border-box; position: relative; }
+        #history-title { color: #a1c4fd; margin: 0 0 10px 0; font-size: 1.1rem; border-bottom: 2px dashed #a1c4fd; padding-bottom: 5px; }
+        .log-item { background: #f0f9ff; margin: 8px 0; padding: 12px; border-radius: 12px; border-left: 5px solid #a1c4fd; font-size: 1.1rem; font-weight: bold; line-height: 1.4; animation: popIn 0.3s ease; }
 
-        h1 {
-            margin: 0 0 10px 0;
-            font-size: 1.5rem;
-            letter-spacing: 2px;
-            color: #00ffff;
-            text-shadow: 0 0 10px #00ffff, 0 0 20px #00ffff;
-        }
+        @keyframes popIn { 0% { transform: scale(0.9); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
 
-        .status {
-            font-size: 0.85rem;
-            color: #ff0055;
-            text-shadow: 0 0 5px #ff0055;
-            margin-bottom: 10px;
-            font-weight: bold;
-        }
-
-        .btn-container {
-            display: flex;
-            justify-content: center;
-            gap: 15px;
-        }
-
-        .btn {
-            font-size: 1rem;
-            padding: 10px 25px;
-            border: none;
-            border-radius: 50px;
-            cursor: pointer;
-            font-weight: bold;
-            transition: all 0.2s ease;
-            box-shadow: 0 0 10px rgba(0,0,0,0.5);
-        }
-
-        #start-btn {
-            background: #00ffcc;
-            color: #020202;
-            box-shadow: 0 0 10px #00ffcc;
-        }
-        #start-btn:hover { box-shadow: 0 0 20px #00ffcc; transform: scale(1.05); }
-
-        #stop-btn {
-            background: #ff0055;
-            color: #fff;
-            box-shadow: 0 0 10px #ff0055;
-        }
-        #stop-btn:hover { box-shadow: 0 0 20px #ff0055; transform: scale(1.05); }
-
-        /* メインコンテンツ（上下セパレート構造） */
-        .main-content {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            height: calc(100vh - 120px);
-        }
-
-        /* 上段：カラオケリアルタイムテロップ画面 */
-        .top-screen {
-            flex: 1.2;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            background: radial-gradient(circle, #1a1c2e 0%, #0d0e15 100%);
-            border-bottom: 3px double #00ffff;
-            padding: 20px;
-            position: relative;
-            box-sizing: border-box;
-        }
-
-        .top-screen::before {
-            content: "REALTIME MISHEARING TELOP";
-            position: absolute;
-            top: 10px;
-            left: 10px;
-            font-size: 0.7rem;
-            color: rgba(0, 255, 255, 0.3);
-            letter-spacing: 1px;
-        }
-
-        #telop {
-            font-size: 2.8rem;
-            font-weight: 900;
-            text-align: center;
-            color: #ffff00;
-            text-shadow: 0 0 12px #ffff00, 2px 2px 0px #ff0055;
-            line-height: 1.4;
-            word-break: break-all;
-            max-width: 90%;
-            transition: all 0.1s ease;
-        }
-
-        /* 下段：これまでの迷言ストック画面 */
-        .bottom-screen {
-            flex: 0.8;
-            background-color: #07080d;
-            padding: 15px;
-            display: flex;
-            flex-direction: column;
-            box-sizing: border-box;
-            position: relative;
-        }
-
-        .bottom-screen::before {
-            content: "MISHEARING LOGS";
-            position: absolute;
-            top: 5px;
-            left: 15px;
-            font-size: 0.7rem;
-            color: rgba(255, 0, 85, 0.4);
-            letter-spacing: 1px;
-        }
-
-        #log-box {
-            margin-top: 15px;
-            flex: 1;
-            overflow-y: auto;
-            border-left: 2px dashed #ff0055;
-            padding-left: 15px;
-        }
-
-        .log-item {
-            font-size: 1.1rem;
-            margin-bottom: 12px;
-            color: #a0a5c0;
-            animation: fadeIn 0.3s ease-out;
-            line-height: 1.4;
-        }
-
-        .log-item span {
-            color: #00ffcc;
-            font-weight: bold;
-            margin-right: 8px;
-        }
-
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(5px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
-        /* スクロールバーのカスタム */
-        ::-webkit-scrollbar { width: 6px; }
-        ::-webkit-scrollbar-track { background: #07080d; }
-        ::-webkit-scrollbar-thumb { background: #ff0055; border-radius: 3px; }
+        /* ボタンコントロール */
+        .btn-group { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; padding: 15px; background: #fff; border-top: 2px solid #ffeefc; }
+        button { border: none; padding: 12px 24px; border-radius: 50px; font-weight: bold; font-size: 1rem; cursor: pointer; color: white; box-shadow: 0 4px 0px rgba(0,0,0,0.15); transition: transform 0.1s, box-shadow 0.1s; }
+        button:disabled { background: #ccc !important; box-shadow: 0 4px 0px #aaa !important; cursor: not-allowed; transform: none !important; }
+        
+        #start-btn { background: #ff6f61; }
+        #stop-btn { background: #9b59b6; }
+        #save-img-btn { background: #a1c4fd; color: #333; }
+        #save-audio-btn { background: #2ecc71; }
+        #reset-btn { background: #e67e22; }
+        #menu-btn { background: #95a5a6; }
+        
+        button:active:not(:disabled) { transform: translateY(4px); box-shadow: none; }
     </style>
 </head>
 <body>
 
-    <header>
-        <h1>⚡ 空耳サイバーカラオケ ⚡</h1>
-        <div id="status" class="status">【スタンバイ中】</div>
-        <div class="btn-container">
-            <button id="start-btn" class="btn">🎤 歌唱開始</button>
-            <button id="stop-btn" class="btn">STOP</button>
-        }
-        </div>
-    </header>
+<header>
+    <h1>🎤 ポップ空耳カラオケ</h1>
+    <div id="status" class="status">いつでも歌い始めてね！</div>
+</header>
 
-    <div class="main-content">
-        <div class="top-screen">
-            <div id="telop">（歌声を聴かせるとここに爆音で誤変換が出ます）</div>
-        </div>
-
-        <div class="bottom-screen">
-            <div id="log-box"></div>
-        </div>
+<div class="main-container">
+    <div id="telop-area">
+        <div id="line1" class="telop-line"></div>
+        <div id="line2" class="telop-line"></div>
     </div>
 
-    <script>
-        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-        if (!SpeechRecognition) {
-            alert("ブラウザが音声認識に対応していません。Google Chrome等でお試しください。");
-        } else {
-            const recognition = new SpeechRecognition();
-            recognition.lang = 'ja-JP';
-            recognition.continuous = true;
-            // リアルタイムに文字がガチャガチャ変わる方がカラオケ感が出るのでtrueにします！
-            recognition.interimResults = true; 
+    <div id="history-area">
+        <h3 id="history-title">🌟 迷言空耳コレクション</h3>
+        <div id="log-list"></div>
+    </div>
+</div>
 
-            const startBtn = document.getElementById('start-btn');
-            const stopBtn = document.getElementById('stop-btn');
-            const telop = document.getElementById('telop');
-            const logBox = document.getElementById('log-box');
-            const statusDiv = document.getElementById('status');
+<div class="btn-group">
+    <button id="start-btn">🎵 歌唱スタート</button>
+    <button id="stop-btn" disabled>🛑 終了</button>
+    <button id="save-img-btn" disabled>📸 画面を画像保存</button>
+    <button id="save-audio-btn" disabled>💾 音声を保存</button>
+    <button id="reset-btn">🔄 リセット</button>
+    <button id="menu-btn">🏠 メニューへ</button>
+</div>
 
-            let lastFinalText = "";
+<script>
+    // 音声認識と録音の初期設定
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    let recognition;
+    let mediaRecorder;
+    let audioChunks = [];
+    let isRecording = false;
+    let lines = ["", ""];
 
-            recognition.onstart = () => {
-                statusDiv.innerText = "⚡ AIがあなたの歌声を空耳変換中... ⚡";
-                statusDiv.style.color = "#00ffcc";
-                statusDiv.style.textShadow = "0 0 5px #00ffcc";
+    const line1 = document.getElementById('line1');
+    const line2 = document.getElementById('line2');
+    const logList = document.getElementById('log-list');
+    const statusDiv = document.getElementById('status');
+
+    const startBtn = document.getElementById('start-btn');
+    const stopBtn = document.getElementById('stop-btn');
+    const saveImgBtn = document.getElementById('save-img-btn');
+    const saveAudioBtn = document.getElementById('save-audio-btn');
+    const resetBtn = document.getElementById('reset-btn');
+    const menuBtn = document.getElementById('menu-btn');
+
+    if (!SpeechRecognition) {
+        alert("ブラウザが音声認識に対応していません。Google Chrome等でお試しください。");
+    } else {
+        recognition = new SpeechRecognition();
+        recognition.lang = 'ja-JP';
+        recognition.continuous = false; 
+
+        recognition.onresult = (e) => {
+            const transcript = e.results[0][0].transcript;
+            
+            lines[0] = lines[1];
+            lines[1] = transcript;
+            
+            line1.innerText = lines[0];
+            line2.innerText = lines[1];
+
+            if(lines[0]) {
+                const div = document.createElement('div');
+                div.className = 'log-item';
+                div.innerText = lines[0];
+                logList.appendChild(div);
+                
+                const historyArea = document.getElementById('history-area');
+                historyArea.scrollTop = historyArea.scrollHeight;
+            }
+        };
+
+        recognition.onend = () => {
+            if (isRecording) {
+                recognition.start(); 
+            }
+        };
+    }
+
+    // 🎵 歌唱スタートボタン
+    startBtn.onclick = async () => {
+        isRecording = true;
+        audioChunks = []; 
+        lines = ["", ""];
+        line1.innerText = "";
+        line2.innerText = "";
+        logList.innerHTML = "";
+
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            
+            mediaRecorder = new MediaRecorder(stream);
+            mediaRecorder.ondataavailable = (e) => {
+                if (e.data.size > 0) audioChunks.push(e.data);
             };
+            mediaRecorder.start();
+            recognition.start();
 
-            recognition.onend = () => {
-                statusDiv.innerText = "【スタンバイ中】";
-                statusDiv.style.color = "#ff0055";
-                statusDiv.style.textShadow = "0 0 5px #ff0055";
-            };
+            statusDiv.innerText = "🛑 録音＆空耳変換中... 熱唱してください！";
+            startBtn.disabled = true;
+            stopBtn.disabled = false;
+            saveImgBtn.disabled = true;
+            saveAudioBtn.disabled = true;
+            resetBtn.disabled = true; // 録音中はリセット不可
 
-            recognition.onresult = (event) => {
-                let interimTranscript = '';
-                let finalTranscript = '';
-
-                for (let i = event.resultIndex; i < event.results.length; ++i) {
-                    if (event.results[i].isFinal) {
-                        finalTranscript = event.results[i][0].transcript;
-                    } else {
-                        interimTranscript += event.results[i][0].transcript;
-                    }
-                }
-
-                // 上半分：リアルタイムテロップ（現在の発言、または確定前の文字）
-                if (interimTranscript) {
-                    telop.innerText = interimTranscript;
-                    telop.style.color = "#ffff00"; // 確定前は黄色
-                }
-
-                // 確定したら下半分のログに流し込む
-                if (finalTranscript && finalTranscript !== lastFinalText) {
-                    lastFinalText = finalTranscript;
-                    telop.innerText = finalTranscript;
-                    telop.style.color = "#00ffff"; // 確定したら一瞬サイバーブルーに
-
-                    // 履歴追加
-                    const item = document.createElement('div');
-                    item.className = 'log-item';
-                    item.innerHTML = `<span>▶</span>${finalTranscript}`;
-                    logBox.appendChild(item);
-
-                    // 自動スクロール
-                    logBox.scrollTop = logBox.scrollHeight;
-                }
-            };
-
-            startBtn.onclick = () => recognition.start();
-            stopBtn.onclick = () => recognition.stop();
+        } catch (err) {
+            alert("マイクの許可が必要です：", err);
+            isRecording = false;
         }
-    </script>
+    };
+
+    // 🛑 終了ボタン
+    stopBtn.onclick = () => {
+        isRecording = false;
+        recognition.stop(); 
+        
+        if (mediaRecorder && mediaRecorder.state !== "inactive") {
+            mediaRecorder.stop(); 
+            mediaRecorder.stream.getTracks().forEach(track => track.stop());
+        }
+
+        if(lines[1]) {
+            const div = document.createElement('div');
+            div.className = 'log-item';
+            div.innerText = lines[1];
+            logList.appendChild(div);
+        }
+
+        statusDiv.innerText = "いつでも次の曲をどうぞ！";
+        startBtn.disabled = false;
+        stopBtn.disabled = true;
+        saveImgBtn.disabled = false;
+        saveAudioBtn.disabled = false; 
+        resetBtn.disabled = false;
+    };
+
+    // 📸 画像保存機能
+    saveImgBtn.onclick = () => {
+        html2canvas(document.getElementById('history-area')).then(canvas => {
+            const link = document.createElement('a');
+            link.download = 'soramimi_log.png';
+            link.href = canvas.toDataURL();
+            link.click();
+        });
+    };
+
+    // 💾 音声保存機能
+    saveAudioBtn.onclick = () => {
+        if (audioChunks.length === 0) return;
+        const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+        const audioUrl = URL.createObjectURL(audioBlob);
+        const link = document.createElement('a');
+        link.download = 'soramimi_song.webm'; 
+        link.href = audioUrl;
+        link.click();
+    };
+
+    // 🔄 リセット機能
+    resetBtn.onclick = () => {
+        if (confirm("歌詞ログと録音データをすべて消去します。よろしいですか？")) {
+            // データのクリア
+            audioChunks = [];
+            lines = ["", ""];
+            line1.innerText = "";
+            line2.innerText = "";
+            logList.innerHTML = "";
+            
+            // ボタンの初期化
+            saveImgBtn.disabled = true;
+            saveAudioBtn.disabled = true;
+            statusDiv.innerText = "データをリセットしました。いつでも歌い始めてね！";
+        }
+    };
+
+    // 🏠 メニューへ戻る機能
+    menuBtn.onclick = () => {
+        if (isRecording) {
+            alert("録音を停止してからメニューに戻ってください。");
+            return;
+        }
+        window.location.href = "index.html";
+    };
+</script>
 </body>
 </html>
