@@ -17,7 +17,7 @@
         #telop-area { flex: 1; background: #fff; margin-bottom: 10px; border-radius: 20px; border: 4px dashed #ff9a9e; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 15px; box-sizing: border-box; }
         .telop-line { font-size: 1.8rem; font-weight: bold; color: #ff6f61; height: 2.6rem; margin: 5px 0; text-align: center; transition: all 0.2s ease; word-break: break-all; width: 90%; }
         .telop-line:empty::before { content: "・・・"; color: #ddd; }
-        .translating { color: #a1c4fd !important; font-size: 1.4rem; } /* 翻訳中のスタイル */
+        .translating { color: #a1c4fd !important; font-size: 1.1rem; font-style: italic; }
 
         /* 下段：履歴エリア */
         #history-area { flex: 2; background: #fff; border-radius: 20px; border: 4px solid #a1c4fd; padding: 15px; overflow-y: auto; box-sizing: border-box; position: relative; }
@@ -27,7 +27,7 @@
 
         @keyframes popIn { 0% { transform: scale(0.9); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
 
-        /* ボタンコントロール（グリッドで等間隔に配置） */
+        /* ボタンコントロール（2列等間隔配置） */
         .btn-group { 
             display: grid; 
             grid-template-columns: repeat(2, 1fr); 
@@ -92,14 +92,13 @@
 </div>
 
 <script>
-    // ★ あなたのGoogle Apps Script (GAS) のWebアプリURLをここに貼り付けてください
     const GAS_URL = "https://script.google.com/macros/s/xxxx/exec"; 
 
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     let recognition;
     let mediaRecorder;
     let audioChunks = [];
-    let isRecording = false;
+    let isRecording = false; // ★ これが「終了ボタン」を押すまで絶対に変わりません！
     let lines = ["", ""];
     let localStream = null;
 
@@ -115,22 +114,20 @@
     const resetBtn = document.getElementById('reset-btn');
     const menuBtn = document.getElementById('menu-btn');
 
-    // ★ GASを使って往復翻訳（日→英→日）を行う関数
     async function translateLoop(text) {
-        if (!text || GAS_URL.includes("xxxx")) return text;
+        if (!text || !GAS_URL || GAS_URL.includes("xxxx")) return text;
         try {
-            // 1回目: 日本語から英語へ
             let resEnc = await fetch(`${GAS_URL}?text=${encodeURIComponent(text)}&source=ja&target=en`);
             let jsonEnc = await resEnc.json();
             let enText = jsonEnc.text;
+            if (!enText) return text;
 
-            // 2回目: 英語から日本語へ（ここでバグる）
             let resDec = await fetch(`${GAS_URL}?text=${encodeURIComponent(enText)}&source=en&target=ja`);
             let jsonDec = await resDec.json();
-            return jsonDec.text;
+            return jsonDec.text || text;
         } catch (err) {
-            console.error("翻訳エラー:", err);
-            return text; // エラー時は元の文字をそのまま返す
+            console.error("GAS翻訳エラー:", err);
+            return text;
         }
     }
 
@@ -139,53 +136,51 @@
     } else {
         recognition = new SpeechRecognition();
         recognition.lang = 'ja-JP';
-        recognition.continuous = true; 
+        recognition.continuous = false; // 一言ごとにサクッと確定させる
         recognition.interimResults = false; 
 
-        recognition.onresult = async (e) => {
-            const resultIndex = e.resultIndex;
-            const rawTranscript = e.results[resultIndex][0].transcript;
+        recognition.onresult = (e) => {
+            const rawTranscript = e.results[0][0].transcript;
             
-            // 画面の上段テロップには、まずAIが聞き取った生の空耳を出す
             lines[0] = lines[1];
             lines[1] = rawTranscript;
             
             line1.innerText = lines[0];
             line2.innerText = lines[1];
 
-            // 押し出された1行目（lines[0]）を往復翻訳にかけてから履歴に送る
             if(lines[0]) {
                 const targetText = lines[0];
-                
-                // 履歴欄に「翻訳中...」の枠を先に作っておく
                 const div = document.createElement('div');
                 div.className = 'log-item';
-                div.innerHTML = `<span class="original">元: ${targetText}</span><span class="translating">🔄 翻訳システムが暴走中...</span>`;
-                logList.appendChild(div);
                 
+                if (GAS_URL.includes("xxxx")) {
+                    div.innerHTML = `🎵 ${targetText}`;
+                } else {
+                    div.innerHTML = `<span class="original">元: ${targetText}</span><span class="translating">🔄 翻訳システム通信中...</span>`;
+                    translateLoop(targetText).then(translatedText => {
+                        div.innerHTML = `<span class="original">元: ${targetText}</span> 🎭 ${translatedText}`;
+                    });
+                }
+                
+                logList.appendChild(div);
                 const historyArea = document.getElementById('history-area');
                 historyArea.scrollTop = historyArea.scrollHeight;
-
-                // 裏で非同期にGAS翻訳を実行
-                const translatedText = await translateLoop(targetText);
-                
-                // 翻訳が終わったら中身を書き換える
-                div.innerHTML = `<span class="original">元: ${targetText}</span> 🎭 ${translatedText}`;
             }
         };
 
+        // ★ 音声認識が息継ぎ等で途切れても、全体の「isRecording」がtrue（終了を押してない）なら即再起動するだけ！
         recognition.onend = () => {
             if (isRecording) {
-                try { recognition.start(); } catch(err) {}
+                try { recognition.start(); } catch(e){}
             }
         };
 
-        recognition.onerror = (event) => { console.log("エラー緩和:", event.error); };
+        recognition.onerror = (e) => { console.log("認識エラー緩和:", e.error); };
     }
 
     // 🎵 歌唱スタート
     startBtn.onclick = async () => {
-        isRecording = true;
+        isRecording = true; // ここで「録音中状態」を固定！
         audioChunks = []; 
         lines = ["", ""];
         line1.innerText = "";
@@ -194,14 +189,18 @@
 
         try {
             localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            
+            // 録音は終了を押すまで裏で完全に一本化して回り続けます
             mediaRecorder = new MediaRecorder(localStream);
             mediaRecorder.ondataavailable = (e) => {
                 if (e.data.size > 0) audioChunks.push(e.data);
             };
-            mediaRecorder.start(1000);
+            mediaRecorder.start(); // 細切れにせず、終了までずっと一本で録音
+
+            // 文字起こしの受付を開始
             recognition.start();
 
-            statusDiv.innerText = "🛑 録音＆空耳・往復翻訳中！思いっきり歌って！";
+            statusDiv.innerText = "🛑 録音＆空耳変換中！思いっきり歌って！";
             startBtn.disabled = true;
             stopBtn.disabled = false;
             saveImgBtn.disabled = true;
@@ -209,28 +208,40 @@
             resetBtn.disabled = true;
 
         } catch (err) {
-            alert("マイクの許可が必要です。");
+            alert("マイクの利用許可が必要です。");
             isRecording = false;
         }
     };
 
-    // 🛑 終了
-    stopBtn.onclick = async () => {
-        isRecording = false;
+    // 🛑 終了（ここで初めてすべてがストップします）
+    stopBtn.onclick = () => {
+        isRecording = false; // ここで初めて録音中状態を解除
+        
         try { recognition.stop(); } catch(e){}
-        if (mediaRecorder && mediaRecorder.state !== "inactive") mediaRecorder.stop(); 
-        if (localStream) localStream.getTracks().forEach(track => track.stop());
+        if (mediaRecorder && mediaRecorder.state !== "inactive") {
+            try { mediaRecorder.stop(); } catch(e){}
+        }
+        if (localStream) {
+            localStream.getTracks().forEach(track => track.stop());
+        }
 
-        // 最後に残った2行目も翻訳して履歴へ
+        // 最後の1行を履歴へ
         if(lines[1]) {
             const targetText = lines[1];
             const div = document.createElement('div');
             div.className = 'log-item';
-            div.innerHTML = `<span class="original">元: ${targetText}</span><span class="translating">🔄 翻訳システムが暴走中...</span>`;
-            logList.appendChild(div);
             
-            const translatedText = await translateLoop(targetText);
-            div.innerHTML = `<span class="original">元: ${targetText}</span> 🎭 ${translatedText}`;
+            if (GAS_URL.includes("xxxx")) {
+                div.innerHTML = `🎵 ${targetText}`;
+            } else {
+                div.innerHTML = `<span class="original">元: ${targetText}</span><span class="translating">🔄 翻訳システム通信中...</span>`;
+                translateLoop(targetText).then(translatedText => {
+                    div.innerHTML = `<span class="original">元: ${targetText}</span> 🎭 ${translatedText}`;
+                });
+            }
+            logList.appendChild(div);
+            const historyArea = document.getElementById('history-area');
+            historyArea.scrollTop = historyArea.scrollHeight;
         }
 
         statusDiv.innerText = "いつでも次の曲をどうぞ！";
@@ -245,7 +256,7 @@
     saveImgBtn.onclick = () => {
         html2canvas(document.getElementById('history-area')).then(canvas => {
             const link = document.createElement('a');
-            link.download = 'soramimi_translate_log.png';
+            link.download = 'soramimi_log.png';
             link.href = canvas.toDataURL();
             link.click();
         });
