@@ -25,9 +25,30 @@
 
         @keyframes popIn { 0% { transform: scale(0.9); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
 
-        /* ボタンコントロール */
-        .btn-group { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; padding: 15px; background: #fff; border-top: 2px solid #ffeefc; }
-        button { border: none; padding: 12px 24px; border-radius: 50px; font-weight: bold; font-size: 1rem; cursor: pointer; color: white; box-shadow: 0 4px 0px rgba(0,0,0,0.15); transition: transform 0.1s, box-shadow 0.1s; }
+        /* ボタンコントロール（グリッドで等間隔に配置） */
+        .btn-group { 
+            display: grid; 
+            grid-template-columns: repeat(2, 1fr); /* 2列均等配置 */
+            gap: 12px; 
+            padding: 15px; 
+            background: #fff; 
+            border-top: 2px solid #ffeefc; 
+            box-sizing: border-box;
+        }
+        button { 
+            border: none; 
+            padding: 14px 10px; 
+            border-radius: 50px; 
+            font-weight: bold; 
+            font-size: 0.95rem; 
+            cursor: pointer; 
+            color: white; 
+            box-shadow: 0 4px 0px rgba(0,0,0,0.15); 
+            transition: transform 0.1s, box-shadow 0.1s;
+            text-align: center;
+            width: 100%;
+            box-sizing: border-box;
+        }
         button:disabled { background: #ccc !important; box-shadow: 0 4px 0px #aaa !important; cursor: not-allowed; transform: none !important; }
         
         #start-btn { background: #ff6f61; }
@@ -69,13 +90,13 @@
 </div>
 
 <script>
-    // 音声認識と録音の初期設定
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     let recognition;
     let mediaRecorder;
     let audioChunks = [];
     let isRecording = false;
     let lines = ["", ""];
+    let localStream = null;
 
     const line1 = document.getElementById('line1');
     const line2 = document.getElementById('line2');
@@ -94,17 +115,24 @@
     } else {
         recognition = new SpeechRecognition();
         recognition.lang = 'ja-JP';
-        recognition.continuous = false; 
+        // continuousをtrueにし、interimResultsをfalseにすることで、
+        // 歌のフレーズごとの「確定した塊」が安定して取得できるようになります
+        recognition.continuous = true; 
+        recognition.interimResults = false; 
 
         recognition.onresult = (e) => {
-            const transcript = e.results[0][0].transcript;
+            // 最新の文字起こし結果を取得
+            const resultIndex = e.resultIndex;
+            const transcript = e.results[resultIndex][0].transcript;
             
+            // 2行の押し出し処理
             lines[0] = lines[1];
             lines[1] = transcript;
             
             line1.innerText = lines[0];
             line2.innerText = lines[1];
 
+            // 履歴へのストック
             if(lines[0]) {
                 const div = document.createElement('div');
                 div.className = 'log-item';
@@ -116,10 +144,20 @@
             }
         };
 
+        // 万が一途中でエラーや無音で止まった場合の安全再起動処理
         recognition.onend = () => {
             if (isRecording) {
-                recognition.start(); 
+                try {
+                    recognition.start();
+                } catch(err) {
+                    // 既に動いているエラーを回避
+                }
             }
+        };
+
+        // 音声認識でエラーが起きた場合もログに吐いて止まらないようにする
+        recognition.onerror = (event) => {
+            console.log("認識エラー緩和:", event.error);
         };
     }
 
@@ -133,13 +171,17 @@
         logList.innerHTML = "";
 
         try {
-            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            // マイクを取得（文字起こしと共有）
+            localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
             
-            mediaRecorder = new MediaRecorder(stream);
+            // 録音のセットアップ
+            mediaRecorder = new MediaRecorder(localStream);
             mediaRecorder.ondataavailable = (e) => {
                 if (e.data.size > 0) audioChunks.push(e.data);
             };
-            mediaRecorder.start();
+            mediaRecorder.start(1000); // 1秒ごとにチャンクを小分けに保存して安定化
+
+            // 文字起こし開始
             recognition.start();
 
             statusDiv.innerText = "🛑 録音＆空耳変換中... 熱唱してください！";
@@ -147,10 +189,10 @@
             stopBtn.disabled = false;
             saveImgBtn.disabled = true;
             saveAudioBtn.disabled = true;
-            resetBtn.disabled = true; // 録音中はリセット不可
+            resetBtn.disabled = true;
 
         } catch (err) {
-            alert("マイクの許可が必要です：", err);
+            alert("マイクの許可が必要です。ページを再読み込みして許可してください。");
             isRecording = false;
         }
     };
@@ -158,13 +200,19 @@
     // 🛑 終了ボタン
     stopBtn.onclick = () => {
         isRecording = false;
-        recognition.stop(); 
+        
+        try { recognition.stop(); } catch(e){}
         
         if (mediaRecorder && mediaRecorder.state !== "inactive") {
             mediaRecorder.stop(); 
-            mediaRecorder.stream.getTracks().forEach(track => track.stop());
+        }
+        
+        // マイクストリームを完全に解放して停止させる
+        if (localStream) {
+            localStream.getTracks().forEach(track => track.stop());
         }
 
+        // 残っている最後の行も履歴へ移動させる
         if(lines[1]) {
             const div = document.createElement('div');
             div.className = 'log-item';
@@ -192,7 +240,10 @@
 
     // 💾 音声保存機能
     saveAudioBtn.onclick = () => {
-        if (audioChunks.length === 0) return;
+        if (audioChunks.length === 0) {
+            alert("録音データが見つかりません。");
+            return;
+        }
         const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
         const audioUrl = URL.createObjectURL(audioBlob);
         const link = document.createElement('a');
@@ -204,14 +255,12 @@
     // 🔄 リセット機能
     resetBtn.onclick = () => {
         if (confirm("歌詞ログと録音データをすべて消去します。よろしいですか？")) {
-            // データのクリア
             audioChunks = [];
             lines = ["", ""];
             line1.innerText = "";
             line2.innerText = "";
             logList.innerHTML = "";
             
-            // ボタンの初期化
             saveImgBtn.disabled = true;
             saveAudioBtn.disabled = true;
             statusDiv.innerText = "データをリセットしました。いつでも歌い始めてね！";
