@@ -519,8 +519,20 @@ async function resetCurrentEvent() {
 function copyRoomCode() { navigator.clipboard.writeText(uniqueGroupId); alert("コードをコピーしました"); }
 function copyShareUrl() { 
     const shareUrlInput = document.getElementById('shareUrl');
+    const descInput = document.getElementById('eventDescriptionInput');
+    
     if (shareUrlInput) {
-        navigator.clipboard.writeText(shareUrlInput.value); 
-        alert("URLをコピーしました"); 
+        let textToCopy = "";
+        
+        // 説明文があれば、URLの前に説明文と改行を追加する
+        if (descInput && descInput.value.trim() !== "") {
+            textToCopy = descInput.value.trim() + "\n\n" + shareUrlInput.value;
+        } else {
+            // 説明文が空ならURL単体でコピー
+            textToCopy = shareUrlInput.value;
+        }
+        
+        navigator.clipboard.writeText(textToCopy); 
+        alert("案内文とURLを合わせてコピーしました！\nそのままLINE等に貼り付けられます。"); 
     }
 }
