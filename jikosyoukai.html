@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>自己紹介ジェネレーター</title>
+    <style>
+        body {
+            font-family: 'Helvetica Neue', Arial, sans-serif;
+            background-color: #f4f6f9;
+            margin: 0;
+            padding: 20px;
+            color: #333;
+        }
+        .container {
+            max-width: 500px;
+            margin: 0 auto;
+            background: #fff;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            font-size: 1.4rem;
+            text-align: center;
+            color: #06C755; /* LINEカラー */
+            margin-bottom: 20px;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            font-size: 0.9rem;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        input, textarea {
+            width: 100%;
+            padding: 10px;
+            box-sizing: border-box;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            font-size: 1rem;
+        }
+        .btn-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+            margin-bottom: 10px;
+        }
+        .action-btn {
+            flex: 1;
+            padding: 12px;
+            background-color: #06C755;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 0.9rem;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        .action-btn:active {
+            background-color: #05b04b;
+        }
+        .pattern-btn {
+            background-color: #007AFF; /* 青系 */
+        }
+        .pattern-btn:active {
+            background-color: #0056b3;
+        }
+        .result-area {
+            margin-top: 25px;
+            display: none;
+        }
+        textarea#output {
+            background-color: #f9f9f9;
+            height: 160px;
+            resize: none;
+        }
+        .copy-btn {
+            width: 100%;
+            padding: 12px;
+            background-color: #333;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 1rem;
+            font-weight: bold;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+        .copy-btn:active {
+            background-color: #111;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>自己紹介メーカー</h1>
+    
+    <div class="form-group">
+        <label for="name">ニックネーム</label>
+        <input type="text" id="name" placeholder="例：たか">
+    </div>
+
+    <div class="form-group">
+        <label for="age">年代</label>
+        <input type="text" id="age" placeholder="例：20代、社会人など">
+    </div>
+
+    <div class="form-group">
+        <label for="area">地域（任意）</label>
+        <input type="text" id="area" placeholder="例：東京、関西など">
+    </div>
+
+    <div class="form-group">
+        <label for="music">好きな曲、歌手</label>
+        <input type="text" id="music" placeholder="例：○○、△△の曲全般">
+    </div>
+
+    <div class="form-group">
+        <label for="message">一言</label>
+        <textarea id="message" rows="2" placeholder="例：気軽に仲良くしてください！"></textarea>
+    </div>
+
+    <!-- 切り替えボタンエリア -->
+    <label style="margin-top: 20px; font-size: 0.85rem; color: #666;">↓タップすると好みの雰囲気で文章が作れます</label>
+    <div class="btn-group">
+        <button class="action-btn" onclick="generateIntro('standard')">標準パターン</button>
+        <button class="action-btn pattern-btn" onclick="generateIntro('推し活')">推し活・オタク風</button>
+        <button class="action-btn" style="background-color: #8E8E93;" onclick="generateIntro('simple')">シンプル</button>
+    </div>
+
+    <div id="resultArea" class="result-area">
+        <label id="patternTitle" style="color: #666; font-size: 0.85rem; font-weight: normal; margin-bottom: 5px; display: block;"></label>
+        <textarea id="output" readonly></textarea>
+        <button class="copy-btn" onclick="copyToClipboard()">文章をコピーする</button>
+    </div>
+</div>
+
+<script>
+function generateIntro(pattern) {
+    const name = document.getElementById('name').value.trim() || '未設定';
+    const age = document.getElementById('age').value.trim() || '未設定';
+    const area = document.getElementById('area').value.trim();
+    const music = document.getElementById('music').value.trim() || '特になし（色々聴きます）';
+    const message = document.getElementById('message').value.trim() || 'よろしくお願いします！';
+
+    let text = "";
+    let patternName = "";
+
+    if (pattern === 'standard') {
+        patternName = "【作成結果：標準パターン】";
+        text += `【自己紹介】\n`;
+        text += `🍀名前：${name}\n`;
+        text += `🍀年代：${age}\n`;
+        if (area) text += `🍀地域：${area}\n`;
+        text += `🍀好きな音楽：${music}\n`;
+        text += `🍀一言：${message}\n\n`;
+        text += `#自己紹介 #参加しました`;
+    } 
+    else if (pattern === '推し活') {
+        patternName = "【作成結果：推し活・オタク風パターン】";
+        text += `✨━━━━自己紹介━━━━✨\n\n`;
+        text += `［名前］${name}\n`;
+        text += `［年代］${age}\n`;
+        if (area) text += `［生息地］${area}\n`;
+        text += `［推し/好きな曲］${music}\n`;
+        text += `［一言］${message}\n\n`;
+        text += `たくさんお話できたら嬉しいです！\n`;
+        text += `#自己紹介`;
+    } 
+    else if (pattern === 'simple') {
+        patternName = "【作成結果：シンプルパターン】";
+        text += `${name} / ${age}`;
+        if (area) text += ` / ${area}`;
+        text += `\n\n【好きな曲・アーティスト】\n${music}\n\n【一言】\n${message}`;
+    }
+
+    document.getElementById('patternTitle').innerText = patternName;
+    document.getElementById('output').value = text;
+    document.getElementById('resultArea').style.display = 'block';
+    
+    // 生成後に結果画面まで自動スクロール
+    document.getElementById('resultArea').scrollIntoView({ behavior: 'smooth' });
+}
+
+function copyToClipboard() {
+    const outputText = document.getElementById('output');
+    outputText.select();
+    outputText.setSelectionRange(0, 99999); // スマホ対応
+
+    navigator.clipboard.writeText(outputText.value).then(() => {
+        alert('コピーしました！オプチャに貼り付けてね。');
+    }).catch(err => {
+        alert('コピーに失敗しました。手動でコピーしてください。');
+    });
+}
+</script>
+
+</body>
+</html>
