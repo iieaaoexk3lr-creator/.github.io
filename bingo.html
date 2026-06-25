@@ -428,6 +428,7 @@ function onCellClick(i){
     hits[i] = !hits[i];
     renderBoard();
     checkBingo(); 
+    saveCurrentState(); // ヒット状態が変わったら保存
     return;
   }
 
@@ -450,6 +451,7 @@ function inputManualValue(i){
     if(choice) boardValues[i] = choice;
   }
   renderBoard();
+  saveCurrentState(); // 個別に入力した際も保存
 }
 
 function generateScoreCandidates(min,max,count){
@@ -489,6 +491,7 @@ function randomFill(){
   }
 
   renderBoard();
+  saveCurrentState(); // ランダム生成時に保存
 }
 
 function startGame(){
@@ -505,12 +508,24 @@ function startGame(){
     hits[12] = true;
   }
 
-  hideSetupContainer.style.display = "none";
-  randomBtn.style.display = "none";
-  startBtn.style.display = "none";
+  // 画面表示の切り替え
+  applyGameStartedUI();
 
   renderBoard();
   checkBingo(); 
+  saveCurrentState(); // START確定時に状態を保存
+}
+
+// ゲーム中UIに切り替える共通処理
+function applyGameStartedUI() {
+  hideSetupContainer.style.display = "none";
+  randomBtn.style.display = "none";
+  startBtn.style.display = "none";
+  
+  modeEl.disabled = true;
+  sizeEl.disabled = true;
+  document.getElementById("minScore").disabled = true;
+  document.getElementById("maxScore").disabled = true;
 }
 
 function checkBingo(){
@@ -609,6 +624,10 @@ function resetAll(){
   document.getElementById("minScore").disabled = false;
   document.getElementById("maxScore").disabled = false;
   bingoBanner.style.display="none";
+  
+  // 保存データを削除
+  localStorage.removeItem("karaoke_bingo_state");
+  
   initBoard();
 }
 
@@ -626,23 +645,109 @@ freeToggleBtn.addEventListener("click", () => {
     boardValues[12] = "";
   }
   renderBoard();
+  saveCurrentState(); // 設定切り替え時に保存
 });
 
 modeEl.addEventListener("change",()=>{
   mode = modeEl.value;
   scoreRangeBox.style.display = mode==="score" ? "inline" : "none";
+  saveCurrentState();
 });
 
 sizeEl.addEventListener("change",()=>{
   size = Number(sizeEl.value);
   initBoard(); 
+  saveCurrentState();
 });
 
 randomBtn.addEventListener("click",randomFill);
 startBtn.addEventListener("click",startGame);
 resetBtn.addEventListener("click",resetAll);
 
-resetAll();
+
+/* ── 💾 ここからデータの保存・復元処理を追加 ── */
+
+function saveCurrentState() {
+  const state = {
+    size: size,
+    mode: mode,
+    boardValues: boardValues,
+    hits: hits,
+    started: started,
+    isFreeEnabled: isFreeEnabled,
+    minScore: document.getElementById("minScore").value,
+    maxScore: document.getElementById("maxScore").value
+  };
+  localStorage.setItem("karaoke_bingo_state", JSON.stringify(state));
+}
+
+function loadSavedState() {
+  const saved = localStorage.getItem("karaoke_bingo_state");
+  if (!saved) {
+    resetAll();
+    return;
+  }
+
+  try {
+    const state = JSON.parse(saved);
+    
+    // 値の復元
+    size = state.size;
+    mode = state.mode;
+    boardValues = state.boardValues;
+    hits = state.hits;
+    started = state.started;
+    isFreeEnabled = state.isFreeEnabled;
+    
+    // UI要素への反映
+    sizeEl.value = size;
+    modeEl.value = mode;
+    document.getElementById("minScore").value = state.minScore || "80";
+    document.getElementById("maxScore").value = state.maxScore || "99";
+    
+    scoreRangeBox.style.display = mode === "score" ? "inline" : "none";
+    
+    if (isFreeEnabled && size === 5) {
+      freeToggleBtn.classList.add("active");
+      freeToggleBtn.textContent = "FREE中央マス：有効";
+    } else {
+      freeToggleBtn.classList.remove("active");
+      freeToggleBtn.textContent = "FREE中央マス：無効";
+    }
+
+    // 盤面の再構築
+    boardEl.innerHTML = "";
+    boardEl.style.gridTemplateColumns = `repeat(${size}, 1fr)`;
+    
+    for (let i = 0; i < boardValues.length; i++) {
+      const div = document.createElement("div");
+      const rowIndex = Math.floor(i / size);
+      let rowClass = "r-default";
+      if (rowIndex < 5) rowClass = `r${rowIndex + 1}`;
+      
+      div.className = `cell ${rowClass}`;
+      div.dataset.index = i;
+      div.onclick = () => onCellClick(i);
+      boardEl.appendChild(div);
+    }
+
+    // ゲームが開始されていたら設定エリアを非表示に
+    if (started) {
+      applyGameStartedUI();
+    }
+
+    renderBoard();
+    checkBingo();
+
+  } catch (e) {
+    console.error("データの復元に失敗しました。リセットします。", e);
+    resetAll();
+  }
+}
+
+// 初回読み込み時はリセットではなく保存データをチェックする
+loadSavedState();
+
 </script>
 
 </body>
