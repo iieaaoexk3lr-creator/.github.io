@@ -53,8 +53,6 @@ const resultTitleEl =
 const resultPowerEl =
   document.getElementById("resultPower");
 
-// saveVideoBtn のDOM取得を削除しました
-
 const saveResultBtn =
   document.getElementById("saveResultBtn");
 
@@ -93,8 +91,6 @@ let lastVideoTime = -1;
 // =====================================
 
 let recording = false;
-
-// mediaRecorder, recordedChunks の変数を削除しました
 
 let cameraStream = null;
 
@@ -144,8 +140,6 @@ let noteRotation = 0;
 // =====================================
 // 保存
 // =====================================
-
-// finalVideoBlob の変数を削除しました
 
 let finalFrame = null;
 
@@ -282,17 +276,6 @@ function resizeCanvas(){
 // =====================================
 // カメラ起動
 // =====================================
-function drawStaffCircle(center,radius){
-  const palette = staffColors[currentAttribute];
-  for(let i=0;i<5;i++){
-    const r = radius + (i-2)*10;
-    auraCtx.strokeStyle = palette[i];
-    auraCtx.lineWidth = 4;
-    auraCtx.beginPath();
-    auraCtx.arc(center.x, center.y, r, 0, Math.PI*2);
-    auraCtx.stroke();
-  }
-}
 
 async function setupCamera(){
   try{
@@ -371,7 +354,7 @@ function updatePitchScore(){
 
 
 // =====================================
-// 計測開始（旧：録画開始）
+// 計測開始
 // =====================================
 
 async function startRecording(){
@@ -394,18 +377,15 @@ async function startRecording(){
   stopBtn.disabled = false;
   resetBtn.disabled = true;
 
-  // 保存ボタン関連の初期制御から saveVideoBtn を除外
   saveResultBtn.disabled = true;
   saveSummaryBtn.disabled = true;
-
-  // MediaRecorderおよびストリーム合成のロジックをすべて削除しました
 
   requestAnimationFrame(renderLoop);
 }
   
 
 // =====================================
-// 計測停止（旧：録画停止）
+// 計測停止
 // =====================================
 
 function stopRecording(){
@@ -415,8 +395,6 @@ function stopRecording(){
 
   finalFrame = recordCanvas.toDataURL("image/png");
 
-  // mediaRecorder.stop() に関連するロジックを削除しました
-  // リザルト、サマリーボタンを有効化
   saveResultBtn.disabled = false;
   saveSummaryBtn.disabled = false;
 
@@ -819,8 +797,7 @@ async function renderLoop(){
 
 // =====================================
 // リザルト
-// =====================================
-
+// ==================================
 function createFinalResult(){
   generateTitle();
   resultNameEl.textContent = playerNameInput.value || "Player";
@@ -839,17 +816,13 @@ resetBtn.addEventListener(
   ()=>{
     if(recording){
       recording = false;
-      // mediaRecorder.stop() 関連を削除
     }
     location.reload();
   }
 );
 
-// saveVideoBtn のリスナーを削除しました
 saveResultBtn.addEventListener("click", saveResultImage);
 saveSummaryBtn.addEventListener("click", saveHistoryImage);
-
-// saveVideo() 関数を丸ごと削除しました
 
 function saveResultImage(){
   if(!finalFrame) return;
