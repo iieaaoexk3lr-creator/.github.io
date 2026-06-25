@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>自己紹介ジェネレーター</title>
+    <title>自己紹介文ジェネレーター</title>
     <style>
         body {
             font-family: 'Helvetica Neue', Arial, sans-serif;
@@ -23,7 +23,7 @@
         h1 {
             font-size: 1.4rem;
             text-align: center;
-            color: #06C755; /* LINEカラー */
+            color: #4A5568; 
             margin-bottom: 20px;
         }
         .form-group {
@@ -35,53 +35,57 @@
             font-weight: bold;
             margin-bottom: 5px;
         }
-        input, textarea {
+        input, select, textarea {
             width: 100%;
             padding: 10px;
             box-sizing: border-box;
             border: 1px solid #ccc;
             border-radius: 6px;
             font-size: 1rem;
+            background-color: #fff;
         }
-        .btn-group {
-            display: flex;
+        .btn-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
             gap: 10px;
             margin-top: 15px;
             margin-bottom: 10px;
         }
         .action-btn {
-            flex: 1;
             padding: 12px;
-            background-color: #06C755;
             color: white;
             border: none;
             border-radius: 6px;
-            font-size: 0.9rem;
+            font-size: 0.95rem;
             font-weight: bold;
             cursor: pointer;
         }
-        .action-btn:active {
-            background-color: #05b04b;
-        }
-        .pattern-btn {
-            background-color: #007AFF; /* 青系 */
-        }
-        .pattern-btn:active {
-            background-color: #0056b3;
-        }
+        .btn-clover { background-color: #2ECC71; } /* 緑 */
+        .btn-clover:active { background-color: #27AE60; }
+        
+        .btn-music { background-color: #9B59B6; } /* 紫 */
+        .btn-music:active { background-color: #8E44AD; }
+        
+        .btn-colorful { background-color: #E67E22; } /* オレンジ */
+        .btn-colorful:active { background-color: #D35400; }
+        
+        .btn-simple { background-color: #7F8C8D; } /* グレー */
+        .btn-simple:active { background-color: #718093; }
+
         .result-area {
             margin-top: 25px;
             display: none;
         }
         textarea#output {
-            background-color: #f9f9f9;
-            height: 160px;
-            resize: none;
+            background-color: #fff;
+            border: 2px solid #3498DB;
+            height: 200px;
+            resize: vertical;
         }
         .copy-btn {
             width: 100%;
             padding: 12px;
-            background-color: #333;
+            background-color: #2C3E50;
             color: white;
             border: none;
             border-radius: 6px;
@@ -91,14 +95,14 @@
             margin-top: 10px;
         }
         .copy-btn:active {
-            background-color: #111;
+            background-color: #1A252F;
         }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h1>自己紹介メーカー</h1>
+    <h1>自己紹介作成ツール</h1>
     
     <div class="form-group">
         <label for="name">ニックネーム</label>
@@ -108,6 +112,16 @@
     <div class="form-group">
         <label for="age">年代</label>
         <input type="text" id="age" placeholder="例：20代、社会人など">
+    </div>
+
+    <div class="form-group">
+        <label for="gender">性別（任意）</label>
+        <select id="gender">
+            <option value="">未選択（表示しない）</option>
+            <option value="男性">男性</option>
+            <option value="女性">女性</option>
+            <option value="ひみつ">ひみつ</option>
+        </select>
     </div>
 
     <div class="form-group">
@@ -125,17 +139,17 @@
         <textarea id="message" rows="2" placeholder="例：気軽に仲良くしてください！"></textarea>
     </div>
 
-    <!-- 切り替えボタンエリア -->
-    <label style="margin-top: 20px; font-size: 0.85rem; color: #666;">↓タップすると好みの雰囲気で文章が作れます</label>
-    <div class="btn-group">
-        <button class="action-btn" onclick="generateIntro('standard')">標準パターン</button>
-        <button class="action-btn pattern-btn" onclick="generateIntro('推し活')">推し活・オタク風</button>
-        <button class="action-btn" style="background-color: #8E8E93;" onclick="generateIntro('simple')">シンプル</button>
+    <label style="margin-top: 20px; font-size: 0.85rem; color: #666;">↓好みのモードをタップして文章を作成</label>
+    <div class="btn-grid">
+        <button class="action-btn btn-clover" onclick="generateIntro('clover')">🍀 通常モード</button>
+        <button class="action-btn btn-music" onclick="generateIntro('music')">🎵 楽譜モード</button>
+        <button class="action-btn btn-colorful" onclick="generateIntro('colorful')">🌈 色々モード</button>
+        <button class="action-btn btn-simple" onclick="generateIntro('simple')">📝 シンプル</button>
     </div>
 
     <div id="resultArea" class="result-area">
         <label id="patternTitle" style="color: #666; font-size: 0.85rem; font-weight: normal; margin-bottom: 5px; display: block;"></label>
-        <textarea id="output" readonly></textarea>
+        <textarea id="output" placeholder="ここで自由に文章を編集・微調整できます"></textarea>
         <button class="copy-btn" onclick="copyToClipboard()">文章をコピーする</button>
     </div>
 </div>
@@ -144,6 +158,7 @@
 function generateIntro(pattern) {
     const name = document.getElementById('name').value.trim() || '未設定';
     const age = document.getElementById('age').value.trim() || '未設定';
+    const gender = document.getElementById('gender').value;
     const area = document.getElementById('area').value.trim();
     const music = document.getElementById('music').value.trim() || '特になし（色々聴きます）';
     const message = document.getElementById('message').value.trim() || 'よろしくお願いします！';
@@ -151,51 +166,65 @@ function generateIntro(pattern) {
     let text = "";
     let patternName = "";
 
-    if (pattern === 'standard') {
-        patternName = "【作成結果：標準パターン】";
+    if (pattern === 'clover') {
+        patternName = "【作成結果：通常（クローバー）】（自由に書き換えられます）";
         text += `【自己紹介】\n`;
-        text += `🍀名前：${name}\n`;
+        text += `🍀ニックネーム：${name}\n`;
         text += `🍀年代：${age}\n`;
+        if (gender) text += `🍀性別：${gender}\n`;
         if (area) text += `🍀地域：${area}\n`;
-        text += `🍀好きな音楽：${music}\n`;
-        text += `🍀一言：${message}\n\n`;
-        text += `#自己紹介 #参加しました`;
+        text += `🍀好きな曲・歌手：${music}\n`;
+        text += `🍀一言：${message}`;
     } 
-    else if (pattern === '推し活') {
-        patternName = "【作成結果：推し活・オタク風パターン】";
-        text += `✨━━━━自己紹介━━━━✨\n\n`;
-        text += `［名前］${name}\n`;
-        text += `［年代］${age}\n`;
-        if (area) text += `［生息地］${area}\n`;
-        text += `［推し/好きな曲］${music}\n`;
-        text += `［一言］${message}\n\n`;
-        text += `たくさんお話できたら嬉しいです！\n`;
-        text += `#自己紹介`;
+    else if (pattern === 'music') {
+        patternName = "【作成結果：楽譜（音楽）】（自由に書き換えられます）";
+        text += `♪*:･\'ﾟ♭.:*･♪ 自己紹介 ♪*:･\'ﾟ♭.:*･♪\n\n`;
+        text += `♫ ニックネーム：${name}\n`;
+        text += `♫ 年代：${age}\n`;
+        if (gender) text += `♫ 性別：${gender}\n`;
+        if (area) text += `♫ 地域：${area}\n`;
+        text += `🎤 好きな曲・歌手：${music}\n`;
+        text += `♫ 一言：${message}\n\n`;
+        text += `よろしくおねがいします ♫꒰･◡･๑꒱`;
+    } 
+    else if (pattern === 'colorful') {
+        patternName = "【作成結果：色々（カラフル）】（自由に書き換えられます）";
+        text += `✨✨自己紹介です✨✨\n\n`;
+        text += `👤 ニックネーム ＞ ${name}\n`;
+        text += `🎂 年代 ＞ ${age}\n`;
+        if (gender) text += `⚧ 性別 ＞ ${gender}\n`;
+        if (area) text += `📍 地域 ＞ ${area}\n`;
+        text += `🎧 好きな曲・歌手 ＞ ${music}\n`;
+        text += `💬 一言 ＞ ${message}\n\n`;
+        text += `仲良くしてくださいっ！🌈✨`;
     } 
     else if (pattern === 'simple') {
-        patternName = "【作成結果：シンプルパターン】";
-        text += `${name} / ${age}`;
-        if (area) text += ` / ${area}`;
-        text += `\n\n【好きな曲・アーティスト】\n${music}\n\n【一言】\n${message}`;
+        patternName = "【作成結果：シンプル】（自由に書き換えられます）";
+        text += `■自己紹介\n`;
+        text += `・ニックネーム：${name}\n`;
+        text += `・年代：${age}\n`;
+        if (gender) text += `・性別：${gender}\n`;
+        if (area) text += `・地域：${area}\n`;
+        text += `・好きな曲、歌手：${music}\n`;
+        text += `・一言：${message}`;
     }
 
     document.getElementById('patternTitle').innerText = patternName;
     document.getElementById('output').value = text;
     document.getElementById('resultArea').style.display = 'block';
     
-    // 生成後に結果画面まで自動スクロール
     document.getElementById('resultArea').scrollIntoView({ behavior: 'smooth' });
 }
 
 function copyToClipboard() {
     const outputText = document.getElementById('output');
     outputText.select();
-    outputText.setSelectionRange(0, 99999); // スマホ対応
+    outputText.setSelectionRange(0, 99999); 
 
     navigator.clipboard.writeText(outputText.value).then(() => {
-        alert('コピーしました！オプチャに貼り付けてね。');
+        alert('コピーしました！貼り付けてお使いください。');
     }).catch(err => {
-        alert('コピーに失敗しました。手動でコピーしてください。');
+        alert('コピーに失敗しました。手動で選択してコピーしてください。');
     });
 }
 </script>
