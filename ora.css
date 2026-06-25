@@ -117,6 +117,7 @@ button{
 
   cursor:pointer;
 
+ 
   font-size:16px;
   font-weight:bold;
 
@@ -383,12 +384,7 @@ button:disabled{
 
 }
 
-#saveVideoBtn{
-
-  background:#7d3cff;
-  color:white;
-
-}
+/* #saveVideoBtn の記述を削除しました */
 
 #saveResultBtn{
 
