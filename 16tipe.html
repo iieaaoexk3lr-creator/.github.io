@@ -1,0 +1,554 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>カラオケ16タイプ詳細診断</title>
+    <!-- Tailwind CSS & Google Fonts & Font Awesome -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&family=Noto+Sans+JP:wght@400;500;700;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        body {
+            font-family: 'Inter', 'Noto Sans JP', sans-serif;
+            background: linear-gradient(135deg, #090d16 0%, #11112b 100%);
+            min-height: 100vh;
+        }
+        .glass-panel {
+            background: rgba(15, 23, 42, 0.75);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        .progress-bar-fill {
+            transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .likert-btn {
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .likert-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(99, 102, 241, 0.25);
+        }
+        @keyframes pulse-glow {
+            0%, 100% { opacity: 0.15; transform: scale(1); }
+            50% { opacity: 0.3; transform: scale(1.08); }
+        }
+        .bg-glow {
+            animation: pulse-glow 10s infinite ease-in-out;
+        }
+    </style>
+</head>
+<body class="text-slate-100 flex flex-col items-center justify-center p-3 md:p-6 relative overflow-x-hidden">
+
+    <!-- Ambient decorative background glows -->
+    <div class="absolute top-10 left-1/4 w-80 h-80 bg-indigo-600/30 rounded-full mix-blend-screen filter blur-[120px] bg-glow"></div>
+    <div class="absolute bottom-10 right-1/4 w-96 h-96 bg-fuchsia-600/30 rounded-full mix-blend-screen filter blur-[120px] bg-glow" style="animation-delay: 5s;"></div>
+
+    <!-- Main Container -->
+    <main id="app-container" class="w-full max-w-2xl min-h-[580px] glass-panel rounded-3xl shadow-2xl p-5 md:p-8 z-10 flex flex-col justify-between transition-all duration-300">
+        <!-- JS-driven component injection -->
+        <div id="quiz-content" class="flex-grow flex flex-col justify-center">
+            <div class="text-center py-12">
+                <i class="fa-solid fa-circle-notch animate-spin text-4xl text-indigo-500"></i>
+                <p class="mt-4 text-slate-400">アプリを起動しています...</p>
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="mt-6 text-center text-xs text-slate-500 z-10">
+        <p>© 2026 カラオケ16タイプ精密診断. All Rights Reserved.</p>
+    </footer>
+
+    <script>
+        // --- 16タイプのベースプロファイルデータ ---
+        const PROFILES = {
+            "ESTJ": { title: "秩序のカラオケ番長", tagline: "徹底管理と安定の幹事マインド", desc: "部屋の終了時間、全体の歌唱順番、ハモリやドリンクの巡りまで、すべてが秩序立っていることを好む完璧なマネージャー。みんなが不満なく楽しめているかを常にモニタリングしています。", buddy: "ISFJ (癒やしの守護リスナー)", genre: "大ヒットした平成のJ-POP・定番のデュエット曲" },
+            "ESTP": { title: "盛り上げダイナマイト", tagline: "圧倒的なエネルギーとノリの支配者", desc: "マイクを持たせたら右に出るものはいない、天性のエンターテイナー。アップテンポなロックやダンスソングで、一瞬で部屋をお祭り会場に変貌させます。", buddy: "ESFP (スーパー主役ディーヴァ)", genre: "最新のブチ上がりソング・スタジアムロック" },
+            "ESFJ": { title: "おもてなしハモりマスター", tagline: "全員の歌に寄り添う、究極の調和者", desc: "みんなの歌唱時間を均等にしつつ、全力のハモリやコーラス、タンバリンで下支えをする、カラオケ界の聖母。誰一人として退屈させないおもてなしの心を持っています。", buddy: "ENFJ (マイク応援団長)", genre: "J-POPの黄金デュエット・みんなで歌える名曲" },
+            "ESFP": { title: "スーパー主役ディーヴァ", tagline: "ステージの上は私の独壇場！", desc: "カラオケルームを一瞬にしてアリーナやドームに変えてしまうカリスマ。マイクワークから表情管理までプロ顔負けで、拍手と大歓声を浴びて輝きます。", buddy: "ESTP (盛り上げダイナマイト)", genre: "圧倒的な歌唱力を魅せられるJ-POP・洋楽バラード" },
+            "ENTJ": { title: "絶対採点カリスマ", tagline: "最高得点を叩き出す戦略家", desc: "歌の技術、ビブラートの回数、抑揚のパラメータをコントロールして、精密採点で圧倒的な高得点を論理的に狙うストイックな挑戦者。常に自分に厳しいタイプです。", buddy: "ISTJ (孤高の採点スナイパー)", genre: "声域に完全に一致した最高難度の技術曲" },
+            "ENTP": { title: "トレンド仕掛け人", tagline: "意外性とユーモアの開拓者", desc: "「普通に歌うのはつまらない」と考え、マニアックな曲やネタソング、懐かしのCM曲などを仕掛けて部屋の空気をガラリと変えるトリックスター。予想を裏切るのが大好き。", buddy: "INTP (分析型ボーカリスト)", genre: "ネット発のバズ曲・異色のマニアック曲" },
+            "ENFJ": { title: "マイク応援団長", tagline: "誰も置いていかない熱血ポジティブ", desc: "誰が何を歌っても「それ最高！」「上手すぎる！」と全力で褒め称える肯定力の塊。シャイな人がマイクを持てるよう、温かい雰囲気作りに全力を注ぎます。", buddy: "ESFJ (おもてなしハモりマスター)", genre: "ポジティブなメッセージソング・みんなで歌う合唱曲" },
+            "ENFP": { title: "お祭り騒ぎの妖精", tagline: "変幻自在のフリーダム・シンガー", desc: "年代、ジャンル、曲調の枠を軽々と飛び越え、アニソンから昭和歌謡、ロックまでを思い切り楽しむ自由人。その変幻自在なプレイリストは周囲をワクワクさせます。", buddy: "INFP (秘密の歌い手)", genre: "ポップソング・アニソン・ボカロなど幅広いジャンル" },
+            "ISTJ": { title: "孤高の採点スナイパー", tagline: "静寂から放たれる精密な一撃", desc: "騒がしい周囲のノリに流されることなく静かに順番を待ち、いざ歌い出すと一音たりとも外さずに音源通りに歌い上げる。圧倒的な安定ピッチを誇ります。", buddy: "ENTJ (絶対採点カリスマ)", genre: "メロディラインが非常に美しい王道の定番曲" },
+            "ISTP": { title: "音響のサイレント職人", tagline: "機材とエコーを支配するプロマインド", desc: "入室直後にリモコンや本体の音量設定、エコーの強弱をいじり始めるマニア。歌唱中もマイクの距離感などを微調整し、部屋のベストな響きを追求しています。", buddy: "ISFP (エモ世界観の住人)", genre: "ボーカルの生々しい質感が際立つアコースティック曲" },
+            "ISFJ": { title: "癒やしの守護リスナー", tagline: "優しさと気配りで部屋を満たす存在", desc: "基本的には聞き役に回り、優しい手拍子とリアクションで部屋の空気感を柔らかく守る守護者。空いたグラスをまとめたり注文したり、さりげない配慮の達人です。", buddy: "ESTJ (秩序のカラオケ番長)", genre: "主張しすぎない、優しく心地よいミディアムバラード" },
+            "ISFP": { title: "エモ世界観の住人", tagline: "叙情的なメロディを纏う芸術肌", desc: "曲の情緒や歌詞の世界観に深く潜り込み、エモーショナルに歌い上げるチルなボーカリスト。その歌声はまるで映画のワンシーンのような余韻を残します。", buddy: "ISTP (音響のサイレント職人)", genre: "チルなシティポップ・インディーズR&B・叙情曲" },
+            "INTJ": { title: "深淵のニッチソング探求者", tagline: "こだわり抜いた独自セトリの構築", desc: "流行りのヒットソングには見向きもせず、自分の内なるお気に入りの世界（洋楽・インディーズ・ポストロック等）を完璧な実力で美しく歌い切る孤高の存在。", buddy: "INTP (分析型ボーカリスト)", genre: "自分の感性にピタリと合うニッチな隠れた名曲" },
+            "INTP": { title: "分析型ボーカリスト", tagline: "超高難度曲に挑むサイエンス精神", desc: "カラオケを「技術と攻略のゲーム」と捉えるタイプ。転調が多い曲や、超早口のボカロ曲、複雑な拍子のオルタナティブロックを淡々と正確に歌いこなします。", buddy: "ENTP (トレンド仕掛け人)", genre: "超高音ボカロ曲・プログレッシブな難関曲" },
+            "INFJ": { title: "感情の憑依系シンガー", tagline: "魂を震わせる文学的なボーカル", desc: "歌の歌詞に込められた物語や感情をすべて自分に憑依させて歌う。圧倒的な表現力と切なさを帯びた歌声は、聴く人の心を深く震わせる力を持っています。", buddy: "INFP (秘密の歌い手)", genre: "文学的なフォークソング・壮大なストリングスバラード" },
+            "INFP": { title: "秘密の歌い手", tagline: "普段の静けさとマイクを握った時のギャップ", desc: "普段は部屋の隅で聞き役に徹していますが、自分の大好きなアニソンやこだわり曲が入ると覚醒。凄まじいパッションと歌唱力を解放する、ギャップの化身です。", buddy: "ENFP (お祭り騒ぎの妖精)", genre: "アニソン・ボカロ・激しいサブカルポップス" }
+        };
+
+        // --- 設問データ (4指標 × 各5問 = 20問) ---
+        const QUESTIONS = [
+            // E (社交・盛り上げ) vs I (個人・マイペース)
+            { id: "E_1", dimension: "E", text: "カラオケは少人数よりも大人数（5人以上など）でワイワイ行く方がテンションが上がる。" },
+            { id: "E_2", dimension: "E", text: "他の人が歌っているときは、手拍子やコール、タンバリン等で積極的に盛り上げたい。" },
+            { id: "E_3", dimension: "E", text: "デュエット曲や、誰かと一緒にマイクを分けて歌うコラボ曲を入れるのが好き。" },
+            { id: "E_4", dimension: "E", text: "ドリンク注文や部屋の終了確認など、カラオケ全体の「幹事・お世話役」を自然と引き受ける。" },
+            { id: "E_5", dimension: "E", text: "自分が歌うことよりも、みんなの反応をみたり場の空気を盛り上げることが最優先だ。" },
+            
+            // S (王道定番ヒット) vs N (個性こだわり)
+            { id: "S_1", dimension: "S", text: "選曲するときは、その場にいる「全員が知っている王道曲や大ヒット曲」をよく選ぶ。" },
+            { id: "S_2", dimension: "S", text: "最近流行りのヒットチャートやSNSでよく耳にする最新トレンド曲を歌うのが楽しい。" },
+            { id: "S_3", dimension: "S", text: "誰も知らないようなマイナーな曲やマニアックなジャンルを歌うのは、少し気が引ける。" },
+            { id: "S_4", dimension: "S", text: "歌詞の複雑な意味を解釈するより、耳馴染みが良くて心地よいメロディの曲を好む。" },
+            { id: "S_5", dimension: "S", text: "「このアーティストといえばこれ！」という誰もが納得する代表曲を好んで選ぶ。" },
+
+            // T (技術・採点) vs F (感性・エモ)
+            { id: "T_1", dimension: "T", text: "カラオケの「精密採点機能」は絶対にオンにして、自分の点数や音程を競い合いたい。" },
+            { id: "T_2", dimension: "T", text: "歌い終わった後、音程の正確さやビブラートなどの評価グラフを細かくチェックしてしまう。" },
+            { id: "T_3", dimension: "T", text: "自分の声域に合わせるため、原曲キーではなく最適なキー設定（#や♭）を細かくカスタマイズする。" },
+            { id: "T_4", dimension: "T", text: "他人の歌を聞くとき、歌詞の感動よりも「ピッチの安定感」や「声帯のコントロール」などの技術に目がいく。" },
+            { id: "T_5", dimension: "T", text: "カラオケはただの娯楽ではなく、自分の「歌の技量・スキル」を試す場、または練習の場である。" },
+
+            // J (計画・予約管理) vs P (直感・流れ)
+            { id: "J_1", dimension: "J", text: "カラオケに行く前に、あらかじめ今日歌う候補曲のリスト（セトリ）を決めている。" },
+            { id: "J_2", dimension: "J", text: "デンモクが回ってきたら、先の自分の順番が滞らないよう2曲以上まとめて予約しておく。" },
+            { id: "J_3", dimension: "J", text: "終了時間の「残り10分前」を常に意識し、最後は何の曲で締めるか逆算して行動する。" },
+            { id: "J_4", dimension: "J", text: "前の人がどんな曲を入れても、自分の決めた選曲の順番やペースを崩さずに選曲したい。" },
+            { id: "J_5", dimension: "J", text: "間奏やアウトロが長すぎる曲を予約したら、間を繋ぐために次の予約曲を入れるタイミングを見計らう。" }
+        ];
+
+        // --- 点数に応じた細かい個別傾向テキスト ---
+        const DETAILED_TENDENCIES = {
+            "E": {
+                high: { level: "超絶エンターテイナー (21-25点)", desc: "周りを巻き込む社交エネルギーがMAX。マイクを持っていない時ですらタンバリンや合いの手で部屋全体の主役に君臨し、あなたがいるだけで一瞬にしてライブ会場になります。" },
+                mid_high: { level: "スマートなムードメーカー (16-20点)", desc: "場の空気を読みつつ、全員が楽しめるように盛り上げをコントロールできるタイプ。楽しさと配慮のバランスが良い、理想的な幹事気質です。" },
+                mid_low: { level: "マイペースなチルリスナー (11-15点)", desc: "無駄に騒ぎ立てることなく、自分が歌いたい時に適度なスタンスで歌うタイプ。他人の歌を穏やかに聞くのが得意で、部屋のオアシス的存在です。" },
+                low: { level: "ストイックなマイワールド (5-10点)", desc: "カラオケは純粋に自分と音楽が向き合うための聖域。大勢で盛り上がるよりも、少人数や「ヒトカラ（一人カラオケ）」でこそ真の実力が開花する完全なソロシンガー。" }
+            },
+            "S": {
+                high: { level: "ミリオンヒットの覇者 (21-25点)", desc: "誰もが知っている定番から、最新ヒットまで完璧にカバー。カラオケの持つ『王道の楽しさ』を120%体現し、部屋にいる全員が乗れる最高打率の選曲を提供します。" },
+                mid_high: { level: "トレンドフレンドリー (16-20点)", desc: "定番人気曲を中心に、少し最近の流行りを入れてバランスを整えるタイプ。誰もがついて来やすい親しみやすいプレイリストを作るのが上手です。" },
+                mid_low: { level: "こだわり派の開拓者 (11-15点)", desc: "アニソン、ボカロ、ニッチな洋楽などを、周囲の様子をみながらバランス良く散りばめるタイプ。刺さる人には深く刺さる、独自の選曲感覚があります。" },
+                low: { level: "サブカル・求道者 (5-10点)", desc: "流行には一切流されず、自分の愛するマニアックな世界観やサブカル曲を貫くタイプ。カラオケルームを自分の好みを発表・共有する独自の芸術ステージに変えてしまいます。" }
+            },
+            "T": {
+                high: { level: "精密採点スナイパー (21-25点)", desc: "精密採点の音程バーやグラフと完全にシンクロできる技術職人。加点パラメータを論理的にハックし、ハイトーンや難度曲すらスコア（数値）でねじ伏せます。" },
+                mid_high: { level: "テクニカル・シンガー (16-20点)", desc: "キー調整、エコーの調整、正しい発声を大事にし、歌を『技術』として愛するタイプ。ピッチを外さない安定した綺麗な歌唱で、聴き手を安心させます。" },
+                mid_low: { level: "ハートフル・シンガー (11-15点)", desc: "得点よりも『曲のエモさ』や『歌詞の世界観』に感情を注いで歌うタイプ。技術を超えた温かさや切なさで、その場のリスナーを優しく惹きつけます。" },
+                low: { level: "魂の憑依系アーティスト (5-10点)", desc: "歌うことは自分自身の感情表現そのもの。音程の完璧さよりも、荒々しくも美しいパッションや文学的な哀愁を全身で表現するソウルフルな歌声の持ち主。" }
+            },
+            "J": {
+                high: { level: "セトリ鉄壁プランナー (21-25点)", desc: "今日歌う曲を完璧に組み立てて入室する戦略家。次に何を入れるか、タイムリミットに対しての逆算まで頭にインプットされており、空白のない完璧なセトリを進めます。" },
+                mid_high: { level: "計画的タイムキーパー (16-20点)", desc: "何を歌うかある程度決めてあり、リモコンが回ってきたらスムーズに入力する計画派。カラオケがスムーズに流れるテンポ感を大事にする進行役です。" },
+                mid_low: { level: "直感派のフィーリングシンガー (11-15点)", desc: "「前の人がこれを歌ったから、次はこれでいこう！」とその場のノリや流れにパッと合わせる臨機応変タイプ。縛りのないカラオケの空気を楽しみます。" },
+                low: { level: "予測不能なフリースタイラー (5-10点)", desc: "計画性はゼロ。その場でデンモクをスクロールし、目に飛び込んできた曲を完全に直感で入れます。突発的なネタ曲や、昔の思い出ソングが急に飛び出す自由人。" }
+            }
+        };
+
+        // --- アプリケーションの状態管理 ---
+        let currentQuestionIdx = -1; // -1: イントロ, 0〜19: 設問, 20: 分析・結果表示
+        let dimensionScores = {
+            E: 0, // E-I判定
+            S: 0, // S-N判定
+            T: 0, // T-F判定
+            J: 0  // J-P判定
+        };
+        // 設問ごとのスコア履歴（戻るボタン機能のためのログ）
+        let answerLog = [];
+
+        // DOMエレメント取得
+        const appContainer = document.getElementById('quiz-content');
+
+        // --- 画面描画：イントロ画面 ---
+        function renderIntro() {
+            appContainer.innerHTML = `
+                <div class="text-center py-4 flex flex-col items-center">
+                    <div class="w-20 h-20 bg-indigo-600/20 border border-indigo-500/40 rounded-full flex items-center justify-center text-4xl text-indigo-400 mb-6 shadow-lg shadow-indigo-500/30">
+                        <i class="fa-solid fa-microphone-lines animate-pulse"></i>
+                    </div>
+                    <h1 class="text-3xl md:text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-indigo-300 via-fuchsia-300 to-indigo-400 mb-4 tracking-tight leading-tight">
+                        カラオケ16タイプ精密診断
+                    </h1>
+                    <p class="text-slate-300 text-sm md:text-base leading-relaxed max-w-lg mx-auto mb-8">
+                        MBTIの4大指標をカラオケにおける行動特性へ完全ローカライズ！ <br>
+                        <span class="text-indigo-400 font-bold">【各指標×5問、合計20問の5段階評価】</span>で、あなたの深層歌唱マインドと、点数の偏りに基づく極めて精細な診断書を出力します。
+                    </p>
+                    <button onclick="startQuiz()" class="w-full sm:w-auto px-10 py-4 bg-gradient-to-r from-indigo-500 to-fuchsia-500 hover:from-indigo-600 hover:to-fuchsia-600 text-white font-bold rounded-2xl shadow-xl shadow-indigo-500/30 transform hover:-translate-y-0.5 active:translate-y-0 transition-all duration-200">
+                        精密診断を開始する <i class="fa-solid fa-chevron-right ml-2 text-sm"></i>
+                    </button>
+                </div>
+            `;
+        }
+
+        // 診断スタート
+        function startQuiz() {
+            currentQuestionIdx = 0;
+            dimensionScores = { E: 0, S: 0, T: 0, J: 0 };
+            answerLog = [];
+            renderQuestion();
+        }
+
+        // --- 画面描画：設問画面 ---
+        function renderQuestion() {
+            const question = QUESTIONS[currentQuestionIdx];
+            const progress = (currentQuestionIdx / QUESTIONS.length) * 100;
+            
+            // 指標の名称を日本語でわかりやすく表示
+            let targetDimensionJP = "";
+            let dimensionColor = "text-indigo-400";
+            if (question.dimension === "E") { targetDimensionJP = "社交性・盛り上げ傾向 (E - I 軸)"; }
+            else if (question.dimension === "S") { targetDimensionJP = "選曲基準・王道重視 (S - N 軸)"; dimensionColor = "text-fuchsia-400"; }
+            else if (question.dimension === "T") { targetDimensionJP = "歌唱スタンス・技術重視 (T - F 軸)"; dimensionColor = "text-teal-400"; }
+            else if (question.dimension === "J") { targetDimensionJP = "選曲プロセス・計画性 (J - P 軸)"; dimensionColor = "text-emerald-400"; }
+
+            appContainer.innerHTML = `
+                <div class="flex flex-col h-full justify-between">
+                    <!-- Progress Section -->
+                    <div class="mb-6">
+                        <div class="flex justify-between items-center text-xs text-slate-400 mb-2">
+                            <span class="font-bold flex items-center gap-1 ${dimensionColor}">
+                                <i class="fa-solid fa-circle-question"></i> ${targetDimensionJP}
+                            </span>
+                            <span class="font-extrabold text-indigo-400">${currentQuestionIdx + 1} / ${QUESTIONS.length}</span>
+                        </div>
+                        <div class="w-full bg-slate-800/80 h-2.5 rounded-full overflow-hidden">
+                            <div class="progress-bar-fill bg-gradient-to-r from-indigo-500 via-fuchsia-500 to-indigo-500 h-full rounded-full" style="width: ${progress}%"></div>
+                        </div>
+                    </div>
+
+                    <!-- Question Text Card -->
+                    <div class="my-auto py-4">
+                        <div class="p-6 rounded-2xl bg-indigo-950/20 border border-indigo-500/10 mb-8 min-h-[100px] flex items-center">
+                            <h2 class="text-lg md:text-xl font-bold text-slate-100 leading-normal">
+                                <span class="text-indigo-400 font-black mr-2">Q${currentQuestionIdx + 1}.</span>
+                                ${question.text}
+                            </h2>
+                        </div>
+
+                        <!-- 5-stage Likert Options -->
+                        <div class="flex flex-col gap-3">
+                            <button onclick="handleAnswer(5)" class="likert-btn w-full text-left p-4 rounded-xl bg-indigo-950/40 hover:bg-indigo-900/40 border border-indigo-500/30 flex items-center justify-between group focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                                <span class="font-bold text-indigo-300 flex items-center gap-3">
+                                    <span class="w-6 h-6 rounded-full bg-indigo-500/20 text-indigo-400 flex items-center justify-center text-xs font-black">A</span>
+                                    とてもそう思う
+                                </span>
+                                <span class="text-xs px-2.5 py-1 rounded-md bg-indigo-500/20 text-indigo-300 group-hover:bg-indigo-500/30">5点</span>
+                            </button>
+
+                            <button onclick="handleAnswer(4)" class="likert-btn w-full text-left p-4 rounded-xl bg-blue-950/30 hover:bg-blue-900/30 border border-blue-500/20 flex items-center justify-between group focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                <span class="font-bold text-blue-300 flex items-center gap-3">
+                                    <span class="w-6 h-6 rounded-full bg-blue-500/20 text-blue-400 flex items-center justify-center text-xs font-black">B</span>
+                                    そう思う
+                                </span>
+                                <span class="text-xs px-2.5 py-1 rounded-md bg-blue-500/20 text-blue-300 group-hover:bg-blue-500/30">4点</span>
+                            </button>
+
+                            <button onclick="handleAnswer(3)" class="likert-btn w-full text-left p-4 rounded-xl bg-slate-800/40 hover:bg-slate-700/40 border border-slate-600/20 flex items-center justify-between group focus:outline-none focus:ring-2 focus:ring-slate-500">
+                                <span class="font-bold text-slate-300 flex items-center gap-3">
+                                    <span class="w-6 h-6 rounded-full bg-slate-700/20 text-slate-400 flex items-center justify-center text-xs font-black">C</span>
+                                    場合による / どちらともいえない
+                                </span>
+                                <span class="text-xs px-2.5 py-1 rounded-md bg-slate-700/20 text-slate-400 group-hover:bg-slate-700/30">3点</span>
+                            </button>
+
+                            <button onclick="handleAnswer(2)" class="likert-btn w-full text-left p-4 rounded-xl bg-rose-950/20 hover:bg-rose-900/20 border border-rose-500/10 flex items-center justify-between group focus:outline-none focus:ring-2 focus:ring-rose-500">
+                                <span class="font-bold text-rose-300 flex items-center gap-3">
+                                    <span class="w-6 h-6 rounded-full bg-rose-500/20 text-rose-400 flex items-center justify-center text-xs font-black">D</span>
+                                    違うと思う
+                                </span>
+                                <span class="text-xs px-2.5 py-1 rounded-md bg-rose-500/20 text-rose-300 group-hover:bg-rose-500/30">2点</span>
+                            </button>
+
+                            <button onclick="handleAnswer(1)" class="likert-btn w-full text-left p-4 rounded-xl bg-fuchsia-950/20 hover:bg-fuchsia-900/20 border border-fuchsia-500/10 flex items-center justify-between group focus:outline-none focus:ring-2 focus:ring-fuchsia-500">
+                                <span class="font-bold text-fuchsia-300 flex items-center gap-3">
+                                    <span class="w-6 h-6 rounded-full bg-fuchsia-500/20 text-fuchsia-400 flex items-center justify-center text-xs font-black">E</span>
+                                    とても違うと思う
+                                </span>
+                                <span class="text-xs px-2.5 py-1 rounded-md bg-fuchsia-500/20 text-fuchsia-300 group-hover:bg-fuchsia-500/30">1点</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Navigation Action Row -->
+                    <div class="mt-8 flex justify-between items-center text-xs text-slate-400">
+                        ${currentQuestionIdx > 0 ? `
+                            <button onclick="prevQuestion()" class="hover:text-slate-100 transition duration-150 flex items-center gap-1.5 font-bold">
+                                <i class="fa-solid fa-arrow-left"></i> 前の質問に戻る
+                            </button>
+                        ` : `
+                            <button onclick="resetQuiz()" class="hover:text-slate-100 transition duration-150 flex items-center gap-1.5 font-bold">
+                                <i class="fa-solid fa-house"></i> 最初に戻る
+                            </button>
+                        `}
+                        <span class="font-medium">回答は自動で次の質問に進みます</span>
+                    </div>
+                </div>
+            `;
+            
+            // Adjust dynamic progress bar visually
+            setTimeout(() => {
+                const bar = document.querySelector('.progress-bar-fill');
+                if (bar) bar.style.width = `${((currentQuestionIdx + 1) / QUESTIONS.length) * 100}%`;
+            }, 50);
+        }
+
+        // 回答選択処理
+        function handleAnswer(score) {
+            const question = QUESTIONS[currentQuestionIdx];
+            
+            // 該当する指標のスコアに合算
+            dimensionScores[question.dimension] += score;
+            
+            // 履歴にプッシュ
+            answerLog.push({
+                idx: currentQuestionIdx,
+                dimension: question.dimension,
+                score: score
+            });
+
+            // 質問のインデックスをインクリメント
+            if (currentQuestionIdx < QUESTIONS.length - 1) {
+                currentQuestionIdx++;
+                renderQuestion();
+            } else {
+                renderLoadingResults();
+            }
+        }
+
+        // 前の質問に戻る
+        function prevQuestion() {
+            if (currentQuestionIdx > 0) {
+                const lastAnswer = answerLog.pop();
+                if (lastAnswer) {
+                    dimensionScores[lastAnswer.dimension] -= lastAnswer.score;
+                }
+                currentQuestionIdx--;
+                renderQuestion();
+            }
+        }
+
+        // --- 画面描画：分析ロード画面 ---
+        function renderLoadingResults() {
+            appContainer.innerHTML = `
+                <div class="text-center py-16 flex flex-col items-center justify-center">
+                    <div class="relative w-24 h-24 mb-6">
+                        <div class="absolute inset-0 rounded-full border-4 border-indigo-500/20"></div>
+                        <div class="absolute inset-0 rounded-full border-4 border-t-indigo-500 border-r-fuchsia-500 animate-spin"></div>
+                        <div class="absolute inset-0 flex items-center justify-center text-3xl text-fuchsia-400">
+                            <i class="fa-solid fa-wand-magic-sparkles"></i>
+                        </div>
+                    </div>
+                    <h3 class="text-xl font-bold text-slate-200">20個の歌唱パラメータを総合分析中...</h3>
+                    <p class="text-xs text-slate-400 mt-2 tracking-wide">
+                        E-I: ${dimensionScores.E}点 | S-N: ${dimensionScores.S}点 | T-F: ${dimensionScores.T}点 | J-P: ${dimensionScores.J}点 から詳細チャートを作成しています
+                    </p>
+                </div>
+            `;
+
+            setTimeout(() => {
+                calculateResults();
+            }, 1800);
+        }
+
+        // --- ロジック：MBTIタイプ＆パーセンテージ計算 ---
+        function calculateResults() {
+            // 各軸の総得点は5〜25点。
+            // 15点以下なら右側の特性(I, N, F, P)、16点以上なら左側の特性(E, S, T, J)とする。
+            const type_EI = dimensionScores.E >= 16 ? "E" : "I";
+            const type_SN = dimensionScores.S >= 16 ? "S" : "N";
+            const type_TF = dimensionScores.T >= 16 ? "T" : "F";
+            const type_JP = dimensionScores.J >= 16 ? "J" : "P";
+
+            const finalType = `${type_EI}${type_SN}${type_TF}${type_JP}`;
+            const profile = PROFILES[finalType] || PROFILES["ESFP"];
+
+            // 精密割合（％）の算出: (点数 - 5) / 20 * 100 で左側特性の比率を出す
+            const pctE = Math.round(((dimensionScores.E - 5) / 20) * 100);
+            const pctS = Math.round(((dimensionScores.S - 5) / 20) * 100);
+            const pctT = Math.round(((dimensionScores.T - 5) / 20) * 100);
+            const pctJ = Math.round(((dimensionScores.J - 5) / 20) * 100);
+
+            // 各軸の点数に紐づく動的な個別傾向テキストの抽出
+            const tendencyE = getTendencyText("E", dimensionScores.E);
+            const tendencyS = getTendencyText("S", dimensionScores.S);
+            const tendencyT = getTendencyText("T", dimensionScores.T);
+            const tendencyJ = getTendencyText("J", dimensionScores.J);
+
+            renderResultsScreen(finalType, profile, pctE, pctS, pctT, pctJ, tendencyE, tendencyS, tendencyT, tendencyJ);
+        }
+
+        // 点数に紐づく傾向テキスト判定ヘルパー
+        function getTendencyText(dim, score) {
+            const data = DETAILED_TENDENCIES[dim];
+            if (score >= 21) return data.high;
+            if (score >= 16) return data.mid_high;
+            if (score >= 11) return data.mid_low;
+            return data.low;
+        }
+
+        // --- 画面描画：精密診断結果画面 ---
+        function renderResultsScreen(type, profile, pctE, pctS, pctT, pctJ, tendE, tendS, tendT, tendJ) {
+            appContainer.innerHTML = `
+                <div class="space-y-6 md:space-y-8">
+                    <!-- Heading Header -->
+                    <div class="text-center">
+                        <span class="px-3 py-1 bg-gradient-to-r from-indigo-500/20 to-fuchsia-500/20 border border-indigo-500/40 text-indigo-300 text-xs font-bold rounded-full tracking-wider uppercase mb-3 inline-block">
+                            カラオケ16タイプ診断結果: ${type}
+                        </span>
+                        <h1 class="text-3xl md:text-4xl font-black text-white mt-1 mb-2 tracking-tight">
+                            ${profile.title}
+                        </h1>
+                        <p class="text-sm md:text-base text-fuchsia-400 font-bold">
+                            ー ${profile.tagline} ー
+                        </p>
+                    </div>
+
+                    <!-- Divider -->
+                    <hr class="border-slate-800">
+
+                    <!-- Profile Description Card -->
+                    <div class="p-5 md:p-6 rounded-2xl bg-indigo-950/20 border border-indigo-500/10 space-y-3">
+                        <h4 class="text-xs font-bold text-indigo-400 tracking-wider uppercase flex items-center gap-2">
+                            <i class="fa-solid fa-circle-nodes"></i> あなたの全体的カラオケ気質
+                        </h4>
+                        <p class="text-slate-300 text-sm md:text-base leading-relaxed">
+                            ${profile.desc}
+                        </p>
+                    </div>
+
+                    <!-- Details Grid -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <!-- Key Information -->
+                        <div class="p-4 rounded-xl bg-slate-900/50 border border-slate-800 space-y-2">
+                            <h4 class="text-xs font-bold text-fuchsia-400 tracking-wider uppercase flex items-center gap-2">
+                                <i class="fa-solid fa-compact-disc"></i> 得意な楽曲ジャンル
+                            </h4>
+                            <p class="text-slate-200 text-sm font-semibold leading-normal">
+                                ${profile.genre}
+                            </p>
+                        </div>
+
+                        <!-- Chemistry Section -->
+                        <div class="p-4 rounded-xl bg-slate-900/50 border border-slate-800 space-y-2">
+                            <h4 class="text-xs font-bold text-emerald-400 tracking-wider uppercase flex items-center gap-2">
+                                <i class="fa-solid fa-heart-pulse"></i> 相性抜群の相棒
+                            </h4>
+                            <p class="text-slate-200 text-sm font-semibold leading-normal">
+                                ${profile.buddy}
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- Precise Dimensions & Stats Graph -->
+                    <div class="p-5 rounded-2xl bg-slate-900/40 border border-slate-800 space-y-5">
+                        <h4 class="text-xs font-bold text-slate-400 tracking-wider uppercase flex items-center gap-2">
+                            <i class="fa-solid fa-chart-bar"></i> カラオケ精密4軸スタッツ
+                        </h4>
+                        
+                        <div class="space-y-4">
+                            <!-- E vs I Bar -->
+                            <div>
+                                <div class="flex justify-between text-xs text-slate-400 mb-1">
+                                    <span class="font-bold text-indigo-400">E (社交・盛り上げ) <span class="text-sm">${pctE}%</span></span>
+                                    <span class="font-bold text-pink-400">I (個人・ソロ) <span class="text-sm">${100 - pctE}%</span></span>
+                                </div>
+                                <div class="w-full h-3 bg-slate-950 rounded-full overflow-hidden flex">
+                                    <div class="bg-indigo-500 h-full transition-all duration-500" style="width: ${pctE}%"></div>
+                                    <div class="bg-pink-500 h-full transition-all duration-500" style="width: ${100 - pctE}%"></div>
+                                </div>
+                                <div class="mt-1 text-slate-400 text-xs pl-2 border-l border-indigo-500/30">
+                                    <span class="text-indigo-300 font-bold">${tendE.level}:</span> ${tendE.desc}
+                                </div>
+                            </div>
+
+                            <!-- S vs N Bar -->
+                            <div>
+                                <div class="flex justify-between text-xs text-slate-400 mb-1">
+                                    <span class="font-bold text-indigo-400">S (王道・定番曲) <span class="text-sm">${pctS}%</span></span>
+                                    <span class="font-bold text-pink-400">N (個性・こだわり) <span class="text-sm">${100 - pctS}%</span></span>
+                                </div>
+                                <div class="w-full h-3 bg-slate-950 rounded-full overflow-hidden flex">
+                                    <div class="bg-indigo-500 h-full transition-all duration-500" style="width: ${pctS}%"></div>
+                                    <div class="bg-pink-500 h-full transition-all duration-500" style="width: ${100 - pctS}%"></div>
+                                </div>
+                                <div class="mt-1 text-slate-400 text-xs pl-2 border-l border-indigo-500/30">
+                                    <span class="text-indigo-300 font-bold">${tendS.level}:</span> ${tendS.desc}
+                                </div>
+                            </div>
+
+                            <!-- T vs F Bar -->
+                            <div>
+                                <div class="flex justify-between text-xs text-slate-400 mb-1">
+                                    <span class="font-bold text-indigo-400">T (技術・精密採点) <span class="text-sm">${pctT}%</span></span>
+                                    <span class="font-bold text-pink-400">F (感情・エモさ) <span class="text-sm">${100 - pctT}%</span></span>
+                                </div>
+                                <div class="w-full h-3 bg-slate-950 rounded-full overflow-hidden flex">
+                                    <div class="bg-indigo-500 h-full transition-all duration-500" style="width: ${pctT}%"></div>
+                                    <div class="bg-pink-500 h-full transition-all duration-500" style="width: ${100 - pctT}%"></div>
+                                </div>
+                                <div class="mt-1 text-slate-400 text-xs pl-2 border-l border-indigo-500/30">
+                                    <span class="text-indigo-300 font-bold">${tendT.level}:</span> ${tendT.desc}
+                                </div>
+                            </div>
+
+                            <!-- J vs P Bar -->
+                            <div>
+                                <div class="flex justify-between text-xs text-slate-400 mb-1">
+                                    <span class="font-bold text-indigo-400">J (計画的予約セトリ) <span class="text-sm">${pctJ}%</span></span>
+                                    <span class="font-bold text-pink-400">P (直感・その場のノリ) <span class="text-sm">${100 - pctJ}%</span></span>
+                                </div>
+                                <div class="w-full h-3 bg-slate-950 rounded-full overflow-hidden flex">
+                                    <div class="bg-indigo-500 h-full transition-all duration-500" style="width: ${pctJ}%"></div>
+                                    <div class="bg-pink-500 h-full transition-all duration-500" style="width: ${100 - pctJ}%"></div>
+                                </div>
+                                <div class="mt-1 text-slate-400 text-xs pl-2 border-l border-indigo-500/30">
+                                    <span class="text-indigo-300 font-bold">${tendJ.level}:</span> ${tendJ.desc}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Action Panel Buttons -->
+                    <div class="flex flex-col sm:flex-row gap-4 pt-4">
+                        <button onclick="resetQuiz()" class="flex-1 px-6 py-4 bg-slate-800 hover:bg-slate-700/80 text-white font-bold rounded-2xl border border-slate-700/60 shadow-lg flex items-center justify-center gap-2 transition duration-200">
+                            <i class="fa-solid fa-rotate-left"></i> もう一度診断する
+                        </button>
+                        <button onclick="copyDetailedResults('${type}', '${profile.title}', ${pctE}, ${pctS}, ${pctT}, ${pctJ})" class="flex-1 px-6 py-4 bg-gradient-to-r from-indigo-500 to-fuchsia-500 hover:from-indigo-600 hover:to-fuchsia-600 text-white font-bold rounded-2xl shadow-xl shadow-indigo-500/20 flex items-center justify-center gap-2 transition duration-200">
+                            <i class="fa-solid fa-share-nodes"></i> 結果をコピーしてシェア
+                        </button>
+                    </div>
+                </div>
+            `;
+        }
+
+        // 診断リセット
+        function resetQuiz() {
+            currentQuestionIdx = -1;
+            dimensionScores = { E: 0, S: 0, T: 0, J: 0 };
+            answerLog = [];
+            renderIntro();
+        }
+
+        // クリップボードに診断結果詳細をコピー
+        function copyDetailedResults(type, title, e, s, t, j) {
+            const shareText = `【カラオケ16タイプ精密診断結果】\nあなたのタイプは...\n🌟【${type} : ${title}】\n\n[精密スタッツ割合]\n・社交性(E): ${e}%\n・王道主義(S): ${s}%\n・技術採点(T): ${t}%\n・計画予約(J): ${j}%\n\n#カラオケ16タイプ精密診断 #カラオケ性格テスト`;
+
+            // iframe制限下のフォールバックコピー
+            const el = document.createElement('textarea');
+            el.value = shareText;
+            document.body.appendChild(el);
+            el.select();
+            document.execCommand('copy');
+            document.body.removeChild(el);
+
+            // コピー成功通知UIの生成
+            const notify = document.createElement('div');
+            notify.className = "fixed bottom-5 left-1/2 transform -translate-x-1/2 px-6 py-3 bg-emerald-600 text-white text-sm font-semibold rounded-full shadow-lg z-50 flex items-center gap-2 animate-bounce";
+            notify.innerHTML = `<i class="fa-solid fa-circle-check"></i> 詳細診断書をコピーしました！`;
+            document.body.appendChild(notify);
+            setTimeout(() => notify.remove(), 2500);
+        }
+
+        // ページロード時イニシャライズ
+        window.onload = function() {
+            renderIntro();
+        };
+    </script>
+</body>
+</html>
