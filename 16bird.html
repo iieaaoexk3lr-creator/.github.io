@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>カラオケ診断 〜歌鳥風月〜</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Google Fonts & Font Awesome -->
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700;900&family=Noto+Sans+JP:wght@400;500;700;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    body {
+      font-family: 'Noto Sans JP', 'Montserrat', sans-serif;
+      background: radial-gradient(circle at center, #1a1423 0%, #0c0813 100%);
+    }
+    .neon-text {
+      text-shadow: 0 0 8px rgba(236, 72, 153, 0.6), 0 0 20px rgba(168, 85, 247, 0.4);
+    }
+    .neon-border {
+      box-shadow: 0 0 15px rgba(168, 85, 247, 0.2), inset 0 0 15px rgba(168, 85, 247, 0.1);
+    }
+    .glass {
+      background: rgba(15, 10, 25, 0.8);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(168, 85, 247, 0.2);
+    }
+    .fade-in {
+      animation: fadeIn 0.4s ease-out forwards;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .progress-transition {
+      transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+  </style>
+</head>
+<body class="text-gray-100 min-h-screen pb-12">
+
+  <div class="max-w-xl mx-auto px-4 pt-8">
+    <!-- ヘッダー -->
+    <header class="text-center mb-8 fade-in">
+      <div class="inline-block bg-purple-950/60 text-purple-300 text-xs px-4 py-1 rounded-full border border-purple-500/30 mb-2 tracking-widest uppercase font-bold">
+        <i class="fa-solid fa-fan mr-1.5 animate-pulse text-pink-500"></i> 風流歌人性格診断
+      </div>
+      <h1 class="text-3xl md:text-4xl font-black neon-text text-white tracking-wider">
+        カラオケ診断 <span class="text-transparent bg-clip-text bg-gradient-to-r from-pink-400 via-purple-400 to-indigo-400">〜歌鳥風月〜</span>
+      </h1>
+      <p class="text-xs text-gray-400 mt-2">あなたの歌唱特性を深層分析し、16羽の「歌鳥」に例えます</p>
+    </header>
+
+    <!-- メインコンテンツ領域 -->
+    <main id="app-container" class="glass rounded-3xl p-6 md:p-8 neon-border">
+      
+      <!-- スタート画面 -->
+      <section id="start-view" class="text-center py-6 fade-in">
+        <div class="w-20 h-20 bg-gradient-to-tr from-pink-500 via-purple-600 to-indigo-500 rounded-full flex items-center justify-center mx-auto mb-6 shadow-lg shadow-purple-500/30">
+          <i class="fa-solid fa-dove text-3xl text-white"></i>
+        </div>
+        <h2 class="text-xl font-bold mb-4">カラオケに響く、あなたの「さえずり」はどの鳥？</h2>
+        <p class="text-sm text-gray-300 leading-relaxed mb-6">
+          選曲のテンポ、部屋の人数、採点へのこだわり、マニアック度……。カラオケの行動にはあなたの「雅（みやび）」な個性が隠されています。4項目・全20問の質問から、あなたの歌鳥タイプを導き出します。
+        </p>
+        <div class="bg-gray-900/60 rounded-2xl p-4 mb-8 text-left border border-gray-800 text-xs space-y-2 text-gray-400">
+          <p class="font-semibold text-gray-300 flex items-center"><i class="fa-solid fa-sliders mr-1.5 text-pink-400"></i> 分析する4つの新指標：</p>
+          <div class="grid grid-cols-2 gap-3 pt-1 text-[11px]">
+            <div>• <span class="text-pink-300 font-bold">P / H</span>：大人数(Party) vs ヒトカラ(Hitokara)</div>
+            <div>• <span class="text-purple-300 font-bold">U / B</span>：勢い歌唱(Up-tempo) vs 叙情歌唱(Ballad)</div>
+            <div>• <span class="text-indigo-300 font-bold">C / M</span>：王道定番(Common) vs マイナー個性(Minor)</div>
+            <div>• <span class="text-pink-300 font-bold">T / F</span>：採点重視(Technical) vs 感情重視(Feeling)</div>
+          </div>
+        </div>
+        <button id="btn-start" class="w-full bg-gradient-to-r from-pink-500 via-purple-600 to-indigo-500 hover:from-pink-600 hover:to-indigo-600 text-white font-bold py-4 px-6 rounded-2xl transition duration-300 transform active:scale-95 shadow-md shadow-pink-500/20 text-md">
+          診断をはじめる <i class="fa-solid fa-leaf ml-1"></i>
+        </button>
+      </section>
+
+      <!-- クイズ進行画面 -->
+      <section id="quiz-view" class="hidden fade-in">
+        <!-- プログレスバー -->
+        <div class="mb-6">
+          <div class="flex justify-between items-center text-xs text-gray-400 mb-2">
+            <span id="question-index">質問 1 / 20</span>
+            <span id="question-axis" class="font-bold text-pink-300 uppercase">指標測定中</span>
+          </div>
+          <div class="w-full h-2 bg-gray-950 rounded-full overflow-hidden border border-gray-850">
+            <div id="progress-bar" class="progress-transition h-full bg-gradient-to-r from-pink-500 via-purple-500 to-indigo-500" style="width: 5%"></div>
+          </div>
+        </div>
+
+        <!-- 質問文 -->
+        <div class="min-h-[110px] flex items-center justify-center mb-8">
+          <p id="question-text" class="text-base md:text-lg font-bold text-center text-white leading-relaxed px-2"></p>
+        </div>
+
+        <!-- 5択回答ボタン -->
+        <div class="space-y-3">
+          <button data-score="5" class="btn-answer w-full bg-white/5 hover:bg-white/10 active:bg-purple-900/30 text-sm font-semibold p-4 rounded-2xl text-left border border-white/10 hover:border-pink-500/50 transition duration-150 flex items-center justify-between">
+            <span>とてもそう思う</span>
+            <span class="text-xs text-pink-400 font-bold bg-pink-950/40 px-2.5 py-1 rounded-full">+2</span>
+          </button>
+          <button data-score="4" class="btn-answer w-full bg-white/5 hover:bg-white/10 active:bg-purple-900/30 text-sm font-semibold p-4 rounded-2xl text-left border border-white/10 hover:border-pink-500/50 transition duration-150 flex items-center justify-between">
+            <span>そう思う</span>
+            <span class="text-xs text-pink-400/70 font-bold bg-pink-950/20 px-2.5 py-1 rounded-full">+1</span>
+          </button>
+          <button data-score="3" class="btn-answer w-full bg-white/5 hover:bg-white/10 active:bg-purple-900/30 text-sm font-semibold p-4 rounded-2xl text-left border border-white/10 hover:border-purple-500/50 transition duration-150 flex items-center justify-between">
+            <span>場合による / どちらともいえない</span>
+            <span class="text-xs text-gray-400 font-bold bg-gray-800/60 px-2.5 py-1 rounded-full">±0</span>
+          </button>
+          <button data-score="2" class="btn-answer w-full bg-white/5 hover:bg-white/10 active:bg-purple-900/30 text-sm font-semibold p-4 rounded-2xl text-left border border-white/10 hover:border-purple-500/50 transition duration-150 flex items-center justify-between">
+            <span>少し違う</span>
+            <span class="text-xs text-indigo-400/70 font-bold bg-indigo-950/20 px-2.5 py-1 rounded-full">-1</span>
+          </button>
+          <button data-score="1" class="btn-answer w-full bg-white/5 hover:bg-white/10 active:bg-purple-900/30 text-sm font-semibold p-4 rounded-2xl text-left border border-white/10 hover:border-purple-500/50 transition duration-150 flex items-center justify-between">
+            <span>全く違う</span>
+            <span class="text-xs text-indigo-400 font-bold bg-indigo-950/40 px-2.5 py-1 rounded-full">-2</span>
+          </button>
+        </div>
+
+        <!-- 戻るボタン -->
+        <div class="mt-6 pt-4 border-t border-white/5 flex justify-start">
+          <button id="btn-back" class="text-xs text-gray-400 hover:text-white transition flex items-center py-2 px-3 rounded-lg hover:bg-white/5">
+            <i class="fa-solid fa-chevron-left mr-1.5"></i> 前の質問に戻る
+          </button>
+        </div>
+      </section>
+
+      <!-- 結果表示画面 -->
+      <section id="result-view" class="hidden fade-in space-y-6">
+        <div class="text-center py-4 border-b border-white/10">
+          <div class="inline-block bg-pink-500/10 text-pink-400 text-xs px-3 py-1 rounded-full border border-pink-500/20 mb-3 tracking-wide">
+            診断結鳥
+          </div>
+          <div id="result-code" class="text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-pink-400 via-purple-400 to-indigo-400 tracking-widest uppercase">PUCT</div>
+          <h2 id="result-title" class="text-2xl font-bold mt-2 text-white">---</h2>
+        </div>
+
+        <!-- 鳥の解説 -->
+        <div class="bg-purple-950/20 rounded-2xl p-5 border border-purple-500/20">
+          <p id="result-description" class="text-sm leading-relaxed text-gray-200"></p>
+        </div>
+
+        <!-- 特性のパーセンテージバー -->
+        <div class="space-y-4">
+          <h3 class="text-sm font-bold text-gray-300 flex items-center">
+            <i class="fa-solid fa-chart-pie mr-2 text-pink-400"></i> さえずり比率分析
+          </h3>
+          <div class="space-y-3 bg-gray-900/50 p-4 rounded-2xl border border-white/5 text-xs">
+            
+            <!-- P vs H -->
+            <div class="space-y-1">
+              <div class="flex justify-between items-center text-[11px]">
+                <span class="font-bold text-pink-400">P (大人数カラオケ)</span>
+                <span class="font-bold text-indigo-400">H (ヒトカラ精神)</span>
+              </div>
+              <div class="relative w-full h-4 bg-gray-950 rounded-full overflow-hidden border border-gray-800">
+                <div id="bar-ph" class="h-full bg-gradient-to-r from-pink-500 to-indigo-500" style="width: 50%"></div>
+                <div class="absolute left-1/2 top-0 bottom-0 w-0.5 bg-white/40"></div>
+                <span id="txt-ph-left" class="absolute left-2 top-0 text-[10px] leading-4 font-bold text-white">50%</span>
+                <span id="txt-ph-right" class="absolute right-2 top-0 text-[10px] leading-4 font-bold text-white">50%</span>
+              </div>
+            </div>
+
+            <!-- U vs B -->
+            <div class="space-y-1">
+              <div class="flex justify-between items-center text-[11px]">
+                <span class="font-bold text-pink-400">U (勢い歌唱・アップテンポ)</span>
+                <span class="font-bold text-indigo-400">B (叙情歌唱・バラード)</span>
+              </div>
+              <div class="relative w-full h-4 bg-gray-950 rounded-full overflow-hidden border border-gray-800">
+                <div id="bar-ub" class="h-full bg-gradient-to-r from-pink-500 to-indigo-500" style="width: 50%"></div>
+                <div class="absolute left-1/2 top-0 bottom-0 w-0.5 bg-white/40"></div>
+                <span id="txt-ub-left" class="absolute left-2 top-0 text-[10px] leading-4 font-bold text-white">50%</span>
+                <span id="txt-ub-right" class="absolute right-2 top-0 text-[10px] leading-4 font-bold text-white">50%</span>
+              </div>
+            </div>
+
+            <!-- C vs M -->
+            <div class="space-y-1">
+              <div class="flex justify-between items-center text-[11px]">
+                <span class="font-bold text-pink-400">C (王道定番)</span>
+                <span class="font-bold text-indigo-400">M (マイナー個性)</span>
+              </div>
+              <div class="relative w-full h-4 bg-gray-950 rounded-full overflow-hidden border border-gray-800">
+                <div id="bar-cm" class="h-full bg-gradient-to-r from-pink-500 to-indigo-500" style="width: 50%"></div>
+                <div class="absolute left-1/2 top-0 bottom-0 w-0.5 bg-white/40"></div>
+                <span id="txt-cm-left" class="absolute left-2 top-0 text-[10px] leading-4 font-bold text-white">50%</span>
+                <span id="txt-cm-right" class="absolute right-2 top-0 text-[10px] leading-4 font-bold text-white">50%</span>
+              </div>
+            </div>
+
+            <!-- T vs F -->
+            <div class="space-y-1">
+              <div class="flex justify-between items-center text-[11px]">
+                <span class="font-bold text-pink-400">T (採点重視・技術)</span>
+                <span class="font-bold text-indigo-400">F (感情重視・エモ)</span>
+              </div>
+              <div class="relative w-full h-4 bg-gray-950 rounded-full overflow-hidden border border-gray-800">
+                <div id="bar-tf" class="h-full bg-gradient-to-r from-pink-500 to-indigo-500" style="width: 50%"></div>
+                <div class="absolute left-1/2 top-0 bottom-0 w-0.5 bg-white/40"></div>
+                <span id="txt-tf-left" class="absolute left-2 top-0 text-[10px] leading-4 font-bold text-white">50%</span>
+                <span id="txt-tf-right" class="absolute right-2 top-0 text-[10px] leading-4 font-bold text-white">50%</span>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- 相性リスト -->
+        <div class="grid grid-cols-2 gap-3 text-xs">
+          <div class="bg-emerald-950/20 border border-emerald-500/20 p-3 rounded-2xl">
+            <p class="font-bold text-emerald-400 mb-1"><i class="fa-solid fa-feather mr-1"></i> 共鳴する鳥（好相性）</p>
+            <p id="result-best-match" class="text-white font-bold text-sm">---</p>
+          </div>
+          <div class="bg-rose-950/20 border border-rose-500/20 p-3 rounded-2xl">
+            <p class="font-bold text-rose-400 mb-1"><i class="fa-solid fa-wind mr-1"></i> 風向きが合わない鳥</p>
+            <p id="result-worst-match" class="text-white font-bold text-sm">---</p>
+          </div>
+        </div>
+
+        <!-- 特有アクション -->
+        <div class="bg-white/5 border border-white/10 p-4 rounded-2xl space-y-1">
+          <h4 class="text-xs font-bold text-purple-300 uppercase tracking-wider"><i class="fa-solid fa-wand-magic-sparkles text-pink-400 mr-1.5"></i> カラオケ名物アクション</h4>
+          <p id="result-action" class="text-sm text-gray-200 font-medium"></p>
+        </div>
+
+        <!-- 操作ボタン -->
+        <div class="space-y-2 pt-2">
+          <div id="copy-toast" class="hidden text-center text-xs bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 py-2 rounded-xl mb-2 animate-pulse">
+            <i class="fa-solid fa-circle-check mr-1"></i> 優位な特性（大きい％）のみを抽出してコピーしました！
+          </div>
+          <button id="btn-copy" class="w-full bg-gradient-to-r from-pink-500/80 to-indigo-600/80 hover:from-pink-500 hover:to-indigo-600 text-white font-bold py-3.5 px-4 rounded-xl transition duration-150 transform active:scale-95 text-sm flex items-center justify-center gap-2">
+            <i class="fa-regular fa-clipboard"></i> 優位な特性のみコピーして共有
+          </button>
+          <button id="btn-restart" class="w-full bg-white/5 hover:bg-white/10 text-gray-300 border border-white/10 py-3.5 px-4 rounded-xl transition duration-150 text-sm font-semibold">
+            初めからやり直す
+          </button>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <script>
+    // 20問の設問データ
+    const questions = [
+      // P(大人数) vs H(ヒトカラ) [1~5]
+      { id: 1, text: "カラオケは一人で行くよりも、大人数でワイワイ集まって騒ぐ空間のほうが好きだ。", axis: "PH" },
+      { id: 2, text: "他の人が歌っているときは、手拍子やコール、タンバリンなどを使って場を積極的に盛り上げるのが楽しい。", axis: "PH" },
+      { id: 3, text: "誰かとカラオケに行くなら、自分の歌をじっくり聴いてもらうより、全員で一体感を楽しみたい。", axis: "PH" },
+      { id: 4, text: "カラオケ中、部屋の注文やみんなのドリンクの状況など、周囲の様子が自然と目に入る。", axis: "PH" },
+      { id: 5, text: "カラオケの醍醐味は、みんなで音楽を通じて盛り上がり、日頃のストレスを発散することだと思う。", axis: "PH" },
+      // U(勢い歌唱) vs B(叙情歌唱) [6~10]
+      { id: 6, text: "選曲するときは、しっとりしたバラードよりも、テンポが速くノリが良いアップテンポ曲を選びがちだ。", axis: "UB" },
+      { id: 7, text: "歌うときは感情を深く込めることよりも、リズムやビートに乗って勢いよく歌うほうがスッキリする。", axis: "UB" },
+      { id: 8, text: "周りのテンションを上げるために、1曲目は必ずアップテンポなアゲアゲの曲を入れる。", axis: "UB" },
+      { id: 9, text: "ラップや早口のメロディ、アグレッシブなダンスナンバーなど、エネルギーを使う曲に挑戦するのが好きだ。", axis: "UB" },
+      { id: 10, text: "静かに聴き入るようなバラード空間よりも、アップテンポでみんなが身体を揺らしているノリが好きだ。", axis: "UB" },
+      // C(王道定番) vs M(マイナー個性) [11~15]
+      { id: 11, text: "選曲する時は、基本的にはその場にいる全員が知っている大ヒット曲や定番曲を選びがちだ。", axis: "CM" },
+      { id: 12, text: "最新のヒットチャートやSNSで誰もが一度は耳にしたことのあるトレンド曲を歌うことが多い。", axis: "CM" },
+      { id: 13, text: "周りの人が知らないようなマイナーすぎる曲や、コアなマニアックソングは空気を読んで避ける傾向がある。", axis: "CM" },
+      { id: 14, text: "誰もが一度は口ずさめる「有名アーティストの代表曲」や定番の懐メロを歌うのが一番安心する。", axis: "CM" },
+      { id: 15, text: "自分が本当に歌いたいニッチな曲より、その場のみんなが「あ、知ってる！」となるキャッチーな曲を優先する。", axis: "CM" },
+      // T(採点重視) vs F(感情重視) [16~20]
+      { id: 16, text: "カラオケの「精密採点機能」はできれば毎回ONにして、音程や得点を確認しながら歌いたい。", axis: "TF" },
+      { id: 17, text: "歌う時はその場のエモさやノリよりも、ピッチ（音程）の安定性や声量などの技術を正確にコントロールしたい。", axis: "TF" },
+      { id: 18, text: "他の人が歌っている時、ピッチの正確さや歌唱テクニックの高さが無意識に気になってしまうことがある。", axis: "TF" },
+      { id: 19, text: "部屋に入ったらまずマイク音量やエコー、ミュージックのバランスを自分好みに細かく調節したい。", axis: "TF" },
+      { id: 20, text: "「とにかく歌が上手くなりたい」「ボーカルスキルの練習だ」という目的意識を持ってカラオケに行くことが多い。", axis: "TF" }
+    ];
+
+    // 新4軸に最適化した16の歌鳥詳細データ
+    const typeDetails = {
+      "PUCT": { title: "キジ（雉）", desc: "【秩序を守る統率の鳥】大人数でのカラオケを完璧に管理するリーダー。進行のバランスを考えつつ、誰もが乗れるアップテンポな王道曲を選び、正確な歌唱力でピシッと歌い上げます。", matchBest: "HBMF (コマドリ)", matchWorst: "HUMF (カワセミ)", action: "マイクを他人に回すタイミングまで完璧に計算するスマートさ" },
+      "PUCF": { title: "クジャク（孔雀）", desc: "【主役級の華やかさを持つスターの鳥】誰もが知るアップテンポなヒット曲を圧倒的なエモーショナルさで歌い上げます。振付や目線配りも含め、部屋をド派手なステージに変える天性のエンターテイナー。", matchBest: "HBMT (ウグイス)", matchWorst: "HBCT (フクロウ)", action: "サビで完璧なドヤ顔と完璧な振付が勝手に発動する" },
+      "PUMT": { title: "タカ（鷹）", desc: "【アリーナを支配するカリスマ猛禽】大人数を巻き込む圧倒的なオーラを持ちながら、選曲は玄人好みのマイナー曲。高い歌唱技術で難曲をねじ伏せ、部屋全体を自分のアリーナライブのように染め上げます。", matchBest: "HBMF (コマドリ)", matchWorst: "HBCF (メジロ)", action: "「全員1曲は履歴に入れろ！」と促しつつ自身は超難関曲を予約" },
+      "PUMF": { title: "キツツキ（啄木鳥）", desc: "【場をフェス化させるリズムの鳥】とにかくタフで賑やか！マイナー曲や洋楽など独自のこだわりソングをノリノリで歌い、他人の番でもキツツキのごとくタンバリンを猛連打して場をフェス会場へと変貌させます。", matchBest: "HBCT (フクロウ)", matchWorst: "HBMT (ウグイス)", action: "間奏中の「ハイ！ハイ！」コールと超高速タンバリン連打" },
+      "PBCT": { title: "トキ（朱鷺）", desc: "【全員の心を一つにする平和の鳥】大人数で一体感を作りたい平和主義者。みんなが口ずさめる王道バラードやミドルテンポ曲を選び、丁寧な歌唱技術で優しく、美しく空間を一つに包み込みます。", matchBest: "HUMF (カワセミ)", matchWorst: "HUMT (九官鳥)", action: "「サビはみんなで歌おう！」と優しくマイクを中央に向ける" },
+      "PBCF": { title: "ツバメ（燕）", desc: "【周りをハッピーにする気配りの鳥】協調性抜群の愛されキャラ。ドリンク注文をこなし、手拍子を絶やさず、誰もが知る名バラードを抜群の感情移入で情感たっぷりに歌い上げて涙を誘います。", matchBest: "HUMT (九官鳥)", matchWorst: "HUMF (カワセミ)", action: "他の人が高音を出した瞬間に完璧なタイミングで「うまい！」と拍手" },
+      "PBMT": { title: "オウム（鸚鵡）", desc: "【変幻自在な知略の鳥】大人数の中で独自のバラードや哀愁ソングを展開する曲芸師。歌の中にセリフやモノマネ、独自の台詞アドリブを仕込み、テクニカルに部屋の空気を操って爆笑と拍手をかっさらう天才。", matchBest: "HBCF (メジロ)", matchWorst: "HBCT (フクロウ)", action: "バラードの語り部分やセリフ部分を完全に役に入りきってこなす" },
+      "PBMF": { title: "インコ（鸚哥）", desc: "【自由気ままにハッピーを歌う鳥】愛嬌抜群で自由奔放。大人数のノリに合わせつつ、「今このバラードをみんなの前で情感豊かに歌いたい！」という直感だけで、マイナーなエモ曲をのびのびと熱唱します。", matchBest: "HBCT (フクロウ)", matchWorst: "PUCT (キジ)", action: "前曲の盛り上がりを無視して、自分の大好きな世界観の曲を突っ込む" },
+      "HUCT": { title: "ペンギン（人鳥）", desc: "【同じ十八番を守る実直な鳥】マインドは一人でじっくり派。王道アップテンポ曲をきっちりブレずに歌う安定型。何度カラオケに行っても最初から最後まで歌う定番曲のセトリが固定されている職人です。", matchBest: "PUCF (クジャク)", matchWorst: "PUMF (キツツキ)", action: "1曲目の選曲が、10年前から全く変わらない鉄板中の鉄板" },
+      "HUCF": { title: "スズメ（雀）", desc: "【隅っこで見守る聞き専の鳥】自分の世界を愛する控えめな癒やし枠。基本的にはニコニコと楽しそうに手拍子をして他人の歌を聴いていますが、歌う番になると誰もが知る明るい曲を愛らしくエモく歌います。", matchBest: "PUMT (タカ)", matchWorst: "PUMF (キツツキ)", action: "誰かがデュエットを募集した瞬間、優しく「ハモろうか？」と手を挙げる" },
+      "HUMT": { title: "九官鳥（九官鳥）", desc: "【難解なネット音楽を操る鳥】誰とも被らないマイナー・高速ボカロ・難解アニソンを一人でストイックに追求するタイプ。圧倒的な情報処理能力と正確なピッチコントロールで、早口曲も涼しい顔で歌いきります。", matchBest: "PBCF (ツバメ)", matchWorst: "PBCT (トキ)", action: "誰も口が回らないような超高速フレーズをノーブレスで完璧にこなす" },
+      "HUMF": { title: "カワセミ（翡翠）", desc: "【音響をハックするシブき職人】一人で自分の世界を洗練させるのが好き。選曲はかなりニッチで尖ったアップテンポ曲。他人に流されず、その瞬間の自分のパッションを歌声に乗せて気持ちよく吐き出します。", matchBest: "PBCT (トキ)", matchWorst: "PUCT (キジ)", action: "入室直後にエコーをゼロにし、ミュージックとの比率を即座に変える" },
+      "HBCT": { title: "フクロウ（梟）", desc: "【カンスト高得点を狙う夜の賢者】カラオケは技術の証明機関。王道バラードを主戦場とし、精密採点の仕様（しゃくり、ビブラート、こぶし）を完全に計算・制御して95点以上の神スコアを冷徹に叩き出します。", matchBest: "PBMF (インコ)", matchWorst: "PUCF (クジャク)", action: "歌い終わった後に採点画面の分析グラフを無言で凝視・反省する" },
+      "HBCF": { title: "メジロ（目白）", desc: "【自分の世界に優しく浸るバラードの鳥】調和を愛しつつも、自分のエモい世界を最も大切にする人。誰もが知る名バラードに自分の想いや感情を120%乗せて、部屋の空気を一瞬で自分の色彩に変えてしまいます。", matchBest: "PUMF (オウム)", matchWorst: "PUMT (タカ)", action: "周りがどれだけ騒いでいようと、イントロが流れた瞬間バラードの主人公になる" },
+      "HBMT": { title: "ウグイス（鶯）", desc: "【美しい声でひっそり魅了する神秘の鳥】普段は部屋の隅で物静かにしていますが、マイクを持った瞬間に大化けするギャップの塊。独自のマイナーなバラード曲を、鳥肌が立つほどの美しい歌唱技術で響かせます。", matchBest: "PUCF (クジャク)", matchWorst: "PUMF (キツツキ)", action: "普段の話し声からは想像もつかないような超美声のロングトーンを放つ" },
+      "HBMF": { title: "コマドリ（駒鳥）", desc: "【ヒトカラで本領を発揮する森の歌姫】本質は完全にヒトカラ派。大勢の前では緊張してしまいますが、心を許した相手の前、あるいは一人の空間なら、自身のこだわり抜いたエモいマイナーバラードを最高に美しく歌い上げます。", matchBest: "PUCT (キジ)", matchWorst: "PUMT (タカ)", action: "「下手だから聴かないで〜」と小さくなりつつ、歌い出すと世界を作る" }
+    };
+
+    let currentQuestionIndex = 0;
+    let scores = { PH: 0, UB: 0, CM: 0, TF: 0 };
+    let userAnswers = [];
+
+    // DOM要素の取得
+    const startView = document.getElementById('start-view');
+    const quizView = document.getElementById('quiz-view');
+    const resultView = document.getElementById('result-view');
+    const btnStart = document.getElementById('btn-start');
+    const btnBack = document.getElementById('btn-back');
+    const btnRestart = document.getElementById('btn-restart');
+    const btnCopy = document.getElementById('btn-copy');
+    
+    const questionIndexText = document.getElementById('question-index');
+    const questionAxisText = document.getElementById('question-axis');
+    const progressFill = document.getElementById('progress-bar');
+    const questionText = document.getElementById('question-text');
+    const answerButtons = document.querySelectorAll('.btn-answer');
+    
+    const resultCode = document.getElementById('result-code');
+    const resultTitle = document.getElementById('result-title');
+    const resultDescription = document.getElementById('result-description');
+    const resultBestMatch = document.getElementById('result-best-match');
+    const resultWorstMatch = document.getElementById('result-worst-match');
+    const resultAction = document.getElementById('result-action');
+    const copyToast = document.getElementById('copy-toast');
+    
+    // バーとテキスト
+    const barPH = document.getElementById('bar-ph'); const txtPHLeft = document.getElementById('txt-ph-left'); const txtPHRight = document.getElementById('txt-ph-right');
+    const barUB = document.getElementById('bar-ub'); const txtUBLeft = document.getElementById('txt-ub-left'); const txtUBRight = document.getElementById('txt-ub-right');
+    const barCM = document.getElementById('bar-cm'); const txtCMLeft = document.getElementById('txt-cm-left'); const txtCMRight = document.getElementById('txt-cm-right');
+    const barTF = document.getElementById('bar-tf'); const txtTFLeft = document.getElementById('txt-tf-left'); const txtTFRight = document.getElementById('txt-tf-right');
+
+    // イベント設定
+    btnStart.addEventListener('click', startQuiz);
+    btnBack.addEventListener('click', goBack);
+    btnRestart.addEventListener('click', restartQuiz);
+    btnCopy.addEventListener('click', copyDominantResultToClipboard);
+    
+    answerButtons.forEach(button => {
+      button.addEventListener('click', (e) => {
+        const scoreVal = parseInt(e.currentTarget.getAttribute('data-score'), 10);
+        handleAnswer(scoreVal);
+      });
+    });
+
+    function startQuiz() {
+      currentQuestionIndex = 0;
+      scores = { PH: 0, UB: 0, CM: 0, TF: 0 };
+      userAnswers = [];
+      startView.classList.add('hidden');
+      quizView.classList.remove('hidden');
+      resultView.classList.add('hidden');
+      showQuestion();
+    }
+
+    function showQuestion() {
+      const q = questions[currentQuestionIndex];
+      questionText.textContent = q.text;
+      questionIndexText.textContent = `質問 ${currentQuestionIndex + 1} / ${questions.length}`;
+      
+      let axisLabel = "";
+      if (q.axis === "PH") axisLabel = "P (大人数) vs H (ヒトカラ)";
+      else if (q.axis === "UB") axisLabel = "U (勢い歌唱) vs B (叙情歌唱)";
+      else if (q.axis === "CM") axisLabel = "C (王道定番) vs M (マイナー個性)";
+      else if (q.axis === "TF") axisLabel = "T (採点重視) vs F (感情重視)";
+      questionAxisText.textContent = axisLabel;
+      
+      const progressPercent = ((currentQuestionIndex) / questions.length) * 100;
+      progressFill.style.width = `${progressPercent === 0 ? 5 : progressPercent}%`;
+      
+      if (currentQuestionIndex === 0) {
+        btnBack.classList.add('invisible');
+      } else {
+        btnBack.classList.remove('invisible');
+      }
+    }
+
+    function handleAnswer(score) {
+      const q = questions[currentQuestionIndex];
+      userAnswers.push({ axis: q.axis, score: score });
+      scores[q.axis] += score;
+      currentQuestionIndex++;
+      
+      if (currentQuestionIndex < questions.length) {
+        showQuestion();
+      } else {
+        showResults();
+      }
+    }
+
+    function goBack() {
+      if (currentQuestionIndex > 0) {
+        currentQuestionIndex--;
+        const lastAnswer = userAnswers.pop();
+        scores[lastAnswer.axis] -= lastAnswer.score;
+        showQuestion();
+      }
+    }
+
+    function restartQuiz() {
+      resultView.classList.add('hidden');
+      startView.classList.remove('hidden');
+      copyToast.classList.add('hidden');
+    }
+
+    // 15点で50:50、5点・25点で100%に振り切る調整関数
+    function calculateAxisValues(score) {
+      let leftPercent = 50;
+      let rightPercent = 50;
+      if (score === 15) {
+        leftPercent = 50; rightPercent = 50;
+      } else if (score > 15) {
+        leftPercent = 50 + (score - 15) * 5;
+        rightPercent = 100 - leftPercent;
+      } else {
+        rightPercent = 50 + (15 - score) * 5;
+        leftPercent = 100 - rightPercent;
+      }
+      return { left: leftPercent, right: rightPercent };
+    }
+
+    function showResults() {
+      quizView.classList.add('hidden');
+      resultView.classList.remove('hidden');
+      
+      const resPH = calculateAxisValues(scores.PH);
+      const resUB = calculateAxisValues(scores.UB);
+      const resCM = calculateAxisValues(scores.CM);
+      const resTF = calculateAxisValues(scores.TF);
+      
+      // 15点以上なら左側特性、15点未満なら右側特性
+      const codeP_H = scores.PH >= 15 ? 'P' : 'H';
+      const codeU_B = scores.UB >= 15 ? 'U' : 'B';
+      const codeC_M = scores.CM >= 15 ? 'C' : 'M';
+      const codeT_F = scores.TF >= 15 ? 'T' : 'F';
+      
+      const userTypeCode = `${codeP_H}${codeU_B}${codeC_M}${codeT_F}`;
+      const data = typeDetails[userTypeCode] || {
+        title: "風流な渡り鳥", desc: "全てのバランスが絶妙に保たれたカラオケの達人鳥です。", matchBest: "すべての鳥", matchWorst: "なし", action: "マイクの持ち方が非常に美しい"
+      };
+      
+      resultCode.textContent = userTypeCode;
+      resultTitle.textContent = data.title;
+      resultDescription.textContent = data.desc;
+      resultBestMatch.textContent = data.matchBest;
+      resultWorstMatch.textContent = data.matchWorst;
+      resultAction.textContent = data.action;
+      
+      // 進捗バー反映
+      barPH.style.width = `${resPH.left}%`; txtPHLeft.textContent = `${resPH.left}%`; txtPHRight.textContent = `${resPH.right}%`;
+      barUB.style.width = `${resUB.left}%`; txtUBLeft.textContent = `${resUB.left}%`; txtUBRight.textContent = `${resUB.right}%`;
+      barCM.style.width = `${resCM.left}%`; txtCMLeft.textContent = `${resCM.left}%`; txtCMRight.textContent = `${resCM.right}%`;
+      barTF.style.width = `${resTF.left}%`; txtTFLeft.textContent = `${resTF.left}%`; txtTFRight.textContent = `${resTF.right}%`;
+      
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    // 【新機能】パーセンテージが大きい（優位な）特性のみを抽出してコピーするロジック
+    function copyDominantResultToClipboard() {
+      const typeCode = resultCode.textContent;
+      const title = resultTitle.textContent;
+      const desc = resultDescription.textContent;
+      const best = resultBestMatch.textContent;
+      const action = resultAction.textContent;
+
+      const resPH = calculateAxisValues(scores.PH);
+      const resUB = calculateAxisValues(scores.UB);
+      const resCM = calculateAxisValues(scores.CM);
+      const resTF = calculateAxisValues(scores.TF);
+
+      // 大きい方の特性テキストを組み立てる（同率50%の場合は左側をデフォルト出力）
+      const textPH = resPH.left >= resPH.right ? `・P (大人数カラオケ) ${resPH.left}%` : `・H (ヒトカラ精神) ${resPH.right}%`;
+      const textUB = resUB.left >= resUB.right ? `・U (勢い歌唱・アップテンポ) ${resUB.left}%` : `・B (叙情歌唱・バラード) ${resUB.right}%`;
+      const textCM = resCM.left >= resCM.right ? `・C (王道定番) ${resCM.left}%` : `・M (マイナー個性) ${resCM.right}%`;
+      const textTF = resTF.left >= resTF.right ? `・T (採点重視・技術) ${resTF.left}%` : `・F (感情重視・エモ) ${resTF.right}%`;
+
+      const shareText = `🎤 【カラオケ診断 〜歌鳥風月〜】
+私の歌鳥タイプは...
+【 ${typeCode} 】${title}
+
+あなたの優位な特性：
+${textPH}
+${textUB}
+${textCM}
+${textTF}
+
+💡 特徴：${desc}
+🌟 名物アクション：${action}
+💖 共鳴する鳥：${best}
+
+#カラオケ診断歌鳥風月 #カラオケ16タイプ診断`;
+
+      const textarea = document.createElement('textarea');
+      textarea.value = shareText;
+      textarea.style.position = 'fixed';
+      document.body.appendChild(textarea);
+      textarea.select();
+      
+      try {
+        document.execCommand('copy');
+        copyToast.classList.remove('hidden');
+        setTimeout(() => { copyToast.classList.add('hidden'); }, 3000);
+      } catch (err) {
+        console.error('コピーに失敗しました:', err);
+      } finally {
+        document.body.removeChild(textarea);
+      }
+    }
+  </script>
+</body>
+</html>
