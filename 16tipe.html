@@ -68,10 +68,10 @@
         <div class="bg-gray-900/50 rounded-2xl p-4 mb-8 text-left border border-gray-800 text-xs space-y-2 text-gray-400">
           <p class="font-semibold text-gray-300"><i class="fa-solid fa-gears mr-1 text-purple-400"></i> 4つの測定指標：</p>
           <div class="grid grid-cols-2 gap-2 pt-1">
-            <div>• <span class="text-purple-300">E vs I</span>（社交的か / 一人の世界か）</div>
-            <div>• <span class="text-purple-300">S vs N</span>（王道定番か / 個性派か）</div>
+            <div>• <span class="text-purple-300">P vs H</span>（大人数カラオケか / ヒトカラか）</div>
+            <div>• <span class="text-purple-300">C vs M</span>（王道定番か / 個性派か）</div>
             <div>• <span class="text-purple-300">T vs F</span>（技術重視か / エモ重視か）</div>
-            <div>• <span class="text-purple-300">J vs P</span>（計画選曲か / 直感ノリか）</div>
+            <div>• <span class="text-purple-300">S vs L</span>（計画選曲か / 直感ノリか）</div>
           </div>
         </div>
         <button id="btn-start" class="w-full bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700 text-white font-bold py-4 px-6 rounded-2xl transition duration-300 transform active:scale-95 shadow-md shadow-pink-500/20 text-md">
@@ -155,8 +155,8 @@
             <!-- E vs I -->
             <div class="space-y-1">
               <div class="flex justify-between items-center text-[11px]">
-                <span class="font-bold text-pink-400">E (社交的・盛り上げ)</span>
-                <span class="font-bold text-purple-400">I (個人・マイワールド)</span>
+                <span class="font-bold text-pink-400">P (パーティーカラオケ)</span>
+                <span class="font-bold text-purple-400">H (ヒトカラワールド)</span>
               </div>
               <div class="relative w-full h-4 bg-gray-900 rounded-full overflow-hidden border border-gray-800">
                 <div id="bar-ei" class="h-full bg-gradient-to-r from-pink-500 to-purple-500" style="width: 50%"></div>
@@ -171,8 +171,8 @@
             <!-- S vs N -->
             <div class="space-y-1">
               <div class="flex justify-between items-center text-[11px]">
-                <span class="font-bold text-pink-400">S (王道・定番曲)</span>
-                <span class="font-bold text-purple-400">N (こだわり・個性派)</span>
+                <span class="font-bold text-pink-400">C (王道・定番曲)</span>
+                <span class="font-bold text-purple-400">M (こだわり・マイナー派)</span>
               </div>
               <div class="relative w-full h-4 bg-gray-900 rounded-full overflow-hidden border border-gray-800">
                 <div id="bar-sn" class="h-full bg-gradient-to-r from-pink-500 to-purple-500" style="width: 50%"></div>
@@ -186,7 +186,7 @@
             <div class="space-y-1">
               <div class="flex justify-between items-center text-[11px]">
                 <span class="font-bold text-pink-400">T (技術・採点重視)</span>
-                <span class="font-bold text-purple-400">F (感性・エモ重視)</span>
+                <span class="font-bold text-purple-400">F (FEELING・エモ重視)</span>
               </div>
               <div class="relative w-full h-4 bg-gray-900 rounded-full overflow-hidden border border-gray-800">
                 <div id="bar-tf" class="h-full bg-gradient-to-r from-pink-500 to-purple-500" style="width: 50%"></div>
@@ -199,8 +199,8 @@
             <!-- J vs P -->
             <div class="space-y-1">
               <div class="flex justify-between items-center text-[11px]">
-                <span class="font-bold text-pink-400">J (計画・マイセトリ)</span>
-                <span class="font-bold text-purple-400">P (直感・その場のノリ)</span>
+                <span class="font-bold text-pink-400">S (計画・セトリ)</span>
+                <span class="font-bold text-purple-400">L (直感・ライブ感)</span>
               </div>
               <div class="relative w-full h-4 bg-gray-900 rounded-full overflow-hidden border border-gray-800">
                 <div id="bar-jp" class="h-full bg-gradient-to-r from-pink-500 to-purple-500" style="width: 50%"></div>
@@ -252,13 +252,13 @@
   <script>
     // 診断データの定義
     const questions = [
-      // E vs I (1~5)
+      // P vs H (1~5)
       { id: 1, text: "カラオケは一人の世界に浸るより、複数人でワイワイ盛り上がるほうが好きだ。", axis: "EI" },
       { id: 2, text: "他の人が歌っているときは、手拍子やコール、タンバリンなどを使って場を積極的に盛り上げる。", axis: "EI" },
       { id: 3, text: "他の人の歌を聞くことよりも、自分がマイクを持って歌うことそのものが一番の目的だ。", axis: "EI" },
       { id: 4, text: "カラオケ中、部屋の温度調整やドリンクの追加オーダー、予約の通り具合などを自然と管理している。", axis: "EI" },
       { id: 5, text: "カラオケが終わった後、喉の疲れよりも「みんなで楽しめた！」という充実感のほうが勝る。", axis: "EI" },
-      // S vs N (6~10)
+      // C vs M (6~10)
       { id: 6, text: "選曲する時は、基本的にはその場にいる全員が知っている王道メガヒット曲を選びがちだ。", axis: "SN" },
       { id: 7, text: "最新のヒットチャートやSNS（TikTokなど）で話題になっているトレンド曲は積極的にチェックして歌う。", axis: "SN" },
       { id: 8, text: "誰も知らないようなマイナーすぎる曲や、コアなマニアックソングは空気を読んで避ける傾向がある。", axis: "SN" },
@@ -270,7 +270,7 @@
       { id: 13, text: "他の人が歌っている時、ピッチがズレていたりテクニックが優れていたりする点が無意識に気になってしまう。", axis: "TF" },
       { id: 14, text: "部屋に入ったらまずエコーやマイク・ミュージックの音量設定などを自分向けに細かく調節したい。", axis: "TF" },
       { id: 15, text: "「とにかく歌が上手くなりたい」「ボーカルスキルの練習だ」と思ってカラオケに行くことがよくある。", axis: "TF" },
-      // J vs P (16~20)
+      // S vs L (16~20)
       { id: 16, text: "カラオケに行く前（または移動中）に、今日歌いたい曲のリストをある程度頭の中で計画して決めている。", axis: "JP" },
       { id: 17, text: "カラオケが始まるとすぐにデンモク（端末）を確保し、自分の曲を事前に何曲かまとめて予約する。", axis: "JP" },
       { id: 18, text: "その時の「前の人が歌った曲のテンポ、アーティスト、ジャンル、年代」に合わせて、次に歌う曲を慎重に考える。", axis: "JP" },
@@ -279,7 +279,7 @@
     ];
 
     const typeDetails = {
-      "ESTJ": {
+      "": {
         title: "精密な支配者：カラオケマネージャー",
         desc: "誰もが認めざるを得ない歌唱秩序のリーダー。エコーやマイクの音量を徹底管理しながら、誰が何を歌うかを把握し、お互いが一番楽しめるプレイリスト進行を脳内で組み立てます。精密採点もお手の物。",
         matchBest: "INFP (ヒトカラの支配者)",
@@ -293,98 +293,98 @@
         matchWorst: "INTJ (カラオケプロ)",
         action: "間奏中の「ハイ！ハイ！」コールとタンバリン連打の達人"
       },
-      "ESFJ": {
+      "": {
         title: "気配り天使：おもてなしディーヴァ",
         desc: "歌い手の気分を上げるコールや、ドリンクの手配、おしぼりの配布。みんなが気持ちよく歌えることを最優先にしながら、自分も誰もが喜ぶ平成・令和のヒット定番曲を完璧な安定感で歌い上げます。",
         matchBest: "ISTP (音響チューナー)",
         matchWorst: "INTP (アニソン・ボカロオタク)",
         action: "他の人が高音を出したときに「うまい！」と絶妙なタイミングで拍手を入れる"
       },
-      "ESFP": {
+      "": {
         title: "フロアの主役：スーパーパフォーマー",
         desc: "歌唱力はもちろん、振付、ダンス、目線配りまで全てが『魅せる』仕様。自分自身が楽しむエネルギーが伝染して、部屋全体を巻き込み、全員を笑顔にしてしまう圧倒的エンターテイナーです。",
         matchBest: "ISTJ (セトリ固定の守護神)",
         matchWorst: "INFJ (エモソングソムリエ)",
         action: "マイクを持った瞬間に自然にステージ衣装ばりのドヤ顔を披露する"
       },
-      "ENTJ": {
+      "": {
         title: "絶対的指揮官：アリーナカリスマ",
         desc: "カラオケルーム全体を掌握し、全員を最高潮まで連れて行くプロデューサータイプ。選曲から曲順、場全体のモチベーション管理までを非の打ち所がない美声と計画力で行います。",
         matchBest: "INTP (アニソン・ボカロオタク)",
         matchWorst: "ISFP (バラードシンガー)",
         action: "「全員1曲は履歴に入れろ！」と発言しつつ、自分自身も最強の曲を叩き出す"
       },
-      "ENTP": {
+      "": {
         title: "選曲のトリックスター：エンタメ革命児",
         desc: "誰も予想だにしない角度から、懐かしのネタ曲、今バズっているネットミームソング、お笑い芸人の曲などを投下して部屋を爆笑と驚きに包みます。歌唱力も無駄に高く、テクニカルに遊び回る天才。",
         matchBest: "INFJ (エモソングソムリエ)",
         matchWorst: "ISFJ (聞き専・ハモり支援)",
         action: "曲の途中でセリフや台詞アドリブを入れて爆笑をかっさらう"
       },
-      "ENFJ": {
+      "": {
         title: "一体感の伝道師：アンセムシンガー",
         desc: "「みんなで一緒に歌える大合唱曲」を予約する天才。誰一人取り残さない包容力で、サビでは全員にマイクを向け、最後は部屋の全員で肩を組んで歌うような伝説のセッションを生み出します。",
         matchBest: "ISTP (音響チューナー)",
         matchWorst: "ISTJ (セトリ固定の守護神)",
         action: "デュエット曲を事前に頼み込んで、全員でハモる空気を作る"
       },
-      "ENFP": {
+      "": {
         title: "自由奔放な歌い手：ハッピーフェスティバル",
         desc: "「この曲歌いたい！」の直感だけで次々と予約を入れる愛されキャラ。ジャンルはバラバラ、流行曲からマニアックな曲までその場でテンションに合わせてハチャメチャに歌い、その場をハッピーにします。",
         matchBest: "INFJ (エモソングソムリエ)",
         matchWorst: "ESTJ (カラオケマネージャー)",
         action: "曲の途中で満足して、誰かに「続き歌って！」とパスを出す"
       },
-      "ISTJ": {
+      "": {
         title: "セトリ固定の守護神：ルーティンシンガー",
         desc: "カラオケに来たら、歌う曲のラインナップは常に不動。自分の得意なキー、歌い慣れた往年の定番名曲を寸分の狂いもなく、完璧な安定感で毎回歌いきる、職人的なカラオケを好む人。",
         matchBest: "ESFP (スーパーパフォーマー)",
         matchWorst: "ENTP (エンタメ革命児)",
         action: "毎回一発目の予約曲が10年前から同じ鉄板のヒット曲"
       },
-      "ISTP": {
+      "": {
         title: "孤高の職人：音響チューナー",
         desc: "入室直後に機械の「エコー：ゼロ、キー：−2、ミュージック：やや低め」などを秒速で設定するこだわり派。他人に興味がなさそうに見えて、マイクを握ると誰よりも玄人好みのシブい選曲で魅了します。",
         matchBest: "ESFJ (おもてなしディーヴァ)",
         matchWorst: "ENFP (ハッピーフェス)",
         action: "間奏中に、部屋の機械のミキサー調整をじっと確認している"
       },
-      "ISFJ": {
+      "": {
         title: "影の功労者：ハモり＆聞き専支援者",
         desc: "自分がメインで歌うよりも、他の人の美しいバックコーラスに徹したり、合いの手を入れたりすることに最大の喜びを感じる慈愛の人。歌い手が困ったときのスッと手を差し伸べるハモリはまさに神。",
         matchBest: "ESTP (お祭りモンスター)",
         matchWorst: "ENTJ (アリーナカリスマ)",
         action: "誰かがデュエットを募集した瞬間、優しく「私歌うよ」と手を挙げる"
       },
-      "ISFP": {
+      "": {
         title: "世界観の守り人：叙情派バラードシンガー",
         desc: "激しい盛り上がりの後でも、動じずに静かなエモ・バラードや失恋ソングを予約できる強固なメンタルの持ち主。その優しく澄んだ歌声で部屋を映画のワンシーンのように染め上げます。",
         matchBest: "ENFJ (アンセムシンガー)",
         matchWorst: "ESTJ (カラオケマネージャー)",
         action: "他人が騒いでいようと、完全に自分の歌の世界に浸って優しく微笑む"
       },
-      "INTJ": {
+      "": {
         title: "完全完璧主義：カラオケプロフェッショナル",
         desc: "カラオケは楽しむ場ではなく、技術の証明。もしくは限界への挑戦。精密採点の仕様を理解し尽くし、高音の響き、ロングトーン、表現力をすべて計算の上で配置してカンストスコア（95点以上）を狙い撃ちます。",
         matchBest: "ENFP (ハッピーフェス)",
         matchWorst: "ESTP (お祭りモンスター)",
         action: "歌い終わった瞬間に「あの小節のしゃくりが加算されていれば…」と採点画面を睨む"
       },
-      "INTP": {
+      "": {
         title: "探究心の塊：アニソン・ボカロオタク",
         desc: "アニメの特殊演出映像、ボーカロイドの難解なメロディライン、ネット音楽の超高速曲などを、卓越した知識で完璧に再現。歌い慣れた曲については異常な早口でも口が完璧に回ります。",
         matchBest: "ENTJ (アリーナカリスマ)",
         matchWorst: "ESFJ (おもてなしディーヴァ)",
         action: "アニソンで、セリフや特殊なSE効果音部分まで全力で口ずさむ"
       },
-      "INFJ": {
+      "": {
         title: "神秘の歌い手：エモソングソムリエ",
         desc: "誰もが一瞬「あ、これなんの曲だっけ」となる、歌詞が最高に美しいエモーショナルな楽曲を選曲します。部屋の隅で大人しくしているのに、マイクを持つと繊細で人を惹きつけてやまない美声を放ちます。",
         matchBest: "ENTP (エンタメ革命児)",
         matchWorst: "ESFP (スーパーパフォーマー)",
         action: "歌詞の一節一節に本当に泣きそうなほど深く感情を込めて歌い上げる"
       },
-      "INFP": {
+      "": {
         title: "心の詩人：ヒトカラの支配者",
         desc: "本音は一人で部屋に閉じこもって、好きなジャンルの曲を10回連続で練習したいタイプ。大人数のカラオケでは気疲れしがちですが、心を許した相手となら自身のこだわりが詰まった極上ソングをこっそり披露してくれます。",
         matchBest: "ESTJ (カラオケマネージャー)",
@@ -478,10 +478,10 @@
       
       // 指標テキストの表示をわかりやすく調整
       let axisLabel = "";
-      if (q.axis === "EI") axisLabel = "E vs I (社交性と個人スタイル)";
-      else if (q.axis === "SN") axisLabel = "S vs N (選曲スタイル)";
+      if (q.axis === "PH") axisLabel = "P vs H (社交性と個人スタイル)";
+      else if (q.axis === "CM") axisLabel = "C vs M (選曲スタイル)";
       else if (q.axis === "TF") axisLabel = "T vs F (採点・技術・楽しむ意識)";
-      else if (q.axis === "JP") axisLabel = "J vs P (計画性とノリ)";
+      else if (q.axis === "SL") axisLabel = "S vs L (計画性とノリ)";
       
       questionAxisText.textContent = axisLabel;
       
@@ -536,8 +536,8 @@
 
     // 計算ロジック：
     // scoreがちょうど15点なら50%:50%
-    // scoreが15点より大きい（E, S, T, J 側）場合：50% + (score - 15) * 5
-    // scoreが15点より小さい（I, N, F, P 側）場合：50% + (15 - score) * 5
+    // scoreが15点より大きい場合：50% + (score - 15) * 5
+    // scoreが15点より小さい場合：50% + (15 - score) * 5
     // これにより 15点で50:50, 25点（最大）で左側が100%（右側0%）, 5点（最小）で右側が100%（左側0%）
     function calculateAxisValues(score) {
       let leftPercent = 50;
@@ -563,16 +563,16 @@
       resultView.classList.remove('hidden');
       
       // 各軸のパーセンテージ計算
-      const resEI = calculateAxisValues(scores.EI);
-      const resSN = calculateAxisValues(scores.SN);
+      const resEI = calculateAxisValues(scores.PH);
+      const resSN = calculateAxisValues(scores.CM);
       const resTF = calculateAxisValues(scores.TF);
-      const resJP = calculateAxisValues(scores.JP);
+      const resJP = calculateAxisValues(scores.SL);
       
       // 16タイプコード決定 (15点以上なら左側特性、15点未満なら右側特性)
-      const codeE_I = scores.EI >= 15 ? 'E' : 'I';
-      const codeS_N = scores.SN >= 15 ? 'S' : 'N';
+      const codeE_I = scores.PH >= 15 ? 'P' : 'H';
+      const codeS_N = scores.CM >= 15 ? 'C' : 'M';
       const codeT_F = scores.TF >= 15 ? 'T' : 'F';
-      const codeJ_P = scores.JP >= 15 ? 'J' : 'P';
+      const codeJ_P = scores.SL >= 15 ? 'S' : 'L';
       
       const userTypeCode = `${codeE_I}${codeS_N}${codeT_F}${codeJ_P}`;
       const data = typeDetails[userTypeCode] || {
@@ -622,10 +622,10 @@
       const title = resultTitle.textContent;
       const desc = resultDescription.textContent;
       
-      const resEI = calculateAxisValues(scores.EI);
-      const resSN = calculateAxisValues(scores.SN);
+      const resEI = calculateAxisValues(scores.PH);
+      const resSN = calculateAxisValues(scores.CM);
       const resTF = calculateAxisValues(scores.TF);
-      const resJP = calculateAxisValues(scores.JP);
+      const resJP = calculateAxisValues(scores.SL);
       
       const best = resultBestMatch.textContent;
       const action = resultAction.textContent;
@@ -635,10 +635,10 @@
 【 ${typeCode} 】${title}
 
 特性分析：
-・E (社交) ${resEI.left}%  vs  I (個人) ${resEI.right}%
-・S (王道) ${resSN.left}%  vs  N (個性) ${resSN.right}%
+・P (社交) ${resEI.left}%  vs  H (個人) ${resEI.right}%
+・C (王道) ${resSN.left}%  vs  M (個性) ${resSN.right}%
 ・T (技術) ${resTF.left}%  vs  F (エモ) ${resTF.right}%
-・J (計画) ${resJP.left}%  vs  P (直感) ${resJP.right}%
+・S (計画) ${resJP.left}%  vs  L (直感) ${resJP.right}%
 
 💡 特徴：${desc}
 🌟 名物アクション：${action}
