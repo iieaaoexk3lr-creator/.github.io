@@ -152,33 +152,33 @@
           </h3>
           <div class="space-y-3 bg-gray-900/40 p-4 rounded-2xl border border-white/5 text-xs">
             
-            <!-- E vs I -->
+            <!-- P vs H -->
             <div class="space-y-1">
               <div class="flex justify-between items-center text-[11px]">
                 <span class="font-bold text-pink-400">P (パーティーカラオケ)</span>
                 <span class="font-bold text-purple-400">H (ヒトカラワールド)</span>
               </div>
               <div class="relative w-full h-4 bg-gray-900 rounded-full overflow-hidden border border-gray-800">
-                <div id="bar-ei" class="h-full bg-gradient-to-r from-pink-500 to-purple-500" style="width: 50%"></div>
+                <div id="bar-PH" class="h-full bg-gradient-to-r from-pink-500 to-purple-500" style="width: 50%"></div>
                 <!-- 境界基準線 -->
                 <div class="absolute left-1/2 top-0 bottom-0 w-0.5 bg-white/40"></div>
                 <!-- 数値表示 -->
-                <span id="txt-ei-left" class="absolute left-2 top-0 text-[10px] leading-4 font-bold text-white">50%</span>
-                <span id="txt-ei-right" class="absolute right-2 top-0 text-[10px] leading-4 font-bold text-white">50%</span>
+                <span id="txt-PH-left" class="absolute left-2 top-0 text-[10px] leading-4 font-bold text-white">50%</span>
+                <span id="txt-PH-right" class="absolute right-2 top-0 text-[10px] leading-4 font-bold text-white">50%</span>
               </div>
             </div>
 
-            <!-- S vs N -->
+            <!-- C vs M -->
             <div class="space-y-1">
               <div class="flex justify-between items-center text-[11px]">
                 <span class="font-bold text-pink-400">C (王道・定番曲)</span>
                 <span class="font-bold text-purple-400">M (こだわり・マイナー派)</span>
               </div>
               <div class="relative w-full h-4 bg-gray-900 rounded-full overflow-hidden border border-gray-800">
-                <div id="bar-sn" class="h-full bg-gradient-to-r from-pink-500 to-purple-500" style="width: 50%"></div>
+                <div id="bar-CM" class="h-full bg-gradient-to-r from-pink-500 to-purple-500" style="width: 50%"></div>
                 <div class="absolute left-1/2 top-0 bottom-0 w-0.5 bg-white/40"></div>
-                <span id="txt-sn-left" class="absolute left-2 top-0 text-[10px] leading-4 font-bold text-white">50%</span>
-                <span id="txt-sn-right" class="absolute right-2 top-0 text-[10px] leading-4 font-bold text-white">50%</span>
+                <span id="txt-CM-left" class="absolute left-2 top-0 text-[10px] leading-4 font-bold text-white">50%</span>
+                <span id="txt-CM-right" class="absolute right-2 top-0 text-[10px] leading-4 font-bold text-white">50%</span>
               </div>
             </div>
 
@@ -196,17 +196,17 @@
               </div>
             </div>
 
-            <!-- J vs P -->
+            <!-- S vs L -->
             <div class="space-y-1">
               <div class="flex justify-between items-center text-[11px]">
                 <span class="font-bold text-pink-400">S (計画・セトリ)</span>
                 <span class="font-bold text-purple-400">L (直感・ライブ感)</span>
               </div>
               <div class="relative w-full h-4 bg-gray-900 rounded-full overflow-hidden border border-gray-800">
-                <div id="bar-jp" class="h-full bg-gradient-to-r from-pink-500 to-purple-500" style="width: 50%"></div>
+                <div id="bar-SL" class="h-full bg-gradient-to-r from-pink-500 to-purple-500" style="width: 50%"></div>
                 <div class="absolute left-1/2 top-0 bottom-0 w-0.5 bg-white/40"></div>
-                <span id="txt-jp-left" class="absolute left-2 top-0 text-[10px] leading-4 font-bold text-white">50%</span>
-                <span id="txt-jp-right" class="absolute right-2 top-0 text-[10px] leading-4 font-bold text-white">50%</span>
+                <span id="txt-SL-left" class="absolute left-2 top-0 text-[10px] leading-4 font-bold text-white">50%</span>
+                <span id="txt-SL-right" class="absolute right-2 top-0 text-[10px] leading-4 font-bold text-white">50%</span>
               </div>
             </div>
 
@@ -253,17 +253,17 @@
     // 診断データの定義
     const questions = [
       // P vs H (1~5)
-      { id: 1, text: "カラオケは一人の世界に浸るより、複数人でワイワイ盛り上がるほうが好きだ。", axis: "EI" },
-      { id: 2, text: "他の人が歌っているときは、手拍子やコール、タンバリンなどを使って場を積極的に盛り上げる。", axis: "EI" },
-      { id: 3, text: "他の人の歌を聞くことよりも、自分がマイクを持って歌うことそのものが一番の目的だ。", axis: "EI" },
-      { id: 4, text: "カラオケ中、部屋の温度調整やドリンクの追加オーダー、予約の通り具合などを自然と管理している。", axis: "EI" },
-      { id: 5, text: "カラオケが終わった後、喉の疲れよりも「みんなで楽しめた！」という充実感のほうが勝る。", axis: "EI" },
+      { id: 1, text: "カラオケは一人の世界に浸るより、複数人でワイワイ盛り上がるほうが好きだ。", axis: "PH" },
+      { id: 2, text: "他の人が歌っているときは、手拍子やコール、タンバリンなどを使って場を積極的に盛り上げる。", axis: "PH" },
+      { id: 3, text: "他の人の歌を聞くことよりも、自分がマイクを持って歌うことそのものが一番の目的だ。", axis: "PH" },
+      { id: 4, text: "カラオケ中、部屋の温度調整やドリンクの追加オーダー、予約の通り具合などを自然と管理している。", axis: "PH" },
+      { id: 5, text: "カラオケが終わった後、喉の疲れよりも「みんなで楽しめた！」という充実感のほうが勝る。", axis: "PH" },
       // C vs M (6~10)
-      { id: 6, text: "選曲する時は、基本的にはその場にいる全員が知っている王道メガヒット曲を選びがちだ。", axis: "SN" },
-      { id: 7, text: "最新のヒットチャートやSNS（TikTokなど）で話題になっているトレンド曲は積極的にチェックして歌う。", axis: "SN" },
-      { id: 8, text: "誰も知らないようなマイナーすぎる曲や、コアなマニアックソングは空気を読んで避ける傾向がある。", axis: "SN" },
-      { id: 9, text: "誰もが一度は口ずさめる「平成を代表する懐メロ」や「誰もが知る定番曲」をストックしている。", axis: "SN" },
-      { id: 10, text: "自分が本当に歌いたいニッチな曲より、その場のみんなが喜ぶキャッチーな曲を選定する。", axis: "SN" },
+      { id: 6, text: "選曲する時は、基本的にはその場にいる全員が知っている王道メガヒット曲を選びがちだ。", axis: "CM" },
+      { id: 7, text: "最新のヒットチャートやSNS（TikTokなど）で話題になっているトレンド曲は積極的にチェックして歌う。", axis: "CM" },
+      { id: 8, text: "誰も知らないようなマイナーすぎる曲や、コアなマニアックソングは空気を読んで避ける傾向がある。", axis: "CM" },
+      { id: 9, text: "誰もが一度は口ずさめる「平成を代表する懐メロ」や「誰もが知る定番曲」をストックしている。", axis: "CM" },
+      { id: 10, text: "自分が本当に歌いたいニッチな曲より、その場のみんなが喜ぶキャッチーな曲を選定する。", axis: "CM" },
       // T vs F (11~15)
       { id: 11, text: "カラオケの「精密採点機能」はできれば毎回ONにして、音程バーを見ながら実力を確認したい。", axis: "TF" },
       { id: 12, text: "歌う時は感情やノリよりも、ピッチ（音程）の安定性や声量などのボーカル技術を正確にコントロールしたい。", axis: "TF" },
@@ -271,11 +271,11 @@
       { id: 14, text: "部屋に入ったらまずエコーやマイク・ミュージックの音量設定などを自分向けに細かく調節したい。", axis: "TF" },
       { id: 15, text: "「とにかく歌が上手くなりたい」「ボーカルスキルの練習だ」と思ってカラオケに行くことがよくある。", axis: "TF" },
       // S vs L (16~20)
-      { id: 16, text: "カラオケに行く前（または移動中）に、今日歌いたい曲のリストをある程度頭の中で計画して決めている。", axis: "JP" },
-      { id: 17, text: "カラオケが始まるとすぐにデンモク（端末）を確保し、自分の曲を事前に何曲かまとめて予約する。", axis: "JP" },
-      { id: 18, text: "その時の「前の人が歌った曲のテンポ、アーティスト、ジャンル、年代」に合わせて、次に歌う曲を慎重に考える。", axis: "JP" },
-      { id: 19, text: "自分だけの「お気に入りマイリスト」や「得意曲フォルダ」をカラオケ端末やスマホで綺麗に整理して持っている。", axis: "JP" },
-      { id: 20, text: "どれだけその場の流れやノリが変わっても、事前に「今日はこれを歌おう」と決めていた曲は変えずに歌う。", axis: "JP" }
+      { id: 16, text: "カラオケに行く前（または移動中）に、今日歌いたい曲のリストをある程度頭の中で計画して決めている。", axis: "SL" },
+      { id: 17, text: "カラオケが始まるとすぐにデンモク（端末）を確保し、自分の曲を事前に何曲かまとめて予約する。", axis: "SL" },
+      { id: 18, text: "その時の「前の人が歌った曲のテンポ、アーティスト、ジャンル、年代」に合わせて、次に歌う曲を慎重に考える。", axis: "SL" },
+      { id: 19, text: "自分だけの「お気に入りマイリスト」や「得意曲フォルダ」をカラオケ端末やスマホで綺麗に整理して持っている。", axis: "SL" },
+      { id: 20, text: "どれだけその場の流れやノリが変わっても、事前に「今日はこれを歌おう」と決めていた曲は変えずに歌う。", axis: "SL" }
     ];
 
     const typeDetails = {
@@ -396,10 +396,10 @@
     // アプリの状態
     let currentQuestionIndex = 0;
     let scores = {
-      EI: 0,
-      SN: 0,
+      PH: 0,
+      CM: 0,
       TF: 0,
-      JP: 0
+      SL: 0
     };
     let userAnswers = []; // 戻るボタン用の履歴
 
@@ -429,19 +429,19 @@
     const copyToast = document.getElementById('copy-toast');
     
     // 各バー要素
-    const barEI = document.getElementById('bar-ei');
-    const barSN = document.getElementById('bar-sn');
+    const barPH = document.getElementById('bar-PH');
+    const barCM = document.getElementById('bar-CM');
     const barTF = document.getElementById('bar-tf');
-    const barJP = document.getElementById('bar-jp');
+    const barSL = document.getElementById('bar-SL');
     
-    const txtEILeft = document.getElementById('txt-ei-left');
-    const txtEIRight = document.getElementById('txt-ei-right');
-    const txtSNLeft = document.getElementById('txt-sn-left');
-    const txtSNRight = document.getElementById('txt-sn-right');
+    const txtPHLeft = document.getElementById('txt-PH-left');
+    const txtPHRight = document.getElementById('txt-PH-right');
+    const txtCMLeft = document.getElementById('txt-CM-left');
+    const txtCMRight = document.getElementById('txt-CM-right');
     const txtTFLeft = document.getElementById('txt-tf-left');
     const txtTFRight = document.getElementById('txt-tf-right');
-    const txtJPLeft = document.getElementById('txt-jp-left');
-    const txtJPRight = document.getElementById('txt-jp-right');
+    const txtSLLeft = document.getElementById('txt-SL-left');
+    const txtSLRight = document.getElementById('txt-SL-right');
 
     // イベントリスナー登録
     btnStart.addEventListener('click', startQuiz);
@@ -460,7 +460,7 @@
     // 診断開始
     function startQuiz() {
       currentQuestionIndex = 0;
-      scores = { EI: 0, SN: 0, TF: 0, JP: 0 };
+      scores = { EI: 0, CM: 0, TF: 0, SL: 0 };
       userAnswers = [];
       
       startView.classList.add('hidden');
@@ -563,10 +563,10 @@
       resultView.classList.remove('hidden');
       
       // 各軸のパーセンテージ計算
-      const resEI = calculateAxisValues(scores.PH);
-      const resSN = calculateAxisValues(scores.CM);
+      const resPH = calculateAxisValues(scores.PH);
+      const resCM = calculateAxisValues(scores.CM);
       const resTF = calculateAxisValues(scores.TF);
-      const resJP = calculateAxisValues(scores.SL);
+      const resSL = calculateAxisValues(scores.SL);
       
       // 16タイプコード決定 (15点以上なら左側特性、15点未満なら右側特性)
       const codeE_I = scores.PH >= 15 ? 'P' : 'H';
@@ -593,14 +593,14 @@
       
       // ビジュアル・グラフィック反映（CSSスタイルの調整）
       // E vs I
-      barEI.style.width = `${resEI.left}%`;
-      txtEILeft.textContent = `${resEI.left}%`;
-      txtEIRight.textContent = `${resEI.right}%`;
+      barPH.style.width = `${resPH.left}%`;
+      txtPHLeft.textContent = `${resPH.left}%`;
+      txtPHRight.textContent = `${resPH.right}%`;
       
       // S vs N
-      barSN.style.width = `${resSN.left}%`;
-      txtSNLeft.textContent = `${resSN.left}%`;
-      txtSNRight.textContent = `${resSN.right}%`;
+      barCM.style.width = `${resCM.left}%`;
+      txtCMLeft.textContent = `${resCM.left}%`;
+      txtCMRight.textContent = `${resCM.right}%`;
       
       // T vs F
       barTF.style.width = `${resTF.left}%`;
@@ -608,9 +608,9 @@
       txtTFRight.textContent = `${resTF.right}%`;
       
       // J vs P
-      barJP.style.width = `${resJP.left}%`;
-      txtJPLeft.textContent = `${resJP.left}%`;
-      txtJPRight.textContent = `${resJP.right}%`;
+      barSL.style.width = `${resSL.left}%`;
+      txtSLLeft.textContent = `${resSL.left}%`;
+      txtSLRight.textContent = `${resSL.right}%`;
       
       // 要素のスクロールをトップへ
       window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -622,10 +622,10 @@
       const title = resultTitle.textContent;
       const desc = resultDescription.textContent;
       
-      const resEI = calculateAxisValues(scores.PH);
-      const resSN = calculateAxisValues(scores.CM);
+      const resPH = calculateAxisValues(scores.PH);
+      const resCM = calculateAxisValues(scores.CM);
       const resTF = calculateAxisValues(scores.TF);
-      const resJP = calculateAxisValues(scores.SL);
+      const resSL = calculateAxisValues(scores.SL);
       
       const best = resultBestMatch.textContent;
       const action = resultAction.textContent;
@@ -635,10 +635,10 @@
 【 ${typeCode} 】${title}
 
 特性分析：
-・P (社交) ${resEI.left}%  vs  H (個人) ${resEI.right}%
-・C (王道) ${resSN.left}%  vs  M (個性) ${resSN.right}%
+・P (社交) ${resPH.left}%  vs  H (個人) ${resPH.right}%
+・C (王道) ${resCM.left}%  vs  M (個性) ${resCM.right}%
 ・T (技術) ${resTF.left}%  vs  F (エモ) ${resTF.right}%
-・S (計画) ${resJP.left}%  vs  L (直感) ${resJP.right}%
+・S (計画) ${resSL.left}%  vs  L (直感) ${resSL.right}%
 
 💡 特徴：${desc}
 🌟 名物アクション：${action}
