@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>自動分割カメラレコーダー</title>
+    <style>
+        body { font-family: sans-serif; text-align: center; margin: 20px; background: #f0f0f0; color: #333; }
+        video { width: 100%; max-width: 400px; border-radius: 8px; background: #000; }
+        .controls { margin: 20px 0; background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); display: inline-block; }
+        button { padding: 12px 24px; font-size: 16px; margin: 5px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; }
+        #startBtn { background: #28a745; color: white; }
+        #stopBtn { background: #dc3545; color: white; }
+        button:disabled { background: #ccc; cursor: not-allowed; }
+        #status { font-size: 18px; font-weight: bold; color: #007bff; margin: 15px 0; }
+        
+        /* 説明書きのスタイル */
+        .instructions { max-width: 500px; margin: 30px auto; text-align: left; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .instructions h3 { margin-top: 0; color: #111; border-bottom: 2px solid #007bff; padding-bottom: 5px; }
+        .instructions ul { padding-left: 20px; }
+        .instructions li { margin-bottom: 10px; line-height: 1.5; }
+        .note { background: #fff3cd; border-left: 4px solid #ffc107; padding: 10px; border-radius: 4px; font-size: 14px; }
+    </style>
+</head>
+<body>
+
+    <h2>自動分割レコーダー (MP4)</h2>
+    
+    <video id="preview" autoplay playsinline muted></video>
+
+    <div class="controls">
+        <label for="interval"><strong>録画単位（分）: </strong></label>
+        <input type="number" id="interval" value="1" min="0.5" step="0.5" style="width: 60px; padding: 5px; font-size: 16px; text-align: center;">
+        <br><br>
+        <button id="startBtn">録画スタート</button>
+        <button id="stopBtn" disabled>ストップ</button>
+        <div id="status">カメラ起動中...</div>
+    </div>
+
+    <!-- ページ内に表示する使用説明 -->
+    <div class="instructions">
+        <h3>💡 使い方と仕様説明</h3>
+        <ul>
+            <li><strong>自動繰り返し録画:</strong> 「録画スタート」を押すと撮影が始まり、設定した分数が経過するたびに動画ファイルが自動で保存され、次の録画が続けてスタートします。</li>
+            <li><strong>保存場所:</strong> スマホの標準の<strong>「ダウンロード」フォルダ</strong>に <code>video_1.mp4</code> <code>video_2.mp4</code> ... と連番で保存されます。</li>
+            <li><strong>iPhone (Safari) での挙動:</strong> 分数が経過するたびに画面に「ダウンロードしますか？」という確認が出ます。「ダウンロード」をタップすると保存されます。</li>
+            <li><strong>Android (Chrome) での挙動:</strong> 初回のみ保存の許可を求められますが、許可した後は確認なしで次々とバックグラウンドで自動保存されます。</li>
+        </ul>
+        <div class="note">
+            ⚠️ <strong>重要（画面ロックの注意）:</strong><br>
+            スマホの画面がスリープ（自動ロックで真っ暗に）になると、ブラウザの制限により録画が強制ストップしてしまいます。長い時間録画する場合は、あらかじめスマホ本体の設定で<strong>「画面の自動ロック」を「なし（または10分など最長）」</strong>に変更してください。
+        </div>
+    </div>
+
+    <script>
+        let mediaRecorder;
+        let recordedChunks = [];
+        let stream;
+        let intervalTimer;
+        let fileIndex = 1;
+        let isLooping = false;
+
+        const preview = document.getElementById('preview');
+        const startBtn = document.getElementById('startBtn');
+        const stopBtn = document.getElementById('stopBtn');
+        const statusDiv = document.getElementById('status');
+        const intervalInput = document.getElementById('interval');
+
+        async function initCamera() {
+            try {
+                stream = await navigator.mediaDevices.getUserMedia({
+                    video: { facingMode: "environment" },
+                    audio: true
+                });
+                preview.srcObject = stream;
+                statusDiv.innerText = "待機中（いつでも録画できます）";
+                statusDiv.style.color = "#28a745";
+            } catch (err) {
+                statusDiv.innerText = "カメラの起動に失敗しました: " + err.message;
+                statusDiv.style.color = "#dc3545";
+            }
+        }
+
+        function startRecordingSlot() {
+            recordedChunks = [];
+            let options = { mimeType: 'video/mp4; codecs="avc1.42E01E, mp4a.40.2"' };
+            
+            if (!MediaRecorder.isTypeSupported(options.mimeType)) {
+                options = { mimeType: 'video/mp4' };
+            }
+            if (!MediaRecorder.isTypeSupported(options.mimeType)) {
+                options = { mimeType: 'video/webm; codecs=vp9' };
+            }
+
+            try {
+                mediaRecorder = new MediaRecorder(stream, options);
+            } catch (e) {
+                mediaRecorder = new MediaRecorder(stream);
+            }
+
+            mediaRecorder.ondataavailable = (event) => {
+                if (event.data && event.data.size > 0) {
+                    recordedChunks.push(event.data);
+                }
+            };
+
+            mediaRecorder.onstop = () => {
+                const blob = new Blob(recordedChunks, { type: mediaRecorder.mimeType });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                document.body.appendChild(a);
+                a.style = 'display: none';
+                a.href = url;
+                
+                const ext = mediaRecorder.mimeType.includes('webm') ? 'webm' : 'mp4';
+                a.download = `video_${fileIndex++}.${ext}`;
+                a.click();
+                
+                window.URL.revokeObjectURL(url);
+                document.body.removeChild(a);
+
+                if (isLooping) {
+                    statusDiv.innerText = `● 録画中... (${fileIndex}本目を撮影中)`;
+                    startRecordingSlot();
+                } else {
+                    statusDiv.innerText = "録画を終了しました。";
+                    statusDiv.style.color = "#333";
+                }
+            };
+
+            mediaRecorder.start();
+        }
+
+        startBtn.addEventListener('click', () => {
+            const minutes = parseFloat(intervalInput.value);
+            if (isNaN(minutes) || minutes <= 0) {
+                alert("正しい分数を入力してください。");
+                return;
+            }
+
+            isLooping = true;
+            fileIndex = 1;
+            startBtn.disabled = true;
+            stopBtn.disabled = false;
+            intervalInput.disabled = true;
+            
+            const ms = minutes * 60 * 1000;
+            statusDiv.innerText = `● 録画中... (1本目を撮影中)`;
+            statusDiv.style.color = "#dc3545";
+
+            startRecordingSlot();
+
+            intervalTimer = setInterval(() => {
+                if (mediaRecorder && mediaRecorder.state !== "inactive") {
+                    mediaRecorder.stop();
+                }
+            }, ms);
+        });
+
+        stopBtn.addEventListener('click', () => {
+            isLooping = false;
+            clearInterval(intervalTimer);
+            
+            if (mediaRecorder && mediaRecorder.state !== "inactive") {
+                mediaRecorder.stop();
+            }
+
+            startBtn.disabled = false;
+            stopBtn.disabled = true;
+            intervalInput.disabled = false;
+        });
+
+        window.addEventListener('load', initCamera);
+    </script>
+</body>
+</html>
