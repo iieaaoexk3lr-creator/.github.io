@@ -1,61 +1,361 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>イメージ曲選手権</title>
-<style>
-body{margin:0;font-family:sans-serif;background:#222;color:#fff}
-header{padding:12px;text-align:center;background:#333}
-nav{display:flex}
-nav button{flex:1;padding:14px;font-size:18px}
-section{padding:16px}
-.hidden{display:none}
-.card{background:#333;border-radius:10px;padding:16px;margin:10px 0}
-button{border:none;border-radius:10px;padding:14px;font-size:18px;margin:6px;cursor:pointer}
-#choices{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-.choice{background:#4a4a4a;color:#fff}
-#fullscreen{position:fixed;inset:0;background:#000;color:#fff;display:none;align-items:center;justify-content:center;flex-direction:column}
-#bigText{font-size:20vw;font-weight:bold}
-#close{position:absolute;top:15px;right:15px;font-size:28px;padding:10px 16px}
-</style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>イメージ曲選手権</title>
+  <style>
+    /* --- 全般・テーマ設定 --- */
+    :root {
+      --bg-color: #121212;
+      --surface-color: #1e1e1e;
+      --primary-color: #3b82f6;
+      --accent-color: #10b981;
+      --text-color: #ffffff;
+      --text-muted: #a3a3a3;
+      --border-radius: 12px;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      background-color: var(--bg-color);
+      color: var(--text-color);
+      font-family: 'Helvetica Neue', Arial, 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', Meiryo, sans-serif;
+      padding-bottom: 40px;
+    }
+
+    .container {
+      max-width: 600px;
+      margin: 0 auto;
+      padding: 16px;
+    }
+
+    h1 {
+      text-align: center;
+      font-size: 1.5rem;
+      margin-bottom: 20px;
+    }
+
+    /* --- アニメーション共通 --- */
+    .fade {
+      transition: opacity 0.3s ease;
+      opacity: 1;
+    }
+    .fade-out {
+      opacity: 0;
+    }
+
+    /* --- モード切替タブ --- */
+    .mode-tabs {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 24px;
+    }
+
+    .tab-btn {
+      flex: 1;
+      background-color: var(--surface-color);
+      color: var(--text-muted);
+      border: 2px solid transparent;
+      padding: 14px;
+      font-size: 1rem;
+      font-weight: bold;
+      border-radius: var(--border-radius);
+      cursor: pointer;
+      transition: transform 0.1s ease, background-color 0.2s, color 0.2s;
+    }
+
+    .tab-btn.active {
+      background-color: var(--primary-color);
+      color: var(--text-color);
+    }
+
+    /* ボタン押下時の縮小アニメーション */
+    .active-press:active {
+      transform: scale(0.96);
+    }
+
+    /* --- パネル制御 --- */
+    .mode-panel {
+      display: none;
+    }
+
+    .mode-panel.active {
+      display: block;
+    }
+
+    /* --- 司会モードスタイル --- */
+    .display-card {
+      background-color: var(--surface-color);
+      border-radius: var(--border-radius);
+      padding: 24px;
+      text-align: center;
+      margin-bottom: 20px;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+    }
+
+    .label-text {
+      font-size: 0.9rem;
+      color: var(--text-muted);
+      margin-bottom: 4px;
+      letter-spacing: 0.1em;
+    }
+
+    .main-text {
+      font-size: 2rem;
+      font-weight: bold;
+      margin-bottom: 16px;
+      min-height: 3rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .control-actions {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+
+    .btn-main {
+      background-color: var(--accent-color);
+      color: var(--text-color);
+      border: none;
+      padding: 16px;
+      font-size: 1.1rem;
+      font-weight: bold;
+      border-radius: var(--border-radius);
+      cursor: pointer;
+      width: 100%;
+      transition: transform 0.1s ease;
+    }
+
+    .btn-sub-group {
+      display: flex;
+      gap: 12px;
+    }
+
+    .btn-sub {
+      flex: 1;
+      background-color: var(--surface-color);
+      color: var(--text-color);
+      border: 1px solid #333;
+      padding: 14px;
+      font-size: 0.95rem;
+      border-radius: var(--border-radius);
+      cursor: pointer;
+      transition: transform 0.1s ease;
+    }
+
+    /* 履歴エリア */
+    .history-section {
+      margin-top: 24px;
+    }
+
+    .history-title {
+      font-size: 0.95rem;
+      color: var(--text-muted);
+      margin-bottom: 8px;
+      border-left: 4px solid var(--primary-color);
+      padding-left: 8px;
+    }
+
+    .history-item {
+      display: flex;
+      justify-content: space-between;
+      background-color: #1a1a1a;
+      padding: 10px 16px;
+      border-radius: 6px;
+      margin-bottom: 6px;
+      font-size: 0.9rem;
+    }
+
+    .history-tag {
+      color: var(--text-muted);
+    }
+
+    /* --- 判定員モードスタイル --- */
+    .choice-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 12px;
+    }
+
+    .btn-choice {
+      background-color: var(--surface-color);
+      color: var(--text-color);
+      border: 1px solid #2a2a2a;
+      padding: 20px 10px;
+      font-size: 1.1rem;
+      font-weight: bold;
+      border-radius: var(--border-radius);
+      cursor: pointer;
+      text-align: center;
+      transition: transform 0.1s ease, background-color 0.2s;
+    }
+
+    .btn-choice:active {
+      background-color: #2a2a2a;
+    }
+
+    /* --- 全画面判定札モード --- */
+    #cardScreen {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background-color: #000000;
+      color: #ffffff;
+      display: none;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      z-index: 1000;
+    }
+
+    #closeButton {
+      position: absolute;
+      top: 20px;
+      left: 20px;
+      background: none;
+      border: none;
+      color: #ffffff;
+      font-size: 2.5rem;
+      cursor: pointer;
+      padding: 10px;
+      line-height: 1;
+    }
+
+    #cardText {
+      font-size: 20vw;
+      font-weight: bold;
+      text-align: center;
+      width: 100%;
+      word-break: break-all;
+      padding: 0 20px;
+    }
+
+    /* --- 基本ルール（折りたたみ） --- */
+    .rule-section {
+      margin-top: 32px;
+      border: 1px solid #2a2a2a;
+      border-radius: var(--border-radius);
+      overflow: hidden;
+    }
+
+    .rule-header {
+      background-color: var(--surface-color);
+      padding: 12px 16px;
+      cursor: pointer;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.9rem;
+      font-weight: bold;
+    }
+
+    .rule-content {
+      padding: 16px;
+      background-color: #161616;
+      display: none;
+      font-size: 0.85rem;
+      line-height: 1.6;
+      color: #d4d4d4;
+    }
+
+    .rule-content ul {
+      list-style-type: none;
+    }
+
+    .rule-content li {
+      margin-bottom: 8px;
+      position: relative;
+      padding-left: 14px;
+    }
+
+    .rule-content li::before {
+      content: "•";
+      position: absolute;
+      left: 0;
+      color: var(--primary-color);
+    }
+  </style>
 </head>
 <body>
-<header><h2>イメージ曲選手権</h2></header>
-<nav>
-<button onclick="showMode('host')">司会</button>
-<button onclick="showMode('judge')">判定員</button>
-</nav>
 
-<section id="host">
-<div class="card">
-<div>カテゴリ: <span id="cat">-</span></div>
-<div style="font-size:32px;margin:20px 0" id="topic">？？？</div>
-<button onclick="draw()">お題を引く</button>
-<button onclick="toggleTopic()">表示/非表示</button>
-</div>
-<div class="card">
-<b>ルール</b>
-<ol>
-<li>各チームから代表1人が判定員。</li>
-<li>歌う前にカテゴリだけ公開。</li>
-<li>歌唱後、判定員はお題を選択。</li>
-<li>正解した判定員チーム1点。</li>
-<li>全員正解なら歌ったチーム1点。</li>
-</ol>
-</div>
-</section>
+  <div class="container">
+    <h1>イメージ曲選手権</h1>
 
-<section id="judge" class="hidden">
-<h3 id="judgeTitle">お題を選択</h3>
-<div id="choices"></div>
-</section>
+    <!-- モード切替タブ -->
+    <div class="mode-tabs">
+      <button id="btnHostTab" class="tab-btn active active-press" onclick="switchMode('host')">司会モード</button>
+      <button id="btnJudgeTab" class="tab-btn active-press" onclick="switchMode('judge')">判定員モード</button>
+    </div>
 
-<div id="fullscreen">
-<button id="close" onclick="closeFull()">✕</button>
-<div id="bigText"></div>
-</div>
+    <!-- 司会モードパネル -->
+    <div id="hostMode" class="mode-panel active">
+      <div class="display-card">
+        <div class="label-text">カテゴリ</div>
+        <div id="categoryText" class="main-text">---</div>
+        <div class="label-text">お題</div>
+        <div id="topicText" class="main-text">---</div>
+      </div>
 
-<script src="imagen.js"></script>
+      <div class="control-actions">
+        <button class="btn-main active-press" onclick="drawTopic()">お題を引く</button>
+        <div class="btn-sub-group">
+          <button class="btn-sub active-press" onclick="toggleTopic()">表示・非表示</button>
+          <button class="btn-sub active-press" onclick="drawTopic()">次のお題</button>
+        </div>
+      </div>
+
+      <div class="history-section">
+        <div class="history-title">履歴 (直近5件)</div>
+        <div id="historyArea">
+          <!-- JSで動的生成 -->
+        </div>
+      </div>
+    </div>
+
+    <!-- 判定員モードパネル -->
+    <div id="judgeMode" class="mode-panel">
+      <div class="display-card" style="padding: 14px; margin-bottom: 16px;">
+        <div class="label-text" style="margin: 0;">現在のカテゴリ</div>
+        <div id="judgeCategoryText" class="main-text" style="font-size: 1.5rem; margin: 4px 0 0 0; min-height: auto;">---</div>
+      </div>
+      
+      <div id="choiceArea" class="choice-grid">
+        <!-- JSで動的生成 -->
+      </div>
+    </div>
+
+    <!-- 基本ルールエリア -->
+    <div class="rule-section">
+      <div class="rule-header" onclick="toggleRules()">
+        <span>基本ルール</span>
+        <span id="ruleArrow">▼</span>
+      </div>
+      <div id="ruleArea" class="rule-content">
+        <!-- JSで動的生成 -->
+      </div>
+    </div>
+  </div>
+
+  <!-- 全画面判定札モードスクリーン -->
+  <div id="cardScreen">
+    <button id="closeButton" onclick="closeCard()">×</button>
+    <div id="cardText">優しい</div>
+  </div>
+
+  <!-- スクリプトの読み込み -->
+  <script src="imagen.js"></script>
 </body>
 </html>
