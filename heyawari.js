@@ -279,6 +279,7 @@ function removeMemberFromFirebase(name) {
     db.collection("multigroups").doc(uniqueGroupId).collection("members").doc(name).delete();
 }
 
+// 🛠️ 修正点：部屋構成保存時、currentResultがnullの場合でも空枠構造を作って即座に書き換える
 function saveRoomsSetupOnly() {
     const rows = document.querySelectorAll('.room-row');
     
@@ -298,16 +299,39 @@ function saveRoomsSetupOnly() {
         });
     });
     
-    db.collection("multigroups").doc(uniqueGroupId).update({ 
-        roomsSetup: newSetup 
-    }).then(() => {
-        db.collection("multigroups").doc(uniqueGroupId).get().then(doc => {
-            if(doc.exists) syncAndRenderRooms(doc.data().currentResult);
+    db.collection("multigroups").doc(uniqueGroupId).get().then(doc => {
+        let updateData = { roomsSetup: newSetup };
+        
+        // currentResultがnullの場合は、新構成ベースの配列構造で初期化して同期ズレを防ぐ
+        if (!doc.exists || !doc.data().currentResult) {
+            let notArrived = { id: "special_not_arrived", name: "⚠️ 未参加（受付待ち・固定枠）", members: [], isSpecial: true };
+            let unconfirmed = { id: "special_unconfirmed", name: "🔺 保留・未確定（固定枠）", members: [], isSpecial: true };
+            let leftHome = { id: "special_left_home", name: "❌ 帰宅・不参加（固定枠）", members: [], isSpecial: true };
+            updateData.currentResult = [...JSON.parse(JSON.stringify(newSetup)), notArrived, unconfirmed, leftHome];
+        } else {
+            // すでにcurrentResultがある場合は、既存の割当を生かすため部屋名や設定のみをマッピング
+            let oldResult = doc.data().currentResult;
+            let updatedResult = newSetup.map(nRoom => {
+                let matchOld = oldResult.find(oRoom => oRoom.id === nRoom.id);
+                nRoom.members = matchOld ? (matchOld.members || []) : [];
+                return nRoom;
+            });
+            // 特殊部屋枠を維持して統合
+            oldResult.forEach(oRoom => {
+                if(oRoom.isSpecial) updatedResult.push(oRoom);
+            });
+            updateData.currentResult = updatedResult;
+        }
+
+        db.collection("multigroups").doc(uniqueGroupId).update(updateData).then(() => {
+            cachedRoomsSetup = newSetup;
+            syncAndRenderRooms(updateData.currentResult);
+            alert("💾 部屋構成を上書き保存しました！部屋名が変わってもメンバーは維持されます。");
         });
-        alert("💾 部屋構成を上書き保存しました！部屋名が変わってもメンバーは維持されます。");
     });
 }
 
+// 🛠️ 修正点：dbRoomsがnull（初期状態）のときでもエラーにならず、安全に部屋枠＋メンバーを自動マッピングする
 function syncAndRenderRooms(dbRooms) {
     let baseNormalRooms = JSON.parse(JSON.stringify(cachedRoomsSetup || []));
     baseNormalRooms.forEach(r => r.members = []); 
@@ -318,6 +342,7 @@ function syncAndRenderRooms(dbRooms) {
 
     let allValidNames = currentFullMemberObjects.map(obj => obj.name);
 
+    // dbRooms が存在する場合のみマッピングを解析
     if (dbRooms && dbRooms.length > 0) {
         dbRooms.forEach(oldRoom => {
             if (!oldRoom.isSpecial) {
@@ -418,11 +443,29 @@ function syncAndRenderRooms(dbRooms) {
     document.getElementById('resultInside').innerHTML = html;
 }
 
+// 🛠️ 修正点：currentResultがnullの時でも、現在の部屋割りを自動生成してクラッシュせずに移動を実行する
 function moveMemberManually(memberName, fromRoomIdx, toRoomIdx) {
     db.collection("multigroups").doc(uniqueGroupId).get().then(doc => {
         if (!doc.exists) return;
+        
         let rooms = doc.data().currentResult || [];
-        if(rooms.length === 0) return;
+        
+        // currentResultがnullの場合は、描画ロジックと同様の構造オブジェクトをその場で作る
+        if(rooms.length === 0) {
+            let baseNormalRooms = JSON.parse(JSON.stringify(cachedRoomsSetup || []));
+            baseNormalRooms.forEach(r => r.members = []); 
+            let notArrived = { id: "special_not_arrived", name: "⚠️ 未参加（受付待ち・固定枠）", members: [], isSpecial: true };
+            let unconfirmed = { id: "special_unconfirmed", name: "🔺 保留・未確定（固定枠）", members: [], isSpecial: true };
+            let leftHome = { id: "special_left_home", name: "❌ 帰宅・不参加（固定枠）", members: [], isSpecial: true };
+            
+            // 全メンバーを一旦割り当てる
+            currentFullMemberObjects.forEach(obj => {
+                if (obj.status === "⭕参加") notArrived.members.push(obj.name);
+                else if (obj.status === "🔺未確定") unconfirmed.members.push(obj.name);
+                else if (obj.status === "❌不参加") leftHome.members.push(obj.name);
+            });
+            rooms = [...baseNormalRooms, notArrived, unconfirmed, leftHome];
+        }
 
         rooms[fromRoomIdx].members = rooms[fromRoomIdx].members.filter(m => m !== memberName);
         rooms[toRoomIdx].members.push(memberName);
