@@ -229,8 +229,9 @@ function resumeGroupSession() {
         }
         syncAndRenderRooms(data.currentResult);
         
-        // 🛠️ 「heyawari.html」からのURL置換で「heyawari_user.html」へのURLを作成
-        document.getElementById('shareUrl').value = window.location.href.replace('heyawari.html', 'heyawari_user.html') + `?groupId=${uniqueGroupId}`;
+        // 🛠️ 「heyawari.html」からのURL置換で「heyawari_user.html」へのURLを作成（クエリ重複バグを修正）
+        const baseUrl = window.location.origin + window.location.pathname;
+        document.getElementById('shareUrl').value = baseUrl.replace('heyawari.html', 'heyawari_user.html') + `?groupId=${uniqueGroupId}`;
     });
 
     if (unsubscribeMembers) unsubscribeMembers();
