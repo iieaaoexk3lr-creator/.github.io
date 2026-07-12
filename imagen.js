@@ -222,13 +222,14 @@ function updateHistory(category, topic) {
 function renderRules() {
   const ruleArea = document.getElementById('ruleArea');
   const rules = [
-    "各チームから代表者1名が判定員",
-    "判定員はラウンドごとに交代可能",
+    "case1:各チームから代表者1名が判定員(判定員はラウンドごとに交代可能)",
+    "case2:歌う人のチームメンバーが判定員(チーム一丸となってイメージ統一)",
+    "case3:歌う人以外全員が判定員(全員で協力して目標点を超えよう)",
     "歌う前に「感情」または「テーマ」だけ公開する",
     "歌う人だけがお題を見る",
     "判定員は歌を聴いてお題を選ぶ",
     "正解した判定員のチームに1ポイント",
-    "全判定員が正解した場合のみ歌ったチームに1ポイント"
+    "全判定員が正解した場合、歌った人のチームに追加ポイント"
   ];
 
   const ul = document.createElement('ul');
