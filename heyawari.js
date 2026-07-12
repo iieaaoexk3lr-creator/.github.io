@@ -229,7 +229,6 @@ function resumeGroupSession() {
         }
         syncAndRenderRooms(data.currentResult);
         
-        // 🛠️ 「heyawari.html」からのURL置換で「heyawari_user.html」へのURLを作成
         document.getElementById('shareUrl').value = window.location.href.replace('heyawari.html', 'heyawari_user.html') + `?groupId=${uniqueGroupId}`;
     });
 
@@ -240,7 +239,6 @@ function resumeGroupSession() {
             currentFullMemberObjects.push(doc.data());
         });
 
-        // 参加・未確定を上、不参加を下へソート
         currentFullMemberObjects.sort((a, b) => {
             const score = { "⭕参加": 1, "🔺未確定": 2, "❌不参加": 3 };
             return (score[a.status] || 9) - (score[b.status] || 9);
@@ -279,7 +277,6 @@ function removeMemberFromFirebase(name) {
     db.collection("multigroups").doc(uniqueGroupId).collection("members").doc(name).delete();
 }
 
-// 🛠️ 修正点：部屋構成保存時、currentResultがnullの場合でも空枠構造を作って即座に書き換える
 function saveRoomsSetupOnly() {
     const rows = document.querySelectorAll('.room-row');
     
@@ -302,21 +299,19 @@ function saveRoomsSetupOnly() {
     db.collection("multigroups").doc(uniqueGroupId).get().then(doc => {
         let updateData = { roomsSetup: newSetup };
         
-        // currentResultがnullの場合は、新構成ベースの配列構造で初期化して同期ズレを防ぐ
+        let notArrived = { id: "special_not_arrived", name: "⚠️ 未参加（受付待ち・固定枠）", members: [], isSpecial: true };
+        let unconfirmed = { id: "special_unconfirmed", name: "🔺 保留・未確定（固定枠）", members: [], isSpecial: true };
+        let leftHome = { id: "special_left_home", name: "❌ 帰宅・不参加（固定枠）", members: [], isSpecial: true };
+
         if (!doc.exists || !doc.data().currentResult) {
-            let notArrived = { id: "special_not_arrived", name: "⚠️ 未参加（受付待ち・固定枠）", members: [], isSpecial: true };
-            let unconfirmed = { id: "special_unconfirmed", name: "🔺 保留・未確定（固定枠）", members: [], isSpecial: true };
-            let leftHome = { id: "special_left_home", name: "❌ 帰宅・不参加（固定枠）", members: [], isSpecial: true };
             updateData.currentResult = [...JSON.parse(JSON.stringify(newSetup)), notArrived, unconfirmed, leftHome];
         } else {
-            // すでにcurrentResultがある場合は、既存の割当を生かすため部屋名や設定のみをマッピング
             let oldResult = doc.data().currentResult;
             let updatedResult = newSetup.map(nRoom => {
                 let matchOld = oldResult.find(oRoom => oRoom.id === nRoom.id);
                 nRoom.members = matchOld ? (matchOld.members || []) : [];
                 return nRoom;
             });
-            // 特殊部屋枠を維持して統合
             oldResult.forEach(oRoom => {
                 if(oRoom.isSpecial) updatedResult.push(oRoom);
             });
@@ -331,7 +326,6 @@ function saveRoomsSetupOnly() {
     });
 }
 
-// 🛠️ 修正点：dbRoomsがnull（初期状態）のときでもエラーにならず、安全に部屋枠＋メンバーを自動マッピングする
 function syncAndRenderRooms(dbRooms) {
     let baseNormalRooms = JSON.parse(JSON.stringify(cachedRoomsSetup || []));
     baseNormalRooms.forEach(r => r.members = []); 
@@ -342,7 +336,6 @@ function syncAndRenderRooms(dbRooms) {
 
     let allValidNames = currentFullMemberObjects.map(obj => obj.name);
 
-    // dbRooms が存在する場合のみマッピングを解析
     if (dbRooms && dbRooms.length > 0) {
         dbRooms.forEach(oldRoom => {
             if (!oldRoom.isSpecial) {
@@ -443,14 +436,13 @@ function syncAndRenderRooms(dbRooms) {
     document.getElementById('resultInside').innerHTML = html;
 }
 
-// 🛠️ 修正点：currentResultがnullの時でも、現在の部屋割りを自動生成してクラッシュせずに移動を実行する
+// 🛠️ 【最重要修正箇所】初期状態でも部屋の構造オブジェクト（id含む）を正しく組み立てるよう修正
 function moveMemberManually(memberName, fromRoomIdx, toRoomIdx) {
     db.collection("multigroups").doc(uniqueGroupId).get().then(doc => {
         if (!doc.exists) return;
         
         let rooms = doc.data().currentResult || [];
         
-        // currentResultがnullの場合は、描画ロジックと同様の構造オブジェクトをその場で作る
         if(rooms.length === 0) {
             let baseNormalRooms = JSON.parse(JSON.stringify(cachedRoomsSetup || []));
             baseNormalRooms.forEach(r => r.members = []); 
@@ -458,7 +450,6 @@ function moveMemberManually(memberName, fromRoomIdx, toRoomIdx) {
             let unconfirmed = { id: "special_unconfirmed", name: "🔺 保留・未確定（固定枠）", members: [], isSpecial: true };
             let leftHome = { id: "special_left_home", name: "❌ 帰宅・不参加（固定枠）", members: [], isSpecial: true };
             
-            // 全メンバーを一旦割り当てる
             currentFullMemberObjects.forEach(obj => {
                 if (obj.status === "⭕参加") notArrived.members.push(obj.name);
                 else if (obj.status === "🔺未確定") unconfirmed.members.push(obj.name);
@@ -566,15 +557,11 @@ function copyShareUrl() {
     
     if (shareUrlInput) {
         let textToCopy = "";
-        
-        // 説明文があれば、URLの前に説明文と改行を追加する
         if (descInput && descInput.value.trim() !== "") {
             textToCopy = descInput.value.trim() + "\n\n" + shareUrlInput.value;
         } else {
-            // 説明文が空ならURL単体でコピー
             textToCopy = shareUrlInput.value;
         }
-        
         navigator.clipboard.writeText(textToCopy); 
         alert("案内文とURLを合わせてコピーしました！\nそのままLINE等に貼り付けられます。"); 
     }
