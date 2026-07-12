@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>イメージ曲選手権</title>
+<style>
+body{margin:0;font-family:sans-serif;background:#222;color:#fff}
+header{padding:12px;text-align:center;background:#333}
+nav{display:flex}
+nav button{flex:1;padding:14px;font-size:18px}
+section{padding:16px}
+.hidden{display:none}
+.card{background:#333;border-radius:10px;padding:16px;margin:10px 0}
+button{border:none;border-radius:10px;padding:14px;font-size:18px;margin:6px;cursor:pointer}
+#choices{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.choice{background:#4a4a4a;color:#fff}
+#fullscreen{position:fixed;inset:0;background:#000;color:#fff;display:none;align-items:center;justify-content:center;flex-direction:column}
+#bigText{font-size:20vw;font-weight:bold}
+#close{position:absolute;top:15px;right:15px;font-size:28px;padding:10px 16px}
+</style>
+</head>
+<body>
+<header><h2>イメージ曲選手権</h2></header>
+<nav>
+<button onclick="showMode('host')">司会</button>
+<button onclick="showMode('judge')">判定員</button>
+</nav>
+
+<section id="host">
+<div class="card">
+<div>カテゴリ: <span id="cat">-</span></div>
+<div style="font-size:32px;margin:20px 0" id="topic">？？？</div>
+<button onclick="draw()">お題を引く</button>
+<button onclick="toggleTopic()">表示/非表示</button>
+</div>
+<div class="card">
+<b>ルール</b>
+<ol>
+<li>各チームから代表1人が判定員。</li>
+<li>歌う前にカテゴリだけ公開。</li>
+<li>歌唱後、判定員はお題を選択。</li>
+<li>正解した判定員チーム1点。</li>
+<li>全員正解なら歌ったチーム1点。</li>
+</ol>
+</div>
+</section>
+
+<section id="judge" class="hidden">
+<h3 id="judgeTitle">お題を選択</h3>
+<div id="choices"></div>
+</section>
+
+<div id="fullscreen">
+<button id="close" onclick="closeFull()">✕</button>
+<div id="bigText"></div>
+</div>
+
+<script src="imagen.js"></script>
+</body>
+</html>
