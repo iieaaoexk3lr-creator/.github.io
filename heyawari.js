@@ -19,7 +19,7 @@ let uniqueGroupId = "";
 let groupDisplayName = "";
 let currentFullMemberObjects = []; 
 let cachedRoomsSetup = [];
-let historyMatrix = {}; // ※過去履歴を反映させる場合は、別途ここに「"ユーザーA-ユーザーB": 回数」のオブジェクトを代入してください
+let historyMatrix = {};
 let unsubscribeMembers = null;
 let unsubscribeStatus = null;
 let isFirstDescriptionLoad = true;
@@ -165,7 +165,7 @@ function addRoomRowSetup(roomId="", name="", cap=5, model="", memo="") {
             <div><label>機種:</label><input type="text" list="modelOptions" class="setup-room-model" value="${model}" style="width:100%; padding:6px; border-radius:4px; border:1px solid #ccc; box-sizing:border-box;"></div>
             <div><label>その他メモ:</label><input type="text" list="memoOptions" class="setup-room-memo" value="${memo}" style="width:100%; padding:6px; border-radius:4px; border:1px solid #ccc; box-sizing:border-box;"></div>
         </div>
-        <button class="btn btn-sm btn-outline" style="color:var(--danger); border-color:var(--danger); position:absolute; right:8px; top:8px; padding:2px 6px開く;" onclick="this.parentElement.remove()">削除</button>
+        <button class="btn btn-sm btn-outline" style="color:var(--danger); border-color:var(--danger); position:absolute; right:8px; top:8px; padding:2px 6px;" onclick="this.parentElement.remove()">削除</button>
     `;
     container.appendChild(div);
 }
@@ -229,6 +229,7 @@ function resumeGroupSession() {
         }
         syncAndRenderRooms(data.currentResult);
         
+        // 🛠️ 「heyawari.html」からのURL置換で「heyawari_user.html」へのURLを作成
         document.getElementById('shareUrl').value = window.location.href.replace('heyawari.html', 'heyawari_user.html') + `?groupId=${uniqueGroupId}`;
     });
 
@@ -239,6 +240,7 @@ function resumeGroupSession() {
             currentFullMemberObjects.push(doc.data());
         });
 
+        // 参加・未確定を上、不参加を下へソート
         currentFullMemberObjects.sort((a, b) => {
             const score = { "⭕参加": 1, "🔺未確定": 2, "❌不参加": 3 };
             return (score[a.status] || 9) - (score[b.status] || 9);
@@ -308,7 +310,7 @@ function saveRoomsSetupOnly() {
 
 function syncAndRenderRooms(dbRooms) {
     let baseNormalRooms = JSON.parse(JSON.stringify(cachedRoomsSetup || []));
-    baseNormalRooms.forEach(r => { if(!r.members) r.members = []; }); 
+    baseNormalRooms.forEach(r => r.members = []); 
 
     let notArrived = { id: "special_not_arrived", name: "⚠️ 未参加（受付待ち・固定枠）", members: [], isSpecial: true };
     let unconfirmed = { id: "special_unconfirmed", name: "🔺 保留・未確定（固定枠）", members: [], isSpecial: true };
@@ -316,35 +318,23 @@ function syncAndRenderRooms(dbRooms) {
 
     let allValidNames = currentFullMemberObjects.map(obj => obj.name);
 
-    // 【不具合修正1】Firebase上のデータが空（初回）の時、自動構築してFirebaseを初期化する
-    if (!dbRooms || dbRooms.length === 0) {
-        currentFullMemberObjects.forEach(obj => {
-            if (obj.status === "⭕参加") notArrived.members.push(obj.name);
-            else if (obj.status === "🔺未確定") unconfirmed.members.push(obj.name);
-            else if (obj.status === "❌不参加") leftHome.members.push(obj.name);
-        });
-        let initialResult = [...baseNormalRooms, notArrived, unconfirmed, leftHome];
-        db.collection("multigroups").doc(uniqueGroupId).update({ currentResult: initialResult });
-        dbRooms = initialResult;
-    }
-
-    // 通常の同期マッピング処理
-    baseNormalRooms.forEach(r => r.members = []);
-    dbRooms.forEach(oldRoom => {
-        if (!oldRoom.isSpecial) {
-            let targetRoom = baseNormalRooms.find(r => r.id === oldRoom.id);
-            if (targetRoom && oldRoom.members) {
-                targetRoom.members = oldRoom.members.filter(m => allValidNames.includes(m));
-            } else if (!targetRoom && oldRoom.members) {
-                notArrived.members = notArrived.members.concat(oldRoom.members.filter(m => allValidNames.includes(m)));
+    if (dbRooms && dbRooms.length > 0) {
+        dbRooms.forEach(oldRoom => {
+            if (!oldRoom.isSpecial) {
+                let targetRoom = baseNormalRooms.find(r => r.id === oldRoom.id);
+                if (targetRoom && oldRoom.members) {
+                    targetRoom.members = oldRoom.members.filter(m => allValidNames.includes(m));
+                } else if (!targetRoom && oldRoom.members) {
+                    notArrived.members = notArrived.members.concat(oldRoom.members.filter(m => allValidNames.includes(m)));
+                }
+            } else {
+                let validM = oldRoom.members ? oldRoom.members.filter(m => allValidNames.includes(m)) : [];
+                if (oldRoom.id === "special_not_arrived") notArrived.members = notArrived.members.concat(validM);
+                if (oldRoom.id === "special_unconfirmed") unconfirmed.members = unconfirmed.members.concat(validM);
+                if (oldRoom.id === "special_left_home") leftHome.members = leftHome.members.concat(validM);
             }
-        } else {
-            let validM = oldRoom.members ? oldRoom.members.filter(m => allValidNames.includes(m)) : [];
-            if (oldRoom.id === "special_not_arrived") notArrived.members = notArrived.members.concat(validM);
-            if (oldRoom.id === "special_unconfirmed") unconfirmed.members = unconfirmed.members.concat(validM);
-            if (oldRoom.id === "special_left_home") leftHome.members = leftHome.members.concat(validM);
-        }
-    });
+        });
+    }
 
     notArrived.members = [...new Set(notArrived.members)];
     unconfirmed.members = [...new Set(unconfirmed.members)];
@@ -385,7 +375,7 @@ function syncAndRenderRooms(dbRooms) {
     let finalRoomsStructure = [...baseNormalRooms, notArrived, unconfirmed, leftHome];
 
     let html = '';
-    finalRoomsStructure.forEach((r) => {
+    finalRoomsStructure.forEach((r, roomIdx) => {
         const isSpec = r.isSpecial;
         const extraInfo = [r.model, r.memo].filter(Boolean).join(' / ');
         let boxColor = 'border-left:4px solid var(--primary); background:#fff;';
@@ -406,12 +396,11 @@ function syncAndRenderRooms(dbRooms) {
             html += `<span style="color:#ccc; font-size:11px; padding:4px 0;">空き</span>`;
         } else {
             r.members.forEach(m => {
-                // 【不具合修正2】セレクトボックスの引数をインデックス番号から「部屋ID」に変更
-                let selectHtml = `<select class="move-select" onchange="moveMemberManually('${m}', '${r.id}', this.value)">`;
+                let selectHtml = `<select class="move-select" onchange="moveMemberManually('${m}', ${roomIdx}, this.value)">`;
                 selectHtml += `<option value="" disabled selected>➡部屋移動</option>`;
-                finalRoomsStructure.forEach((targetRoom) => {
-                    if (r.id !== targetRoom.id) {
-                        selectHtml += `<option value="${targetRoom.id}">${targetRoom.name.substring(0,8)}</option>`;
+                finalRoomsStructure.forEach((targetRoom, targetIdx) => {
+                    if (roomIdx !== targetIdx) {
+                        selectHtml += `<option value="${targetIdx}">${targetRoom.name.substring(0,8)}</option>`;
                     }
                 });
                 selectHtml += `</select>`;
@@ -429,30 +418,21 @@ function syncAndRenderRooms(dbRooms) {
     document.getElementById('resultInside').innerHTML = html;
 }
 
-// 【不具合修正3】IDベースで確実にメンバーを出し入れする構造に全面修正
-function moveMemberManually(memberName, fromRoomId, toRoomId) {
+function moveMemberManually(memberName, fromRoomIdx, toRoomIdx) {
     db.collection("multigroups").doc(uniqueGroupId).get().then(doc => {
         if (!doc.exists) return;
         let rooms = doc.data().currentResult || [];
         if(rooms.length === 0) return;
 
-        let fromRoom = rooms.find(r => r.id === fromRoomId);
-        let toRoom = rooms.find(r => r.id === toRoomId);
+        rooms[fromRoomIdx].members = rooms[fromRoomIdx].members.filter(m => m !== memberName);
+        rooms[toRoomIdx].members.push(memberName);
 
-        if (!fromRoom || !toRoom) return;
-
-        // 元の部屋から消去、新しい部屋へ追加
-        fromRoom.members = fromRoom.members.filter(m => m !== memberName);
-        if (!toRoom.members.includes(memberName)) {
-            toRoom.members.push(memberName);
-        }
-
-        // 移動先の固定枠に応じて、メンバーのステータス自体も自動同期
-        if (toRoomId === "special_unconfirmed") {
+        let targetId = rooms[toRoomIdx].id;
+        if (targetId === "special_unconfirmed") {
             db.collection("multigroups").doc(uniqueGroupId).collection("members").doc(memberName).update({ status: "🔺未確定" });
-        } else if (toRoomId === "special_left_home") {
+        } else if (targetId === "special_left_home") {
             db.collection("multigroups").doc(uniqueGroupId).collection("members").doc(memberName).update({ status: "❌不参加" });
-        } else if (toRoomId === "special_not_arrived") {
+        } else if (targetId === "special_not_arrived") {
             db.collection("multigroups").doc(uniqueGroupId).collection("members").doc(memberName).update({ status: "⭕参加" });
         }
 
@@ -473,10 +453,7 @@ function executeSmartShuffle() {
 
         let normalRooms = rooms.filter(r => !r.isSpecial);
         let shuffleTargets = [];
-        normalRooms.forEach(r => { 
-            if(r.members) shuffleTargets = shuffleTargets.concat(r.members); 
-            r.members = []; 
-        });
+        normalRooms.forEach(r => { shuffleTargets = shuffleTargets.concat(r.members); r.members = []; });
 
         if (shuffleTargets.length === 0) {
             alert("現在、各部屋に配置されている『受付済み』の参加者がいません。まずは下の未参加枠からメンバーを部屋へ移動（受付）させてください。");
@@ -489,18 +466,16 @@ function executeSmartShuffle() {
             const member = shuffleTargets.pop();
             let bestRoomIdx = -1; let minPenalty = Infinity;
             for (let i = 0; i < normalRooms.length; i++) {
-                if (normalRooms[i].members.length >= (normalRooms[i].capacity || 5)) continue;
+                if (normalRooms[i].members.length >= normalRooms[i].capacity) continue;
                 let penalty = 0;
                 normalRooms[i].members.forEach(exM => {
-                    const pairKey = [member, exM].sort().join('-'); 
-                    // historyMatrixが未定義、または空の場合でもNaNエラーを防ぐ安全設計
-                    penalty += ((historyMatrix && historyMatrix[pairKey]) || 0) * 10;
+                    const pairKey = [member, exM].sort().join('-'); penalty += (historyMatrix[pairKey] || 0) * 10;
                 });
                 penalty += normalRooms[i].members.length;
                 if (penalty < minPenalty) { minPenalty = penalty; bestRoomIdx = i; }
             }
             if (bestRoomIdx !== -1) normalRooms[bestRoomIdx].members.push(member);
-            else { alert("通常部屋の定員が不足しています。部屋構成設定でキャパを増やすか、部屋を追加してください。"); return; }
+            else { alert("通常部屋の定員が不足しています。"); return; }
         }
 
         let finalRooms = [...normalRooms, notArrived, unconfirmed, leftHome];
