@@ -11,6 +11,7 @@
       --surface-color: #1e1e1e;
       --primary-color: #3b82f6;
       --accent-color: #10b981;
+      --danger-color: #ef4444;
       --text-color: #ffffff;
       --text-muted: #a3a3a3;
       --border-radius: 12px;
@@ -27,7 +28,7 @@
       background-color: var(--bg-color);
       color: var(--text-color);
       font-family: 'Helvetica Neue', Arial, 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', Meiryo, sans-serif;
-      padding-bottom: 40px;
+      padding-bottom: 60px;
     }
 
     .container {
@@ -40,15 +41,6 @@
       text-align: center;
       font-size: 1.5rem;
       margin-bottom: 20px;
-    }
-
-    /* --- アニメーション共通 --- */
-    .fade {
-      transition: opacity 0.3s ease;
-      opacity: 1;
-    }
-    .fade-out {
-      opacity: 0;
     }
 
     /* --- モード切替タブ --- */
@@ -76,7 +68,6 @@
       color: var(--text-color);
     }
 
-    /* ボタン押下時の縮小アニメーション */
     .active-press:active {
       transform: scale(0.96);
     }
@@ -137,51 +128,35 @@
       transition: transform 0.1s ease;
     }
 
-    .btn-sub-group {
-      display: flex;
-      gap: 12px;
-    }
-
-    .btn-sub {
-      flex: 1;
-      background-color: var(--surface-color);
-      color: var(--text-color);
-      border: 1px solid #333;
-      padding: 14px;
-      font-size: 0.95rem;
-      border-radius: var(--border-radius);
-      cursor: pointer;
-      transition: transform 0.1s ease;
-    }
-
-    /* 履歴エリア */
-    .history-section {
-      margin-top: 24px;
-    }
-
-    .history-title {
-      font-size: 0.95rem;
-      color: var(--text-muted);
-      margin-bottom: 8px;
-      border-left: 4px solid var(--primary-color);
-      padding-left: 8px;
-    }
-
-    .history-item {
-      display: flex;
-      justify-content: space-between;
-      background-color: #1a1a1a;
-      padding: 10px 16px;
-      border-radius: 6px;
-      margin-bottom: 6px;
-      font-size: 0.9rem;
-    }
-
-    .history-tag {
-      color: var(--text-muted);
-    }
-
     /* --- 判定員モードスタイル --- */
+    .judge-sub-tabs {
+      display: flex;
+      gap: 6px;
+      margin-bottom: 16px;
+      background-color: #1a1a1a;
+      padding: 4px;
+      border-radius: var(--border-radius);
+    }
+
+    .sub-tab-btn {
+      flex: 1;
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      padding: 10px;
+      font-size: 0.95rem;
+      font-weight: bold;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background-color 0.2s, color 0.2s;
+    }
+
+    .sub-tab-btn.active {
+      background-color: var(--surface-color);
+      color: var(--primary-color);
+      box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    }
+
     .choice-grid {
       display: grid;
       grid-template-columns: repeat(2, 1fr);
@@ -235,12 +210,13 @@
     }
 
     #cardText {
-      font-size: 20vw;
+      font-size: 28vw;
       font-weight: bold;
       text-align: center;
       width: 100%;
       word-break: break-all;
-      padding: 0 20px;
+      padding: 0 10px;
+      letter-spacing: -0.05em;
     }
 
     /* --- 基本ルール（折りたたみ） --- */
@@ -287,6 +263,131 @@
       left: 0;
       color: var(--primary-color);
     }
+
+    /* --- 履歴エリア（拡張） --- */
+    .history-section {
+      margin-top: 32px;
+    }
+
+    .history-title {
+      font-size: 0.95rem;
+      color: var(--text-muted);
+      margin-bottom: 12px;
+      border-left: 4px solid var(--primary-color);
+      padding-left: 8px;
+    }
+
+    .history-card {
+      background-color: var(--surface-color);
+      padding: 16px;
+      border-radius: var(--border-radius);
+      margin-bottom: 12px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    }
+
+    .history-header {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      margin-bottom: 8px;
+    }
+
+    .history-main {
+      font-size: 1.3rem;
+      font-weight: bold;
+      margin-bottom: 12px;
+    }
+
+    .history-inputs {
+      display: grid;
+      grid-template-columns: 2fr 1fr;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+
+    .history-inputs input, .history-inputs select {
+      background-color: #121212;
+      border: 1px solid #333;
+      color: #fff;
+      padding: 8px;
+      border-radius: 6px;
+      font-size: 0.85rem;
+    }
+
+    .checkbox-container {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      cursor: pointer;
+    }
+
+    .checkbox-container input {
+      width: 16px;
+      height: 16px;
+    }
+
+    /* --- 集計結果エリア --- */
+    .summary-section {
+      margin-top: 32px;
+    }
+
+    .summary-title {
+      font-size: 0.95rem;
+      color: var(--text-muted);
+      margin-bottom: 12px;
+      border-left: 4px solid var(--accent-color);
+      padding-left: 8px;
+    }
+
+    .summary-table {
+      width: 100%;
+      border-collapse: collapse;
+      background-color: var(--surface-color);
+      border-radius: var(--border-radius);
+      overflow: hidden;
+      font-size: 0.9rem;
+    }
+
+    .summary-table th, .summary-table td {
+      padding: 12px;
+      text-align: center;
+    }
+
+    .summary-table th {
+      background-color: #2a2a2a;
+      color: var(--text-muted);
+      font-weight: bold;
+    }
+
+    .summary-table tr:not(:last-child) {
+      border-bottom: 1px solid #2a2a2a;
+    }
+
+    /* --- リセットボタン --- */
+    .reset-container {
+      margin-top: 40px;
+      text-align: center;
+    }
+
+    .btn-reset {
+      background-color: transparent;
+      color: var(--danger-color);
+      border: 1px solid var(--danger-color);
+      padding: 12px 24px;
+      font-size: 0.9rem;
+      font-weight: bold;
+      border-radius: var(--border-radius);
+      cursor: pointer;
+      transition: background-color 0.2s, color 0.2s;
+    }
+
+    .btn-reset:active {
+      background-color: var(--danger-color);
+      color: #fff;
+    }
   </style>
 </head>
 <body>
@@ -311,25 +412,14 @@
 
       <div class="control-actions">
         <button class="btn-main active-press" onclick="drawTopic()">お題を引く</button>
-        <div class="btn-sub-group">
-          <button class="btn-sub active-press" onclick="toggleTopic()">表示・非表示</button>
-          <button class="btn-sub active-press" onclick="drawTopic()">次のお題</button>
-        </div>
-      </div>
-
-      <div class="history-section">
-        <div class="history-title">履歴 (直近5件)</div>
-        <div id="historyArea">
-          <!-- JSで動的生成 -->
-        </div>
       </div>
     </div>
 
     <!-- 判定員モードパネル -->
     <div id="judgeMode" class="mode-panel">
-      <div class="display-card" style="padding: 14px; margin-bottom: 16px;">
-        <div class="label-text" style="margin: 0;">現在のカテゴリ</div>
-        <div id="judgeCategoryText" class="main-text" style="font-size: 1.5rem; margin: 4px 0 0 0; min-height: auto;">---</div>
+      <div class="judge-sub-tabs">
+        <button id="btnJudgeCategory-感情" class="sub-tab-btn active" onclick="changeJudgeCategory('感情')">感情</button>
+        <button id="btnJudgeCategory-テーマ" class="sub-tab-btn" onclick="changeJudgeCategory('テーマ')">テーマ</button>
       </div>
       
       <div id="choiceArea" class="choice-grid">
@@ -347,6 +437,36 @@
         <!-- JSで動的生成 -->
       </div>
     </div>
+
+    <!-- 履歴エリア（基本ルールの下へ移動・拡張） -->
+    <div class="history-section">
+      <div class="history-title">対戦履歴（無制限）</div>
+      <div id="historyArea">
+        <!-- JSで動的生成 -->
+      </div>
+    </div>
+
+    <!-- 集計結果エリア -->
+    <div class="summary-section">
+      <div class="summary-title">チーム別集計結果</div>
+      <table class="summary-table">
+        <thead>
+          <tr>
+            <th style="text-align: left;">チーム</th>
+            <th>一致数 合計</th>
+            <th>全員一致</th>
+          </tr>
+        </thead>
+        <tbody id="summaryTableBody">
+          <!-- JSで動的生成 -->
+        </tbody>
+      </table>
+    </div>
+
+    <!-- 全データ初期化ボタン -->
+    <div class="reset-container">
+      <button class="btn-reset" onclick="resetAllData()">すべてのデータを初期化</button>
+    </div>
   </div>
 
   <!-- 全画面判定札モードスクリーン -->
@@ -355,7 +475,6 @@
     <div id="cardText">優しい</div>
   </div>
 
-  <!-- スクリプトの読み込み -->
   <script src="imagen.js"></script>
 </body>
 </html>
