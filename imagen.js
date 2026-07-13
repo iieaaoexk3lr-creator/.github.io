@@ -16,9 +16,10 @@ const topicData = {
 // 状態管理変数
 let currentCategory = "";
 let currentTopic = "";
-let isTopicVisible = true;
-const historyList = [];
-const maxHistoryCount = 5;
+let historyList = []; // ローカルストレージ連動のため初期値は空配列
+
+// 判定員が今自分で選択しているカテゴリの初期値
+let judgeSelectedCategory = "感情";
 
 // 直前と同じものを避けるためのキャッシュ
 let lastCategory = "";
@@ -31,8 +32,50 @@ let lastTopic = "";
 // 画面ロード時の初期化
 window.onload = function() {
   renderRules();
+  loadDataFromStorage(); // ローカルストレージからデータを復元
   switchMode('host');
 };
+
+/**
+ * ローカルストレージからのデータ読み込み処理
+ */
+function loadDataFromStorage() {
+  const savedHistory = localStorage.getItem('imagen_historyList');
+  const savedCurrent = localStorage.getItem('imagen_currentData');
+
+  if (savedHistory) {
+    historyList = JSON.parse(savedHistory);
+  }
+  
+  if (savedCurrent) {
+    const current = JSON.parse(savedCurrent);
+    currentCategory = current.category;
+    currentTopic = current.topic;
+    lastCategory = current.lastCategory;
+    lastTopic = current.lastTopic;
+    
+    document.getElementById('categoryText').innerText = currentCategory || "---";
+    document.getElementById('topicText').innerText = currentTopic || "---";
+  }
+
+  renderHistory();
+  renderSummary();
+}
+
+/**
+ * ローカルストレージへのデータ保存処理
+ */
+function saveDataToStorage() {
+  localStorage.setItem('imagen_historyList', JSON.stringify(historyList));
+  
+  const current = {
+    category: currentCategory,
+    topic: currentTopic,
+    lastCategory: lastCategory,
+    lastTopic: lastTopic
+  };
+  localStorage.setItem('imagen_currentData', JSON.stringify(current));
+}
 
 /**
  * 司会モードと判定員モードの表示を切り替える
@@ -48,16 +91,29 @@ function switchMode(mode) {
     hostPanel.classList.add('active');
     judgePanel.classList.remove('active');
     hostTab.classList.add('active');
-    judgeTab.classList.add('active');
+    judgeTab.classList.remove('active');
   } else {
     hostPanel.classList.remove('active');
     judgePanel.classList.add('active');
     hostTab.classList.remove('active');
     judgeTab.classList.add('active');
     
-    // 判定員画面を開いたタイミングで、現在の選択に基づきボタン群を再構成
     showJudgeChoices();
   }
+}
+
+/**
+ * 判定員が自分でカテゴリ（感情・テーマ）を切り替える関数
+ * @param {string} category - '感情' または 'テーマ'
+ */
+function changeJudgeCategory(category) {
+  judgeSelectedCategory = category;
+  
+  document.getElementById('btnJudgeCategory-感情').classList.remove('active');
+  document.getElementById('btnJudgeCategory-テーマ').classList.remove('active');
+  document.getElementById(`btnJudgeCategory-${category}`).classList.add('active');
+  
+  showJudgeChoices();
 }
 
 /**
@@ -88,7 +144,7 @@ function drawTopic() {
     selectedTopic = topicPool[0];
   }
 
-  // 履歴更新処理 (すでに何か引かれていた場合のみ)
+  // 履歴更新処理 (すでに何か引かれていた場合のみ無制限に追加)
   if (currentCategory && currentTopic) {
     updateHistory(currentCategory, currentTopic);
   }
@@ -98,49 +154,23 @@ function drawTopic() {
   currentTopic = selectedTopic;
   lastCategory = selectedCategory;
   lastTopic = selectedTopic;
-  
-  isTopicVisible = true; // 新しいお題は初期表示状態にする
 
   // 画面表示への反映
   document.getElementById('categoryText').innerText = currentCategory;
   document.getElementById('topicText').innerText = currentTopic;
+
+  saveDataToStorage();
 }
 
 /**
- * お題の表示・非表示（？？？）を切り替える
- */
-function toggleTopic() {
-  if (!currentTopic) return;
-  
-  isTopicVisible = !isTopicVisible;
-  const topicEl = document.getElementById('topicText');
-  
-  if (isTopicVisible) {
-    topicEl.innerText = currentTopic;
-  } else {
-    topicEl.innerText = "？？？";
-  }
-}
-
-/**
- * 司会の選択カテゴリに応じて判定員側のボタン一覧を生成する
+ * 判定員が選択しているカテゴリに応じて判定員側のボタン一覧を生成する
  */
 function showJudgeChoices() {
-  const judgeCategoryText = document.getElementById('judgeCategoryText');
   const choiceArea = document.getElementById('choiceArea');
-  
-  // 初期化
   choiceArea.innerHTML = "";
 
-  if (!currentCategory) {
-    judgeCategoryText.innerText = "お題が未選択です";
-    return;
-  }
+  const choices = topicData[judgeSelectedCategory];
 
-  judgeCategoryText.innerText = currentCategory;
-  const choices = topicData[currentCategory];
-
-  // 選択肢ボタンを動的に配置
   choices.forEach(choice => {
     const btn = document.createElement('button');
     btn.className = 'btn-choice active-press';
@@ -168,7 +198,6 @@ function showCard(text) {
   
   cardText.innerText = text;
   
-  // フェードインのアニメーション実装
   cardScreen.style.display = 'flex';
   cardScreen.style.opacity = '0';
   
@@ -191,28 +220,121 @@ function closeCard() {
 }
 
 /**
- * 直近5件の履歴を更新・描画する
+ * 新しい履歴データをデータ配列の先頭に追加する
  */
 function updateHistory(category, topic) {
-  // 先頭に追加
-  historyList.unshift({ category, topic });
-  
-  // 5件を超えたら古いものを削除
-  if (historyList.length > maxHistoryCount) {
-    historyList.pop();
-  }
+  // 追加データ構造（チーム名、一致数、全員一致フラグのデフォルト値を含む）
+  historyList.unshift({
+    id: Date.now(), // 一意の識別用ID
+    category,
+    topic,
+    teamName: "",
+    matchCount: 0,
+    isAllMatch: false
+  });
 
+  renderHistory();
+  renderSummary();
+}
+
+/**
+ * 履歴エリアの動的描画（無制限）
+ */
+function renderHistory() {
   const historyArea = document.getElementById('historyArea');
   historyArea.innerHTML = "";
 
-  historyList.forEach(item => {
-    const div = document.createElement('div');
-    div.className = 'history-item';
-    div.innerHTML = `
-      <span class="history-tag">${item.category}</span>
-      <strong>${item.topic}</strong>
+  if (historyList.length === 0) {
+    historyArea.innerHTML = `<div style="text-align:center;color:var(--text-muted);font-size:0.85rem;padding:16px;">履歴はまだありません</div>`;
+    return;
+  }
+
+  historyList.forEach((item, index) => {
+    const card = document.createElement('div');
+    card.className = 'history-card';
+    card.innerHTML = `
+      <div class="history-header">
+        <span>第 ${historyList.length - index} 回戦</span>
+        <span>[ ${item.category} ]</span>
+      </div>
+      <div class="history-main">${item.topic}</div>
+      <div class="history-inputs">
+        <input type="text" placeholder="チーム名" value="${item.teamName}" onchange="updateHistoryInput(${item.id}, 'teamName', this.value)">
+        <select onchange="updateHistoryInput(${item.id}, 'matchCount', this.value)">
+          ${[0,1,2,3,4,5,6,7,8,9,10].map(num => `<option value="${num}" ${item.matchCount == num ? 'selected' : ''}>${num}人</option>`).join('')}
+        </select>
+      </div>
+      <div>
+        <label class="checkbox-container">
+          <input type="checkbox" ${item.isAllMatch ? 'checked' : ''} onchange="updateHistoryInput(${item.id}, 'isAllMatch', this.checked)">
+          全員一致ボーナス獲得
+        </label>
+      </div>
     `;
-    historyArea.appendChild(div);
+    historyArea.appendChild(card);
+  });
+}
+
+/**
+ * 履歴カード内に入力された項目をリアルタイムでデータに反映・保存
+ */
+function updateHistoryInput(id, field, value) {
+  const item = historyList.find(x => x.id === id);
+  if (item) {
+    if (field === 'matchCount') {
+      item[field] = parseInt(value, 10) || 0;
+    } else {
+      item[field] = value;
+    }
+    saveDataToStorage();
+    renderSummary(); // データ更新されたため集計表を再計算
+  }
+}
+
+/**
+ * チームごとの一致数・全員一致数を集計してテーブルにレンダリングする
+ */
+function renderSummary() {
+  const summaryTableBody = document.getElementById('summaryTableBody');
+  summaryTableBody.innerHTML = "";
+
+  // チーム毎の集計オブジェクトを作成
+  const summaryData = {};
+
+  historyList.forEach(item => {
+    // チーム名が未入力（空文字）のものは集計対象外にする
+    const team = item.teamName.trim();
+    if (!team) return;
+
+    if (!summaryData[team]) {
+      summaryData[team] = {
+        matchTotal: 0,
+        allMatchCount: 0
+      };
+    }
+
+    summaryData[team].matchTotal += item.matchCount;
+    if (item.isAllMatch) {
+      summaryData[team].allMatchCount += 1;
+    }
+  });
+
+  const teams = Object.keys(summaryData);
+
+  if (teams.length === 0) {
+    summaryTableBody.innerHTML = `<tr><td colspan="3" style="color:var(--text-muted);font-size:0.85rem;">有効な集計データがありません</td></tr>`;
+    return;
+  }
+
+  // チーム一覧をループして行を生成
+  teams.forEach(team => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td style="text-align: left; font-weight: bold;">${team}</td>
+      <td>${summaryData[team].matchTotal} 回</td>
+      <td style="color: var(--accent-color); font-weight: bold;">${summaryData[team].allMatchCount} 回</td>
+    `;
+    summaryTableBody.appendChild(tr);
   });
 }
 
@@ -255,5 +377,29 @@ function toggleRules() {
   } else {
     ruleArea.style.display = 'block';
     arrow.innerText = '▲';
+  }
+}
+
+/**
+ * ゲーム内データをすべて初期化（ローカルストレージもクリア）
+ */
+function resetAllData() {
+  if (confirm("すべての対戦履歴、入力されたスコア、現在のお題データを完全に消去します。よろしいですか？")) {
+    localStorage.removeItem('imagen_historyList');
+    localStorage.removeItem('imagen_currentData');
+    
+    currentCategory = "";
+    currentTopic = "";
+    lastCategory = "";
+    lastTopic = "";
+    historyList = [];
+    
+    document.getElementById('categoryText').innerText = "---";
+    document.getElementById('topicText').innerText = "---";
+    
+    renderHistory();
+    renderSummary();
+    
+    alert("すべてのデータを初期化しました。");
   }
 }
