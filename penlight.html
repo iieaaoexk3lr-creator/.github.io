@@ -2,55 +2,70 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>デジタルペンライト - 改訂版</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>極大デジタルペンライト</title>
     <link rel="stylesheet" href="penlight.css">
 </head>
 <body>
     <div class="phone-container">
-        <!-- タイトル -->
-        <header class="app-header">
-            <h1>DIGITAL PENLIGHT</h1>
-        </header>
-
-        <!-- 発光エリア（画面いっぱいに広がる外周光ベース） -->
+        
+        <!-- 発光エリア（ここをタッチするといつでも全画面） -->
         <main class="light-section" id="lightSection">
+            <div class="fullscreen-tip">画面をタッチで全画面表示</div>
             <div class="glow-container">
-                <!-- 持ち手はなくなり、巨大化したライト本体のみ -->
+                <!-- さらに縦に2倍巨大化した発換ライト部分 -->
                 <div class="penlight-head" id="penlightHead"></div>
             </div>
         </main>
 
-        <!-- コントロールパネル -->
-        <footer class="control-panel">
-            <!-- カラーパレット（明るさ調整は廃止、最後に黒を追加） -->
-            <div class="color-grid">
-                <button class="color-btn active" data-color="#FF0000" style="background-color: #FF0000;"></button>
-                <button class="color-btn" data-color="#FF7F00" style="background-color: #FF7F00;"></button>
-                <button class="color-btn" data-color="#FFFF00" style="background-color: #FFFF00;"></button>
-                <button class="color-btn" data-color="#7FFF00" style="background-color: #7FFF00;"></button>
-                <button class="color-btn" data-color="#00FF00" style="background-color: #00FF00;"></button>
-                <button class="color-btn" data-color="#00FFFF" style="background-color: #00FFFF;"></button>
-                <button class="color-btn" data-color="#0000FF" style="background-color: #0000FF;"></button>
-                <button class="color-btn" data-color="#8B00FF" style="background-color: #8B00FF;"></button>
-                <button class="color-btn" data-color="#FF69B4" style="background-color: #FF69B4;"></button>
-                <button class="color-btn" data-color="#FFFFFF" style="background-color: #FFFFFF;"></button>
-                <button class="color-btn black-btn" data-color="#050505" style="background-color: #000000;"></button>
-                <button class="color-btn rainbow-btn" id="rainbowBtn" data-mode="rainbow">🌈</button>
-            </div>
+        <!-- 現在選択中の色表示ピルボタン（画面中央下部に常駐） -->
+        <div class="active-color-pill-container">
+            <button class="active-color-pill" id="colorPickerTrigger">
+                <span class="color-indicator-dot" id="pillDot"></span>
+                <span id="pillText">RED (単色)</span>
+            </button>
+        </div>
 
-            <!-- モード変更 -->
-            <div class="mode-grid">
-                <button class="mode-btn" id="blinkBtn">点滅</button>
-                <button class="mode-btn" id="pulseBtn">明滅</button>
-                <button class="mode-btn" id="fullscreenBtn">全画面</button>
-                <button class="mode-btn off-btn" id="offBtn">OFF</button>
+        <!-- ボトムカラー選択シート（ポップアップ式） -->
+        <div class="color-picker-overlay" id="colorPickerOverlay">
+            <div class="picker-sheet">
+                <div class="sheet-header">
+                    <div class="handle-bar"></div>
+                    <h3>色・モードの選択</h3>
+                    <p class="lock-notice">※虹色中は固定されます。⚫黒を選ぶと解除され他の色を選べます。</p>
+                </div>
+                
+                <div class="sheet-content">
+                    <!-- カラーパレット -->
+                    <div class="color-grid" id="colorGrid">
+                        <button class="color-btn active" data-name="赤" data-color="#FF0000" style="background-color: #FF0000;"></button>
+                        <button class="color-btn" data-name="オレンジ" data-color="#FF7F00" style="background-color: #FF7F00;"></button>
+                        <button class="color-btn" data-name="黄" data-color="#FFFF00" style="background-color: #FFFF00;"></button>
+                        <button class="color-btn" data-name="黄緑" data-color="#7FFF00" style="background-color: #7FFF00;"></button>
+                        <button class="color-btn" data-name="緑" data-color="#00FF00" style="background-color: #00FF00;"></button>
+                        <button class="color-btn" data-name="水色" data-color="#00FFFF" style="background-color: #00FFFF;"></button>
+                        <button class="color-btn" data-name="青" data-color="#0000FF" style="background-color: #0000FF;"></button>
+                        <button class="color-btn" data-name="紫" data-color="#8B00FF" style="background-color: #8B00FF;"></button>
+                        <button class="color-btn" data-name="ピンク" data-color="#FF69B4" style="background-color: #FF69B4;"></button>
+                        <button class="color-btn" data-name="白" data-color="#FFFFFF" style="background-color: #FFFFFF;"></button>
+                        <button class="color-btn black-btn" data-name="黒 (解除)" data-color="#050505" style="background-color: #000000;"></button>
+                        <button class="color-btn rainbow-btn" id="rainbowBtn" data-name="虹色 (ロック)">🌈</button>
+                    </div>
+
+                    <!-- エフェクト設定 -->
+                    <div class="mode-grid">
+                        <button class="mode-btn" id="blinkBtn">点滅</button>
+                        <button class="mode-btn" id="pulseBtn">明滅</button>
+                        <button class="mode-btn off-btn" id="offBtn">OFF</button>
+                        <button class="mode-btn close-sheet-btn" id="closeSheetBtn">閉じる</button>
+                    </div>
+                </div>
             </div>
-        </footer>
+        </div>
     </div>
 
-    <!-- 全画面表示用の脱出ボタン -->
-    <button class="exit-fullscreen" id="exitFullscreenBtn">✕ 閉じる</button>
+    <!-- 全画面表示用の解除案内（全画面時にうっすらトップに表示） -->
+    <button class="exit-fullscreen" id="exitFullscreenBtn">✕ 画面を閉じて戻る</button>
 
     <script src="penlight.js"></script>
 </body>
