@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>なんちゃってカホン</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-user-select: none;
+            margin: 0;
+            padding: 0;
+        }
+        body {
+            background-color: #1e120c; /* 木をイメージしたダークブラウン */
+            color: #fff;
+            font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+            overflow: hidden;
+            width: 100vw;
+            height: 100vh;
+        }
+        /* 縦画面時の警告 */
+        @media screen and (orientation: portrait) {
+            #portrait-warning { display: flex !important; }
+        }
+        #portrait-warning {
+            display: none; position: fixed; top:0; left:0; width:100vw; height:100vh;
+            background: #1e120c; z-index: 9999; flex-direction: column;
+            justify-content: center; align-items: center; text-align: center; padding: 20px;
+        }
+
+        .app-container {
+            display: flex;
+            flex-direction: column;
+            width: 100vw;
+            height: 100vh;
+            padding: 12px;
+        }
+
+        header {
+            text-align: center;
+            padding-bottom: 8px;
+            font-size: 14px;
+            font-weight: bold;
+            color: #df9b6d;
+        }
+
+        /* カホンの前面（打面）に見立てたレイアウト */
+        .cajon-surface {
+            flex: 1;
+            display: grid;
+            grid-template-columns: 1fr 2fr 1fr; /* 左右のフチと中央 */
+            grid-template-rows: 1fr 2fr;        /* 上部と下部 */
+            gap: 12px;
+            background: #2d1b10;
+            border: 4px solid #110a06;
+            border-radius: 12px;
+            padding: 12px;
+            box-shadow: inset 0 0 20px rgba(0,0,0,0.8);
+        }
+
+        /* 各叩き場所のベーススタイル */
+        .cajon-zone {
+            background: linear-gradient(135deg, #cd804e, #8f532c); /* 木目調カラー */
+            border: 2px solid #5c341a;
+            border-radius: 8px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.4);
+            transition: background 0.05s, transform 0.05s;
+        }
+
+        /* エリアごとの配置調整（グリッド指定） */
+        .zone-tip-l   { grid-column: 1; grid-row: 1; }
+        .zone-slap-t  { grid-column: 2; grid-row: 1; border-color: #ffd0a5; } /* フチ高音 */
+        .zone-tip-r   { grid-column: 3; grid-row: 1; }
+        .zone-slap-l  { grid-column: 1; grid-row: 2; border-color: #ffd0a5; }
+        .zone-bass    { grid-column: 2; grid-row: 2; border-color: #ff5e00; background: linear-gradient(135deg, #ad5f2a, #6c3716); } /* 中心低音 */
+        .zone-slap-r  { grid-column: 3; grid-row: 2; border-color: #ffd0a5; }
+
+        /* 叩いた瞬間のエフェクト */
+        .cajon-zone.active, .cajon-zone:active {
+            transform: scale(0.97);
+            background: #df9b6d;
+            box-shadow: inset 0 4px 10px rgba(0,0,0,0.5);
+        }
+        .zone-bass.active { background: #ad5f2a; }
+
+        .zone-name {
+            font-size: 18px;
+            font-weight: bold;
+            color: #1e120c;
+            text-shadow: 0 1px 1px rgba(255,255,255,0.2);
+        }
+        .zone-sub {
+            font-size: 10px;
+            color: #3e2518;
+            margin-top: 4px;
+            font-weight: bold;
+        }
+
+        #fs-guide {
+            position: fixed; bottom: 8px; right: 8px; 
+            background: rgba(0,0,0,0.7); padding: 4px 8px; 
+            border-radius: 4px; font-size: 10px; color: #ccc; z-index: 30;
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="portrait-warning">
+        <h2>📦 横画面専用カホンパッド</h2>
+        <p style="margin-top: 10px; color: #aaa;">スマホを横向きにすると、箱の正面を叩くレイアウトになります。</p>
+    </div>
+
+    <div class="app-container">
+        <header>📦 なんちゃってアコースティック・カホン (マルチタッチ対応)</header>
+        
+        <div class="cajon-surface">
+            <!-- 上段 -->
+            <div class="cajon-zone zone-tip-l" data-type="tip">
+                <span class="zone-name">TIP</span>
+                <span class="zone-sub">軽い端の音</span>
+            </div>
+            <div class="cajon-zone zone-slap-t" data-type="slap">
+                <span class="zone-name">SLAP</span>
+                <span class="zone-sub">フチの高音</span>
+            </div>
+            <div class="cajon-zone zone-tip-r" data-type="tip">
+                <span class="zone-name">TIP</span>
+                <span class="zone-sub">軽い端の音</span>
+            </div>
+
+            <!-- 下段 -->
+            <div class="cajon-zone zone-slap-l" data-type="slap">
+                <span class="zone-name">SLAP</span>
+                <span class="zone-sub">フチ</span>
+            </div>
+            <div class="cajon-zone zone-bass" data-type="bass">
+                <span class="zone-name">BASS</span>
+                <span class="zone-sub">真ん中の低音</span>
+            </div>
+            <div class="cajon-zone zone-slap-r" data-type="slap">
+                <span class="zone-name">SLAP</span>
+                <span class="zone-sub">フチ</span>
+            </div>
+        </div>
+    </div>
+
+    <div id="fs-guide">画面タップでフルスクリーン</div>
+
+    <script>
+        let audioCtx = null;
+        let masterCompressor = null;
+
+        function initAudio() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                masterCompressor = audioCtx.createDynamicsCompressor();
+                
+                masterCompressor.threshold.setValueAtTime(-8, audioCtx.currentTime);
+                masterCompressor.knee.setValueAtTime(10, audioCtx.currentTime);
+                masterCompressor.ratio.setValueAtTime(12, audioCtx.currentTime);
+                masterCompressor.attack.setValueAtTime(0.001, audioCtx.currentTime);
+                masterCompressor.release.setValueAtTime(0.05, audioCtx.currentTime);
+                
+                masterCompressor.connect(audioCtx.destination);
+            }
+        }
+
+        // --- カホンの音響合成ロジック ---
+
+        // 1. BASS: 手のひらで中心を叩いたときの、ポコッという太い木の低音
+        function playBass(now) {
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            const filter = audioCtx.createBiquadFilter();
+
+            osc.type = 'triangle'; // 柔らかい丸みのある波形
+            osc.frequency.setValueAtTime(95, now); // カホンの標準的なボックス低音
+            osc.frequency.exponentialRampToValueAtTime(50, now + 0.1);
+
+            filter.type = 'lowpass';
+            filter.frequency.setValueAtTime(200, now);
+
+            gain.gain.setValueAtTime(1.0, now);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.18);
+
+            osc.connect(filter).connect(gain).connect(masterCompressor);
+            osc.start(now);
+            osc.stop(now + 0.2);
+        }
+
+        // 2. SLAP: フチを叩いたときのバチッとした乾いた音 ＋ 響き線(スナッピー)のシャッという余韻
+        function playSlap(now) {
+            // アタックの木琴のようなコンッという音
+            const osc = audioCtx.createOscillator();
+            const oscGain = audioCtx.createGain();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(380, now);
+            oscGain.gain.setValueAtTime(0.4, now);
+            oscGain.gain.exponentialRampToValueAtTime(0.01, now + 0.03);
+            osc.connect(oscGain).connect(masterCompressor);
+            osc.start(now); osc.stop(now + 0.04);
+
+            // 響き線（スナッピー）のバズ音
+            const bufferSize = audioCtx.sampleRate * 0.08; // 短くシャッと鳴らす
+            const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+            const data = buffer.getChannelData(0);
+            for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
+            
+            const noise = audioCtx.createBufferSource();
+            noise.buffer = buffer;
+
+            const filter = audioCtx.createBiquadFilter();
+            filter.type = 'bandpass';
+            filter.frequency.setValueAtTime(2500, now); // 高めの金属質なカサカサ感
+
+            const gain = audioCtx.createGain();
+            gain.gain.setValueAtTime(0.6, now);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.07);
+
+            noise.connect(filter).connect(gain).connect(masterCompressor);
+            noise.start(now); noise.stop(now + 0.08);
+        }
+
+        // 3. TIP: 指先で軽く小突いたときのコン、カチッという小さな音
+        function playTip(now) {
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(520, now);
+            
+            gain.gain.setValueAtTime(0.25, now);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.02);
+
+            osc.connect(gain).connect(masterCompressor);
+            osc.start(now);
+            osc.stop(now + 0.03);
+        }
+
+        // --- タップイベント処理 ---
+        const zones = document.querySelectorAll('.cajon-zone');
+        
+        zones.forEach(zone => {
+            const triggerCajon = (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                
+                initAudio();
+                const now = audioCtx.currentTime;
+                const type = zone.dataset.type;
+
+                if (type === 'bass') playBass(now);
+                else if (type === 'slap') playSlap(now);
+                else if (type === 'tip') playTip(now);
+
+                zone.classList.add('active');
+                setTimeout(() => zone.classList.remove('active'), 50);
+            };
+
+            zone.addEventListener('touchstart', triggerCajon, {passive: false});
+            zone.addEventListener('mousedown', triggerCajon);
+        });
+
+        function requestFullScreen() {
+            const docEl = document.documentElement;
+            if (!document.fullscreenElement && !document.webkitFullscreenElement) {
+                if (docEl.requestFullscreen) docEl.requestFullscreen();
+                else if (docEl.webkitRequestFullscreen) docEl.webkitRequestFullscreen();
+            }
+        }
+        document.body.addEventListener('touchstart', requestFullScreen, { once: true });
+        document.body.addEventListener('click', requestFullScreen, { once: true });
+    </script>
+</body>
+</html>
