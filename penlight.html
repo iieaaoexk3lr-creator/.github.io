@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>デジタルペンライト</title>
+    <link rel="stylesheet" href="penlight.css">
+</head>
+<body>
+    <div class="phone-container">
+        <!-- タイトル -->
+        <header class="app-header">
+            <h1>DIGITAL PENLIGHT</h1>
+        </header>
+
+        <!-- 発光エリア -->
+        <main class="light-section" id="lightSection">
+            <div class="glow-container">
+                <div class="penlight-head" id="penlightHead"></div>
+                <div class="penlight-handle"></div>
+            </div>
+        </main>
+
+        <!-- コントロールパネル -->
+        <footer class="control-panel">
+            <!-- 明るさ調整 -->
+            <div class="control-group">
+                <label for="brightness">明るさ</label>
+                <input type="range" id="brightness" min="0" max="100" value="100">
+            </div>
+
+            <!-- カラーパレット -->
+            <div class="color-grid">
+                <button class="color-btn active" data-color="#FF0000" style="background-color: #FF0000;"></button>
+                <button class="color-btn" data-color="#FF7F00" style="background-color: #FF7F00;"></button>
+                <button class="color-btn" data-color="#FFFF00" style="background-color: #FFFF00;"></button>
+                <button class="color-btn" data-color="#7FFF00" style="background-color: #7FFF00;"></button>
+                <button class="color-btn" data-color="#00FF00" style="background-color: #00FF00;"></button>
+                <button class="color-btn" data-color="#00FFFF" style="background-color: #00FFFF;"></button>
+                <button class="color-btn" data-color="#0000FF" style="background-color: #0000FF;"></button>
+                <button class="color-btn" data-color="#8B00FF" style="background-color: #8B00FF;"></button>
+                <button class="color-btn" data-color="#FF69B4" style="background-color: #FF69B4;"></button>
+                <button class="color-btn" data-color="#FFFFFF" style="background-color: #FFFFFF;"></button>
+                <button class="color-btn rainbow-btn" id="rainbowBtn" data-mode="rainbow">🌈</button>
+            </div>
+
+            <!-- モード変更 -->
+            <div class="mode-grid">
+                <button class="mode-btn" id="blinkBtn">点滅</button>
+                <button class="mode-btn" id="pulseBtn">明滅</button>
+                <button class="mode-btn" id="fullscreenBtn">全画面</button>
+                <button class="mode-btn off-btn" id="offBtn">OFF</button>
+            </div>
+        </footer>
+    </div>
+
+    <!-- 全画面表示用の脱出ボタン（全画面時のみ表示） -->
+    <button class="exit-fullscreen" id="exitFullscreenBtn">✕ 閉じる</button>
+
+    <script src="penlight.js"></script>
+</body>
+</html>
