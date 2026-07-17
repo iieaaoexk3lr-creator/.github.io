@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>なんちゃってシンセベース</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-user-select: none;
+            margin: 0;
+            padding: 0;
+        }
+        body {
+            background-color: #151518;
+            color: #fff;
+            font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+            overflow: hidden;
+            width: 100vw;
+            height: 100vh;
+        }
+        /* 縦画面時の警告 */
+        @media screen and (orientation: portrait) {
+            #portrait-warning { display: flex !important; }
+        }
+        #portrait-warning {
+            display: none; position: fixed; top:0; left:0; width:100vw; height:100vh;
+            background: #111; z-index: 9999; flex-direction: column;
+            justify-content: center; align-items: center; text-align: center; padding: 20px;
+        }
+
+        .app-container {
+            display: flex;
+            flex-direction: column;
+            width: 100vw;
+            height: 100vh;
+            padding: 8px;
+        }
+
+        header {
+            text-align: center;
+            padding-bottom: 6px;
+            font-size: 13px;
+            font-weight: bold;
+            color: #00ffcc;
+        }
+
+        /* 4弦分の行、各行に5つのノートを配置するグリッド */
+        .bass-grid {
+            flex: 1;
+            display: flex;
+            flex-direction: column-reverse; /* 下を低音弦(E)、上を高音弦(G)にする */
+            gap: 8px;
+        }
+
+        .string-row {
+            flex: 1;
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 8px;
+        }
+
+        /* 各ベースキーのスタイル */
+        .bass-key {
+            background: linear-gradient(135deg, #25252b, #18181c);
+            border: 2px solid #444;
+            border-radius: 12px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.4);
+            position: relative;
+            transition: transform 0.05s;
+        }
+
+        /* 弦ごとのカラー（ネオンっぽく視認性をアップ） */
+        .string-4 { border-color: #ff3b30; } /* 4弦 E (赤) */
+        .string-3 { border-color: #ff9500; } /* 3弦 A (オレンジ) */
+        .string-2 { border-color: #4cd964; } /* 2弦 D (緑) */
+        .string-1 { border-color: #007aff; } /* 1弦 G (青) */
+
+        /* 弾いた瞬間のエフェクト */
+        .bass-key.active, .bass-key:active {
+            transform: scale(0.96);
+            box-shadow: inset 0 2px 5px rgba(0,0,0,0.6);
+        }
+        .string-4.active { background: #4a1212; border-color: #ff6b62; }
+        .string-3.active { background: #4a2f12; border-color: #ffb362; }
+        .string-2.active { background: #124a1f; border-color: #6eff87; }
+        .string-1.active { background: #12294a; border-color: #62a3ff; }
+
+        .key-name {
+            font-size: 18px;
+            font-weight: bold;
+            text-shadow: 1px 1px 2px #000;
+        }
+        .key-string {
+            font-size: 10px;
+            color: #888;
+            margin-top: 2px;
+        }
+
+        #fs-guide {
+            position: fixed; bottom: 8px; right: 8px; 
+            background: rgba(0,0,0,0.7); padding: 4px 8px; 
+            border-radius: 4px; font-size: 10px; color: #ccc; z-index: 30;
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="portrait-warning">
+        <h2>🎸 横画面専用シンセベース</h2>
+        <p style="margin-top: 10px; color: #aaa;">スマホを横向きにすると、両手で演奏しやすいベースパッド画面になります。</p>
+    </div>
+
+    <div class="app-container">
+        <header>🎸 なんちゃってシンセベース (E1 - B3 低音特化型)</header>
+        
+        <div class="bass-grid">
+            <!-- 4弦 (一番下の低音弦): E1 から半音ずつ5音 -->
+            <div class="string-row" id="row-4"></div>
+            <!-- 3弦: A1 から半音ずつ5音 -->
+            <div class="string-row" id="row-3"></div>
+            <!-- 2弦: D2 から半音ずつ5音 -->
+            <div class="string-row" id="row-2"></div>
+            <!-- 1弦 (一番上の高音弦): G2 から半音ずつ5音 -->
+            <div class="string-row" id="row-1"></div>
+        </div>
+    </div>
+
+    <div id="fs-guide">画面タップでフルスクリーン</div>
+
+    <script>
+        // 音名リスト
+        const noteNames = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
+        
+        // 周波数を計算 (A4 = 440Hz基準)
+        function getFrequency(noteIndex) {
+            return 440 * Math.pow(2, (noteIndex - 69) / 12);
+        }
+
+        // ノート番号から音名を取得 (例: 28 -> "E1")
+        function getNoteName(noteNumber) {
+            const name = noteNames[noteNumber % 12];
+            const octave = Math.floor(noteNumber / 12) - 1;
+            return name + octave;
+        }
+
+        // ベースの一般的な4弦の開放弦のノート番号
+        // E1=28, A1=33, D2=38, G2=43
+        const strings = [
+            { id: 1, startNote: 43, label: "1弦(G)" },
+            { id: 2, startNote: 38, label: "2弦(D)" },
+            { id: 3, startNote: 33, label: "3弦(A)" },
+            { id: 4, startNote: 28, label: "4弦(E)" }
+        ];
+
+        let audioCtx = null;
+        let masterCompressor = null;
+        
+        // 現在鳴っている音源を管理（単音モノフォニック用）
+        let activeSources = [];
+
+        function initAudio() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                masterCompressor = audioCtx.createDynamicsCompressor();
+                
+                masterCompressor.threshold.setValueAtTime(-6, audioCtx.currentTime);
+                masterCompressor.knee.setValueAtTime(8, audioCtx.currentTime);
+                masterCompressor.ratio.setValueAtTime(20, audioCtx.currentTime); // 低音をガッツリ潰して太くする
+                masterCompressor.attack.setValueAtTime(0.005, audioCtx.currentTime);
+                masterCompressor.release.setValueAtTime(0.05, audioCtx.currentTime);
+                
+                masterCompressor.connect(audioCtx.destination);
+            }
+        }
+
+        // 前の音を消す関数（ベースがボコボコ濁るのを防ぐ）
+        function stopPreviousSounds(now) {
+            activeSources.forEach(src => {
+                try {
+                    // ブツッというノイズを防ぐため、0.02秒で音量を絞ってから止める
+                    src.gainNode.gain.cancelScheduledValues(now);
+                    src.gainNode.gain.setValueAtTime(src.gainNode.gain.value, now);
+                    src.gainNode.gain.exponentialRampToValueAtTime(0.0001, now + 0.02);
+                    src.osc1.stop(now + 0.03);
+                    src.osc2.stop(now + 0.03);
+                } catch(e) {}
+            });
+            activeSources = [];
+        }
+
+        // ベースサウンドの合成
+        function playBassTone(noteNumber) {
+            const now = audioCtx.currentTime;
+            stopPreviousSounds(now);
+
+            const freq = getFrequency(noteNumber);
+
+            // メインの音源1：ノコギリ波（ジリジリした太い音）
+            const osc1 = audioCtx.createOscillator();
+            osc1.type = 'sawtooth';
+            osc1.frequency.setValueAtTime(freq, now);
+
+            // 厚みを出すための音源2：少しだけ音程をずらした（デチューン）ノコギリ波
+            const osc2 = audioCtx.createOscillator();
+            osc2.type = 'sawtooth';
+            osc2.frequency.setValueAtTime(freq + 0.5, now);
+
+            // スラップ風のアタック用ノイズ
+            const bufferSize = audioCtx.sampleRate * 0.02; // 最初の一瞬(0.02秒)だけ
+            const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+            const data = buffer.getChannelData(0);
+            for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
+            const noise = audioCtx.createBufferSource();
+            noise.buffer = buffer;
+            const noiseFilter = audioCtx.createBiquadFilter();
+            noiseFilter.type = 'highpass';
+            noiseFilter.frequency.setValueAtTime(6000, now); // 高音だけのパキッとした音
+            const noiseGain = audioCtx.createGain();
+            noiseGain.gain.setValueAtTime(0.2, now);
+            noiseGain.gain.exponentialRampToValueAtTime(0.001, now + 0.015);
+            noise.connect(noiseFilter).connect(noiseGain).connect(masterCompressor);
+
+            // ローパスフィルター（音の余韻に合わせて低音だけが残るように閉じていく）
+            const filter = audioCtx.createBiquadFilter();
+            filter.type = 'lowpass';
+            filter.Q.setValueAtTime(4, now); // 少しクセをつけてシンセっぽさを強調
+            filter.frequency.setValueAtTime(freq * 4, now); // 最初は少し明るい音
+            filter.frequency.exponentialRampToValueAtTime(freq * 1.2, now + 0.4); // ドスッとこもる音に変化
+
+            const gainNode = audioCtx.createGain();
+            gainNode.gain.setValueAtTime(0.7, now);
+            gainNode.gain.exponentialRampToValueAtTime(0.001, now + 0.8); // 0.8秒かけて減衰
+
+            // 接続
+            osc1.connect(filter);
+            osc2.connect(filter);
+            filter.connect(gainNode).connect(masterCompressor);
+
+            // 再生開始
+            osc1.start(now);
+            osc2.start(now);
+            noise.start(now);
+
+            // 現在再生中の音として記録
+            activeSources.push({ osc1, osc2, gainNode });
+        }
+
+        // --- 画面へのパッド配置 ---
+        strings.forEach(str => {
+            const rowEl = document.getElementById(`row-${str.id}`);
+            
+            // 各弦、開放弦から5フレット分（5つのボタン）を作る
+            for (let fret = 0; fret < 5; fret++) {
+                const noteNumber = str.startNote + fret;
+                const key = document.createElement('div');
+                key.className = `bass-key string-${str.id}`;
+                
+                const nameLabel = document.createElement('span');
+                nameLabel.className = 'key-name';
+                nameLabel.textContent = getNoteName(noteNumber);
+                
+                const stringLabel = document.createElement('span');
+                stringLabel.className = 'key-string';
+                stringLabel.textContent = `${str.label} / Fret:${fret}`;
+                
+                key.appendChild(nameLabel);
+                key.appendChild(stringLabel);
+
+                // タップイベント
+                const triggerBass = (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    initAudio();
+                    playBassTone(noteNumber);
+                    
+                    key.classList.add('active');
+                    setTimeout(() => key.classList.remove('active'), 80);
+                };
+
+                key.addEventListener('touchstart', triggerBass, {passive: false});
+                key.addEventListener('mousedown', triggerBass);
+
+                rowEl.appendChild(key);
+            }
+        });
+
+        // フルスクリーン化の処理
+        function requestFullScreen() {
+            const docEl = document.documentElement;
+            if (!document.fullscreenElement && !document.webkitFullscreenElement) {
+                if (docEl.requestFullscreen) docEl.requestFullscreen();
+                else if (docEl.webkitRequestFullscreen) docEl.webkitRequestFullscreen();
+            }
+        }
+        document.body.addEventListener('touchstart', requestFullScreen, { once: true });
+        document.body.addEventListener('click', requestFullScreen, { once: true });
+    </script>
+</body>
+</html>
