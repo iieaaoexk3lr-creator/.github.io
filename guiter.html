@@ -1,0 +1,604 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>ギターストロークコードプレイヤー</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-user-select: none;
+            margin: 0;
+            padding: 0;
+        }
+        body {
+            background-color: #1a1a1a;
+            color: #fff;
+            font-family: 'Helvetica Neue', Arial, sans-serif;
+            overflow: hidden;
+            width: 100vw;
+            height: 100vh;
+        }
+        /* 横画面推奨のメッセージ（縦画面の時のみ表示） */
+        @media screen and (orientation: portrait) {
+            #portrait-warning {
+                display: flex !important;
+            }
+        }
+        #portrait-warning {
+            display: none;
+            position: fixed;
+            top:0; left:0; width:100vw; height:100vh;
+            background: #111; z-index: 9999;
+            flex-direction: column; justify-content: center; align-items: center;
+            text-align: center; padding: 20px;
+        }
+
+        /* 全体レイアウト */
+        .app-container {
+            display: flex;
+            flex-direction: column;
+            width: 100vw;
+            height: 100vh;
+        }
+
+        /* 上部ヘッダー */
+        header {
+            background: #2a2a2a;
+            height: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 15px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.5);
+            z-index: 10;
+        }
+        .title {
+            font-size: 14px;
+            font-weight: bold;
+        }
+        .controls {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        .control-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 12px;
+        }
+        select, button {
+            background: #444;
+            color: #fff;
+            border: 1px solid #666;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            cursor: pointer;
+        }
+        select:focus, button:focus {
+            outline: none;
+        }
+        
+        /* 設定モーダル */
+        #settings-modal {
+            display: none;
+            position: fixed;
+            top: 55px; right: 15px;
+            background: rgba(30, 30, 30, 0.95);
+            border: 1px solid #555;
+            border-radius: 8px;
+            padding: 15px;
+            z-index: 100;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.6);
+            width: 250px;
+        }
+        .modal-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+            font-size: 13px;
+        }
+        .modal-row input[type="range"] {
+            width: 100px;
+        }
+
+        /* メイン演奏画面 */
+        main {
+            flex: 1;
+            display: flex;
+            background: #222;
+            position: relative;
+        }
+
+        /* コード列 */
+        .chord-column {
+            flex: 1;
+            border-right: 1px solid #333;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            touch-action: none; /* ブラウザのスクロール等を禁止 */
+            transition: transform 0.1s, background-color 0.1s;
+            cursor: pointer;
+        }
+        .chord-column:last-child {
+            border-right: none;
+        }
+        .chord-name {
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            font-weight: bold;
+            background: #2d2d2d;
+            border-bottom: 2px solid #444;
+            pointer-events: none;
+        }
+        
+        /* 弦エリア */
+        .strings-container {
+            flex: 1;
+            position: relative;
+            display: flex;
+            justify-content: space-around;
+            padding: 0 10px;
+            pointer-events: none;
+        }
+        .string {
+            width: 2px;
+            height: 100%;
+            background: linear-gradient(to right, #777, #ddd, #777);
+            box-shadow: 1px 0 3px rgba(0,0,0,0.5);
+            transition: transform 0.05s ease-in-out;
+        }
+        /* 弦の太さの変化 (6弦が太く、1弦が細い) */
+        .string-5 { width: 3.5px; }
+        .string-4 { width: 3.0px; }
+        .string-3 { width: 2.5px; }
+        .string-2 { width: 2.0px; }
+        .string-1 { width: 1.5px; }
+        .string-0 { width: 1.0px; }
+
+        /* 揺れエフェクト */
+        @keyframes vibrate {
+            0% { transform: scaleX(1.5) translateX(-1px); }
+            50% { transform: scaleX(1.5) translateX(1px); }
+            100% { transform: scaleX(1) translateX(0); }
+        }
+        .string.vibrating {
+            animation: vibrate 0.1s linear infinite;
+        }
+
+        /* インタラクション演出用 */
+        .chord-column.active {
+            background-color: #333322;
+            transform: scale(0.98);
+        }
+        
+        /* ストローク方向エフェクト */
+        .stroke-effect {
+            position: absolute;
+            left: 0; width: 100%; height: 30px;
+            background: linear-gradient(to bottom, rgba(255,215,0,0), rgba(255,215,0,0.4), rgba(255,215,0,0));
+            pointer-events: none;
+            opacity: 0;
+            z-index: 5;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="portrait-warning">
+        <h2>🎸 横画面にしてください</h2>
+        <p style="margin-top: 10px; color: #aaa;">本アプリはスマートフォンを横向きにして演奏する仕様です。</p>
+    </div>
+
+    <div class="app-container">
+        <header>
+            <div class="title">🎸 Guitar Chord Player</div>
+            <div class="controls">
+                <div class="control-item">
+                    <label>Key:</label>
+                    <select id="key-select"></select>
+                </div>
+                <button id="settings-btn">⚙ Settings</button>
+            </div>
+        </header>
+
+        <!-- 設定モーダル -->
+        <div id="settings-modal">
+            <div class="modal-row">
+                <label>Volume</label>
+                <input type="range" id="volume-slider" min="0" max="100" value="80">
+            </div>
+            <div class="modal-row">
+                <label>Tone</label>
+                <select id="tone-select">
+                    <option value="guitar">Guitar</option>
+                    <option value="bright">Bright</option>
+                    <option value="soft">Soft</option>
+                </select>
+            </div>
+            <div class="modal-row">
+                <label>Reverb</label>
+                <input type="checkbox" id="reverb-sync" checked>
+            </div>
+            <div class="modal-row">
+                <label>Speed Correction</label>
+                <input type="checkbox" id="speed-sync" checked>
+            </div>
+            <div class="modal-row">
+                <label>Vibration</label>
+                <input type="checkbox" id="vibe-sync" checked>
+            </div>
+        </div>
+
+        <main id="chord-board">
+            <!-- JavaScriptでここに7つのコード列が動的生成されます -->
+        </main>
+    </div>
+
+    <script>
+        // --- データ定義 ---
+        const keys = ["C", "Db", "D", "Eb", "E", "F", "Gb", "G", "Ab", "A", "Bb", "B"];
+        
+        // ダイアトニック・スケール上のルート音程の相対半音数 (メジャー・スケール)
+        // I=0, II=2, III=4, IV=5, V=7, VI=9, VII=11
+        const diatonicSteps = [0, 2, 4, 5, 7, 9, 11];
+        const chordTypes = ["", "m", "m", "", "", "m", "dim"];
+
+        // 各コードの構成音（簡易版ギター模倣：6弦〜1弦の相対半音 offset）
+        // 演奏を簡単にするため、1弦〜6弦を破綻なく鳴らすコードフォームの定義
+        // -1 はミュート（消音）だが、今回は全弦鳴るオープンコード風の構成音に調整
+        const chordFormulas = {
+            "":    [0, 7, 12, 16, 19, 24], // Major (R, 5, R, 3, 5, R)
+            "m":   [0, 7, 12, 15, 19, 24], // Minor (R, 5, R, m3, 5, R)
+            "dim": [0, 6, 12, 15, 18, 24]  // dim (R, d5, R, m3, d5, R)
+        };
+
+        // ルート音の基本周波数定義 (C2 = 65.41Hz 周辺)
+        const baseNoteFrequencies = {
+            "C": 65.41, "Db": 69.30, "D": 73.42, "Eb": 77.78, "E": 82.41, "F": 87.31,
+            "Gb": 92.50, "G": 98.00, "Ab": 103.83, "A": 110.00, "Bb": 116.54, "B": 123.47
+        };
+
+        // --- 状態管理 ---
+        let currentKeyIndex = 0; // デフォルト C
+        let globalVolume = 0.8;
+        let currentTone = 'guitar';
+        let isReverbOn = true;
+        let isSpeedCorrectionOn = true;
+        let isVibrationOn = true;
+
+        // オーディオコンテキスト
+        let audioCtx = null;
+        let mainGainNode = null;
+        let delayNode = null; // リバーブ（ディレイ）代用
+
+        // --- 初期化処理 ---
+        const keySelect = document.getElementById('key-select');
+        const chordBoard = document.getElementById('chord-board');
+        const settingsBtn = document.getElementById('settings-btn');
+        const settingsModal = document.getElementById('settings-modal');
+
+        // Keyセレクトボックス生成
+        keys.forEach((key, index) => {
+            const opt = document.createElement('option');
+            opt.value = index;
+            opt.textContent = key;
+            keySelect.appendChild(opt);
+        });
+
+        // 画面構築
+        renderChords();
+
+        // --- イベントリスナー設定 ---
+        keySelect.addEventListener('change', (e) => {
+            currentKeyIndex = parseInt(e.target.value);
+            renderChords();
+        });
+
+        settingsBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            settingsModal.style.display = settingsModal.style.display === 'block' ? 'none' : 'block';
+        });
+
+        document.addEventListener('click', () => {
+            settingsModal.style.display = 'none';
+        });
+        settingsModal.addEventListener('click', (e) => e.stopPropagation());
+
+        // 設定の変更反映
+        document.getElementById('volume-slider').addEventListener('input', (e) => {
+            globalVolume = e.target.value / 100;
+            if(mainGainNode) mainGainNode.gain.value = globalVolume;
+        });
+        document.getElementById('tone-select').addEventListener('change', (e) => {
+            currentTone = e.target.value;
+        });
+        document.getElementById('reverb-sync').addEventListener('change', (e) => {
+            isReverbOn = e.target.checked;
+        });
+        document.getElementById('speed-sync').addEventListener('change', (e) => {
+            isSpeedCorrectionOn = e.target.checked;
+        });
+        document.getElementById('vibe-sync').addEventListener('change', (e) => {
+            isVibrationOn = e.target.checked;
+        });
+
+        // --- オーディオ初期化 ---
+        function initAudio() {
+            if (audioCtx) return;
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            mainGainNode = audioCtx.createGain();
+            mainGainNode.gain.value = globalVolume;
+
+            // 簡易エコー（リバーブ風の空間演出用）
+            delayNode = audioCtx.createDelay();
+            delayNode.delayTime.value = 0.15;
+            const delayGain = audioCtx.createGain();
+            delayGain.gain.value = 0.25;
+
+            // ルーティング
+            delayNode.connect(delayGain);
+            delayGain.connect(delayNode); // フィードバックループ
+            
+            mainGainNode.connect(audioCtx.destination);
+            delayGain.connect(mainGainNode); // メインへ
+        }
+
+        // --- コード画面生成 ---
+        function renderChords() {
+            chordBoard.innerHTML = '';
+            const currentKeyName = keys[currentKeyIndex];
+            
+            // 7つのダイアトニックコードを生成
+            for (let i = 0; i < 7; i++) {
+                // ルート音の算出
+                const rootNameIndex = (currentKeyIndex + diatonicSteps[i]) % 12;
+                const rootName = keys[rootNameIndex];
+                const type = chordTypes[i];
+                const chordName = rootName + type;
+
+                // DOM要素作成
+                const col = document.createElement('div');
+                col.className = 'chord-column';
+                col.dataset.chordIndex = i;
+                col.dataset.chordName = chordName;
+
+                const nameDiv = document.createElement('div');
+                nameDiv.className = 'chord-name';
+                nameDiv.textContent = chordName;
+                col.appendChild(nameDiv);
+
+                // 弦の視覚表示 (6本の弦、左が6弦、右が1弦)
+                const stringsContainer = document.createElement('div');
+                stringsContainer.className = 'strings-container';
+                for (let s = 0; s < 6; s++) {
+                    const str = document.createElement('div');
+                    str.className = `string string-${s}`;
+                    stringsContainer.appendChild(str);
+                }
+                col.appendChild(stringsContainer);
+
+                // ストローク演出用のエフェクトバー
+                const effect = document.createElement('div');
+                effect.className = 'stroke-effect';
+                col.appendChild(effect);
+
+                // タッチ・スワイプイベント登録
+                setupSwipeEvents(col);
+
+                chordBoard.appendChild(col);
+            }
+        }
+
+        // --- スワイプ判定ロジック ---
+        function setupSwipeEvents(element) {
+            let startY = 0;
+            let startTime = 0;
+            let isTracking = false;
+
+            element.addEventListener('touchstart', (e) => {
+                initAudio(); // ユーザーアクションでオーディオ空間を解放
+                const touch = e.touches[0];
+                startY = touch.clientY;
+                startTime = performance.now();
+                isTracking = true;
+                
+                element.classList.add('active');
+            }, {passive: true});
+
+            element.addEventListener('touchend', (e) => {
+                if (!isTracking) return;
+                isTracking = false;
+                element.classList.remove('active');
+
+                const touch = e.changedTouches[0];
+                const endY = touch.clientY;
+                const endTime = performance.now();
+
+                const diffY = endY - startY;
+                const duration = endTime - startTime;
+
+                // 20px以上の移動で判定
+                if (Math.abs(diffY) >= 20) {
+                    const direction = diffY > 0 ? 'down' : 'up';
+                    // 速度計算（px/ms）
+                    const speed = Math.abs(diffY) / duration;
+                    playChord(element, direction, speed);
+                }
+            }, {passive: true});
+
+            // マウス操作用（PCテスト用）
+            element.addEventListener('mousedown', (e) => {
+                initAudio();
+                startY = e.clientY;
+                startTime = performance.now();
+                isTracking = true;
+                element.classList.add('active');
+            });
+
+            window.addEventListener('mouseup', (e) => {
+                if (!isTracking) return;
+                isTracking = false;
+                element.classList.remove('active');
+
+                const diffY = e.clientY - startY;
+                const duration = performance.now() - startTime;
+
+                if (Math.abs(diffY) >= 20) {
+                    const direction = diffY > 0 ? 'down' : 'up';
+                    const speed = Math.abs(diffY) / duration;
+                    playChord(element, direction, speed);
+                }
+            });
+        }
+
+        // --- コード演奏・音色・エフェクト処理 ---
+        function playChord(element, direction, speed) {
+            const chordIndex = parseInt(element.dataset.chordIndex);
+            
+            // ルートとタイプ取得
+            const rootNameIndex = (currentKeyIndex + diatonicSteps[chordIndex]) % 12;
+            const rootName = keys[rootNameIndex];
+            const type = chordTypes[chordIndex];
+            
+            const baseFreq = baseNoteFrequencies[rootName];
+            const formula = chordFormulas[type];
+
+            // バイブレーション（対応端末のみ）
+            if (isVibrationOn && navigator.vibrate) {
+                navigator.vibrate(15);
+            }
+
+            // ストローク速度の計算補正
+            // 標準的なアルペジオ間隔をベースに、スワイプ速度に応じて可変させる
+            let baseDelay = 0.03; // 秒単位
+            let velocityVolume = 1.0;
+
+            if (isSpeedCorrectionOn) {
+                // スピードが速いほど、ストローク間隔を短く（最小0.005s）、音量を大きく補正
+                baseDelay = Math.max(0.005, Math.min(0.08, 0.05 / (speed + 0.1)));
+                velocityVolume = Math.min(1.2, Math.max(0.5, speed * 0.5));
+            }
+
+            // ストロークエフェクト演出
+            triggerVisualEffect(element, direction, baseDelay * 6 * 1000);
+
+            // 弦のインデックス順序（down: 6弦→1弦 = 5→0 , up: 1弦→6弦 = 0→5）
+            let stringOrder = [5, 4, 3, 2, 1, 0];
+            if (direction === 'up') {
+                stringOrder.reverse();
+            }
+
+            // 各弦を時間差で発音
+            const now = audioCtx.currentTime;
+            stringOrder.forEach((stringIdx, i) => {
+                const delay = i * baseDelay;
+                const semitoneOffset = formula[stringIdx];
+                // 周波数の計算：f = base * 2^(offset/12)
+                const frequency = baseFreq * Math.pow(2, semitoneOffset / 12);
+                
+                // 実際に弦を鳴らす
+                playString(frequency, now + delay, stringIdx, velocityVolume);
+                
+                // 弦の揺れアニメーション
+                const stringEl = element.getElementsByClassName(`string-${stringIdx}`)[0];
+                setTimeout(() => {
+                    stringEl.classList.add('vibrating');
+                    setTimeout(() => stringEl.classList.remove('vibrating'), 400);
+                }, delay * 1000);
+            });
+        }
+
+        // --- Web Audio API 単音生成 ---
+        function playString(frequency, startTime, stringIdx, velocityVolume) {
+            const osc = audioCtx.createOscillator();
+            const gainNode = audioCtx.createGain();
+            const filter = audioCtx.createBiquadFilter();
+
+            osc.connect(filter);
+            filter.connect(gainNode);
+            
+            // リバーブ（ディレイ分岐）設定
+            if (isReverbOn && delayNode) {
+                gainNode.connect(delayNode);
+            }
+            gainNode.connect(mainGainNode);
+
+            // --- 音色設定 (Tone) ---
+            // ギターの波形特性に近い鋸歯状波か三角波をベースに作成
+            if (currentTone === 'bright') {
+                osc.type = 'sawtooth';
+                filter.type = 'lowpass';
+                filter.frequency.setValueAtTime(3000, startTime);
+                filter.frequency.exponentialRampToValueAtTime(800, startTime + 0.5);
+            } else if (currentTone === 'soft') {
+                osc.type = 'triangle';
+                filter.type = 'lowpass';
+                filter.frequency.setValueAtTime(1200, startTime);
+                filter.frequency.exponentialRampToValueAtTime(300, startTime + 0.3);
+            } else { // guitar (Standard)
+                osc.type = 'triangle';
+                // 少しきらびやかさを足すために異なるタイプのオシレータをブレンドするか、ローパスを調整
+                filter.type = 'lowpass';
+                filter.frequency.setValueAtTime(2000, startTime);
+                filter.frequency.exponentialRampToValueAtTime(500, startTime + 0.4);
+            }
+
+            // 弦ごとのピッチに微細なディチューンを加え、リアルな12弦感/生感を出す
+            osc.frequency.setValueAtTime(frequency, startTime);
+
+            // --- ADSRエンベロープ設定 ---
+            const attack = 0.005; 
+            const decay = 0.15;
+            // 低音弦（5,4）ほど残響を長く、高音弦（1,0）は少し早めに減衰させる調整
+            const release = 0.8 + (stringIdx * 0.15); 
+            const sustainVolume = 0.1;
+
+            // 初期音量ゼロ
+            gainNode.gain.setValueAtTime(0, startTime);
+            // Attack: アタックをシャープに立ち上げる
+            gainNode.gain.linearRampToValueAtTime(0.4 * velocityVolume, startTime + attack);
+            // Decay & Sustain
+            gainNode.gain.exponentialRampToValueAtTime(sustainVolume * velocityVolume, startTime + attack + decay);
+            // Release
+            gainNode.gain.setValueAtTime(sustainVolume * velocityVolume, startTime + attack + decay + 0.1);
+            gainNode.gain.exponentialRampToValueAtTime(0.0001, startTime + attack + decay + 0.1 + release);
+
+            osc.start(startTime);
+            // 音が完全に消えた後にオブジェクトを解放
+            osc.stop(startTime + attack + decay + 0.1 + release + 0.1);
+        }
+
+        // --- ビジュアルエフェクトの制御 ---
+        function triggerVisualEffect(element, direction, totalDuration) {
+            const effectBar = element.querySelector('.stroke-effect');
+            effectBar.style.transition = 'none';
+            effectBar.style.opacity = '1';
+
+            if (direction === 'down') {
+                effectBar.style.top = '0%';
+                setTimeout(() => {
+                    effectBar.style.transition = `top ${totalDuration}ms linear, opacity 0.3s ease-out`;
+                    effectBar.style.top = '100%';
+                    effectBar.style.opacity = '0';
+                }, 10);
+            } else {
+                effectBar.style.top = '100%';
+                setTimeout(() => {
+                    effectBar.style.transition = `top ${totalDuration}ms linear, opacity 0.3s ease-out`;
+                    effectBar.style.top = '0%';
+                    effectBar.style.opacity = '0';
+                }, 10);
+            }
+        }
+    </script>
+</body>
+</html>
