@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>なんちゃって電子ドラムパッド</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-user-select: none;
+            margin: 0;
+            padding: 0;
+        }
+        body {
+            background-color: #1a1a1a;
+            color: #fff;
+            font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+            overflow: hidden;
+            width: 100vw;
+            height: 100vh;
+        }
+        /* 縦画面時の警告 */
+        @media screen and (orientation: portrait) {
+            #portrait-warning { display: flex !important; }
+        }
+        #portrait-warning {
+            display: none; position: fixed; top:0; left:0; width:100vw; height:100vh;
+            background: #111; z-index: 9999; flex-direction: column;
+            justify-content: center; align-items: center; text-align: center; padding: 20px;
+        }
+
+        .app-container {
+            display: flex;
+            flex-direction: column;
+            width: 100vw;
+            height: 100vh;
+            padding: 10px;
+        }
+
+        header {
+            text-align: center;
+            padding-bottom: 8px;
+            font-size: 14px;
+            font-weight: bold;
+            color: #ffcc00;
+        }
+
+        /* ドラムパッドのグリッドレイアウト（2行 × 3列） */
+        .pad-grid {
+            flex: 1;
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            grid-template-rows: repeat(2, 1fr);
+            gap: 12px;
+        }
+
+        /* 各パッドの共通スタイル */
+        .drum-pad {
+            background: linear-gradient(135deg, #2c2c2c, #1e1e1e);
+            border: 3px solid #444;
+            border-radius: 16px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            box-shadow: 0 6px 10px rgba(0,0,0,0.5);
+            position: relative;
+            transition: transform 0.05s;
+        }
+
+        /* パッドごとのイメージカラー（枠線） */
+        .pad-kick  { border-color: #ff3b30; } /* 赤 */
+        .pad-snare { border-color: #007aff; } /* 青 */
+        .pad-hat-c { border-color: #ffcc00; } /* 黄 */
+        .pad-hat-o { border-color: #ff9500; } /* オレンジ */
+        .pad-tom   { border-color: #4cd964; } /* 緑 */
+        .pad-crash { border-color: #af52de; } /* 紫 */
+
+        /* 叩いた瞬間のエフェクト */
+        .drum-pad.active, .drum-pad:active {
+            transform: scale(0.96);
+            background: #444;
+            box-shadow: inset 0 4px 8px rgba(0,0,0,0.5);
+        }
+        .pad-kick.active  { background: #551a1a; }
+        .pad-snare.active { background: #1a3355; }
+        .pad-hat-c.active { background: #55441a; }
+        .pad-hat-o.active { background: #553a1a; }
+        .pad-tom.active   { background: #1a5524; }
+        .pad-crash.active { background: #411a55; }
+
+        .pad-name {
+            font-size: 18px;
+            font-weight: bold;
+            letter-spacing: 1px;
+            text-shadow: 1px 1px 2px #000;
+        }
+        .pad-sub {
+            font-size: 11px;
+            color: #aaa;
+            margin-top: 4px;
+        }
+
+        #fs-guide {
+            position: fixed; bottom: 8px; right: 8px; 
+            background: rgba(0,0,0,0.7); padding: 4px 8px; 
+            border-radius: 4px; font-size: 10px; color: #ccc; z-index: 30;
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="portrait-warning">
+        <h2>🥁 横画面専用ドラムパッド</h2>
+        <p style="margin-top: 10px; color: #aaa;">スマホを横向きにすると、叩きやすい大画面パッドに変形します。</p>
+    </div>
+
+    <div class="app-container">
+        <header>🥁 なんちゃって電子ドラムパッド (マルチタッチ連打対応)</header>
+        
+        <div class="pad-grid">
+            <!-- 上段 -->
+            <div class="drum-pad pad-crash" data-type="crash">
+                <span class="pad-name">CRASH</span>
+                <span class="pad-sub">クラッシュシンバル</span>
+            </div>
+            <div class="drum-pad pad-hat-o" data-type="openHat">
+                <span class="pad-name">OPEN HH</span>
+                <span class="pad-sub">オープンハイハット</span>
+            </div>
+            <div class="drum-pad pad-hat-c" data-type="closedHat">
+                <span class="pad-name">CLOSED HH</span>
+                <span class="pad-sub">クローズハイハット</span>
+            </div>
+
+            <!-- 下段 -->
+            <div class="drum-pad pad-tom" data-type="tom">
+                <span class="pad-name">TOM</span>
+                <span class="pad-sub">タムタム</span>
+            </div>
+            <div class="drum-pad pad-snare" data-type="snare">
+                <span class="pad-name">SNARE</span>
+                <span class="pad-sub">スネアドラム</span>
+            </div>
+            <div class="drum-pad pad-kick" data-type="kick">
+                <span class="pad-name">KICK</span>
+                <span class="pad-sub">バスドラム</span>
+            </div>
+        </div>
+    </div>
+
+    <div id="fs-guide">画面タップでフルスクリーン</div>
+
+    <script>
+        let audioCtx = null;
+        let masterCompressor = null;
+
+        // オーディオと音割れ防止フィルターの初期化
+        function initAudio() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                masterCompressor = audioCtx.createDynamicsCompressor();
+                
+                // ドラムの激しいアタックを潰さない、かつ音割れさせないリミッター設定
+                masterCompressor.threshold.setValueAtTime(-10, audioCtx.currentTime);
+                masterCompressor.knee.setValueAtTime(12, audioCtx.currentTime);
+                masterCompressor.ratio.setValueAtTime(16, audioCtx.currentTime);
+                masterCompressor.attack.setValueAtTime(0.001, audioCtx.currentTime); // 最速で反応
+                masterCompressor.release.setValueAtTime(0.08, audioCtx.currentTime);
+                
+                masterCompressor.connect(audioCtx.destination);
+            }
+        }
+
+        // --- ドラム音源の合成ロジック ---
+
+        // 1. バスドラム (Kick): 低音の急激なピッチダウン
+        function playKick(now) {
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.connect(gain).connect(masterCompressor);
+
+            osc.frequency.setValueAtTime(150, now);
+            osc.frequency.exponentialRampToValueAtTime(0.01, now + 0.12);
+
+            gain.gain.setValueAtTime(1.0, now);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
+
+            osc.start(now);
+            osc.stop(now + 0.16);
+        }
+
+        // 2. スネア (Snare): 低いトーン + ホワイトノイズ（ザラザラ感）の組み合わせ
+        function playSnare(now) {
+            // トーン成分
+            const osc = audioCtx.createOscillator();
+            const oscGain = audioCtx.createGain();
+            osc.connect(oscGain).connect(masterCompressor);
+            osc.frequency.setValueAtTime(180, now);
+            oscGain.gain.setValueAtTime(0.5, now);
+            oscGain.gain.exponentialRampToValueAtTime(0.01, now + 0.08);
+            osc.start(now); osc.stop(now + 0.1);
+
+            // ノイズ成分（スナッピーの響き）
+            const bufferSize = audioCtx.sampleRate * 0.2; // 0.2秒分のバッファ
+            const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+            const data = buffer.getChannelData(0);
+            for (let i = 0; i < bufferSize; i++) {
+                data[i] = Math.random() * 2 - 1;
+            }
+            const noise = audioCtx.createBufferSource();
+            noise.buffer = buffer;
+
+            const noiseFilter = audioCtx.createBiquadFilter();
+            noiseFilter.type = 'highpass';
+            noiseFilter.frequency.setValueAtTime(1000, now);
+
+            const noiseGain = audioCtx.createGain();
+            noiseGain.gain.setValueAtTime(0.7, now);
+            noiseGain.gain.exponentialRampToValueAtTime(0.01, now + 0.18);
+
+            noise.connect(noiseFilter).connect(noiseGain).connect(masterCompressor);
+            noise.start(now); noise.stop(now + 0.2);
+        }
+
+        // 3. ハイハット (Closed/Open) & クラッシュ: ホワイトノイズ + バンドパスフィルター
+        function playHihat(now, duration, volume, filterFreq) {
+            const bufferSize = audioCtx.sampleRate * duration;
+            const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+            const data = buffer.getChannelData(0);
+            for (let i = 0; i < bufferSize; i++) {
+                data[i] = Math.random() * 2 - 1;
+            }
+            const noise = audioCtx.createBufferSource();
+            noise.buffer = buffer;
+
+            const filter = audioCtx.createBiquadFilter();
+            filter.type = 'bandpass';
+            filter.frequency.setValueAtTime(filterFreq, now);
+
+            const gain = audioCtx.createGain();
+            gain.gain.setValueAtTime(volume, now);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + duration - 0.01);
+
+            noise.connect(filter).connect(gain).connect(masterCompressor);
+            noise.start(now);
+            noise.stop(now + duration);
+        }
+
+        // 4. タム (Tom): バスドラムより少し高い位置からのピッチダウン
+        function playTom(now) {
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.connect(gain).connect(masterCompressor);
+
+            osc.frequency.setValueAtTime(220, now);
+            osc.frequency.exponentialRampToValueAtTime(60, now + 0.15);
+
+            gain.gain.setValueAtTime(0.8, now);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
+
+            osc.start(now);
+            osc.stop(now + 0.22);
+        }
+
+        // --- パッドのイベント処理 ---
+        const pads = document.querySelectorAll('.drum-pad');
+        
+        pads.forEach(pad => {
+            const triggerDrum = (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                
+                initAudio();
+                const now = audioCtx.currentTime;
+                const type = pad.dataset.type;
+
+                // 種類に応じて音を鳴らし分ける
+                if (type === 'kick') playKick(now);
+                else if (type === 'snare') playSnare(now);
+                else if (type === 'closedHat') playHihat(now, 0.05, 0.4, 8000); // 短い金属音
+                else if (type === 'openHat') playHihat(now, 0.3, 0.3, 7000);   // 長めの余韻
+                else if (type === 'tom') playTom(now);
+                else if (type === 'crash') playHihat(now, 0.8, 0.5, 4500);    // 低めの金属音で長く残る
+
+                // 視覚エフェクト
+                pad.classList.add('active');
+                setTimeout(() => pad.classList.remove('active'), 60);
+            };
+
+            pad.addEventListener('touchstart', triggerDrum, {passive: false});
+            pad.addEventListener('mousedown', triggerDrum);
+        });
+
+        // フルスクリーン化の処理
+        function requestFullScreen() {
+            const docEl = document.documentElement;
+            if (!document.fullscreenElement && !document.webkitFullscreenElement) {
+                if (docEl.requestFullscreen) docEl.requestFullscreen();
+                else if (docEl.webkitRequestFullscreen) docEl.webkitRequestFullscreen();
+            }
+        }
+        document.body.addEventListener('touchstart', requestFullScreen, { once: true });
+        document.body.addEventListener('click', requestFullScreen, { once: true });
+    </script>
+</body>
+</html>
