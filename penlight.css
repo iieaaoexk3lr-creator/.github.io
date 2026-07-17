@@ -18,14 +18,14 @@ body {
     align-items: center;
 }
 
-/* スマホサイズに固定（PC閲覧用、スマホ時は全画面にフィット） */
+/* スマホサイズに固定（PC閲覧用） */
 .phone-container {
     width: 100%;
     max-width: 450px;
     height: 100vh;
     display: flex;
     flex-direction: column;
-    background-color: #050505;
+    background-color: #000;
     position: relative;
     border-left: 1px solid #111;
     border-right: 1px solid #111;
@@ -35,16 +35,17 @@ body {
 .app-header {
     text-align: center;
     padding: 15px 0;
-    border-bottom: 1px solid #1a1a1a;
-    background-color: #0a0a0a;
+    border-bottom: 1px solid #111;
+    background-color: #050505;
+    z-index: 10;
 }
 .app-header h1 {
-    font-size: 1.2rem;
+    font-size: 1.1rem;
     letter-spacing: 2px;
-    color: #888;
+    color: #666;
 }
 
-/* 発光エリア */
+/* 発光エリア（周りを囲む光が100%広がる） */
 .light-section {
     flex: 1;
     display: flex;
@@ -52,83 +53,70 @@ body {
     align-items: center;
     position: relative;
     background-color: #000;
-    transition: background-color 0.4s ease;
+    /* 背景の発光切り替えバグを防ぐため、スムーズかつ確実なカラー遷移を設定 */
+    transition: background-color 0.2s linear;
 }
 
 .glow-container {
     display: flex;
-    flex-direction: column;
+    justify-content: center;
     align-items: center;
+    width: 100%;
+    height: 100%;
 }
 
-/* ペンライト発光部 */
+/* 巨大化したライト部分（横幅2倍、縦幅3倍へ大幅拡張・持ち手なし） */
 .penlight-head {
-    width: 70px;
-    height: 200px;
-    background: radial-gradient(circle at center, #fff 10%, var(--current-color, #ff0000) 70%);
-    border-radius: 35px 35px 10px 10px;
-    transition: background 0.3s ease, box-shadow 0.3s ease, opacity 0.2s ease;
-    opacity: var(--brightness-val, 1);
-    box-shadow: 0 0 40px 10px var(--current-color, #ff0000),
-                0 0 80px 30px var(--current-color, #ff0000);
-}
-
-/* 持ち手 */
-.penlight-handle {
-    width: 35px;
-    height: 70px;
-    background: linear-gradient(90deg, #222 0%, #444 50%, #222 100%);
-    border-radius: 0 0 10px 10px;
-    border-top: 4px solid #111;
+    width: 150px; /* 70px → 150px (約2倍) */
+    height: 380px; /* 130px相当 → 380px (約3倍) */
+    background: radial-gradient(circle at center, #fff 5%, var(--current-color, #ff0000) 65%);
+    border-radius: 45px;
+    transition: background 0.2s linear, box-shadow 0.2s linear;
+    
+    /* 強力な画面全域へのGlowエフェクト */
+    box-shadow: 0 0 60px 15px var(--current-color, #ff0000),
+                0 0 120px 40px var(--current-color, #ff0000);
 }
 
 /* 操作パネル */
 .control-panel {
-    background-color: #0a0a0a;
+    background-color: #050505;
     padding: 20px;
-    border-top: 1px solid #1a1a1a;
+    border-top: 1px solid #111;
+    z-index: 10;
 }
 
-.control-group {
-    margin-bottom: 20px;
-}
-.control-group label {
-    display: block;
-    font-size: 0.85rem;
-    color: #aaa;
-    margin-bottom: 8px;
-}
-.control-group input[type="range"] {
-    width: 100%;
-    accent-color: #fff;
-}
-
-/* カラーボタン */
+/* カラーボタン（明るさスライダーの代わりに黒を追加した12マス構成） */
 .color-grid {
     display: grid;
-    grid-template-columns: repeat(5, 1fr);
+    grid-template-columns: repeat(4, 1fr);
     gap: 12px;
-    margin-bottom: 20px;
+    margin-bottom: 25px;
 }
 
 .color-btn {
     width: 100%;
-    aspect-ratio: 1;
-    border-radius: 50%;
-    border: 2px solid transparent;
+    aspect-ratio: 1.3; /* やや押しやすい形状に変更 */
+    border-radius: 12px;
+    border: 2px solid rgba(255, 255, 255, 0.1);
     cursor: pointer;
     outline: none;
-    transition: transform 0.1s ease, border-color 0.2s;
+    transition: transform 0.1s, border-color 0.2s, box-shadow 0.2s;
 }
 .color-btn:active {
-    transform: scale(0.9);
+    transform: scale(0.92);
 }
 .color-btn.active {
     border-color: #fff;
-    box-shadow: 0 0 10px #fff;
+    box-shadow: 0 0 12px var(--btn-glow-color, #fff);
+}
+
+/* 特殊カラーボタン */
+.black-btn {
+    border: 2px solid #333;
 }
 .rainbow-btn {
-    background: linear-gradient(45deg, red, orange, yellow, green, blue, purple);
+    background: linear-gradient(45deg, red, orange, yellow, green, cyan, blue, purple, pink);
     font-size: 1.2rem;
     display: flex;
     justify-content: center;
@@ -143,14 +131,15 @@ body {
 }
 
 .mode-btn {
-    background-color: #1a1a1a;
-    color: #fff;
-    border: 1px solid #333;
+    background-color: #111;
+    color: #999;
+    border: 1px solid #222;
     padding: 12px 0;
-    border-radius: 6px;
+    border-radius: 8px;
     font-size: 0.85rem;
     font-weight: bold;
     cursor: pointer;
+    transition: background-color 0.2s, color 0.2s;
 }
 .mode-btn.active {
     background-color: #fff;
@@ -158,16 +147,16 @@ body {
     border-color: #fff;
 }
 .mode-btn.off-btn {
-    background-color: #2d1010;
-    border-color: #4a1a1a;
-    color: #ff8888;
+    background-color: #200b0b;
+    border-color: #381212;
+    color: #ff6666;
 }
 .mode-btn.off-btn.active {
-    background-color: #ff3333;
+    background-color: #ff2222;
     color: #fff;
 }
 
-/* 全画面表示用特殊レイアウト */
+/* 全画面表示用 */
 body.is-fullscreen .phone-container {
     max-width: 100%;
     height: 100vh;
@@ -177,24 +166,21 @@ body.is-fullscreen .control-panel {
     display: none;
 }
 body.is-fullscreen .penlight-head {
-    width: 60vw;
-    height: 70vh;
-    border-radius: 30vw 30vw 10vw 10vw;
-}
-body.is-fullscreen .penlight-handle {
-    display: none;
+    width: 80vw;
+    height: 85vh;
+    border-radius: 60px;
 }
 
 /* 脱出ボタン */
 .exit-fullscreen {
     position: fixed;
-    top: 20px;
-    right: 20px;
-    background: rgba(0,0,0,0.6);
+    top: 25px;
+    right: 25px;
+    background: rgba(0,0,0,0.7);
     color: #fff;
-    border: 1px solid rgba(255,255,255,0.3);
-    padding: 8px 16px;
-    border-radius: 20px;
+    border: 1px solid rgba(255,255,255,0.4);
+    padding: 10px 20px;
+    border-radius: 25px;
     display: none;
     z-index: 9999;
     font-size: 0.9rem;
@@ -203,19 +189,19 @@ body.is-fullscreen .exit-fullscreen {
     display: block;
 }
 
-/* アニメーション用クラス */
+/* 特殊アニメーション */
 .anim-blink {
-    animation: blinkEffect 0.2s infinite alternate;
+    animation: blinkEffect 0.15s infinite alternate;
 }
 .anim-pulse {
-    animation: pulseEffect 1.5s infinite ease-in-out;
+    animation: pulseEffect 1.2s infinite ease-in-out;
 }
 
 @keyframes blinkEffect {
     0% { opacity: 0; }
-    100% { opacity: var(--brightness-val, 1); }
+    100% { opacity: 1; }
 }
 @keyframes pulseEffect {
-    0%, 100% { opacity: calc(var(--brightness-val, 1) * 0.1); }
-    50% { opacity: var(--brightness-val, 1); }
+    0%, 100% { opacity: 0.1; }
+    50% { opacity: 1; }
 }
