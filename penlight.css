@@ -1,0 +1,221 @@
+/* 基本リセット & 背景 */
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+body {
+    background-color: #000;
+    color: #fff;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    overflow: hidden;
+    height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+/* スマホサイズに固定（PC閲覧用、スマホ時は全画面にフィット） */
+.phone-container {
+    width: 100%;
+    max-width: 450px;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    background-color: #050505;
+    position: relative;
+    border-left: 1px solid #111;
+    border-right: 1px solid #111;
+}
+
+/* ヘッダー */
+.app-header {
+    text-align: center;
+    padding: 15px 0;
+    border-bottom: 1px solid #1a1a1a;
+    background-color: #0a0a0a;
+}
+.app-header h1 {
+    font-size: 1.2rem;
+    letter-spacing: 2px;
+    color: #888;
+}
+
+/* 発光エリア */
+.light-section {
+    flex: 1;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    position: relative;
+    background-color: #000;
+    transition: background-color 0.4s ease;
+}
+
+.glow-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+/* ペンライト発光部 */
+.penlight-head {
+    width: 70px;
+    height: 200px;
+    background: radial-gradient(circle at center, #fff 10%, var(--current-color, #ff0000) 70%);
+    border-radius: 35px 35px 10px 10px;
+    transition: background 0.3s ease, box-shadow 0.3s ease, opacity 0.2s ease;
+    opacity: var(--brightness-val, 1);
+    box-shadow: 0 0 40px 10px var(--current-color, #ff0000),
+                0 0 80px 30px var(--current-color, #ff0000);
+}
+
+/* 持ち手 */
+.penlight-handle {
+    width: 35px;
+    height: 70px;
+    background: linear-gradient(90deg, #222 0%, #444 50%, #222 100%);
+    border-radius: 0 0 10px 10px;
+    border-top: 4px solid #111;
+}
+
+/* 操作パネル */
+.control-panel {
+    background-color: #0a0a0a;
+    padding: 20px;
+    border-top: 1px solid #1a1a1a;
+}
+
+.control-group {
+    margin-bottom: 20px;
+}
+.control-group label {
+    display: block;
+    font-size: 0.85rem;
+    color: #aaa;
+    margin-bottom: 8px;
+}
+.control-group input[type="range"] {
+    width: 100%;
+    accent-color: #fff;
+}
+
+/* カラーボタン */
+.color-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 12px;
+    margin-bottom: 20px;
+}
+
+.color-btn {
+    width: 100%;
+    aspect-ratio: 1;
+    border-radius: 50%;
+    border: 2px solid transparent;
+    cursor: pointer;
+    outline: none;
+    transition: transform 0.1s ease, border-color 0.2s;
+}
+.color-btn:active {
+    transform: scale(0.9);
+}
+.color-btn.active {
+    border-color: #fff;
+    box-shadow: 0 0 10px #fff;
+}
+.rainbow-btn {
+    background: linear-gradient(45deg, red, orange, yellow, green, blue, purple);
+    font-size: 1.2rem;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+/* モードボタン */
+.mode-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+}
+
+.mode-btn {
+    background-color: #1a1a1a;
+    color: #fff;
+    border: 1px solid #333;
+    padding: 12px 0;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    font-weight: bold;
+    cursor: pointer;
+}
+.mode-btn.active {
+    background-color: #fff;
+    color: #000;
+    border-color: #fff;
+}
+.mode-btn.off-btn {
+    background-color: #2d1010;
+    border-color: #4a1a1a;
+    color: #ff8888;
+}
+.mode-btn.off-btn.active {
+    background-color: #ff3333;
+    color: #fff;
+}
+
+/* 全画面表示用特殊レイアウト */
+body.is-fullscreen .phone-container {
+    max-width: 100%;
+    height: 100vh;
+}
+body.is-fullscreen .app-header,
+body.is-fullscreen .control-panel {
+    display: none;
+}
+body.is-fullscreen .penlight-head {
+    width: 60vw;
+    height: 70vh;
+    border-radius: 30vw 30vw 10vw 10vw;
+}
+body.is-fullscreen .penlight-handle {
+    display: none;
+}
+
+/* 脱出ボタン */
+.exit-fullscreen {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background: rgba(0,0,0,0.6);
+    color: #fff;
+    border: 1px solid rgba(255,255,255,0.3);
+    padding: 8px 16px;
+    border-radius: 20px;
+    display: none;
+    z-index: 9999;
+    font-size: 0.9rem;
+}
+body.is-fullscreen .exit-fullscreen {
+    display: block;
+}
+
+/* アニメーション用クラス */
+.anim-blink {
+    animation: blinkEffect 0.2s infinite alternate;
+}
+.anim-pulse {
+    animation: pulseEffect 1.5s infinite ease-in-out;
+}
+
+@keyframes blinkEffect {
+    0% { opacity: 0; }
+    100% { opacity: var(--brightness-val, 1); }
+}
+@keyframes pulseEffect {
+    0%, 100% { opacity: calc(var(--brightness-val, 1) * 0.1); }
+    50% { opacity: var(--brightness-val, 1); }
+}
