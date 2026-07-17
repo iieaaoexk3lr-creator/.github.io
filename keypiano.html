@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, minimal-ui">
-    <title>2段リアルピアノ・音域拡張版</title>
+    <title>2段リアルピアノ・完全音域拡張版</title>
     <style>
         * {
             box-sizing: border-box;
@@ -46,7 +46,7 @@
             justify-content: space-between;
             padding: 0 15px;
             border-bottom: 2px solid #333;
-            z-index: 20;
+            z-index: 100;
         }
         .title { font-size: 13px; font-weight: bold; color: #ffcc00; }
         select {
@@ -76,12 +76,12 @@
         }
         .keyboard-row::-webkit-scrollbar { display: none; }
 
-        /* ピアノ全体の土台（要素が回り込まないようインラインブロックかつ相対配置化） */
+        /* ピアノ全体の土台。インラインブロックにして中身の合計幅を維持 */
         .piano-container {
             position: relative;
             display: inline-block;
             height: 100%;
-            white-space: nowrap; /* 子要素の白鍵を横一列に強制 */
+            white-space: nowrap; /* 白鍵を横一列に強制配置 */
         }
 
         /* 白鍵スタイル（幅85px固定） */
@@ -96,22 +96,24 @@
             position: relative;
             cursor: pointer;
             vertical-align: top;
+            z-index: 1; /* 黒鍵(z-index: 10)より下に配置 */
         }
         .white-key.active, .white-key:active {
             background: linear-gradient(to bottom, #e0e0e0 0%, #d8d8d8 100%);
             box-shadow: inset 0 4px 5px rgba(0,0,0,0.2);
         }
 
-        /* 黒鍵スタイル（白鍵の並びの真上に浮かせる） */
+        /* 黒鍵スタイル。白鍵の上に浮かせるため absolute 配置 */
         .black-key {
             position: absolute;
-            width: 50px; /* 白鍵より少し細く */
-            height: 60%; /* 長さを約6割に */
+            top: 0;
+            width: 50px; /* 白鍵の幅(85px)に合わせたサイズ */
+            height: 62%; /* 白鍵より少し短く */
             background: linear-gradient(to bottom, #111 0%, #333 100%);
             border: 1px solid #000;
             border-radius: 0 0 4px 4px;
-            box-shadow: 2px 3px 4px rgba(0,0,0,0.5);
-            z-index: 10;
+            box-shadow: 2px 3px 5px rgba(0,0,0,0.6);
+            z-index: 10; /* 白鍵より上層に配置して確実に表示 */
             cursor: pointer;
         }
         .black-key.active, .black-key:active {
@@ -148,12 +150,12 @@
 
     <div id="portrait-warning">
         <h2>🎹 横画面専用キーボード</h2>
-        <p style="margin-top: 10px; color: #aaa;">スマホを横向きにすると、押しやすい2段リアル鍵盤が登場します。</p>
+        <p style="margin-top: 10px; color: #aaa;">スマホを横向きにすると、押しやすい2段鍵盤が登場します。</p>
     </div>
 
     <div class="app-container">
         <header>
-            <div class="title">🎹 Real-Layout Multi Keyboard (音域拡張版)</div>
+            <div class="title">🎹 2段リアルキーボード (音域独立・黒鍵修正版)</div>
             <div>
                 <select id="inst-select">
                     <option value="piano">1. ピアノ (Piano)</option>
@@ -171,9 +173,9 @@
         </header>
 
         <main id="main-board">
-            <!-- 上段（高音域：白鍵11枚構成に増加） -->
+            <!-- 上段（超高音域：下段から綺麗に繋がる） -->
             <div class="keyboard-row" id="upper-row"></div>
-            <!-- 下段（低〜中音域：白鍵11枚構成に増加） -->
+            <!-- 下段（低〜中音域） -->
             <div class="keyboard-row" id="lower-row"></div>
         </main>
     </div>
@@ -181,35 +183,22 @@
     <div id="fs-guide">画面タップでフルスクリーン化</div>
 
     <script>
-        // 鍵盤パターン配列。白鍵に対する黒鍵の有無、音名ステップを厳密に管理
-        // 白鍵：C, D, E, F, G, A, B
-        // 黒鍵は「その白鍵の右隣（直後）」に挟まる。ただしEとBの後ろには黒鍵はない。
-        const basePattern = [
-            { name: "C",  hasBlack: true },
-            { name: "D",  hasBlack: true },
-            { name: "E",  hasBlack: false },
-            { name: "F",  hasBlack: true },
-            { name: "G",  hasBlack: true },
-            { name: "A",  hasBlack: true },
-            { name: "B",  hasBlack: false }
-        ];
-
-        // 基準周波数計算 (C4 = 261.63Hz) からの半音差
+        // 周波数計算用の基準 (C4 = 261.63Hz)
         function getFreqFromC4(semitones) {
             return 261.63 * Math.pow(2, semitones / 12);
         }
 
-        // 白鍵を指定された数（count）だけ生成し、対応する黒鍵も自動で挟み込むデータ生成関数
+        // 指定した半音ステップ位置から、白鍵を「whiteKeyCount」の数だけ生成する関数
+        // 自動的に該当する位置に黒鍵も生成して挟み込みます。
         function generatePianoRange(startSemitone, whiteKeyCount) {
             let list = [];
             let currentSemitone = startSemitone;
             let whiteIndex = 0;
 
             while (whiteIndex < whiteKeyCount) {
-                // 音階（0〜11）のインデックスを取得
+                // 12音のどこにいるか判定 (0=C, 1=C#, 2=D, 3=D# ... 11=B)
                 let norm = (currentSemitone % 12 + 12) % 12;
                 
-                // normの値に応じて音名と黒鍵の有無を決定
                 let name = "";
                 let hasBlack = false;
                 
@@ -223,15 +212,19 @@
                     case 11: name = "B"; hasBlack = false; break;
                 }
 
+                // 現在のオクターブ番号を計算して音名に付与 (例: C4, G5など)
+                let octave = Math.floor(currentSemitone / 12) + 4;
+                let fullLabel = name + octave;
+
                 // 白鍵を追加
-                list.push({ name: name, isBlack: false, freq: getFreqFromC4(currentSemitone) });
+                list.push({ name: fullLabel, isBlack: false, freq: getFreqFromC4(currentSemitone) });
                 
-                // もし黒鍵を持つ白鍵であれば、直後に黒鍵データを挿入
+                // 黒鍵の判定（ただし最後の白鍵の右側にははみ出さないように制限）
                 if (hasBlack && (whiteIndex < whiteKeyCount - 1)) {
-                    list.push({ name: name + "#", isBlack: true, freq: getFreqFromC4(currentSemitone + 1) });
+                    list.push({ name: name + "#" + octave, isBlack: true, freq: getFreqFromC4(currentSemitone + 1) });
                 }
 
-                // 次の白鍵までのステップ数を進める（E->F, B->C は 1、それ以外は 2）
+                // 次の白鍵へ進むステップ数 (E->F と B->C は半音、他は全音)
                 if (norm === 4 || norm === 11) {
                     currentSemitone += 1;
                 } else {
@@ -242,24 +235,25 @@
             return list;
         }
 
-        // 下段：C4から始まる通常の1オクターブ（白鍵7枚）に、右側へ4枚追加 ＝ 計11枚
-        const lowerNotes = generatePianoRange(0, 11); // C4〜F5までの音域に拡大
+        // 重複の解消ロジック:
+        // 下段: C4（基準ド）から右に白鍵11枚 ＝ 【C4 から F5 まで】
+        const lowerNotes = generatePianoRange(0, 11); 
 
-        // 上段：C5から始まる通常の1オクターブ（白鍵7枚）に、右側へ3枚追加 ＝ 計10枚
-        // ※下段とのバランス・綺麗に並べるためこちらも11枚（右へ4つ追加）にしてあります。不要な場合は枚数調整可能。
-        const upperNotes = generatePianoRange(12, 11); // C5〜F6までの音域に拡大
+        // 上段: 下段の最後の白鍵(F5)の次の白鍵である【G5】からスタートし、右に白鍵11枚 ＝ 【G5 から C7 まで】
+        // これで上下の段の音が一切被らず、完璧に一本の地続きになります。
+        const upperNotes = generatePianoRange(7, 11); 
 
         let audioCtx = null;
         let currentInstrument = 'piano';
 
-        // 鍵盤のレンダリング
+        // 鍵盤を描画するコアロジック
         function renderPianoRow(containerEl, keyDataList) {
+            // 土台コンテナを作成
             const container = document.createElement('div');
             container.className = 'piano-container';
 
             let whiteKeyCount = 0;
 
-            // まずすべての白鍵・黒鍵を正しい順序で構築
             keyDataList.forEach((note) => {
                 const key = document.createElement('div');
                 key.dataset.freq = note.freq;
@@ -269,7 +263,7 @@
                 label.textContent = note.name;
                 key.appendChild(label);
 
-                // 発音用イベント
+                // タッチ・クリック発音イベント
                 const playEvent = (e) => {
                     e.preventDefault();
                     e.stopPropagation();
@@ -286,18 +280,19 @@
                     container.appendChild(key);
                     whiteKeyCount++;
                 } else {
-                    // 黒鍵は絶対座標で配置。直前の白鍵の右端にまたがるように計算
-                    // (現在の白鍵枚数 * 85px) - (黒鍵の幅50px / 2)
+                    // 黒鍵の絶対配置計算を修正
+                    // これまでの白鍵の総幅 (whiteKeyCount * 85px) から、黒鍵の幅の半分(25px)戻した位置に正確に重ねる
                     key.className = 'black-key';
                     let leftPosition = (whiteKeyCount * 85) - 25;
                     key.style.left = `${leftPosition}px`;
-                    container.appendChild(key);
+                    container.appendChild(key); // 白鍵と同じ親の中に配置
                 }
             });
 
             containerEl.appendChild(container);
         }
 
+        // 上段・下段をそれぞれ構築
         renderPianoRow(document.getElementById('upper-row'), upperNotes);
         renderPianoRow(document.getElementById('lower-row'), lowerNotes);
 
@@ -305,30 +300,22 @@
             currentInstrument = e.target.value;
         });
 
-        // --- フルスクリーン制御 ---
+        // --- フルスクリーン・オーディオ制御 ---
         function requestFullScreen() {
             const docEl = document.documentElement;
             if (!document.fullscreenElement && !document.webkitFullscreenElement) {
-                if (docEl.requestFullscreen) {
-                    docEl.requestFullscreen();
-                } else if (docEl.webkitRequestFullscreen) {
-                    docEl.webkitRequestFullscreen();
-                }
+                if (docEl.requestFullscreen) docEl.requestFullscreen();
+                else if (docEl.webkitRequestFullscreen) docEl.webkitRequestFullscreen();
             }
         }
         document.body.addEventListener('touchstart', requestFullScreen, { once: true });
         document.body.addEventListener('click', requestFullScreen, { once: true });
 
-        window.addEventListener('pagehide', () => {
-            if (document.exitFullscreen) document.exitFullscreen();
-            else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
-        });
-
-        // --- Web Audio API 音源再生エンジン ---
         function initAudio() {
             if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
         }
 
+        // 各楽器のシンセサイズエンジン
         function playInstrumentSound(frequency) {
             const now = audioCtx.currentTime;
             const osc = audioCtx.createOscillator();
@@ -339,7 +326,6 @@
             filter.connect(gainNode);
             gainNode.connect(audioCtx.destination);
             filter.type = 'lowpass';
-            filter.frequency.setValueAtTime(10000, now);
 
             if (currentInstrument === 'piano') {
                 osc.type = 'sine'; osc.frequency.setValueAtTime(frequency, now);
