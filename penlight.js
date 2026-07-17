@@ -2,7 +2,6 @@ document.addEventListener('DOMContentLoaded', () => {
     // DOM要素の取得
     const penlightHead = document.getElementById('penlightHead');
     const lightSection = document.getElementById('lightSection');
-    const brightnessSlider = document.getElementById('brightness');
     const colorButtons = document.querySelectorAll('.color-btn');
     const blinkBtn = document.getElementById('blinkBtn');
     const pulseBtn = document.getElementById('pulseBtn');
@@ -12,104 +11,133 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // 状態管理
     let currentColor = '#FF0000';
-    let currentBrightness = 1;
     let currentMode = 'solid'; // 'solid' | 'rainbow' | 'blink' | 'pulse' | 'off'
     let rainbowInterval = null;
     let wakeLock = null;
 
-    // レインボー用のカラーシーケンス
+    // 自動レインボー用のデフォルト配列
     const rainbowColors = [
         '#FF0000', '#FF7F00', '#FFFF00', '#7FFF00', '#00FF00', 
         '#00FFFF', '#0000FF', '#8B00FF', '#FF69B4'
     ];
     let rainbowIndex = 0;
 
-    // 初期化設定
+    // 各カラーボタンのアクティブ光設定
+    colorButtons.forEach(btn => {
+        const col = btn.getAttribute('data-color');
+        if (col) btn.style.setProperty('--btn-glow-color', col);
+    });
+
+    // 初期化
     updateLightDisplay();
 
-    // 1. 色変更イベント
+    // 1. 色変更・レインボー手動選択イベント
     colorButtons.forEach(btn => {
         btn.addEventListener('click', () => {
-            // アクティブクラスの切り替え
-            colorButtons.forEach(b => b.classList.remove('active'));
-            btn.classList.add('active');
-            offBtn.classList.remove('active');
+            const isRainbowClick = btn.id === 'rainbowBtn';
+            
+            // OFF状態なら通常復帰
+            if (currentMode === 'off') currentMode = 'solid';
 
-            if (btn.id === 'rainbowBtn') {
+            if (isRainbowClick) {
+                // レインボーを選択した場合（自動ループ開始）
+                colorButtons.forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                offBtn.classList.remove('active');
                 startRainbowMode();
             } else {
-                stopRainbowMode();
-                currentColor = btn.getAttribute('data-color');
-                if (currentMode === 'off') currentMode = 'solid';
-                updateLightDisplay();
+                const targetColor = btn.getAttribute('data-color');
+
+                if (currentMode === 'rainbow') {
+                    // ★【新仕様】レインボー中に色を選ぶと、その指定色を次の変化ベースにする
+                    currentColor = targetColor;
+                    updateLightDisplay();
+                    
+                    // タップした単色ボタンを一瞬光らせる視覚フィードバック
+                    btn.classList.add('active');
+                    setTimeout(() => {
+                        if (currentMode === 'rainbow') btn.classList.remove('active');
+                    }, 300);
+                } else {
+                    // 通常の単色切り替え
+                    colorButtons.forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    offBtn.classList.remove('active');
+                    
+                    stopRainbowMode();
+                    currentColor = targetColor;
+                    updateLightDisplay(); // 周りの光も即座に切り替えを保証
+                }
             }
         });
     });
 
-    // 2. 明るさスライダー
-    brightnessSlider.addEventListener('input', (e) => {
-        currentBrightness = e.target.value / 100;
-        document.documentElement.style.setProperty('--brightness-val', currentBrightness);
-        
-        // 0%の時は実質OFF状態にする
-        if (currentBrightness === 0) {
-            lightSection.style.backgroundColor = 'rgba(0,0,0,0)';
-        } else {
-            updateBgGlow();
-        }
-    });
-
-    // 3. 点滅モード
+    // 2. 点滅モード
     blinkBtn.addEventListener('click', () => {
         toggleSpecialMode('blink', blinkBtn, 'anim-blink');
     });
 
-    // 4. 明滅モード
+    // 3. 明滅モード
     pulseBtn.addEventListener('click', () => {
         toggleSpecialMode('pulse', pulseBtn, 'anim-pulse');
     });
 
-    // 5. OFFボタン
+    // 4. OFFボタン（完全消灯）
     offBtn.addEventListener('click', () => {
         colorButtons.forEach(b => b.classList.remove('active'));
         clearModes();
         offBtn.classList.add('active');
         currentMode = 'off';
         
-        penlightHead.style.setProperty('--current-color', '#222');
+        penlightHead.style.setProperty('--current-color', '#000000');
         penlightHead.style.boxShadow = 'none';
-        lightSection.style.backgroundColor = '#000';
+        lightSection.style.backgroundColor = '#000000';
     });
 
-    // 6. 全画面モード
+    // 5. 全画面モード
     fullscreenBtn.addEventListener('click', enterFullscreenMode);
     exitFullscreenBtn.addEventListener('click', exitFullscreenMode);
 
-    // --- ユーティリティ関数群 ---
 
+    // --- 内部処理ロジック群 ---
+
+    // 画面発光の完全同期アップデート
     function updateLightDisplay() {
         if (currentMode === 'off') return;
         
-        // CSS変数で色を流し込む
+        // メインライト部分のカラー変数更新
         penlightHead.style.setProperty('--current-color', currentColor);
         
-        // アニメーション中やレインボー中も発光エフェクトが維持されるよう再適用
-        if (currentMode !== 'rainbow') {
-            penlightHead.style.boxShadow = `0 0 40px 10px ${currentColor}, 0 0 80px 30px ${currentColor}`;
+        // 通常色切り替え時もエフェクトが確実に追従するよう、box-shadowをリアルタイム生成
+        if (currentColor === '#050505') {
+            // ⚫ 黒ボタンのときは超減光・微かなダークグロー表現
+            penlightHead.style.boxShadow = `0 0 15px 2px #111`;
+        } else {
+            // 通常カラーは最高輝度の爆光Glow
+            penlightHead.style.boxShadow = `0 0 60px 15px ${currentColor}, 0 0 120px 40px ${currentColor}`;
         }
+        
+        // 周りを囲む光（背景）の更新
         updateBgGlow();
     }
 
-    // 背景も薄く光らせる演出（不透明度12%程度）
+    // 周りを囲む光を画面いっぱいに広げる処理（不透明度の最適化）
     function updateBgGlow() {
-        if (currentBrightness === 0 || currentMode === 'off') {
-            lightSection.style.backgroundColor = '#000';
+        if (currentMode === 'off') {
+            lightSection.style.backgroundColor = '#000000';
             return;
         }
-        // hexをrgbに変換してalpha適用
+
+        if (currentColor === '#050505') {
+            // 黒選択時は周りも真っ黒にする
+            lightSection.style.backgroundColor = '#000000';
+            return;
+        }
+
         const rgb = hexToRgb(currentColor);
         if (rgb) {
-            lightSection.style.backgroundColor = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${0.12 * currentBrightness})`;
+            // 画面全体を包むため、以前より少し不透明度を高め(16%)にして空間を光で満たす
+            lightSection.style.backgroundColor = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.16)`;
         }
     }
 
@@ -117,6 +145,8 @@ document.addEventListener('DOMContentLoaded', () => {
         if (currentMode === 'off') return;
 
         const wasActive = currentMode === modeName;
+        const previousColor = currentColor;
+        
         clearModes();
 
         if (!wasActive) {
@@ -126,21 +156,23 @@ document.addEventListener('DOMContentLoaded', () => {
         } else {
             currentMode = 'solid';
         }
+        currentColor = previousColor;
         updateLightDisplay();
     }
 
+    // レインボームープの制御
     function startRainbowMode() {
-        clearModes();
+        if (rainbowInterval) clearInterval(rainbowInterval);
         currentMode = 'rainbow';
         
         rainbowInterval = setInterval(() => {
-            currentColor = rainbowColors[rainbowIndex];
-            penlightHead.style.setProperty('--current-color', currentColor);
-            penlightHead.style.boxShadow = `0 0 40px 10px ${currentColor}, 0 0 80px 30px ${currentColor}`;
-            updateBgGlow();
-            
-            rainbowIndex = (rainbowIndex + 1) % rainbowColors.length;
-        }, 800); // 0.8秒ごとに滑らかに切り替え
+            // レインボー中に個別タップされていなければ、自動サイクルを継続
+            if (currentMode === 'rainbow') {
+                currentColor = rainbowColors[rainbowIndex];
+                updateLightDisplay();
+                rainbowIndex = (rainbowIndex + 1) % rainbowColors.length;
+            }
+        }, 700); // 軽快に切り替わるスピード
     }
 
     function stopRainbowMode() {
@@ -167,32 +199,23 @@ document.addEventListener('DOMContentLoaded', () => {
         } : null;
     }
 
-    // 7. 将来拡張：Wake Lock API (画面スリープ防止)
+    // スリープ防止 (Wake Lock API) 制御
     async function requestWakeLock() {
         if ('wakeLock' in navigator) {
-            try {
-                wakeLock = await navigator.wakeLock.request('screen');
-            } catch (err) {
-                console.warn(`Wake Lock エラー: ${err.name}, ${err.message}`);
-            }
+            try { wakeLock = await navigator.wakeLock.request('screen'); } catch (err) {}
         }
     }
-
     function releaseWakeLock() {
-        if (wakeLock !== null) {
-            wakeLock.release();
-            wakeLock = null;
-        }
+        if (wakeLock !== null) { wakeLock.release(); wakeLock = null; }
     }
 
-    // 全画面切り替えのモック処理
     function enterFullscreenMode() {
         document.body.classList.add('is-fullscreen');
-        requestWakeLock(); // 全画面時にスリープ防止を起動
+        requestWakeLock();
     }
-
     function exitFullscreenMode() {
         document.body.classList.remove('is-fullscreen');
-        releaseWakeLock(); // 解除
+        releaseWakeLock();
+        updateLightDisplay(); // 復帰時にも色ズレが起きないよう再描画
     }
 });
