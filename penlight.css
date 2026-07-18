@@ -93,8 +93,8 @@ body {
 
 /* 縦並びのカラーボタン */
 .c-cell {
-    width: 44px;
-    height: 44px;
+    width: 40px;
+    height: 40px;
     border-radius: 50%;
     border: 2px solid rgba(255, 255, 255, 0.15);
     cursor: pointer;
@@ -120,7 +120,7 @@ body {
 .bottom-controls-menu {
     position: absolute;
     bottom: 45px; 
-    left: 50%;
+    left: 10%;
     transform: translateX(-50%);
     width: 90%;
     max-width: 460px;
