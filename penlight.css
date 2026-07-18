@@ -73,8 +73,8 @@ body {
 /* ★【新設計】スマホの画面サイズに合わせて上から下までちょうどいっぱいになる可変サイズ */
 .penlight-head {
     width: 28vh; /* 縦幅に合わせて横幅も自動で美しくプロポーションを維持 */
-    height: 96vh; /* どんなスマホの画面でも、上から下までピッタリ96%を埋める */
-    max-width: 85vw; /* 横幅がハミ出さないためのセーフティ */
+    height: 92vh; /* どんなスマホの画面でも、上から下までピッタリ92%を埋める */
+    max-width: 50vw; /* 横幅がハミ出さないためのセーフティ */
     background: radial-gradient(circle at center, #fff 2%, var(--current-color, #ff0000) 55%);
     border-radius: 100vh; /* 縦横比が変わっても常に完璧な丸みのあるスティック型を維持 */
     transition: background 0.2s linear, box-shadow 0.2s linear;
@@ -95,7 +95,7 @@ body {
 /* 中央下部の色表示ピル */
 .active-color-pill-container {
     position: absolute;
-    bottom: 30px;
+    bottom: 60px;
     left: 50%;
     transform: translateX(-50%);
     z-index: 100;
