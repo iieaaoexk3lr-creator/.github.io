@@ -1,204 +1,245 @@
 document.addEventListener('DOMContentLoaded', () => {
-    const container = document.getElementById('fullscreenContainer');
-    const penlightHead = document.getElementById('penlightHead');
-    const lightSection = document.getElementById('lightSection');
-    const colorPickerOverlay = document.getElementById('colorPickerOverlay');
-    const colorPickerTrigger = document.getElementById('colorPickerTrigger');
-    const colorGrid = document.getElementById('colorGrid');
-    const colorButtons = document.querySelectorAll('.color-btn');
-    const pillText = document.getElementById('pillText');
-    const pillDot = document.getElementById('pillDot');
+    const appContainer = document.getElementById('appContainer');
+    const penlightBody = document.getElementById('penlightBody');
+    const lightField = document.getElementById('lightField');
+    const leftBar = document.querySelector('.left-bar');
+    const rightBar = document.querySelector('.right-bar');
     
-    const blinkBtn = document.getElementById('blinkBtn');
-    const pulseBtn = document.getElementById('pulseBtn');
-    const offBtn = document.getElementById('offBtn');
-    const closeSheetBtn = document.getElementById('closeSheetBtn');
+    const btnBlink = document.getElementById('btnBlink');
+    const btnPulse = document.getElementById('btnPulse');
+    const btnPattern = document.getElementById('btnPattern');
+    const btnHide = document.getElementById('btnHide');
+    const btnOff = document.getElementById('btnOff');
 
-    // 内部ステート
-    let currentColor = '#FF0000';
-    let currentColorName = '赤';
-    let currentMode = 'solid'; 
-    let isLocked = false; 
-    let rainbowInterval = null;
+    // カラーリスト定義
+    const colorPresets = [
+        { name: '赤', hex: '#FF0000' },
+        { name: '橙', hex: '#FF7F00' },
+        { name: '黄', hex: '#FFFF00' },
+        { name: '緑', hex: '#00FF00' },
+        { name: '水', hex: '#00FFFF' },
+        { name: '青', hex: '#0000FF' },
+        { name: '紫', hex: '#8B00FF' },
+        { name: '桃', hex: '#FF69B4' },
+        { name: '白', hex: '#FFFFFF' },
+        { name: '🌈', hex: 'rainbow' }
+    ];
 
-    const rainbowColors = ['#FF0000', '#FF7F00', '#FFFF00', '#7FFF00', '#00FF00', '#00FFFF', '#0000FF', '#8B00FF', '#FF69B4'];
-    let rainbowIndex = 0;
+    const rainbowSequence = ['#FF0000', '#FF7F00', '#FFFF00', '#00FF00', '#00FFFF', '#0000FF', '#8B00FF', '#FF69B4'];
 
-    updateLightDisplay();
+    // アプリの状態管理変数
+    let activeColor = '#FF0000'; 
+    let activeMode = 'solid'; // 'solid', 'blink', 'pulse', 'off'
+    let isRainbow = false;
+    let rainbowPattern = 'flash'; // 'flash'(一瞬) または 'fade'(滑らか)
+    
+    let rainbowTimer = null;
+    let uiHidden = false;
+    let fadeIndex = 0;
 
-    // 1. 色選択ポップアップの開閉
-    colorPickerTrigger.addEventListener('click', (e) => {
-        e.stopPropagation(); // 発光エリアの全画面化クリックイベント連動を防ぐ
-        colorPickerOverlay.classList.add('open');
-    });
-
-    closeSheetBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        colorPickerOverlay.classList.remove('open');
-    });
-
-    // 2. カラーパレット制御（虹色ロック＆黒解除ロジック）
-    colorButtons.forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            const isRainbow = btn.id === 'rainbowBtn';
-            const targetColor = btn.getAttribute('data-color');
-            const targetName = btn.getAttribute('data-name');
-
-            // 虹色ロック中の判定
-            if (isLocked) {
-                if (targetColor === '#050505') { // 黒が選ばれたらロック解除
-                    isLocked = false;
-                    colorGrid.classList.remove('locked');
-                    stopRainbowMode();
-                    
-                    colorButtons.forEach(b => b.classList.remove('active'));
-                    btn.classList.add('active');
-                    currentColor = '#050505';
-                    currentColorName = '黒 (通常モードへ復帰)';
-                    if (currentMode === 'off') currentMode = 'solid';
-                    updateLightDisplay();
+    // 1. 左右の縦バーにカラーボタンを自動生成（両利き同期システム）
+    function initColorBars() {
+        [leftBar, rightBar].forEach(bar => {
+            bar.innerHTML = '';
+            colorPresets.forEach(preset => {
+                const btn = document.createElement('button');
+                btn.className = 'c-cell';
+                btn.setAttribute('data-color', preset.hex);
+                
+                if (preset.hex === 'rainbow') {
+                    btn.classList.add('rainbow-cell');
+                    btn.innerText = '🌈';
+                } else {
+                    btn.style.backgroundColor = preset.hex;
                 }
-                return;
-            }
 
-            // 通常時から虹色モードへの移行
-            if (isRainbow) {
-                isLocked = true;
-                colorGrid.classList.add('locked');
-                colorButtons.forEach(b => b.classList.remove('active'));
-                btn.classList.add('active');
-                startRainbowMode();
-                return;
-            }
+                // 初期のアクティブカラー（赤）にクラス付与
+                if (preset.hex === activeColor) btn.classList.add('active');
 
-            // 通常の単色変更
-            colorButtons.forEach(b => b.classList.remove('active'));
-            btn.classList.add('active');
-            if (currentMode === 'off') currentMode = 'solid';
-            currentColor = targetColor;
-            currentColorName = targetName;
-            updateLightDisplay();
+                // タップ・クリックイベント
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation(); // 発光エリアのイベント連動を阻止
+                    changeColor(preset.hex);
+                });
+
+                bar.appendChild(btn);
+            });
         });
-    });
+    }
 
-    // 3. エフェクト設定
-    blinkBtn.addEventListener('click', (e) => { e.stopPropagation(); toggleMode('blink', blinkBtn, 'anim-blink'); });
-    pulseBtn.addEventListener('click', (e) => { e.stopPropagation(); toggleMode('pulse', pulseBtn, 'anim-pulse'); });
-    
-    offBtn.addEventListener('click', (e) => {
+    // 2. 色切り替え処理（ロック無し、いつでも上書き可能）
+    function changeColor(colorCode) {
+        // OFFモードだったら通常点灯モードに引き戻す
+        if (activeMode === 'off') activeMode = 'solid';
+        btnOff.classList.remove('active');
+
+        // 虹色タイマーが走っていたら一旦完全停止
+        stopRainbowProcessor();
+
+        if (colorCode === 'rainbow') {
+            isRainbow = true;
+            btnPattern.disabled = false; // パターン選択を有効化
+            startRainbowProcessor();
+        } else {
+            isRainbow = false;
+            activeColor = colorCode;
+            btnPattern.disabled = true; // 通常色はパターン選択を無効化
+            applyLightVisual();
+        }
+
+        // 左右のボタンの「アクティブ状態」を完全同期
+        document.querySelectorAll('.c-cell').forEach(btn => {
+            if (btn.getAttribute('data-color') === colorCode) {
+                btn.classList.add('active');
+            } else {
+                btn.classList.remove('active');
+            }
+        });
+    }
+
+    // 3. 虹色処理エンジン（フラッシュ / フェード）
+    function startRainbowProcessor() {
+        let step = 0;
+        penlightBody.style.transition = 'box-shadow 0.2s ease, background 0.2s ease';
+
+        if (rainbowPattern === 'flash') {
+            // パターンA: パッパッと切り替わる
+            rainbowTimer = setInterval(() => {
+                activeColor = rainbowSequence[step];
+                applyLightVisual();
+                step = (step + 1) % rainbowSequence.length;
+            }, 600);
+        } else {
+            // パターンB: じわ〜っと滑らかにグラデーション
+            penlightBody.style.transition = 'background 2.0s linear, box-shadow 2.0s linear';
+            activeColor = rainbowSequence[fadeIndex];
+            applyLightVisual();
+            
+            rainbowTimer = setInterval(() => {
+                fadeIndex = (fadeIndex + 1) % rainbowSequence.length;
+                activeColor = rainbowSequence[fadeIndex];
+                applyLightVisual();
+            }, 2000); // 2秒かけて次の色へ滑らかに変貌
+        }
+    }
+
+    function stopRainbowProcessor() {
+        if (rainbowTimer) {
+            clearInterval(rainbowTimer);
+            rainbowTimer = null;
+        }
+    }
+
+    // 4. 発光色・グラデーションのCSS反映
+    function applyLightVisual() {
+        if (activeMode === 'off') return;
+        penlightBody.style.setProperty('--pen-color', activeColor);
+    }
+
+    // 5. 特殊エフェクトモードの切り替え（点滅・明滅）
+    function toggleEffect(modeName, targetBtn, cssClass) {
+        if (activeMode === 'off') return;
+
+        const isCurrentActive = (activeMode === modeName);
+        clearEffectsUI();
+
+        if (!isCurrentActive) {
+            activeMode = modeName;
+            targetBtn.classList.add('active');
+            penlightBody.classList.add(cssClass);
+        } else {
+            activeMode = 'solid';
+        }
+    }
+
+    function clearEffectsUI() {
+        penlightBody.classList.remove('effect-blink', 'effect-pulse');
+        btnBlink.classList.remove('active');
+        btnPulse.classList.remove('active');
+    }
+
+    // --- 各種ボタンイベントリスナー ---
+
+    // 点滅ボタン
+    btnBlink.addEventListener('click', (e) => {
         e.stopPropagation();
-        if (isLocked) return;
-        colorButtons.forEach(b => b.classList.remove('active'));
-        clearAllAnims();
-        offBtn.classList.add('active');
-        currentMode = 'off';
-        currentColorName = '消灯';
-        
-        penlightHead.style.setProperty('--current-color', '#000000');
-        penlightHead.style.boxShadow = 'none';
-        lightSection.style.backgroundColor = '#000000';
-        updatePillDisplay();
+        toggleEffect('blink', btnBlink, 'effect-blink');
     });
 
-    // 4. 【本物の全画面表示】画面タッチでブラウザのURLバー・ナビゲーションを隠す
-    lightSection.addEventListener('click', () => {
-        if (colorPickerOverlay.classList.contains('open')) return;
+    // 明滅ボタン
+    btnPulse.addEventListener('click', (e) => {
+        e.stopPropagation();
+        toggleEffect('pulse', btnPulse, 'effect-pulse');
+    });
 
-        // すでに全画面表示中なら解除、そうでなければ全画面を要求
+    // 虹パターン切り替えボタン
+    btnPattern.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (!isRainbow) return;
+
+        if (rainbowPattern === 'flash') {
+            rainbowPattern = 'fade';
+            btnPattern.innerText = '虹パターン: 滑らか';
+        } else {
+            rainbowPattern = 'flash';
+            btnPattern.innerText = '虹パターン: 一瞬';
+        }
+        // タイマーを新パターンで再起動
+        stopRainbowProcessor();
+        startRainbowProcessor();
+    });
+
+    // 非表示（UI隠し）ボタン
+    btnHide.addEventListener('click', (e) => {
+        e.stopPropagation();
+        uiHidden = true;
+        appContainer.classList.add('ui-hidden');
+    });
+
+    // OFFボタン
+    btnOff.addEventListener('click', (e) => {
+        e.stopPropagation();
+        stopRainbowProcessor();
+        clearEffectsUI();
+        document.querySelectorAll('.c-cell').forEach(b => b.classList.remove('active'));
+        
+        activeMode = 'off';
+        isRainbow = false;
+        btnPattern.disabled = true;
+        btnOff.classList.add('active');
+
+        // ライトを完全消灯（真っ黒）に
+        penlightBody.style.setProperty('--pen-color', '#000000');
+        penlightBody.style.boxShadow = 'none';
+    });
+
+    // 6. 【コアロジック】中央エリアタップ時の挙動（全画面化 ＆ UI復帰）
+    lightField.addEventListener('click', () => {
+        // もしボタン類が非表示状態なら、全画面化は弄らずに「UIの復帰」だけを行う
+        if (uiHidden) {
+            uiHidden = false;
+            appContainer.classList.remove('ui-hidden');
+            return;
+        }
+
+        // UIが表示されている通常の時は、ブラウザの本物の全画面モードをトグル
         if (!document.fullscreenElement) {
-            container.requestFullscreen().catch(err => {
-                console.log(`全画面エラー: ${err.message}`);
+            appContainer.requestFullscreen().catch(err => {
+                console.log(`全画面切り替えエラー: ${err.message}`);
             });
         } else {
             document.exitFullscreen();
         }
     });
 
-    // 5. ページ非表示・タブ切り替え時に全画面モードを自動で元に戻す
+    // スマホのタブ切り替え時などに全画面を安全に解除するセキュリティ策
     document.addEventListener('visibilitychange', () => {
         if (document.hidden && document.fullscreenElement) {
             document.exitFullscreen();
         }
     });
 
-    // --- 各種ビジュアル処理ロジック ---
-
-    function updateLightDisplay() {
-        if (currentMode === 'off') return;
-        penlightHead.style.setProperty('--current-color', currentColor);
-        
-        if (currentColor === '#050505') {
-            penlightHead.style.boxShadow = `0 0 15px 1px #111`;
-            lightSection.style.backgroundColor = '#000000';
-        } else {
-            penlightHead.style.boxShadow = `0 0 60px 15px ${currentColor}, 0 0 120px 35px ${currentColor}`;
-            const rgb = hexToRgb(currentColor);
-            if (rgb) lightSection.style.backgroundColor = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.16)`;
-        }
-        updatePillDisplay();
-    }
-
-    function updatePillDisplay() {
-        if (isLocked) {
-            pillText.innerText = '🌈 虹色 (ロック中)';
-            pillDot.style.background = 'linear-gradient(45deg, red, blue)';
-        } else {
-            pillText.innerText = `${currentColorName} ${currentMode !== 'solid' && currentMode !== 'off' ? `[${currentMode}]` : ''}`;
-            pillDot.style.background = currentColor;
-        }
-    }
-
-    function startRainbowMode() {
-        if (rainbowInterval) clearInterval(rainbowInterval);
-        currentMode = 'rainbow';
-        rainbowInterval = setInterval(() => {
-            if (isLocked) {
-                currentColor = rainbowColors[rainbowIndex];
-                updateLightDisplay();
-                rainbowIndex = (rainbowIndex + 1) % rainbowColors.length;
-            }
-        }, 650);
-    }
-
-    function stopRainbowMode() {
-        if (rainbowInterval) {
-            clearInterval(rainbowInterval);
-            rainbowInterval = null;
-        }
-    }
-
-    function toggleMode(modeName, element, className) {
-        if (currentMode === 'off' || isLocked) return;
-        const isActive = currentMode === modeName;
-        const prevCol = currentColor;
-        clearAllAnims();
-
-        if (!isActive) {
-            currentMode = modeName;
-            element.classList.add('active');
-            penlightHead.classList.add(className);
-        } else {
-            currentMode = 'solid';
-        }
-        currentColor = prevCol;
-        updateLightDisplay();
-    }
-
-    function clearAllAnims() {
-        stopRainbowMode();
-        penlightHead.classList.remove('anim-blink', 'anim-pulse');
-        blinkBtn.classList.remove('active');
-        pulseBtn.classList.remove('active');
-        offBtn.classList.remove('active');
-    }
-
-    function hexToRgb(hex) {
-        const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-        return result ? {
-            r: parseInt(result[1], 16),
-            g: parseInt(result[2], 16),
-            b: parseInt(result[3], 16)
-        } : null;
-    }
+    // アプリ起動
+    initColorBars();
+    applyLightVisual();
 });
