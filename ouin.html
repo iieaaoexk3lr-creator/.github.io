@@ -2,41 +2,207 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>両利き対応・高機能デジタルペンライト</title>
-    <link rel="stylesheet" href="style.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🎤 韻選曲カラオケ お題ジェネレーター</title>
+    <style>
+        body {
+            font-family: 'Helvetica Neue', Arial, sans-serif;
+            background-color: #f0f2f5;
+            color: #333;
+            text-align: center;
+            padding: 20px;
+            margin: 0;
+        }
+        .container {
+            max-width: 500px;
+            background: white;
+            margin: 30px auto;
+            padding: 30px;
+            border-radius: 16px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+        h1 {
+            font-size: 24px;
+            color: #1a1a1a;
+            margin-bottom: 20px;
+        }
+        .setting-section {
+            margin-bottom: 25px;
+            text-align: left;
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+        }
+        label {
+            display: block;
+            font-weight: bold;
+            margin-bottom: 8px;
+            color: #555;
+        }
+        select, input[type="checkbox"] {
+            margin-bottom: 10px;
+        }
+        select {
+            width: 100%;
+            padding: 10px;
+            font-size: 16px;
+            border-radius: 6px;
+            border: 1px solid #ccc;
+        }
+        .checkbox-label {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+            font-size: 15px;
+            margin-top: 8px;
+        }
+        .btn {
+            background-color: #ff4757;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            font-size: 18px;
+            font-weight: bold;
+            border-radius: 30px;
+            cursor: pointer;
+            width: 100%;
+            transition: background 0.2s, transform 0.1s;
+            box-shadow: 0 4px 6px rgba(255, 71, 87, 0.3);
+        }
+        .btn:hover {
+            background-color: #ff6b81;
+        }
+        .btn:active {
+            transform: scale(0.98);
+        }
+        .result-box {
+            margin-top: 30px;
+            padding: 20px;
+            background: #1e272e;
+            color: #00d2d3;
+            border-radius: 12px;
+            min-height: 120px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+        .vowels {
+            font-size: 42px;
+            font-weight: bold;
+            letter-spacing: 6px;
+            margin: 10px 0;
+            color: #fff;
+            text-shadow: 0 0 10px rgba(255,255,255,0.5);
+        }
+        .joker-badge {
+            background: #ffa502;
+            color: #fff;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: bold;
+            margin-top: 10px;
+            animation: pulse 1.5s infinite;
+        }
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+    </style>
 </head>
 <body>
 
-    <div class="app-container" id="appContainer">
+<div class="container">
+    <h1>🎤 韻選曲カラオケ</h1>
+    
+    <div class="setting-section">
+        <label for="difficulty">難易度（文字数）</label>
+        <select id="difficulty">
+            <option value="2">入門 (2文字)</option>
+            <option value="3">初級 (3文字)</option>
+            <option value="4" selected>中級 (4文字)</option>
+            <option value="5">上級 (5文字)</option>
+            <option value="6">超上級 (6文字)</option>
+            <option value="7">プロ級 (7文字)</option>
+        </select>
         
-        <!-- メイン発光エリア（ここをタップするとUIの表示/非表示、および全画面化をコントロール） -->
-        <main class="light-field" id="lightField">
-            <div class="fullscreen-guide">画面中央をタップでURLバー非表示</div>
-            <div class="penlight-glow-body" id="penlightBody"></div>
-        </main>
-
-        <!-- 左側カラーバー（縦並び） -->
-        <nav class="side-color-bar left-bar ui-element">
-            <!-- JSでボタンを自動生成します -->
-        </nav>
-
-        <!-- 右側カラーバー（縦並び） -->
-        <nav class="side-color-bar right-bar ui-element">
-            <!-- JSでボタンを自動生成します -->
-        </nav>
-
-        <!-- ボトムコントロールメニュー（スマホの戻るボタン対策で少し上に配置） -->
-        <footer class="bottom-controls-menu ui-element" id="bottomMenu">
-            <button class="menu-btn" id="btnBlink">点滅</button>
-            <button class="menu-btn" id="btnPulse">明滅</button>
-            <button class="menu-btn" id="btnPattern" disabled>虹パターン: 一瞬</button>
-            <button class="menu-btn hide-btn" id="btnHide">非表示</button>
-            <button class="menu-btn off-btn" id="btnOff">OFF</button>
-        </footer>
-
+        <div style="margin-top: 15px;">
+            <label class="checkbox-label">
+                <input type="checkbox" id="use-n" checked>
+                🔠 「ん」を含める
+            </label>
+            <label class="checkbox-label">
+                <input type="checkbox" id="use-tsu" checked>
+                🔠 「っ」を含める
+            </label>
+            <label class="checkbox-label">
+                <input type="checkbox" id="use-joker" checked>
+                🃏 ジョーカールールを有効にする（確率15%）
+            </label>
+        </div>
     </div>
 
-    <script src="script.js"></script>
+    <button class="btn" onclick="generateOdai()">お題を生成する！</button>
+
+    <div class="result-box">
+        <div id="result-title" style="color: #a4b0be; font-size: 14px;">ボタンを押してね</div>
+        <div class="vowels" id="vowel-display">- - - -</div>
+        <div id="joker-display"></div>
+    </div>
+</div>
+
+<script>
+    const normalVowels = ['あ', 'い', 'う', 'え', 'お'];
+
+    function generateOdai() {
+        const difficultySelect = document.getElementById('difficulty');
+        const length = parseInt(difficultySelect.value);
+        const useJoker = document.getElementById('use-joker').checked;
+        
+        // 「ん」と「っ」の使用状況を取得してプールを作成
+        const useN = document.getElementById('use-n').checked;
+        const useTsu = document.getElementById('use-tsu').checked;
+        
+        let specialVowels = [];
+        if (useN) specialVowels.push('ん');
+        if (useTsu) specialVowels.push('っ');
+        
+        const allVowels = [...normalVowels, ...specialVowels];
+
+        let resultVowels = [];
+        let lastWasSpecial = false;
+
+        for (let i = 0; i < length; i++) {
+            let chosen;
+            
+            // 直前が特殊文字、または1文字目、または特殊文字が1つも有効化されていない場合
+            if (lastWasSpecial || i === 0 || specialVowels.length === 0) {
+                const randomIndex = Math.floor(Math.random() * normalVowels.length);
+                chosen = normalVowels[randomIndex];
+                lastWasSpecial = false;
+            } else {
+                const randomIndex = Math.floor(Math.random() * allVowels.length);
+                chosen = allVowels[randomIndex];
+                lastWasSpecial = specialVowels.includes(chosen);
+            }
+            
+            resultVowels.push(chosen);
+        }
+
+        document.getElementById('result-title').innerText = '💡 この母音で歌える曲は？';
+        document.getElementById('vowel-display').innerText = resultVowels.join('');
+
+        const jokerDisplay = document.getElementById('joker-display');
+        jokerDisplay.innerHTML = ''; 
+        
+        if (useJoker && Math.random() < 0.15) {
+            jokerDisplay.innerHTML = '<span class="joker-badge">🃏 ジョーカー発動！1文字無視してOK</span>';
+        }
+    }
+</script>
+
 </body>
 </html>
