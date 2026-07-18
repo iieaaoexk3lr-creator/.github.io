@@ -209,8 +209,10 @@
             return list;
         }
 
+        // 下の段：中央のド(C4)から始まる白鍵11枚のレンジ（C4〜F5、黒鍵7枚）
         const lowerNotes = generatePianoRange(0, 11); 
-        const upperNotes = generatePianoRange(7, 11); 
+        // 上の段：下の段の直後であるソ(G5)から始まる高音レンジ（G5〜C7、白鍵11枚）
+        const upperNotes = generatePianoRange(19, 11); 
 
         let audioCtx = null;
         let masterCompressor = null; // 音割れを防ぐ全体のコンプレッサー
