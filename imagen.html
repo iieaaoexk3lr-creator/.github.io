@@ -128,6 +128,38 @@
       transition: transform 0.1s ease;
     }
 
+    .btn-main:disabled {
+      background-color: #334155;
+      color: #64748b;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .btn-sub-group {
+      display: flex;
+      gap: 12px;
+    }
+
+    .btn-sub {
+      flex: 1;
+      background-color: var(--surface-color);
+      color: var(--text-color);
+      border: 1px solid #333;
+      padding: 14px;
+      font-size: 0.95rem;
+      border-radius: var(--border-radius);
+      cursor: pointer;
+      transition: transform 0.1s ease;
+    }
+
+    .btn-sub:disabled {
+      background-color: #1a1a1a;
+      color: #444;
+      border-color: #222;
+      cursor: not-allowed;
+      transform: none;
+    }
+
     /* --- 判定員モードスタイル --- */
     .judge-sub-tabs {
       display: flex;
@@ -264,7 +296,7 @@
       color: var(--primary-color);
     }
 
-    /* --- 履歴エリア（拡張） --- */
+    /* --- 履歴エリア --- */
     .history-section {
       margin-top: 32px;
     }
@@ -410,8 +442,10 @@
         <div id="topicText" class="main-text">---</div>
       </div>
 
+      <!-- 抽選・引き直し・確定ボタン構造 -->
       <div class="control-actions">
-        <button class="btn-main active-press" onclick="drawTopic()">お題を引く</button>
+        <button id="btnConfirmTopic" class="btn-main active-press" onclick="confirmTopic()" style="background-color: var(--primary-color);" disabled>このお題に決定する</button>
+        <button id="btnDrawTopic" class="btn-main active-press" onclick="drawTopic()">お題を引く</button>
       </div>
     </div>
 
@@ -438,7 +472,7 @@
       </div>
     </div>
 
-    <!-- 履歴エリア（基本ルールの下へ移動・拡張） -->
+    <!-- 履歴エリア -->
     <div class="history-section">
       <div class="history-title">対戦履歴（無制限）</div>
       <div id="historyArea">
