@@ -3,30 +3,32 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>極大デジタルペンライト</title>
+    <title>ジャストフィット・デジタルペンライト</title>
     <link rel="stylesheet" href="penlight.css">
 </head>
 <body>
-    <div class="phone-container">
+    <!-- 全画面化の対象となるメインコンテナ -->
+    <div class="phone-container" id="fullscreenContainer">
         
-        <!-- 発光エリア（ここをタッチするといつでも全画面） -->
+        <!-- 発光エリア（ここをタップするとブラウザが全画面化してURLバーが消えます） -->
         <main class="light-section" id="lightSection">
-            <div class="fullscreen-tip">画面をタッチで全画面表示</div>
+            <div class="fullscreen-tip">画面タッチでURLバーを非表示（全画面）</div>
+            
             <div class="glow-container">
-                <!-- さらに縦に2倍巨大化した発換ライト部分 -->
+                <!-- どんなスマホの縦幅でも上から下までピッタリ埋めるライト本体 -->
                 <div class="penlight-head" id="penlightHead"></div>
             </div>
         </main>
 
-        <!-- 現在選択中の色表示ピルボタン（画面中央下部に常駐） -->
-        <div class="active-color-pill-container">
+        <!-- 現在選択中の色表示ピルボタン -->
+        <div class="active-color-pill-container" id="pillContainer">
             <button class="active-color-pill" id="colorPickerTrigger">
                 <span class="color-indicator-dot" id="pillDot"></span>
-                <span id="pillText">RED (単色)</span>
+                <span id="pillText">赤 (単色)</span>
             </button>
         </div>
 
-        <!-- ボトムカラー選択シート（ポップアップ式） -->
+        <!-- ボトムカラー選択シート -->
         <div class="color-picker-overlay" id="colorPickerOverlay">
             <div class="picker-sheet">
                 <div class="sheet-header">
@@ -36,7 +38,6 @@
                 </div>
                 
                 <div class="sheet-content">
-                    <!-- カラーパレット -->
                     <div class="color-grid" id="colorGrid">
                         <button class="color-btn active" data-name="赤" data-color="#FF0000" style="background-color: #FF0000;"></button>
                         <button class="color-btn" data-name="オレンジ" data-color="#FF7F00" style="background-color: #FF7F00;"></button>
@@ -52,7 +53,6 @@
                         <button class="color-btn rainbow-btn" id="rainbowBtn" data-name="虹色 (ロック)">🌈</button>
                     </div>
 
-                    <!-- エフェクト設定 -->
                     <div class="mode-grid">
                         <button class="mode-btn" id="blinkBtn">点滅</button>
                         <button class="mode-btn" id="pulseBtn">明滅</button>
@@ -63,9 +63,6 @@
             </div>
         </div>
     </div>
-
-    <!-- 全画面表示用の解除案内（全画面時にうっすらトップに表示） -->
-    <button class="exit-fullscreen" id="exitFullscreenBtn">✕ 画面を閉じて戻る</button>
 
     <script src="penlight.js"></script>
 </body>
