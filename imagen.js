@@ -16,7 +16,8 @@ const topicData = {
 // 状態管理変数
 let currentCategory = "";
 let currentTopic = "";
-let historyList = []; // ローカルストレージ連動のため初期値は空配列
+let historyList = []; 
+let drawCount = 0; // 現在のお題決定セッション内での抽選回数カウント
 
 // 判定員が今自分で選択しているカテゴリの初期値
 let judgeSelectedCategory = "感情";
@@ -32,7 +33,7 @@ let lastTopic = "";
 // 画面ロード時の初期化
 window.onload = function() {
   renderRules();
-  loadDataFromStorage(); // ローカルストレージからデータを復元
+  loadDataFromStorage(); 
   switchMode('host');
 };
 
@@ -42,6 +43,7 @@ window.onload = function() {
 function loadDataFromStorage() {
   const savedHistory = localStorage.getItem('imagen_historyList');
   const savedCurrent = localStorage.getItem('imagen_currentData');
+  const savedDrawCount = localStorage.getItem('imagen_drawCount');
 
   if (savedHistory) {
     historyList = JSON.parse(savedHistory);
@@ -58,6 +60,11 @@ function loadDataFromStorage() {
     document.getElementById('topicText').innerText = currentTopic || "---";
   }
 
+  if (savedDrawCount) {
+    drawCount = parseInt(savedDrawCount, 10) || 0;
+  }
+
+  updateControlButtons();
   renderHistory();
   renderSummary();
 }
@@ -75,6 +82,7 @@ function saveDataToStorage() {
     lastTopic: lastTopic
   };
   localStorage.setItem('imagen_currentData', JSON.stringify(current));
+  localStorage.setItem('imagen_drawCount', drawCount.toString());
 }
 
 /**
@@ -117,10 +125,12 @@ function changeJudgeCategory(category) {
 }
 
 /**
- * ランダムでお題を抽選する
+ * ランダムでお題を抽選する（最大3回まで）
  * カテゴリ・お題ともに連続で重複しないように制御
  */
 function drawTopic() {
+  if (drawCount >= 3) return;
+
   const categories = Object.keys(topicData);
   let selectedCategory = "";
   let selectedTopic = "";
@@ -144,22 +154,62 @@ function drawTopic() {
     selectedTopic = topicPool[0];
   }
 
-  // 履歴更新処理 (すでに何か引かれていた場合のみ無制限に追加)
-  if (currentCategory && currentTopic) {
-    updateHistory(currentCategory, currentTopic);
-  }
-
-  // 現在の状態を上書き更新
+  // 現在の状態を仮上書き更新
   currentCategory = selectedCategory;
   currentTopic = selectedTopic;
   lastCategory = selectedCategory;
   lastTopic = selectedTopic;
 
+  drawCount++;
+
   // 画面表示への反映
   document.getElementById('categoryText').innerText = currentCategory;
   document.getElementById('topicText').innerText = currentTopic;
 
+  updateControlButtons();
   saveDataToStorage();
+}
+
+/**
+ * 現在仮決定しているお題を「確定」して履歴に反映する
+ */
+function confirmTopic() {
+  if (!currentCategory || !currentTopic) return;
+
+  // 確定ボタンが押されたタイミングで初めて履歴配列の先頭に追加
+  updateHistory(currentCategory, currentTopic);
+  
+  // 次回セッションのためにカウントをリセット
+  drawCount = 0;
+
+  updateControlButtons();
+  saveDataToStorage();
+}
+
+/**
+ * 抽選回数に基づいて司会モードのボタン状態とテキストを更新する
+ */
+function updateControlButtons() {
+  const btnDraw = document.getElementById('btnDrawTopic');
+  const btnConfirm = document.getElementById('btnConfirmTopic');
+
+  if (drawCount === 0) {
+    btnDraw.innerText = "お題を引く";
+    btnDraw.disabled = false;
+    btnConfirm.disabled = true;
+    btnConfirm.innerText = "お題が未決定です";
+  } else {
+    btnConfirm.disabled = false;
+    btnConfirm.innerText = `このお題に決定する (「${currentTopic}」に確定)`;
+
+    if (drawCount >= 3) {
+      btnDraw.innerText = "これ以上引き直せません (上限3回)";
+      btnDraw.disabled = true;
+    } else {
+      btnDraw.innerText = `お題を引き直す (残り ${3 - drawCount} 回)`;
+      btnDraw.disabled = false;
+    }
+  }
 }
 
 /**
@@ -223,9 +273,8 @@ function closeCard() {
  * 新しい履歴データをデータ配列の先頭に追加する
  */
 function updateHistory(category, topic) {
-  // 追加データ構造（チーム名、一致数、全員一致フラグのデフォルト値を含む）
   historyList.unshift({
-    id: Date.now(), // 一意の識別用ID
+    id: Date.now(), 
     category,
     topic,
     teamName: "",
@@ -238,7 +287,7 @@ function updateHistory(category, topic) {
 }
 
 /**
- * 履歴エリアの動的描画（無制限）
+ * 履歴エリアの動的描画（最大選択人数を15人に拡張）
  */
 function renderHistory() {
   const historyArea = document.getElementById('historyArea');
@@ -250,6 +299,12 @@ function renderHistory() {
   }
 
   historyList.forEach((item, index) => {
+    // 0人から15人までの選択プルダウンを生成
+    let optionsHtml = "";
+    for (let i = 0; i <= 15; i++) {
+      optionsHtml += `<option value="${i}" ${item.matchCount == i ? 'selected' : ''}>${i}人</option>`;
+    }
+
     const card = document.createElement('div');
     card.className = 'history-card';
     card.innerHTML = `
@@ -261,7 +316,7 @@ function renderHistory() {
       <div class="history-inputs">
         <input type="text" placeholder="チーム名" value="${item.teamName}" onchange="updateHistoryInput(${item.id}, 'teamName', this.value)">
         <select onchange="updateHistoryInput(${item.id}, 'matchCount', this.value)">
-          ${[0,1,2,3,4,5,6,7,8,9,10].map(num => `<option value="${num}" ${item.matchCount == num ? 'selected' : ''}>${num}人</option>`).join('')}
+          ${optionsHtml}
         </select>
       </div>
       <div>
@@ -287,7 +342,7 @@ function updateHistoryInput(id, field, value) {
       item[field] = value;
     }
     saveDataToStorage();
-    renderSummary(); // データ更新されたため集計表を再計算
+    renderSummary(); 
   }
 }
 
@@ -298,11 +353,9 @@ function renderSummary() {
   const summaryTableBody = document.getElementById('summaryTableBody');
   summaryTableBody.innerHTML = "";
 
-  // チーム毎の集計オブジェクトを作成
   const summaryData = {};
 
   historyList.forEach(item => {
-    // チーム名が未入力（空文字）のものは集計対象外にする
     const team = item.teamName.trim();
     if (!team) return;
 
@@ -326,7 +379,6 @@ function renderSummary() {
     return;
   }
 
-  // チーム一覧をループして行を生成
   teams.forEach(team => {
     const tr = document.createElement('tr');
     tr.innerHTML = `
@@ -387,16 +439,19 @@ function resetAllData() {
   if (confirm("すべての対戦履歴、入力されたスコア、現在のお題データを完全に消去します。よろしいですか？")) {
     localStorage.removeItem('imagen_historyList');
     localStorage.removeItem('imagen_currentData');
+    localStorage.removeItem('imagen_drawCount');
     
     currentCategory = "";
     currentTopic = "";
     lastCategory = "";
     lastTopic = "";
     historyList = [];
+    drawCount = 0;
     
     document.getElementById('categoryText').innerText = "---";
     document.getElementById('topicText').innerText = "---";
     
+    updateControlButtons();
     renderHistory();
     renderSummary();
     
