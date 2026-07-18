@@ -11,11 +11,10 @@
     --text-main: #ffffff;
     --text-dim: #b0b8d0;
     
-    /* ジャンル別テーマカラー */
-    --color-scoring: #ff007f; /* ビビッドピンク */
-    --color-kara-party: #00f2fe; /* シアンブルー */
-    --color-variety: #9d50bb;   /* パープル */
-    --color-tool: #f9d423;    /* イエローゴールド */
+    --color-scoring: #ff007f;
+    --color-kara-party: #00f2fe;
+    --color-variety: #9d50bb;
+    --color-tool: #f9d423;
   }
 
   * {
@@ -25,12 +24,11 @@
   }
 
   body {
-    font-family: 'Avenir Next', 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Hiragino Kaku Gothic ProN', sans-serif;
+    font-family: 'Avenir Next', 'Segoe UI', Roboto, sans-serif;
     background: var(--bg-color);
     color: var(--text-main);
     text-align: center;
     padding: 40px 15px;
-    line-height: 1.5;
     background-image: 
       radial-gradient(circle at 10% 20%, rgba(255, 0, 127, 0.05) 0%, transparent 20%),
       radial-gradient(circle at 90% 80%, rgba(157, 80, 187, 0.05) 0%, transparent 20%);
@@ -46,32 +44,30 @@
     font-size: 2.4rem;
     font-weight: 900;
     margin-bottom: 40px;
-    letter-spacing: -0.5px;
     background: linear-gradient(to bottom, #fff 40%, #ccc 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
-    filter: drop-shadow(0 0 15px rgba(255,255,255,0.1));
   }
 
-  /* カテゴリセクション共通 */
-  .category-section {
-    margin-bottom: 24px;
-    background: var(--card-bg);
-    border-radius: 24px;
-    overflow: hidden;
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.4);
-  }
-
-  /* カテゴリヘッダー */
-  .category-header {
+  /* カテゴリリンク共通 */
+  .category-link {
     display: flex;
     align-items: center;
     justify-content: space-between;
     padding: 22px 28px;
-    cursor: pointer;
-    user-select: none;
-    transition: background 0.3s;
+    margin-bottom: 20px;
+    background: var(--card-bg);
+    border-radius: 24px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.4);
+    text-decoration: none;
+    color: #fff;
+    transition: transform 0.25s, border-color 0.25s;
+  }
+
+  .category-link:hover {
+    transform: translateY(-3px);
+    background: rgba(22, 26, 46, 0.8);
   }
 
   .category-title {
@@ -94,108 +90,26 @@
   }
 
   .category-arrow {
-    font-size: 0.8rem;
-    opacity: 0.5;
-    transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-  }
-
-  /* 折りたたみ制御 */
-  .category-content {
-    max-height: 0;
-    overflow: hidden;
-    transition: max-height 0.5s cubic-bezier(0.4, 0, 0.2, 1), padding 0.5s;
-    padding: 0 20px;
-    background: rgba(0, 0, 0, 0.15);
-  }
-
-  .section-open .category-content {
-    max-height: 2000px;
-    padding: 10px 20px 25px 20px;
-  }
-
-  .section-open .category-arrow {
-    transform: rotate(180deg);
-  }
-
-  /* ジャンル別の色付け */
-  #sec-scoring { border-top: 4px solid var(--color-scoring); }
-  #sec-scoring .category-icon { color: var(--color-scoring); box-shadow: 0 0 15px rgba(255, 0, 127, 0.2); }
-  
-  #sec-kara-party { border-top: 4px solid var(--color-kara-party); }
-  #sec-kara-party .category-icon { color: var(--color-kara-party); box-shadow: 0 0 15px rgba(0, 242, 254, 0.2); }
-  
-  #sec-variety { border-top: 4px solid var(--color-variety); }
-  #sec-variety .category-icon { color: var(--color-variety); box-shadow: 0 0 15px rgba(157, 80, 187, 0.2); }
-  
-  #sec-tool { border-top: 4px solid var(--color-tool); }
-  #sec-tool .category-icon { color: var(--color-tool); box-shadow: 0 0 15px rgba(249, 212, 35, 0.2); }
-
-  /* グリッドレイアウト */
-  .item-grid {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 14px;
-  }
-
-  /* ボタン共通スタイル */
-  a {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    color: #fff;
-    text-decoration: none;
-    font-weight: 700;
-    border-radius: 18px;
-    padding: 18px 10px;
-    height: 110px;
     font-size: 1rem;
-    line-height: 1.3;
-    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-    background: rgba(255, 255, 255, 0.03);
-    border: 1px solid rgba(255, 255, 255, 0.06);
-    backdrop-filter: blur(5px);
+    opacity: 0.6;
   }
 
-  a span:first-child {
-    font-size: 1.8rem;
-    margin-bottom: 10px;
-  }
+  /* 各カテゴリの専用色 */
+  #link-scoring { border-left: 6px solid var(--color-scoring); }
+  #link-scoring .category-icon { color: var(--color-scoring); }
+  #link-scoring:hover { border-color: var(--color-scoring); }
 
-  a:hover {
-    transform: translateY(-5px) scale(1.02);
-    background: rgba(255, 255, 255, 0.08);
-    border-color: rgba(255, 255, 255, 0.15);
-    box-shadow: 0 12px 25px rgba(0, 0, 0, 0.5);
-  }
+  #link-kara-party { border-left: 6px solid var(--color-kara-party); }
+  #link-kara-party .category-icon { color: var(--color-kara-party); }
+  #link-kara-party:hover { border-color: var(--color-kara-party); }
 
-  /* ジャンル別ホバーエフェクト */
-  .scoring-btn:hover { border-bottom: 4px solid var(--color-scoring); color: var(--color-scoring); }
-  .kara-party-btn:hover { border-bottom: 4px solid var(--color-kara-party); color: var(--color-kara-party); }
-  .variety-btn:hover { border-bottom: 4px solid var(--color-variety); color: #d4b1ff; }
-  .tool-btn:hover { border-bottom: 4px solid var(--color-tool); color: var(--color-tool); }
+  #link-variety { border-left: 6px solid var(--color-variety); }
+  #link-variety .category-icon { color: var(--color-variety); }
+  #link-variety:hover { border-color: var(--color-variety); }
 
-  a:active {
-    transform: translateY(-2px) scale(0.97);
-  }
-
-  @media (max-width: 450px) {
-    .item-grid {
-      grid-template-columns: 1fr;
-    }
-    a {
-      height: 75px;
-      flex-direction: row;
-      justify-content: flex-start;
-      padding: 0 24px;
-      gap: 18px;
-    }
-    a span:first-child {
-      margin-bottom: 0;
-      font-size: 1.6rem;
-    }
-    h1 { font-size: 2rem; }
-  }
+  #link-tool { border-left: 6px solid var(--color-tool); }
+  #link-tool .category-icon { color: var(--color-tool); }
+  #link-tool:hover { border-color: var(--color-tool); }
 </style>
 </head>
 <body>
@@ -203,115 +117,42 @@
 <div class="container">
   <h1>カラオケ企画メニュー</h1>
 
-  <!-- カラオケ（採点系） -->
-  <div class="category-section" id="sec-scoring">
-    <div class="category-header" onclick="toggleSection('sec-scoring')">
-      <div class="category-title">
-        <div class="category-icon">📈</div>
-        <span>カラオケ（採点系）</span>
-      </div>
-      <span class="category-arrow">▼</span>
+  <!-- 採点系 -->
+  <a href="menu-scoring.html" class="category-link" id="link-scoring">
+    <div class="category-title">
+      <div class="category-icon">📈</div>
+      <span>カラオケ（採点系）</span>
     </div>
-    <div class="category-content">
-      <div class="item-grid">
-        <a href="bingo.html" class="scoring-btn"><span>🎶</span><span>カラオケBINGO!</span></a>
-        <a href="sutorakku.html" class="scoring-btn"><span>⚾</span><span>ストラックアウト</span></a>
-        <a href="unsaiten.html" class="scoring-btn"><span>🎰</span><span>採点スロット</span></a>
-        <a href="bouringu.html" class="scoring-btn"><span>🗓️</span><span>採点ボウリング</span></a>
-      </div>
-    </div>
-  </div>
+    <span class="category-arrow">▶</span>
+  </a>
 
-  <!-- カラオケ（パーティー系） -->
-  <div class="category-section" id="sec-kara-party">
-    <div class="category-header" onclick="toggleSection('sec-kara-party')">
-      <div class="category-title">
-        <div class="category-icon">🎤</div>
-        <span>カラオケ（パーティー系）</span>
-      </div>
-      <span class="category-arrow">▼</span>
+  <!-- パーティー系 -->
+  <a href="menu-kara-party.html" class="category-link" id="link-kara-party">
+    <div class="category-title">
+      <div class="category-icon">🎤</div>
+      <span>カラオケ（パーティー系）</span>
     </div>
-    <div class="category-content">
-      <div class="item-grid">
-        <a href="50karaoke.html" class="kara-party-btn"><span>📺</span><span>50カラオケ</span></a>
-        <a href="ouin.html" class="kara-party-btn"><span>👨‍🎤</span><span>韻踏みカラオケ</span></a>
-        <a href="hanaoke.html" class="kara-party-btn"><span>🗣️</span><span>ハナオケ</span></a>
-        <a href="majikara.html" class="kara-party-btn"><span>🍌</span><span>マジカルカラオケ</span></a>
-        <a href="wanaoke.html" class="kara-party-btn"><span>😝</span><span>ワナオケ</span></a>
-        <a href="request.html" class="kara-party-btn"><span>🙌</span><span>リクエストバトル</span></a>
-        <a href="dnknow.html" class="kara-party-btn"><span>✉️</span><span>知らんけど歌います</span></a>
-        <a href="chicken.html" class="kara-party-btn"><span>🐓</span><span>演奏停止チキンレース</span></a>
-        <a href="utadokei.html" class="kara-party-btn"><span>🐓</span><span>歌時計カラオケ</span></a>
-        <a href="nirami.html" class="kara-party-btn"><span>🤣</span><span>笑い我慢カラオケ</span></a>
-        <a href="senkyo.html" class="kara-party-btn"><span>🗳️</span><span>選曲総選挙</span></a>
-        <a href="gion.html" class="kara-party-btn"><span>👂</span><span>擬音カラオケ</span></a>
-        <a href="imagen.html" class="kara-party-btn"><span>👂</span><span>イメージ伝達カラオケ</span></a>
-      </div>
-    </div>
-  </div>
+    <span class="category-arrow">▶</span>
+  </a>
 
-  <!-- バラエティ・パーティー -->
-  <div class="category-section" id="sec-variety">
-    <div class="category-header" onclick="toggleSection('sec-variety')">
-      <div class="category-title">
-        <div class="category-icon">🥳</div>
-        <span>バラエティ・パーティー</span>
-      </div>
-      <span class="category-arrow">▼</span>
+  <!-- バラエティ -->
+  <a href="menu-variety.html" class="category-link" id="link-variety">
+    <div class="category-title">
+      <div class="category-icon">🥳</div>
+      <span>バラエティ・パーティー</span>
     </div>
-    <div class="category-content">
-      <div class="item-grid">
-        <a href="Fivebom.html" class="variety-btn"><span>💣</span><span>マイクボンバー</span></a>
-        <a href="kaerematen.html" class="variety-btn"><span>📈</span><span>意思電信ゲーム</span></a>
-        <a href="majan.html" class="variety-btn"><span>🀄</span><span>ひらがジャンカラ</span></a>
-        <a href="ikkaku.html" class="variety-btn"><span>🏆</span><span>一画千点！曲名クイズ</span></a>
-        <a href="setumei.html" class="variety-btn"><span>🎤</span><span>説明クイズ</span></a>
-        <a href="pictimage.html" class="variety-btn"><span>🎨</span><span>この絵は何？</span></a>
-        <a href="CSVquiz.html" class="variety-btn"><span>👨‍🎓</span><span>クイズ</span></a>
-        <a href="jinroQ.html" class="variety-btn"><span>🐺</span><span>人狼クイズ</span></a>
-        <a href="renda.html" class="variety-btn"><span>🐺</span><span>ボタン連打ゲーム</span></a>
-      </div>
-    </div>
-  </div>
+    <span class="category-arrow">▶</span>
+  </a>
 
-  <!-- ツール系 -->
-  <div class="category-section" id="sec-tool">
-    <div class="category-header" onclick="toggleSection('sec-tool')">
-      <div class="category-title">
-        <div class="category-icon">🛠️</div>
-        <span>便利ツール</span>
-      </div>
-      <span class="category-arrow">▼</span>
+  <!-- 便利ツール -->
+  <a href="menu-tool.html" class="category-link" id="link-tool">
+    <div class="category-title">
+      <div class="category-icon">🛠️</div>
+      <span>便利ツール</span>
     </div>
-    <div class="category-content">
-      <div class="item-grid">
-        <a href="hayaosi.html" class="tool-btn"><span>⏱️</span><span>早押しボタン</span></a>
-        <a href="soramimi.html" class="tool-btn"><span>⏱️</span><span>ソラミミ文字起こし</span></a>
-        <a href="16bird.html" class="tool-btn"><span>⏱️</span><span>カラオケ診断〜歌鳥風月〜</span></a>
-        <a href="seiryou.html" class="tool-btn"><span>🎶</span><span>盛り上がりチェッカー</span></a>
-        <a href="jidourokuga.html" class="tool-btn"><span>🎶</span><span>録画時間コントローラー</span></a>
-        <a href="penlight.html" class="tool-btn"><span>🎶</span><span>デジタルペンライト</span></a>
-        <a href="guiter.html" class="tool-btn"><span>🎶</span><span>なんちゃってギター</span></a>
-        <a href="base.html" class="tool-btn"><span>🎶</span><span>なんちゃってベース</span></a>
-        <a href="keypiano.html" class="tool-btn"><span>🎶</span><span>なんちゃってピアノ</span></a>
-        <a href="dram.html" class="tool-btn"><span>🎶</span><span>なんちゃってドラム</span></a>
-        <a href="kahon.html" class="tool-btn"><span>🎶</span><span>なんちゃってカホン</span></a>
-        <a href="sinpaku.html" class="tool-btn"><span>🎶</span><span>心拍数チェッカー</span></a>
-        <a href="16tipe.html" class="tool-btn"><span>🎶</span><span>カラオケタイプ診断</span></a>
-        <a href="gamehistory.html" class="tool-btn"><span>📈</span><span>スコアボード</span></a>
-        <a href="jikosyoukai.html" class="tool-btn"><span>📈</span><span>自己紹介ジェネレーター</span></a>
-        <a href="heyawari.html" class="tool-btn"><span>🎶</span><span>ラク部屋割り幹事用</span></a>
-      </div>
-    </div>
-  </div>
+    <span class="category-arrow">▶</span>
+  </a>
 </div>
-
-<script>
-  function toggleSection(id) {
-    const section = document.getElementById(id);
-    section.classList.toggle('section-open');
-  }
-</script>
 
 </body>
 </html>
