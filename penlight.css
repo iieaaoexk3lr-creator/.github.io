@@ -74,7 +74,7 @@ body {
 .penlight-head {
     width: 28vh; /* 縦幅に合わせて横幅も自動で美しくプロポーションを維持 */
     height: 92vh; /* どんなスマホの画面でも、上から下までピッタリ92%を埋める */
-    max-width: 50vw; /* 横幅がハミ出さないためのセーフティ */
+    max-width: 30vw; /* 横幅がハミ出さないためのセーフティ */
     background: radial-gradient(circle at center, #fff 2%, var(--current-color, #ff0000) 55%);
     border-radius: 100vh; /* 縦横比が変わっても常に完璧な丸みのあるスティック型を維持 */
     transition: background 0.2s linear, box-shadow 0.2s linear;
@@ -95,7 +95,7 @@ body {
 /* 中央下部の色表示ピル */
 .active-color-pill-container {
     position: absolute;
-    bottom: 60px;
+    bottom: 100px;
     left: 50%;
     transform: translateX(-50%);
     z-index: 100;
@@ -121,7 +121,7 @@ body {
 
 .color-indicator-dot {
     width: 12px;
-    height: 12px;
+    height: 9px;
     border-radius: 50%;
     background-color: var(--current-color, #ff0000);
     box-shadow: 0 0 8px var(--current-color, #ff0000);
