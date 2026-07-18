@@ -160,7 +160,16 @@ document.addEventListener('DOMContentLoaded', () => {
     // 発光ビジュアルのCSS適用
     function applyLightVisual() {
         if (activeMode === 'off') return;
+        
+        // 1. まず色をセット
         penlightBody.style.setProperty('--pen-color', activeColor);
+        
+        // 2. OFFで消された box-shadow（周りの光）をCSSと同じ設定で復活させる
+        penlightBody.style.boxShadow = `
+            0 0 40px 10px var(--pen-color),
+            0 0 90px 25px var(--pen-color),
+            0 0 150px 50px var(--pen-color)
+        `;
     }
 
     // エフェクト切り替え
