@@ -62,7 +62,7 @@ body, html {
 /* 🌟 発光部 */
 .penlight-glow-body {
     width: 22vh;
-    height: 100vh;
+    height: 70vh;
     max-width: 38vw;
     background: radial-gradient(circle at center, #ffffff 0%, var(--pen-color) 65%);
     border-radius: 100vh 100vh 12px 12px;
