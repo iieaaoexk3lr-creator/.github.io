@@ -8,67 +8,64 @@
 </head>
 <body>
     <div id="appContainer" class="app-container">
-        <div class="fullscreen-guide">タップで全画面切り替え</div>
+        <!-- 🌟 発光体（画面上から下まで全高配置） -->
+        <div id="penlightBody" class="penlight-glow-body"></div>
 
-        <!-- 左右カラー選択バー -->
-        <div class="side-color-bar left-bar ui-element"></div>
-        <div class="side-color-bar right-bar ui-element"></div>
-
-        <!-- タップ領域 -->
+        <!-- 🌟 クリック判定・オーバーレイ層 -->
         <div id="lightField" class="light-field">
-            <!-- 🌟 ペンライト本体 ＋ 持ち手コントロール -->
-            <div class="penlight-wrapper">
-                <!-- 発光部 -->
-                <div id="penlightBody" class="penlight-glow-body"></div>
+            <div class="fullscreen-guide ui-element">タップで全画面切り替え</div>
 
-                <!-- 持ち手（コントロールパネル） -->
-                <div class="penlight-handle ui-element" onclick="event.stopPropagation()">
-                    
-                    <!-- ① 管理者切替 ＋ モード表示 -->
-                    <div class="admin-mode-row">
-                        <label class="switch-label">
-                            <input type="checkbox" id="adminToggle">
-                            <span class="slider"></span>
-                        </label>
-                        <span id="modeText" class="mode-text">👥 参加モード</span>
-                    </div>
+            <!-- 🎨 左右カラーパレット（左右同一配置） -->
+            <div class="side-color-bar left-bar ui-element" onclick="event.stopPropagation()"></div>
+            <div class="side-color-bar right-bar ui-element" onclick="event.stopPropagation()"></div>
 
-                    <!-- ② 調整ツマミ（縦積み） -->
-                    <div class="sliders-stack">
-                        <div class="handle-slider-item">
-                            <div class="handle-slider-header">
-                                <span>光の幅</span>
-                                <span id="valGlow">0.2</span>
-                            </div>
-                            <input type="range" id="rangeGlow" class="handle-slider" min="0.1" max="2.5" step="0.1" value="0.2">
-                        </div>
-                        <div class="handle-slider-item">
-                            <div class="handle-slider-header">
-                                <span>明るさ</span>
-                                <div><span id="valBright">100</span>%</div>
-                            </div>
-                            <input type="range" id="rangeBright" class="handle-slider" min="10" max="200" step="5" value="100">
-                        </div>
-                        <div class="handle-slider-item">
-                            <div class="handle-slider-header">
-                                <span>速度</span>
-                                <div><span id="valSpeed">1.0</span>x</div>
-                            </div>
-                            <input type="range" id="rangeSpeed" class="handle-slider" min="0.2" max="3.0" step="0.1" value="1.0">
-                        </div>
-                    </div>
-
-                    <!-- ③ ボタン群（横に3つずつ × 2行） -->
-                    <div class="buttons-grid">
-                        <button id="btnBlink" class="grid-btn">点滅</button>
-                        <button id="btnPulse" class="grid-btn">明滅</button>
-                        <button id="btnPattern" class="grid-btn" disabled>虹:一瞬</button>
-                        <button id="btnSync" class="grid-btn sync-btn">同期</button>
-                        <button id="btnHide" class="grid-btn hide-btn">隠す</button>
-                        <button id="btnOff" class="grid-btn off-btn">OFF</button>
-                    </div>
-
+            <!-- 🌟 持ち手（コントロールパネル） -->
+            <div class="penlight-handle ui-element" onclick="event.stopPropagation()">
+                
+                <!-- 管理者切替 / モード表示 -->
+                <div class="admin-mode-row">
+                    <label class="switch-label">
+                        <input type="checkbox" id="adminToggle">
+                        <span class="slider"></span>
+                    </label>
+                    <span id="modeText" class="mode-text">👥 参加モード</span>
                 </div>
+
+                <!-- 調整スライダー -->
+                <div class="sliders-stack">
+                    <div class="handle-slider-item">
+                        <div class="handle-slider-header">
+                            <span>光の幅</span>
+                            <span id="valGlow">0.2</span>
+                        </div>
+                        <input type="range" id="rangeGlow" class="handle-slider" min="0.1" max="2.5" step="0.1" value="0.2">
+                    </div>
+                    <div class="handle-slider-item">
+                        <div class="handle-slider-header">
+                            <span>明るさ</span>
+                            <div><span id="valBright">100</span>%</div>
+                        </div>
+                        <input type="range" id="rangeBright" class="handle-slider" min="10" max="200" step="5" value="100">
+                    </div>
+                    <div class="handle-slider-item">
+                        <div class="handle-slider-header">
+                            <span>速度</span>
+                            <div><span id="valSpeed">1.0</span>x</div>
+                        </div>
+                        <input type="range" id="rangeSpeed" class="handle-slider" min="0.2" max="3.0" step="0.1" value="1.0">
+                    </div>
+                </div>
+
+                <!-- ボタン群 -->
+                <div class="buttons-grid">
+                    <button id="btnBlink" class="grid-btn">点滅</button>
+                    <button id="btnPulse" class="grid-btn">明滅</button>
+                    <button id="btnPattern" class="grid-btn" disabled>虹:一瞬</button>
+                    <button id="btnSync" class="grid-btn sync-btn">同期</button>
+                    <button id="btnHide" class="grid-btn hide-btn">隠す</button>
+                    <button id="btnOff" class="grid-btn off-btn">OFF</button>
+                </div>
+
             </div>
         </div>
     </div>
