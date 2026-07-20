@@ -2,65 +2,77 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>連動型デジタルペンライト</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>ペンライト</title>
     <link rel="stylesheet" href="penlight.css">
 </head>
 <body>
+    <div id="appContainer" class="app-container">
+        <div class="fullscreen-guide">タップで全画面切り替え</div>
 
-    <div class="app-container" id="appContainer">
-        
-        <!-- メイン発光エリア -->
-        <main class="light-field" id="lightField">
-            <div class="fullscreen-guide">画面中央をタップでURLバー非表示</div>
-            <!-- 現在の権限状態を画面上に小さく表示（デバッグ・確認用） -->
-            <div class="status-badge" id="statusBadge">参加者モード</div>
-            <div class="penlight-glow-body" id="penlightBody"></div>
-        </main>
+        <!-- 左右カラー選択バー -->
+        <div class="side-color-bar left-bar ui-element"></div>
+        <div class="side-color-bar right-bar ui-element"></div>
 
-        <!-- 左側カラーバー -->
-        <nav class="side-color-bar left-bar ui-element"></nav>
+        <!-- タップ領域 -->
+        <div id="lightField" class="light-field">
+            <!-- 🌟 ペンライト本体 ＋ 持ち手コントロール -->
+            <div class="penlight-wrapper">
+                <!-- 発光部 -->
+                <div id="penlightBody" class="penlight-glow-body"></div>
 
-        <!-- 右側カラーバー -->
-        <nav class="side-color-bar right-bar ui-element"></nav>
+                <!-- 持ち手（コントロールパネル） -->
+                <div class="penlight-handle ui-element" onclick="event.stopPropagation()">
+                    
+                    <!-- ① 管理者切替 ＋ モード表示 -->
+                    <div class="admin-mode-row">
+                        <label class="switch-label">
+                            <input type="checkbox" id="adminToggle">
+                            <span class="slider"></span>
+                        </label>
+                        <span id="modeText" class="mode-text">👥 参加モード</span>
+                    </div>
 
-       <!-- 下部コントロールメニュー -->
-<div class="bottom-controls-menu ui-element">
-    <!-- 🎛️ 上段：拡大スライダー群 -->
-    <div class="sliders-row">
-        <div class="slider-control-item">
-            <span class="slider-label">光幅: <span id="valGlow">0.2</span></span>
-            <input type="range" id="rangeGlow" class="control-slider" min="0.1" max="2.5" step="0.1" value="0.2">
-        </div>
-        <div class="slider-control-item">
-            <span class="slider-label">明るさ: <span id="valBright">100</span>%</span>
-            <input type="range" id="rangeBright" class="control-slider" min="10" max="200" step="5" value="100">
-        </div>
-        <div class="slider-control-item">
-            <span class="slider-label">点滅速度: <span id="valSpeed">1.0</span>x</span>
-            <input type="range" id="rangeSpeed" class="control-slider" min="0.2" max="3.0" step="0.1" value="1.0">
+                    <!-- ② 調整ツマミ（縦積み） -->
+                    <div class="sliders-stack">
+                        <div class="handle-slider-item">
+                            <div class="handle-slider-header">
+                                <span>光の幅</span>
+                                <span id="valGlow">0.2</span>
+                            </div>
+                            <input type="range" id="rangeGlow" class="handle-slider" min="0.1" max="2.5" step="0.1" value="0.2">
+                        </div>
+                        <div class="handle-slider-item">
+                            <div class="handle-slider-header">
+                                <span>明るさ</span>
+                                <div><span id="valBright">100</span>%</div>
+                            </div>
+                            <input type="range" id="rangeBright" class="handle-slider" min="10" max="200" step="5" value="100">
+                        </div>
+                        <div class="handle-slider-item">
+                            <div class="handle-slider-header">
+                                <span>速度</span>
+                                <div><span id="valSpeed">1.0</span>x</div>
+                            </div>
+                            <input type="range" id="rangeSpeed" class="handle-slider" min="0.2" max="3.0" step="0.1" value="1.0">
+                        </div>
+                    </div>
+
+                    <!-- ③ ボタン群（横に3つずつ × 2行） -->
+                    <div class="buttons-grid">
+                        <button id="btnBlink" class="grid-btn">点滅</button>
+                        <button id="btnPulse" class="grid-btn">明滅</button>
+                        <button id="btnPattern" class="grid-btn" disabled>虹:一瞬</button>
+                        <button id="btnSync" class="grid-btn sync-btn">同期</button>
+                        <button id="btnHide" class="grid-btn hide-btn">隠す</button>
+                        <button id="btnOff" class="grid-btn off-btn">OFF</button>
+                    </div>
+
+                </div>
+            </div>
         </div>
     </div>
 
-    <!-- 🔘 下段：各種ボタン群 -->
-    <div class="buttons-row">
-        <div class="toggle-container">
-            <label class="switch-label">
-                <input type="checkbox" id="adminToggle">
-                <span class="slider"></span>
-            </label>
-            <span class="toggle-text">管理者</span>
-        </div>
-        <button id="btnBlink" class="menu-btn">点滅</button>
-        <button id="btnPulse" class="menu-btn">明滅</button>
-        <button id="btnPattern" class="menu-btn" disabled>虹: 一瞬</button>
-        <button id="btnSync" class="menu-btn sync-btn">同期</button>
-        <button id="btnHide" class="menu-btn hide-btn">隠す</button>
-        <button id="btnOff" class="menu-btn off-btn">OFF</button>
-    </div>
-</div>
-
-    <!-- Firebase SDKの読み込み -->
     <script type="module" src="penlight.js"></script>
 </body>
 </html>
