@@ -84,10 +84,11 @@ body {
     max-width: 55vw;
     background: radial-gradient(circle at center, #ffffff 0%, var(--pen-color, #ff0000) 65%);
     border-radius: 100vh;
-    transition: box-shadow 0.2s ease, background 0.2s ease;
-    box-shadow: 0 0 40px 10px var(--pen-color, #ff0000),
-                0 0 90px 25px var(--pen-color, #ff0000),
-                0 0 150px 50px var(--pen-color, #ff0000);
+    transition: box-shadow 0.2s ease, background 0.2s ease, filter 0.2s ease;
+    /* 🌟【最小設定に調整】：初期状態の周りの光をキュッと最小限に設定 */
+    box-shadow: 0 0 8px 2px var(--pen-color, #ff0000),
+                0 0 18px 5px var(--pen-color, #ff0000),
+                0 0 30px 10px var(--pen-color, #ff0000);
 }
 
 .side-color-bar {
@@ -133,7 +134,7 @@ body {
 .bottom-controls-menu {
     position: absolute;
     bottom: 45px; 
-    left: 5%;
+    left: 5%; /* 50％だと中央から右端を突き抜けるから5％が正解 */
     transform: translateX(-50%);
     width: 92%;
     max-width: 480px;
@@ -156,7 +157,6 @@ body {
     overflow-x: auto;
     white-space: nowrap;
     padding: 2px 4px;
-    /* スクロールバーを隠す（iOS/Android/Chrome対応） */
     -webkit-overflow-scrolling: touch;
 }
 .scroll-wrapper::-webkit-scrollbar {
@@ -165,7 +165,7 @@ body {
 
 /* スライドメニュー内の各要素 */
 .menu-btn, .menu-item-wrapper {
-    flex: 0 0 auto; /* 横幅が勝手に縮まないように固定 */
+    flex: 0 0 auto;
 }
 
 .menu-btn {
@@ -229,6 +229,54 @@ input:checked + .slider { background-color: #ff9900; }
 input:checked + .slider:before { transform: translateX(20px); }
 .toggle-text { font-size: 0.55rem; color: #aaa; font-weight: bold; }
 
+/* 🎛️ 追加：調整用スライダー群のスタイル */
+.slider-control-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    padding: 0 6px;
+    min-width: 90px;
+}
+
+.slider-label {
+    font-size: 0.6rem;
+    color: #aaa;
+    font-weight: bold;
+    white-space: nowrap;
+}
+
+.control-slider {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 80px;
+    height: 4px;
+    border-radius: 2px;
+    background: rgba(255, 255, 255, 0.2);
+    outline: none;
+}
+
+.control-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: #ffffff;
+    cursor: pointer;
+    box-shadow: 0 0 6px rgba(0,0,0,0.5);
+}
+
+.control-slider::-moz-range-thumb {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: #ffffff;
+    cursor: pointer;
+    border: none;
+}
+
 .sync-btn { background: rgba(0, 150, 255, 0.2); color: #66bfff; border-color: rgba(0,150,255,0.2); }
 .hide-btn { background: rgba(70, 70, 80, 0.5); color: #fff; }
 .off-btn { background: rgba(255, 50, 50, 0.15); color: #ff6666; }
@@ -241,8 +289,8 @@ input:checked + .slider:before { transform: translateX(20px); }
 .app-container.ui-hidden .right-bar { transform: translateX(60px); }
 .app-container.ui-hidden .bottom-controls-menu { transform: translate(-50%, 50px); }
 
-/* エフェクトCSS */
-.effect-blink { animation: flashAni 0.1s infinite alternate; }
-.effect-pulse { animation: pulseAni 1.5s infinite ease-in-out; }
+/* エフェクトCSS（スピード可変対応） */
+.effect-blink { animation: flashAni var(--blink-speed, 0.1s) infinite alternate; }
+.effect-pulse { animation: pulseAni var(--pulse-speed, 1.5s) infinite ease-in-out; }
 @keyframes flashAni { 0% { opacity: 0.05; } 100% { opacity: 1; } }
 @keyframes pulseAni { 0%, 100% { opacity: 0.1; } 50% { opacity: 1; } }
