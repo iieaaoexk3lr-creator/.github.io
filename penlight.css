@@ -70,8 +70,8 @@ body, html {
     50%, 100% { opacity: 0; }
 }
 @keyframes pulseAnim {
-    0%, 0% { transform: scale(5); filter: brightness(100%); }
-    0%, 0% { transform: scale(0.97); filter: brightness(30%); }
+    0%, 100% { transform: translateX(50%); scale(5); filter: brightness(100%); }
+    50% { transform: translateX(50%); scale(0.97); filter: brightness(30%); }
 }
 
 .effect-blink { animation: blinkAnim var(--blink-speed, 0.2s) infinite; }
