@@ -130,40 +130,104 @@ body {
     background: linear-gradient(135deg, red, orange, yellow, green, cyan, blue, purple, pink);
 }
 
-/* ★下部ボタンメニュー：横スライド（スクロール）対応版・位置底上げ */
+/* ★下部コントロールメニュー（2段構成・中央配置） */
 .bottom-controls-menu {
     position: absolute;
-    bottom: 45px; 
-    left: 5%; /* 50％だと中央から右端を突き抜けるから5％が正解 */
-    transform: translateX(-50%);
-    width: 92%;
-    max-width: 480px;
+    bottom: 25px; 
+    left: 5%; /* ご指定の通り5%で配置 */
+    width: 90%;
+    max-width: 500px;
     z-index: 10;
-    background: rgba(15, 15, 18, 0.88);
-    padding: 8px;
-    border-radius: 18px;
-    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: rgba(15, 15, 18, 0.92);
+    padding: 12px 10px;
+    border-radius: 20px;
+    border: 1px solid rgba(255, 255, 255, 0.15);
     backdrop-filter: blur(15px);
     -webkit-backdrop-filter: blur(15px);
-    box-shadow: 0 10px 30px rgba(0,0,0,0.7);
+    box-shadow: 0 10px 30px rgba(0,0,0,0.8);
     transition: transform 0.3s cubic-bezier(0.1, 0.9, 0.2, 1), opacity 0.3s;
+    display: flex;
+    flex-direction: column;
+    gap: 12px; /* 上段（スライダー）と下段（ボタン）の間隔 */
 }
 
-/* 横スクロールを実現するコンテナ */
-.scroll-wrapper {
+/* 🎛️ 上段：スライダーエリア（横スクロール可能） */
+.sliders-row {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 16px;
+    overflow-x: auto;
+    padding: 4px 6px;
+    -webkit-overflow-scrolling: touch;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08); /* 上下区切り線 */
+    padding-bottom: 10px;
+}
+.sliders-row::-webkit-scrollbar { display: none; }
+
+/* 各スライダーの枠組み */
+.slider-control-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    min-width: 130px; /* スライダーを長く確保 */
+    flex: 0 0 auto;
+}
+
+.slider-label {
+    font-size: 0.7rem;
+    color: #ddd;
+    font-weight: bold;
+    white-space: nowrap;
+}
+
+/* スライダー本体（太く長めに設定） */
+.control-slider {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 120px; /* 長さを120pxに拡大 */
+    height: 10px;  /* トラックを太くして押しやすく */
+    border-radius: 5px;
+    background: rgba(255, 255, 255, 0.2);
+    outline: none;
+}
+
+/* つまみ（サム）を大きくして指で掴みやすく */
+.control-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 24px;   /* つまみの幅を拡大 */
+    height: 24px;  /* つまみの高さを拡大 */
+    border-radius: 50%;
+    background: #ffffff;
+    cursor: pointer;
+    box-shadow: 0 0 10px rgba(0,0,0,0.8), 0 0 4px rgba(255,255,255,0.8);
+    border: 2px solid #ff9900; /* 目立つように枠線追加 */
+}
+
+.control-slider::-moz-range-thumb {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: #ffffff;
+    cursor: pointer;
+    box-shadow: 0 0 10px rgba(0,0,0,0.8);
+    border: 2px solid #ff9900;
+}
+
+/* 🔘 下段：ボタン＆スイッチエリア（横スクロール可能） */
+.buttons-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
     overflow-x: auto;
     white-space: nowrap;
     padding: 2px 4px;
     -webkit-overflow-scrolling: touch;
 }
-.scroll-wrapper::-webkit-scrollbar {
-    display: none;
-}
+.buttons-row::-webkit-scrollbar { display: none; }
 
-/* スライドメニュー内の各要素 */
+/* ボタンとトグルの基本スタイル */
 .menu-btn, .menu-item-wrapper {
     flex: 0 0 auto;
 }
@@ -171,8 +235,8 @@ body {
 .menu-btn {
     background: rgba(255, 255, 255, 0.08);
     color: #cccccc;
-    border: 1px solid rgba(255, 255, 255, 0.05);
-    padding: 10px 16px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    padding: 8px 14px;
     border-radius: 10px;
     font-size: 0.72rem;
     font-weight: bold;
@@ -192,19 +256,20 @@ body {
     cursor: not-allowed;
 }
 
-/* スイッチデザイン */
+/* 管理者スイッチ */
 .toggle-container {
     display: flex;
     flex-direction: column;
     align-items: center;
     gap: 2px;
     padding: 0 4px;
+    flex: 0 0 auto;
 }
 .switch-label {
     position: relative;
     display: inline-block;
-    width: 42px;
-    height: 22px;
+    width: 40px;
+    height: 20px;
 }
 .switch-label input { opacity: 0; width: 0; height: 0; }
 .slider {
@@ -213,13 +278,13 @@ body {
     top: 0; left: 0; right: 0; bottom: 0;
     background-color: #333;
     transition: .3s;
-    border-radius: 22px;
+    border-radius: 20px;
     border: 1px solid rgba(255,255,255,0.1);
 }
 .slider:before {
     position: absolute;
     content: "";
-    height: 16px; width: 16px;
+    height: 14px; width: 14px;
     left: 2px; bottom: 2px;
     background-color: white;
     transition: .3s;
@@ -229,54 +294,7 @@ input:checked + .slider { background-color: #ff9900; }
 input:checked + .slider:before { transform: translateX(20px); }
 .toggle-text { font-size: 0.55rem; color: #aaa; font-weight: bold; }
 
-/* 🎛️ 追加：調整用スライダー群のスタイル */
-.slider-control-item {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 2px;
-    padding: 0 6px;
-    min-width: 90px;
-}
-
-.slider-label {
-    font-size: 0.6rem;
-    color: #aaa;
-    font-weight: bold;
-    white-space: nowrap;
-}
-
-.control-slider {
-    -webkit-appearance: none;
-    appearance: none;
-    width: 80px;
-    height: 4px;
-    border-radius: 2px;
-    background: rgba(255, 255, 255, 0.2);
-    outline: none;
-}
-
-.control-slider::-webkit-slider-thumb {
-    -webkit-appearance: none;
-    appearance: none;
-    width: 14px;
-    height: 14px;
-    border-radius: 50%;
-    background: #ffffff;
-    cursor: pointer;
-    box-shadow: 0 0 6px rgba(0,0,0,0.5);
-}
-
-.control-slider::-moz-range-thumb {
-    width: 14px;
-    height: 14px;
-    border-radius: 50%;
-    background: #ffffff;
-    cursor: pointer;
-    border: none;
-}
-
+/* ボタン固有カラー */
 .sync-btn { background: rgba(0, 150, 255, 0.2); color: #66bfff; border-color: rgba(0,150,255,0.2); }
 .hide-btn { background: rgba(70, 70, 80, 0.5); color: #fff; }
 .off-btn { background: rgba(255, 50, 50, 0.15); color: #ff6666; }
