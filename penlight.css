@@ -1,23 +1,4 @@
-* {
-    box-sizing: border-box;
-    margin: 0;
-    padding: 0;
-    user-select: none;
-    -webkit-user-select: none;
-    -webkit-tap-highlight-color: transparent;
-}
-
-body {
-    background-color: #000;
-    color: #fff;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-    overflow: hidden;
-    height: 100vh;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-}
-
+/* --- アプリ全体レイアウト --- */
 .app-container {
     width: 100%;
     height: 100vh;
@@ -28,22 +9,9 @@ body {
     align-items: center;
 }
 
-.light-field {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    cursor: pointer;
-    z-index: 1;
-}
-
 .fullscreen-guide {
     position: absolute;
-    top: 20px;
+    top: 15px;
     color: rgba(255, 255, 255, 0.25);
     font-size: 0.7rem;
     letter-spacing: 1px;
@@ -51,235 +19,81 @@ body {
     z-index: 2;
     transition: opacity 0.3s;
 }
+.app-container.ui-hidden .fullscreen-guide { opacity: 0; }
 
-/* 状態表示バッジ */
-.status-badge {
-    position: absolute;
-    top: 45px;
-    background: rgba(255, 255, 255, 0.1);
-    padding: 4px 10px;
-    border-radius: 20px;
-    font-size: 0.65rem;
-    color: #ccc;
-    z-index: 2;
-    pointer-events: none;
-    border: 1px solid rgba(255,255,255,0.05);
-}
-.app-container.admin-active .status-badge {
-    background: rgba(255, 153, 0, 0.2);
-    color: #ff9900;
-    border-color: rgba(255, 153, 0, 0.4);
-    font-weight: bold;
+/* 🌟 ペンライト全体コンテナ（発光部＋持ち手を縦に接続） */
+.penlight-wrapper {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    z-index: 5;
+    position: relative;
 }
 
-.app-container.ui-hidden .fullscreen-guide,
-.app-container:fullscreen .fullscreen-guide,
-.app-container.ui-hidden .status-badge {
-    opacity: 0;
-}
-
+/* 🌟 ペンライト発光部 */
 .penlight-glow-body {
-    width: 26vh;
-    height: 96vh;
-    max-width: 55vw;
+    width: 22vh;
+    height: 52vh; /* 持ち手をつけるため少し高さを調整 */
+    max-width: 48vw;
     background: radial-gradient(circle at center, #ffffff 0%, var(--pen-color, #ff0000) 65%);
-    border-radius: 100vh;
+    border-radius: 100vh 100vh 15px 15px; /* 上は丸く、下は持ち手と接続 */
     transition: box-shadow 0.2s ease, background 0.2s ease, filter 0.2s ease;
-    /* 🌟【最小設定に調整】：初期状態の周りの光をキュッと最小限に設定 */
     box-shadow: 0 0 8px 2px var(--pen-color, #ff0000),
                 0 0 18px 5px var(--pen-color, #ff0000),
                 0 0 30px 10px var(--pen-color, #ff0000);
 }
 
-.side-color-bar {
-    position: absolute;
-    top: 2vh;
-    height: 80vh;
+/* 🌟【持ち手（グリップ）兼 コントロールパネル】 */
+.penlight-handle {
+    /* ライトの横幅（22vh）＋約5pt（約10px）広めの設定 */
+    width: calc(22vh + 12px);
+    max-width: calc(48vw + 12px);
+    background: rgba(20, 20, 25, 0.92);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-top: 3px solid rgba(255, 255, 255, 0.4); /* 発光部との境目リング */
+    border-radius: 8px 8px 24px 24px;
+    padding: 10px 8px 14px 8px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.9);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+
     display: flex;
     flex-direction: column;
-    justify-content: space-between;
-    gap: 4px;
-    z-index: 10;
-    transition: transform 0.3s cubic-bezier(0.1, 0.9, 0.2, 1), opacity 0.3s;
-}
-
-.left-bar { left: 12px; }
-.right-bar { right: 12px; }
-
-.c-cell {
-    width: 42px;
-    height: 42px;
-    border-radius: 50%;
-    border: 2px solid rgba(255, 255, 255, 0.15);
-    cursor: pointer;
-    box-shadow: 0 3px 10px rgba(0,0,0,0.5);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    font-size: 1.1rem;
-    transition: transform 0.1s, border-color 0.2s;
-}
-
-.c-cell.active {
-    border-color: #ffffff;
-    transform: scale(1.12);
-    box-shadow: 0 0 12px #ffffff;
-}
-
-.rainbow-cell {
-    background: linear-gradient(135deg, red, orange, yellow, green, cyan, blue, purple, pink);
-}
-
-/* ★下部コントロールメニュー（2段構成・中央配置） */
-.bottom-controls-menu {
-    position: absolute;
-    bottom: 25px; 
-    left: 5%; /* ご指定の通り5%で配置 */
-    width: 90%;
-    max-width: 500px;
-    z-index: 10;
-    background: rgba(15, 15, 18, 0.92);
-    padding: 12px 10px;
-    border-radius: 20px;
-    border: 1px solid rgba(255, 255, 255, 0.15);
-    backdrop-filter: blur(15px);
-    -webkit-backdrop-filter: blur(15px);
-    box-shadow: 0 10px 30px rgba(0,0,0,0.8);
-    transition: transform 0.3s cubic-bezier(0.1, 0.9, 0.2, 1), opacity 0.3s;
-    display: flex;
-    flex-direction: column;
-    gap: 12px; /* 上段（スライダー）と下段（ボタン）の間隔 */
-}
-
-/* 🎛️ 上段：スライダーエリア（横スクロール可能） */
-.sliders-row {
-    display: flex;
-    align-items: center;
-    gap: 16px;
-    overflow-x: auto;
-    padding: 4px 6px;
-    -webkit-overflow-scrolling: touch;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.08); /* 上下区切り線 */
-    padding-bottom: 10px;
-}
-.sliders-row::-webkit-scrollbar { display: none; }
-
-/* 各スライダーの枠組み */
-.slider-control-item {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 6px;
-    min-width: 130px; /* スライダーを長く確保 */
-    flex: 0 0 auto;
-}
-
-.slider-label {
-    font-size: 0.7rem;
-    color: #ddd;
-    font-weight: bold;
-    white-space: nowrap;
-}
-
-/* スライダー本体（太く長めに設定） */
-.control-slider {
-    -webkit-appearance: none;
-    appearance: none;
-    width: 120px; /* 長さを120pxに拡大 */
-    height: 10px;  /* トラックを太くして押しやすく */
-    border-radius: 5px;
-    background: rgba(255, 255, 255, 0.2);
-    outline: none;
-}
-
-/* つまみ（サム）を大きくして指で掴みやすく */
-.control-slider::-webkit-slider-thumb {
-    -webkit-appearance: none;
-    appearance: none;
-    width: 24px;   /* つまみの幅を拡大 */
-    height: 24px;  /* つまみの高さを拡大 */
-    border-radius: 50%;
-    background: #ffffff;
-    cursor: pointer;
-    box-shadow: 0 0 10px rgba(0,0,0,0.8), 0 0 4px rgba(255,255,255,0.8);
-    border: 2px solid #ff9900; /* 目立つように枠線追加 */
-}
-
-.control-slider::-moz-range-thumb {
-    width: 24px;
-    height: 24px;
-    border-radius: 50%;
-    background: #ffffff;
-    cursor: pointer;
-    box-shadow: 0 0 10px rgba(0,0,0,0.8);
-    border: 2px solid #ff9900;
-}
-
-/* 🔘 下段：ボタン＆スイッチエリア（横スクロール可能） */
-.buttons-row {
-    display: flex;
-    align-items: center;
     gap: 8px;
-    overflow-x: auto;
-    white-space: nowrap;
-    padding: 2px 4px;
-    -webkit-overflow-scrolling: touch;
-}
-.buttons-row::-webkit-scrollbar { display: none; }
-
-/* ボタンとトグルの基本スタイル */
-.menu-btn, .menu-item-wrapper {
-    flex: 0 0 auto;
+    transition: transform 0.3s ease, opacity 0.3s ease;
 }
 
-.menu-btn {
-    background: rgba(255, 255, 255, 0.08);
-    color: #cccccc;
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    padding: 8px 14px;
-    border-radius: 10px;
-    font-size: 0.72rem;
-    font-weight: bold;
-    cursor: pointer;
-    transition: all 0.2s;
-}
-
-.menu-btn.active {
-    background: #ffffff;
-    color: #000000;
-    border-color: #ffffff;
-    box-shadow: 0 0 10px rgba(255,255,255,0.5);
-}
-
-.menu-btn:disabled {
-    opacity: 0.15;
-    cursor: not-allowed;
-}
-
-/* 管理者スイッチ */
-.toggle-container {
+/* 管理者スイッチ ＋ モードテキスト表示 */
+.admin-mode-row {
     display: flex;
-    flex-direction: column;
     align-items: center;
-    gap: 2px;
-    padding: 0 4px;
-    flex: 0 0 auto;
+    justify-content: center;
+    gap: 8px;
+    background: rgba(255, 255, 255, 0.05);
+    padding: 4px 8px;
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
 }
+.app-container.admin-active .admin-mode-row {
+    background: rgba(255, 153, 0, 0.15);
+    border-color: rgba(255, 153, 0, 0.4);
+}
+
 .switch-label {
     position: relative;
     display: inline-block;
-    width: 40px;
-    height: 20px;
+    width: 36px;
+    height: 18px;
+    flex-shrink: 0;
 }
 .switch-label input { opacity: 0; width: 0; height: 0; }
 .slider {
     position: absolute;
     cursor: pointer;
     top: 0; left: 0; right: 0; bottom: 0;
-    background-color: #333;
+    background-color: #444;
     transition: .3s;
-    border-radius: 20px;
-    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 18px;
 }
 .slider:before {
     position: absolute;
@@ -291,24 +105,117 @@ body {
     border-radius: 50%;
 }
 input:checked + .slider { background-color: #ff9900; }
-input:checked + .slider:before { transform: translateX(20px); }
-.toggle-text { font-size: 0.55rem; color: #aaa; font-weight: bold; }
+input:checked + .slider:before { transform: translateX(18px); }
 
-/* ボタン固有カラー */
-.sync-btn { background: rgba(0, 150, 255, 0.2); color: #66bfff; border-color: rgba(0,150,255,0.2); }
-.hide-btn { background: rgba(70, 70, 80, 0.5); color: #fff; }
-.off-btn { background: rgba(255, 50, 50, 0.15); color: #ff6666; }
+.mode-text {
+    font-size: 0.65rem;
+    font-weight: bold;
+    color: #bbb;
+    white-space: nowrap;
+}
+.app-container.admin-active .mode-text {
+    color: #ff9900;
+}
+
+/* 🎛️ 調整スライダー縦積みエリア */
+.sliders-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.handle-slider-item {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.handle-slider-header {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.6rem;
+    color: #aaa;
+    font-weight: bold;
+    padding: 0 2px;
+}
+
+/* 持ち手の幅に収まる大きめスライダー */
+.handle-slider {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100%;
+    height: 8px;
+    border-radius: 4px;
+    background: rgba(255, 255, 255, 0.2);
+    outline: none;
+}
+
+.handle-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: #ffffff;
+    cursor: pointer;
+    box-shadow: 0 0 6px rgba(0,0,0,0.8);
+    border: 2px solid #ff9900;
+}
+
+/* 🔘 ボタン群（1行に3つ配置） */
+.buttons-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 4px;
+}
+
+.grid-btn {
+    background: rgba(255, 255, 255, 0.08);
+    color: #ccc;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    padding: 6px 0;
+    border-radius: 6px;
+    font-size: 0.65rem;
+    font-weight: bold;
+    cursor: pointer;
+    text-align: center;
+    transition: all 0.2s;
+}
+
+.grid-btn.active {
+    background: #ffffff;
+    color: #000000;
+    box-shadow: 0 0 8px rgba(255,255,255,0.5);
+}
+
+.grid-btn:disabled {
+    opacity: 0.2;
+    cursor: not-allowed;
+}
+
+.sync-btn { background: rgba(0, 150, 255, 0.2); color: #66bfff; }
+.hide-btn { background: rgba(80, 80, 90, 0.5); color: #fff; }
+.off-btn { background: rgba(255, 50, 50, 0.2); color: #ff6666; }
 .off-btn.active { background: #ff3333; color: #fff; }
 
-/* UI非表示アニメーション用 */
-.ui-element { opacity: 1; transform: translateY(0) scale(1); }
+/* 左右カラーバー */
+.side-color-bar {
+    position: absolute;
+    top: 2vh;
+    height: 80vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    gap: 4px;
+    z-index: 10;
+    transition: transform 0.3s cubic-bezier(0.1, 0.9, 0.2, 1), opacity 0.3s;
+}
+.left-bar { left: 10px; }
+.right-bar { right: 10px; }
+
+/* UI非表示（隠すボタン動作） */
+.ui-element { opacity: 1; transform: translateY(0); }
 .app-container.ui-hidden .ui-element { opacity: 0; pointer-events: none; }
 .app-container.ui-hidden .left-bar { transform: translateX(-60px); }
 .app-container.ui-hidden .right-bar { transform: translateX(60px); }
-.app-container.ui-hidden .bottom-controls-menu { transform: translate(-50%, 50px); }
-
-/* エフェクトCSS（スピード可変対応） */
-.effect-blink { animation: flashAni var(--blink-speed, 0.1s) infinite alternate; }
-.effect-pulse { animation: pulseAni var(--pulse-speed, 1.5s) infinite ease-in-out; }
-@keyframes flashAni { 0% { opacity: 0.05; } 100% { opacity: 1; } }
-@keyframes pulseAni { 0%, 100% { opacity: 0.1; } 50% { opacity: 1; } }
+.app-container.ui-hidden .penlight-handle { transform: translateY(30px); }
