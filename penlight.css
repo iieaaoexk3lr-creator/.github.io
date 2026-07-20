@@ -1,9 +1,3 @@
-:root {
-    --pen-color: #ff0000;
-    --pen-glow: 0.2;
-    --anim-duration: 1s;
-}
-
 * {
     box-sizing: border-box;
     margin: 0;
@@ -21,85 +15,80 @@ body, html {
 }
 
 .app-container {
-    width: 100%;
+    width: 100vw;
     height: 100vh;
     position: relative;
-    display: flex;
-    justify-content: center;
-    align-items: center;
+    overflow: hidden;
+}
+
+/* 🌟 発光体：スマホ上ギリギリから一番下まで固定 */
+.penlight-glow-body {
+    position: absolute;
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 32vh;
+    height: 100vh;
+    max-width: 70vw;
+    background: radial-gradient(circle at center, #ffffff 0%, var(--pen-color, #ff0000) 65%);
+    transition: box-shadow 0.2s ease, background 0.2s ease, filter 0.2s ease;
+    box-shadow: 
+        0 0 40px 10px var(--pen-color, #ff0000),
+        0 0 90px 25px var(--pen-color, #ff0000),
+        0 0 150px 50px var(--pen-color, #ff0000);
+    z-index: 1;
+    pointer-events: none;
+}
+
+/* クリック判定フィールド */
+.light-field {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 5;
+    cursor: pointer;
 }
 
 .fullscreen-guide {
     position: absolute;
-    top: 5px;
-    color: rgba(255, 255, 255, 0.25);
+    top: 15px;
+    left: 50%;
+    transform: translateX(-50%);
+    color: rgba(255, 255, 255, 0.3);
     font-size: 0.7rem;
     letter-spacing: 1px;
     pointer-events: none;
-    z-index: 2;
-    transition: opacity 0.3s;
-}
-.app-container.ui-hidden .fullscreen-guide { opacity: 0; }
-
-.light-field {
-    width: 100%;
-    height: 100%;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    cursor: pointer;
+    z-index: 10;
+    transition: opacity 0.3s ease;
 }
 
-/* 🌟 ペンライト全体コンテナ（発光部＋持ち手を縦接続） */
-.penlight-wrapper {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    z-index: 5;
-    position: relative;
-}
-
-/* 🌟 発光部 */
-.penlight-glow-body {
-    width: 22vh;
-    height: 70vh;
-    max-width: 38vw;
-    background: radial-gradient(circle at center, #ffffff 0%, var(--pen-color) 65%);
-    border-radius: 100vh 100vh 12px 12px;
-    transition: background 0.2s, filter 0.2s, opacity 0.2s;
-    box-shadow: 
-        0 0 calc(20px * var(--pen-glow)) calc(5px * var(--pen-glow)) var(--pen-color),
-        0 0 calc(50px * var(--pen-glow)) calc(15px * var(--pen-glow)) var(--pen-color),
-        0 0 calc(90px * var(--pen-glow)) calc(30px * var(--pen-glow)) var(--pen-color);
-}
-
-.penlight-glow-body.pen-off {
-    background: #111115 !important;
-    box-shadow: none !important;
-    filter: brightness(0%) !important;
-}
-
-/* アニメーション */
+/* エフェクトアニメーション */
 @keyframes blinkAnim {
     0%, 49% { opacity: 1; }
-    50%, 100% { opacity: 0.05; }
+    50%, 100% { opacity: 0; }
 }
 @keyframes pulseAnim {
     0%, 100% { transform: scale(1); filter: brightness(100%); }
-    50% { transform: scale(0.98); filter: brightness(30%); }
+    50% { transform: scale(0.97); filter: brightness(20%); }
 }
 
-.mode-blink { animation: blinkAnim var(--anim-duration) infinite; }
-.mode-pulse { animation: pulseAnim var(--anim-duration) infinite ease-in-out; }
+.effect-blink { animation: blinkAnim var(--blink-speed, 0.1s) infinite; }
+.effect-pulse { animation: pulseAnim var(--pulse-speed, 1.5s) infinite ease-in-out; }
 
-/* 🌟 持ち手（コントロールパネル） */
+/* 🌟 持ち手（コントロールパネル）：ペンライトの上にオーバーレイ */
 .penlight-handle {
-    width: calc(22vh + 12px);
-    max-width: calc(38vw + 12px);
-    background: rgba(20, 20, 25, 0.92);
+    position: absolute;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: calc(32vh + 12px);
+    max-width: calc(70vw + 12px);
+    background: rgba(18, 18, 22, 0.88);
     border: 1px solid rgba(255, 255, 255, 0.2);
     border-top: 3px solid rgba(255, 255, 255, 0.4);
-    border-radius: 6px 6px 20px 20px;
+    border-radius: 16px;
     padding: 10px 8px 12px 8px;
     box-shadow: 0 10px 30px rgba(0,0,0,0.9);
     backdrop-filter: blur(10px);
@@ -107,7 +96,8 @@ body, html {
     display: flex;
     flex-direction: column;
     gap: 8px;
-    transition: transform 0.3s ease, opacity 0.3s ease;
+    z-index: 20;
+    transition: opacity 0.3s ease, transform 0.3s ease;
 }
 
 /* 管理者スイッチ ＋ モード表示 */
@@ -239,35 +229,54 @@ input:checked + .slider:before { transform: translateX(16px); }
 .off-btn { background: rgba(255, 50, 50, 0.2); color: #ff6666; }
 .off-btn.active { background: #ff3333; color: #fff; }
 
-/* 左右カラー選択バー */
+/* 🎨 左右カラーバー */
 .side-color-bar {
     position: absolute;
     top: 2vh;
-    height: 90vh;
+    height: 96vh;
     display: flex;
     flex-direction: column;
     justify-content: space-between;
-    gap: 4px;
-    z-index: 10;
-    transition: transform 0.3s ease, opacity 0.3s ease;
+    z-index: 20;
+    transition: opacity 0.3s ease, transform 0.3s ease;
 }
 .left-bar { left: 8px; }
 .right-bar { right: 8px; }
 
-.color-pick-btn {
+/* 丸型カラーボタン */
+.c-cell {
     width: 32px;
     height: 32px;
     border-radius: 50%;
     border: 2px solid rgba(255, 255, 255, 0.4);
     cursor: pointer;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.5);
-    transition: transform 0.15s ease;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.6);
+    transition: transform 0.15s ease, border-color 0.15s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.8rem;
 }
-.color-pick-btn:active { transform: scale(1.2); }
+.c-cell.active {
+    border: 3px solid #ffffff;
+    box-shadow: 0 0 10px #ffffff, 0 0 5px var(--pen-color, #fff);
+    transform: scale(1.15);
+}
 
-/* UI隠すアニメーション */
-.ui-element { opacity: 1; transform: translateY(0); }
-.app-container.ui-hidden .ui-element { opacity: 0; pointer-events: none; }
-.app-container.ui-hidden .left-bar { transform: translateX(-60px); }
-.app-container.ui-hidden .right-bar { transform: translateX(60px); }
-.app-container.ui-hidden .penlight-handle { transform: translateY(30px); }
+/* 🌈 虹色ボタン専用グラデーション背景 */
+.rainbow-cell {
+    background: linear-gradient(135deg, #ff0000, #ffff00, #00ff00, #00ffff, #0000ff, #8b00ff);
+}
+
+/* UI隠すアニメーション（レイアウト崩れ・ノイズ防止） */
+.ui-element {
+    opacity: 1;
+    pointer-events: auto;
+}
+.app-container.ui-hidden .ui-element {
+    opacity: 0;
+    pointer-events: none;
+}
+.app-container.ui-hidden .left-bar { transform: translateX(-50px); }
+.app-container.ui-hidden .right-bar { transform: translateX(50px); }
+.app-container.ui-hidden .penlight-handle { transform: translate(-50%, 30px); }
