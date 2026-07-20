@@ -31,7 +31,7 @@ body, html {
 
 .fullscreen-guide {
     position: absolute;
-    top: 15px;
+    top: 5px;
     color: rgba(255, 255, 255, 0.25);
     font-size: 0.7rem;
     letter-spacing: 1px;
@@ -62,8 +62,8 @@ body, html {
 /* 🌟 発光部 */
 .penlight-glow-body {
     width: 22vh;
-    height: 50vh;
-    max-width: 48vw;
+    height: 100vh;
+    max-width: 38vw;
     background: radial-gradient(circle at center, #ffffff 0%, var(--pen-color) 65%);
     border-radius: 100vh 100vh 12px 12px;
     transition: background 0.2s, filter 0.2s, opacity 0.2s;
@@ -76,7 +76,7 @@ body, html {
 .penlight-glow-body.pen-off {
     background: #111115 !important;
     box-shadow: none !important;
-    filter: brightness(10%) !important;
+    filter: brightness(0%) !important;
 }
 
 /* アニメーション */
@@ -95,7 +95,7 @@ body, html {
 /* 🌟 持ち手（コントロールパネル） */
 .penlight-handle {
     width: calc(22vh + 12px);
-    max-width: calc(48vw + 12px);
+    max-width: calc(38vw + 12px);
     background: rgba(20, 20, 25, 0.92);
     border: 1px solid rgba(255, 255, 255, 0.2);
     border-top: 3px solid rgba(255, 255, 255, 0.4);
