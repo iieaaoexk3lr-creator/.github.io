@@ -36,6 +36,14 @@ document.addEventListener('DOMContentLoaded', () => {
     const btnHide = document.getElementById('btnHide');
     const btnOff = document.getElementById('btnOff');
 
+    // 🎛️ 追加：スライダーUI要素の取得
+    const rangeGlow = document.getElementById('rangeGlow');
+    const rangeBright = document.getElementById('rangeBright');
+    const rangeSpeed = document.getElementById('rangeSpeed');
+    const valGlow = document.getElementById('valGlow');
+    const valBright = document.getElementById('valBright');
+    const valSpeed = document.getElementById('valSpeed');
+
     const colorPresets = [
         { name: '赤', hex: '#FF0000' },
         { name: '橙', hex: '#FF7F00' },
@@ -55,12 +63,23 @@ document.addEventListener('DOMContentLoaded', () => {
     let activeMode = 'solid'; // 'solid', 'blink', 'pulse', 'off'
     let isRainbow = false;
     let rainbowPattern = 'flash'; // 'flash' または 'fade'
+
+    // 🌟【初期設定】：光の幅を最小（0.2）に設定
+    let glowFactor = 0.2;     // 光の幅倍率 (デフォルト: 最小)
+    let brightFactor = 1.0;   // 明るさ倍率 (デフォルト: 100%)
+    let speedFactor = 1.0;    // 速度倍率 (デフォルト: 1.0x)
     
     let amIAdmin = false;       // 自分が管理者かどうか
-    let lastMyTapTime = 0;      // 自分が最後に手動で色を変更したタイムスタンプ（ラグ防止用）
+    let lastMyTapTime = 0;      // 自分が最後に手動で変更したタイムスタンプ
     let rainbowTimer = null;
     let uiHidden = false;
     let fadeIndex = 0;
+
+    // 初期状態のスライダーUIの値をセット
+    if (rangeGlow) {
+        rangeGlow.value = glowFactor;
+        valGlow.innerText = glowFactor.toFixed(1);
+    }
 
     // カラーバーの構築
     function initColorBars() {
@@ -80,7 +99,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 btn.addEventListener('click', (e) => {
                     e.stopPropagation();
-                    // ローカルのタップ時刻を記録（ラグ対策）
                     lastMyTapTime = Date.now();
                     executeColorChange(preset.hex);
                 });
@@ -107,16 +125,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         syncActiveColorUI(colorCode);
-
-        // 🌟【管理者機能】：自分が管理者の場合、Firebaseへ一斉送信命令を書き込む
-        if (amIAdmin) {
-            set(ref(db, 'pen_light/last_command'), {
-                color: colorCode,
-                mode: activeMode,
-                pattern: rainbowPattern,
-                timestamp: Date.now()
-            });
-        }
+        sendAdminCommand();
     }
 
     // 左右ボタンのアクティブ表示同期
@@ -130,26 +139,31 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // 🌈虹色ループ処理
+    // 🌈虹色ループ処理（速度倍率適用）
     function startRainbowProcessor() {
         let step = 0;
         penlightBody.style.transition = 'box-shadow 0.2s ease, background 0.2s ease';
+
+        // 速度スライダーに合わせて更新間隔（ミリ秒）を変更
+        const flashInterval = Math.max(100, Math.round(600 / speedFactor));
+        const fadeInterval = Math.max(200, Math.round(2000 / speedFactor));
 
         if (rainbowPattern === 'flash') {
             rainbowTimer = setInterval(() => {
                 activeColor = rainbowSequence[step];
                 applyLightVisual();
                 step = (step + 1) % rainbowSequence.length;
-            }, 600);
+            }, flashInterval);
         } else {
-            penlightBody.style.transition = 'background 2.0s linear, box-shadow 2.0s linear';
+            const transitionSec = (fadeInterval / 1000).toFixed(1);
+            penlightBody.style.transition = `background ${transitionSec}s linear, box-shadow ${transitionSec}s linear`;
             activeColor = rainbowSequence[fadeIndex];
             applyLightVisual();
             rainbowTimer = setInterval(() => {
                 fadeIndex = (fadeIndex + 1) % rainbowSequence.length;
                 activeColor = rainbowSequence[fadeIndex];
                 applyLightVisual();
-            }, 2000);
+            }, fadeInterval);
         }
     }
 
@@ -157,19 +171,39 @@ document.addEventListener('DOMContentLoaded', () => {
         if (rainbowTimer) { clearInterval(rainbowTimer); rainbowTimer = null; }
     }
 
-    // 発光ビジュアルのCSS適用
+    // 発光ビジュアルのCSS適用（光の幅倍率を反映）
     function applyLightVisual() {
         if (activeMode === 'off') return;
         
-        // 1. まず色をセット
         penlightBody.style.setProperty('--pen-color', activeColor);
         
-        // 2. OFFで消された box-shadow（周りの光）をCSSと同じ設定で復活させる
+        // スライダーの「glowFactor」を掛け算して光の幅を可変にする（最小設定対応）
+        const blur1 = Math.round(40 * glowFactor);
+        const spread1 = Math.round(10 * glowFactor);
+        const blur2 = Math.round(90 * glowFactor);
+        const spread2 = Math.round(25 * glowFactor);
+        const blur3 = Math.round(150 * glowFactor);
+        const spread3 = Math.round(50 * glowFactor);
+
         penlightBody.style.boxShadow = `
-            0 0 40px 10px var(--pen-color),
-            0 0 90px 25px var(--pen-color),
-            0 0 150px 50px var(--pen-color)
+            0 0 ${blur1}px ${spread1}px var(--pen-color),
+            0 0 ${blur2}px ${spread2}px var(--pen-color),
+            0 0 ${blur3}px ${spread3}px var(--pen-color)
         `;
+    }
+
+    // 速度変更の適用
+    function applySpeedChange() {
+        const blinkTime = (0.1 / speedFactor).toFixed(2);
+        const pulseTime = (1.5 / speedFactor).toFixed(2);
+
+        penlightBody.style.setProperty('--blink-speed', `${blinkTime}s`);
+        penlightBody.style.setProperty('--pulse-speed', `${pulseTime}s`);
+
+        if (isRainbow) {
+            stopRainbowProcessor();
+            startRainbowProcessor();
+        }
     }
 
     // エフェクト切り替え
@@ -186,15 +220,7 @@ document.addEventListener('DOMContentLoaded', () => {
             activeMode = 'solid';
         }
 
-        // 🌟【管理者機能】：エフェクトの変更を全体に共有
-        if (amIAdmin) {
-            set(ref(db, 'pen_light/last_command'), {
-                color: isRainbow ? 'rainbow' : activeColor,
-                mode: activeMode,
-                pattern: rainbowPattern,
-                timestamp: Date.now()
-            });
-        }
+        sendAdminCommand();
     }
 
     function clearEffectsUI() {
@@ -203,20 +229,33 @@ document.addEventListener('DOMContentLoaded', () => {
         btnPulse.classList.remove('active');
     }
 
+    // 管理者からの命令を一斉送信する共通関数
+    function sendAdminCommand() {
+        if (amIAdmin) {
+            set(ref(db, 'pen_light/last_command'), {
+                color: (activeMode === 'off') ? '#000000' : (isRainbow ? 'rainbow' : activeColor),
+                mode: activeMode,
+                pattern: rainbowPattern,
+                glow: glowFactor,
+                bright: brightFactor,
+                speed: speedFactor,
+                timestamp: Date.now()
+            });
+        }
+    }
+
     // --- 🔗 📡 Firebase リアルタイム同期システム 📡 🔗 ---
 
-    // 1. 現在の管理者権限の変更を24時間監視
+    // 1. 現在の管理者権限の変更を監視
     onValue(ref(db, 'pen_light/active_admin_id'), (snapshot) => {
         const currentAdminId = snapshot.val();
         
         if (currentAdminId === myUserId) {
-            // 自分が管理者である場合
             amIAdmin = true;
             adminToggle.checked = true;
             appContainer.classList.add('admin-active');
             statusBadge.innerText = "👑 管理者モード";
         } else {
-            // 誰か別の人が管理者になった、あるいは不在になった場合
             amIAdmin = false;
             adminToggle.checked = false;
             appContainer.classList.remove('admin-active');
@@ -224,26 +263,22 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // 2. 管理者からの一斉送信コマンドを受信（★ラグ対策実装）
+    // 2. 管理者からの一斉送信コマンドを受信
     onValue(ref(db, 'pen_light/last_command'), (snapshot) => {
-        // 自分が管理者の場合は、自分の操作によるループバックを防ぐため処理をスルー
-        if (amIAdmin) return;
+        if (amIAdmin) return; // 自分の送信によるループバックを回避
 
         const cmd = snapshot.val();
         if (!cmd) return;
 
-        // 💡 ユーザー提案のラグ対策判定：
-        // 管理者がコマンドを送信した時刻が、自分が手元で画面を最後にタップした時刻よりも【古い（過去）】なら、遅延データとみなして無視する
         if (cmd.timestamp < lastMyTapTime) {
             console.log("遅れて届いた古い管理者コマンドをスキップしました。");
             return;
         }
 
-        // 管理者命令の強制反映
         applyExternalCommand(cmd);
     });
 
-    // 外部からのコマンドを適用する共通関数
+    // 外部からのコマンドを適用する関数
     function applyExternalCommand(cmd) {
         clearEffectsUI();
         stopRainbowProcessor();
@@ -252,6 +287,25 @@ document.addEventListener('DOMContentLoaded', () => {
         activeMode = cmd.mode;
         rainbowPattern = cmd.pattern || 'flash';
         btnPattern.innerText = (rainbowPattern === 'fade') ? '虹: 滑らか' : '虹: 一瞬';
+
+        // スライダーパラメータの反映
+        if (cmd.glow !== undefined) {
+            glowFactor = cmd.glow;
+            rangeGlow.value = glowFactor;
+            valGlow.innerText = glowFactor.toFixed(1);
+        }
+        if (cmd.bright !== undefined) {
+            brightFactor = cmd.bright;
+            rangeBright.value = Math.round(brightFactor * 100);
+            valBright.innerText = Math.round(brightFactor * 100);
+            penlightBody.style.filter = `brightness(${brightFactor})`;
+        }
+        if (cmd.speed !== undefined) {
+            speedFactor = cmd.speed;
+            rangeSpeed.value = speedFactor;
+            valSpeed.innerText = speedFactor.toFixed(1);
+            applySpeedChange();
+        }
 
         if (cmd.color === 'rainbow') {
             isRainbow = true;
@@ -273,7 +327,6 @@ document.addEventListener('DOMContentLoaded', () => {
             applyLightVisual();
         }
 
-        // 該当するエフェクトクラスの付与
         if (activeMode === 'blink') {
             btnBlink.classList.add('active');
             penlightBody.classList.add('effect-blink');
@@ -283,15 +336,47 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // --- 🎛️ 各種コントロールボタン制御 🎛️ ---
+    // --- 🎛️ 各種コントロール・スライダーイベント 🎛️ ---
 
-    // 管理者スイッチ（トグル）が操作された時
+    // 1. 光の幅スライダー
+    if (rangeGlow) {
+        rangeGlow.addEventListener('input', (e) => {
+            lastMyTapTime = Date.now();
+            glowFactor = parseFloat(e.target.value);
+            valGlow.innerText = glowFactor.toFixed(1);
+            applyLightVisual();
+            sendAdminCommand();
+        });
+    }
+
+    // 2. 明るさスライダー
+    if (rangeBright) {
+        rangeBright.addEventListener('input', (e) => {
+            lastMyTapTime = Date.now();
+            const val = parseInt(e.target.value);
+            brightFactor = val / 100;
+            valBright.innerText = val;
+            penlightBody.style.filter = `brightness(${brightFactor})`;
+            sendAdminCommand();
+        });
+    }
+
+    // 3. 速度スライダー
+    if (rangeSpeed) {
+        rangeSpeed.addEventListener('input', (e) => {
+            lastMyTapTime = Date.now();
+            speedFactor = parseFloat(e.target.value);
+            valSpeed.innerText = speedFactor.toFixed(1);
+            applySpeedChange();
+            sendAdminCommand();
+        });
+    }
+
+    // 管理者スイッチ
     adminToggle.addEventListener('change', () => {
         if (adminToggle.checked) {
-            // 管理者に立候補
             set(ref(db, 'pen_light/active_admin_id'), myUserId);
         } else {
-            // 管理者から自ら降りる
             set(ref(db, 'pen_light/active_admin_id'), null);
         }
     });
@@ -312,30 +397,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
         stopRainbowProcessor();
         startRainbowProcessor();
-
-        // 管理者なら変更を全体に配信
-        if (amIAdmin) {
-            set(ref(db, 'pen_light/last_command'), {
-                color: 'rainbow',
-                mode: activeMode,
-                pattern: rainbowPattern,
-                timestamp: Date.now()
-            });
-        }
+        sendAdminCommand();
     });
 
-    // ★ユーザー提案の「同期読込（復活）ボタン」
+    // 強制同期ボタン
     btnSync.addEventListener('click', async (e) => {
         e.stopPropagation();
-        // 自分が管理者の場合は同期不要
         if (amIAdmin) return;
 
         try {
-            // タイムスタンプ無視で、Firebaseから直接最新状態を1回だけガツッと強制取得
             const snapshot = await get(ref(db, 'pen_light/last_command'));
             const cmd = snapshot.val();
             if (cmd) {
-                // ラグ防止のタイムスタンプを現在の時刻にリセットして同期を最優先
                 lastMyTapTime = 0;
                 applyExternalCommand(cmd);
                 console.log("最新の管理者状態と強制同期しました。");
@@ -352,31 +425,36 @@ document.addEventListener('DOMContentLoaded', () => {
         appContainer.classList.add('ui-hidden');
     });
 
-    // OFF（消灯）ボタン
+    // OFF（消灯 / 点灯トグル）ボタン
     btnOff.addEventListener('click', (e) => {
         e.stopPropagation();
         lastMyTapTime = Date.now();
-        
-        stopRainbowProcessor();
-        clearEffectsUI();
-        document.querySelectorAll('.c-cell').forEach(b => b.classList.remove('active'));
-        
-        activeMode = 'off';
-        isRainbow = false;
-        btnPattern.disabled = true;
-        btnOff.classList.add('active');
 
-        penlightBody.style.setProperty('--pen-color', '#000000');
-        penlightBody.style.boxShadow = 'none';
+        if (activeMode === 'off') {
+            // 【ONにする処理】：直前の色で復帰
+            activeMode = 'solid';
+            btnOff.classList.remove('active');
+            
+            if (isRainbow) {
+                startRainbowProcessor();
+            } else {
+                applyLightVisual();
+                syncActiveColorUI(activeColor);
+            }
+        } else {
+            // 【OFFにする処理】：消灯して光を消す
+            stopRainbowProcessor();
+            clearEffectsUI();
+            document.querySelectorAll('.c-cell').forEach(b => b.classList.remove('active'));
+            
+            activeMode = 'off';
+            btnOff.classList.add('active');
 
-        if (amIAdmin) {
-            set(ref(db, 'pen_light/last_command'), {
-                color: '#000000',
-                mode: 'off',
-                pattern: rainbowPattern,
-                timestamp: Date.now()
-            });
+            penlightBody.style.setProperty('--pen-color', '#000000');
+            penlightBody.style.boxShadow = 'none';
         }
+
+        sendAdminCommand();
     });
 
     // フルスクリーンおよびUI復帰判定
@@ -402,7 +480,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // アプリ起動
+    // アプリ初期化実行
     initColorBars();
     applyLightVisual();
 });
