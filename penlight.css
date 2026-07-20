@@ -24,11 +24,11 @@ body, html {
 /* 🌟 発光体：スマホ上ギリギリから一番下まで固定 */
 .penlight-glow-body {
     position: absolute;
-    top: 0;
+    top: 1;
     left: 50%;
     transform: translateX(-50%);
-    width: 25vh;
-    height: 100vh;
+    width: 24vh;
+    height: 99vh;
     max-width: 70vw;
     background: radial-gradient(circle at center, #ffffff 0%, var(--pen-color, #ff0000) 65%);
     transition: box-shadow 0.2s ease, background 0.2s ease, filter 0.2s ease;
@@ -70,8 +70,8 @@ body, html {
     50%, 100% { opacity: 0; }
 }
 @keyframes pulseAnim {
-    0%, 50% { transform: scale(1); filter: brightness(100%); }
-    0%, 50% { transform: scale(0.97); filter: brightness(30%); }
+    0%, 0% { transform: scale(5); filter: brightness(100%); }
+    0%, 0% { transform: scale(0.97); filter: brightness(30%); }
 }
 
 .effect-blink { animation: blinkAnim var(--blink-speed, 0.2s) infinite; }
@@ -80,7 +80,7 @@ body, html {
 /* 🌟 持ち手（コントロールパネル）：ペンライトの上にオーバーレイ */
 .penlight-handle {
     position: absolute;
-    bottom: 28px;
+    bottom: 30px;
     left: 50%;
     transform: translateX(-50%);
     width: calc(35vh + 12px);
