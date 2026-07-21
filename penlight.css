@@ -27,9 +27,9 @@ body, html {
     top: 0;
     left: 50%;
     transform: translateX(-50%);
-    width: 32vh;
-    height: 100vh;
-    max-width: 70vw;
+    width: 28vh;
+    height: 90vh;
+    max-width: 50vw;
 
     /* 🌟 プラスチック管全体が明るく発光する円柱グラデーション */
     background: linear-gradient(
