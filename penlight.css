@@ -24,23 +24,25 @@ body, html {
 /* 🌟 発光体：スマホ上ギリギリから一番下まで固定 */
 .penlight-glow-body {
     position: absolute;
-    top: 5;
+    top: 0;
     left: 50%;
     transform: translateX(-50%);
     width: 28vh;
     height: 90vh;
-    max-width: 60vw;
+    max-width: 50vw;
 
-    /* 🌟 修正ポイント：横方向の直線グラデーション（linear-gradient）で円柱感を出す */
+    /* 🌟 プラスチック管全体が明るく発光する円柱グラデーション */
     background: linear-gradient(
         to right,
-        transparent 0%,
+        /* 左右の端：背景に溶け込ませず、選択色（明るめ）をしっかり塗る */
+        color-mix(in srgb, var(--pen-color, #ff0000) 85%, #ffffff) 0%,
         var(--pen-color, #ff0000) 20%,
+        /* 中央にかけて光が集まるハイライト */
         color-mix(in srgb, var(--pen-color, #ff0000) 30%, #ffffff) 45%,
-        color-mix(in srgb, var(--pen-color, #ff0000) 20%, #ffffff) 50%, /* 中心ハイライト */
+        color-mix(in srgb, var(--pen-color, #ff0000) 15%, #ffffff) 50%, /* 中心の一番明るいライン */
         color-mix(in srgb, var(--pen-color, #ff0000) 30%, #ffffff) 55%,
-        var(--pen-color, #ff0000) 60%,
-        transparent 95%
+        var(--pen-color, #ff0000) 80%,
+        color-mix(in srgb, var(--pen-color, #ff0000) 85%, #ffffff) 100%
     );
 
     transition: box-shadow 0.2s ease, background 0.2s ease, filter 0.2s ease;
@@ -51,7 +53,6 @@ body, html {
     z-index: 1;
     pointer-events: none;
 }
-
 
 /* クリック判定フィールド */
 .light-field {
