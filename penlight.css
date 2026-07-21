@@ -27,32 +27,39 @@ body, html {
     top: 0;
     left: 50%;
     transform: translateX(-50%);
-    width: 28vh;
-    height: 90vh;
-    max-width: 50vw;
+    width: 32vh;
+    height: 100vh;
+    max-width: 70vw;
 
     /* 🌟 プラスチック管全体が明るく発光する円柱グラデーション */
     background: linear-gradient(
         to right,
-        /* 左右の端：背景に溶け込ませず、選択色（明るめ）をしっかり塗る */
         color-mix(in srgb, var(--pen-color, #ff0000) 85%, #ffffff) 0%,
         var(--pen-color, #ff0000) 20%,
-        /* 中央にかけて光が集まるハイライト */
         color-mix(in srgb, var(--pen-color, #ff0000) 30%, #ffffff) 45%,
-        color-mix(in srgb, var(--pen-color, #ff0000) 15%, #ffffff) 50%, /* 中心の一番明るいライン */
+        color-mix(in srgb, var(--pen-color, #ff0000) 15%, #ffffff) 50%,
         color-mix(in srgb, var(--pen-color, #ff0000) 30%, #ffffff) 55%,
         var(--pen-color, #ff0000) 80%,
         color-mix(in srgb, var(--pen-color, #ff0000) 85%, #ffffff) 100%
     );
 
-    transition: box-shadow 0.2s ease, background 0.2s ease, filter 0.2s ease;
+    /* 🌟 修正ポイント1: 移行アニメーションから box-shadow を除外して負荷を削減 */
+    transition: background 0.15s linear, filter 0.15s linear;
+    
     box-shadow: 
         0 0 40px 10px var(--pen-color, #ff0000),
         0 0 90px 25px var(--pen-color, #ff0000),
         0 0 150px 50px var(--pen-color, #ff0000);
     z-index: 1;
     pointer-events: none;
+
+    /* 🌟 修正ポイント2: 画面のチラつき（真っ白化）を防止するGPUアクセラレーション設定 */
+    will-change: background, filter, transform;
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+    transform: translateX(-50%) translateZ(0); /* GPUで描画させる */
 }
+
 
 /* クリック判定フィールド */
 .light-field {
