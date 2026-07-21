@@ -35,12 +35,12 @@ body, html {
     background: linear-gradient(
         to right,
         transparent 0%,
-        var(--pen-color, #ff0000) 15%,
+        var(--pen-color, #ff0000) 20%,
         color-mix(in srgb, var(--pen-color, #ff0000) 30%, #ffffff) 45%,
         color-mix(in srgb, var(--pen-color, #ff0000) 20%, #ffffff) 50%, /* 中心ハイライト */
         color-mix(in srgb, var(--pen-color, #ff0000) 30%, #ffffff) 55%,
-        var(--pen-color, #ff0000) 85%,
-        transparent 100%
+        var(--pen-color, #ff0000) 60%,
+        transparent 95%
     );
 
     transition: box-shadow 0.2s ease, background 0.2s ease, filter 0.2s ease;
