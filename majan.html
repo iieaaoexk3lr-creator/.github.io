@@ -1,1 +1,50 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>Firebase UID確認</title>
+</head>
+<body>
 
+<h2>Firebase UID確認</h2>
+
+<button id="loginBtn">Googleでログイン</button>
+
+<p><strong>UID:</strong></p>
+<pre id="uid">未ログイン</pre>
+
+<!-- Firebase -->
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+
+<script>
+const firebaseConfig = {
+  apiKey: "AIzaSyDyogKgO9UT9d53nnedGMoklS0O4I2WcVk",
+  authDomain: "karaoke-odai-33d3b.firebaseapp.com",
+  databaseURL: "https://karaoke-odai-33d3b-default-rtdb.firebaseio.com",
+  projectId: "karaoke-odai-33d3b",
+  storageBucket: "karaoke-odai-33d3b.firebasestorage.app",
+  messagingSenderId: "112224501516",
+  appId: "1:112224501516:web:e8f35e4e14bb176e121329",
+  measurementId: "G-ZF90MZDVRQ"
+};
+
+firebase.initializeApp(firebaseConfig);
+
+const provider = new firebase.auth.GoogleAuthProvider();
+
+document.getElementById("loginBtn").onclick = () => {
+  firebase.auth().signInWithPopup(provider);
+};
+
+firebase.auth().onAuthStateChanged(user => {
+  if (user) {
+    document.getElementById("uid").textContent = user.uid;
+  } else {
+    document.getElementById("uid").textContent = "未ログイン";
+  }
+});
+</script>
+
+</body>
+</html>
