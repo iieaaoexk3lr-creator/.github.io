@@ -1,0 +1,532 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>トランプお題カラオケ</title>
+    <style>
+        :root {
+            --bg-color: #121212;
+            --card-bg: #1e1e1e;
+            --accent-color: #ff3366;
+            --primary-color: #00e5ff;
+            --text-color: #ffffff;
+            --sub-text: #b0bec5;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 12px;
+            box-sizing: border-box;
+            user-select: none;
+        }
+
+        h1 {
+            text-align: center;
+            font-size: 1.4rem;
+            color: var(--primary-color);
+            margin: 10px 0;
+        }
+
+        /* タブナビゲーション */
+        .tab-menu {
+            display: flex;
+            gap: 5px;
+            margin-bottom: 15px;
+            background: var(--card-bg);
+            border-radius: 12px;
+            padding: 4px;
+        }
+
+        .tab-btn {
+            flex: 1;
+            background: none;
+            border: none;
+            color: var(--sub-text);
+            padding: 12px 5px;
+            font-size: 0.95rem;
+            font-weight: bold;
+            cursor: pointer;
+            border-radius: 8px;
+            transition: all 0.2s ease;
+        }
+
+        .tab-btn.active {
+            background-color: var(--accent-color);
+            color: #fff;
+            box-shadow: 0 2px 8px rgba(255, 51, 102, 0.4);
+        }
+
+        /* セクション表示切り替え */
+        .content-section {
+            display: none;
+            background: var(--card-bg);
+            padding: 18px;
+            border-radius: 14px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.4);
+            max-width: 500px;
+            margin: 0 auto;
+        }
+
+        .content-section.active {
+            display: block;
+        }
+
+        /* パターン選択エリア */
+        .pattern-box {
+            background: #282828;
+            border: 1px solid #444;
+            border-radius: 10px;
+            padding: 12px;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+
+        .pattern-title {
+            font-size: 0.85rem;
+            color: var(--sub-text);
+            margin-bottom: 8px;
+        }
+
+        .pattern-selector {
+            display: flex;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .p-num-btn {
+            background: #121212;
+            border: 1px solid #555;
+            color: #fff;
+            width: 40px;
+            height: 40px;
+            border-radius: 8px;
+            font-weight: bold;
+            font-size: 1.1rem;
+            cursor: pointer;
+        }
+
+        .p-num-btn.active {
+            background: var(--primary-color);
+            color: #000;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 10px rgba(0, 229, 255, 0.5);
+        }
+
+        .btn-random {
+            background: linear-gradient(135deg, #00e5ff, #0088ff);
+            color: #000;
+            border: none;
+            padding: 10px 16px;
+            font-weight: bold;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.95rem;
+            width: 100%;
+            margin-top: 10px;
+        }
+
+        /* お題一覧テーブル */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th, td {
+            border-bottom: 1px solid #333;
+            padding: 10px 8px;
+            text-align: left;
+        }
+
+        th {
+            color: var(--primary-color);
+            font-size: 0.9rem;
+            border-bottom: 2px solid var(--primary-color);
+        }
+
+        .card-num {
+            font-weight: bold;
+            font-size: 1.2rem;
+            color: var(--accent-color);
+            text-align: center;
+            width: 25%;
+        }
+
+        /* ジョーカー設定エリア */
+        .joker-card {
+            background: #282828;
+            border: 2px dashed #444;
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+
+        .joker-card h3 {
+            margin: 0 0 10px 0;
+            font-size: 1.1rem;
+            color: var(--primary-color);
+        }
+
+        input[type="text"] {
+            width: 85%;
+            padding: 10px;
+            border-radius: 8px;
+            border: 1px solid #555;
+            background-color: #121212;
+            color: #fff;
+            font-size: 1.1rem;
+            text-align: center;
+            margin-bottom: 10px;
+        }
+
+        .word-preview {
+            font-size: 1.3rem;
+            font-weight: bold;
+            margin: 10px 0;
+            letter-spacing: 2px;
+            min-height: 1.8rem;
+        }
+
+        .masked {
+            filter: blur(6px);
+            opacity: 0.6;
+        }
+
+        .btn {
+            background: var(--primary-color);
+            color: #000;
+            border: none;
+            padding: 10px 16px;
+            font-weight: bold;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.95rem;
+            width: 100%;
+            margin-top: 5px;
+        }
+
+        .btn-fire {
+            background: linear-gradient(135deg, #ff3366, #ff6600);
+            color: #fff;
+            font-size: 1.05rem;
+            box-shadow: 0 4px 10px rgba(255, 51, 102, 0.3);
+        }
+
+        .btn-reset {
+            background: #444;
+            color: #bbb;
+            margin-top: 20px;
+        }
+
+        /* フルスクリーン発動オーバーレイ */
+        #fullscreen-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background-color: #000;
+            z-index: 9999;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        #fullscreen-overlay.active {
+            display: flex;
+        }
+
+        .overlay-title {
+            color: var(--accent-color);
+            font-size: 1.5rem;
+            font-weight: bold;
+            margin-bottom: 20px;
+            letter-spacing: 4px;
+        }
+
+        .overlay-word {
+            color: #fff;
+            font-size: 4.5rem;
+            font-weight: 900;
+            word-break: break-all;
+            line-height: 1.1;
+            text-shadow: 0 0 20px var(--accent-color);
+            margin-bottom: 40px;
+        }
+
+        .overlay-close {
+            background: #333;
+            color: #fff;
+            border: 1px solid #666;
+            padding: 12px 30px;
+            font-size: 1rem;
+            border-radius: 30px;
+        }
+
+        /* ルール説明 */
+        ul {
+            padding-left: 18px;
+            line-height: 1.6;
+            font-size: 0.95rem;
+        }
+
+        li {
+            margin-bottom: 10px;
+        }
+
+        .hl {
+            color: var(--accent-color);
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>🃏 トランプカラオケ</h1>
+
+    <div class="tab-menu">
+        <button class="tab-btn active" onclick="switchTab('theme', this)">お題確認</button>
+        <button class="tab-btn" onclick="switchTab('joker', this)">ジョーカー</button>
+        <button class="tab-btn" onclick="switchTab('rules', this)">ルール</button>
+    </div>
+
+    <!-- お題確認 -->
+    <div id="theme" class="content-section active">
+        <div class="pattern-box">
+            <div class="pattern-title">お題パターン選択 (1〜6)</div>
+            <div class="pattern-selector">
+                <button class="p-num-btn active" onclick="selectPattern(1)">1</button>
+                <button class="p-num-btn" onclick="selectPattern(2)">2</button>
+                <button class="p-num-btn" onclick="selectPattern(3)">3</button>
+                <button class="p-num-btn" onclick="selectPattern(4)">4</button>
+                <button class="p-num-btn" onclick="selectPattern(5)">5</button>
+                <button class="p-num-btn" onclick="selectPattern(6)">6</button>
+            </div>
+            <button class="btn-random" onclick="pickRandomPattern()">🎲 ランダムで選ぶ</button>
+        </div>
+
+        <table>
+            <thead>
+                <tr>
+                    <th style="text-align: center;">カード</th>
+                    <th>クリア条件（お題）</th>
+                </tr>
+            </thead>
+            <tbody id="theme-table-body">
+                <!-- JSで動的描画 -->
+            </tbody>
+        </table>
+    </div>
+
+    <!-- ジョーカー設定・発動 -->
+    <div id="joker" class="content-section">
+        <p style="font-size: 0.85rem; color: var(--sub-text); text-align: center; margin-top:0;">
+            ※チームリーダー用。2文字以上のNGワードを入力してセットしてください。
+        </p>
+
+        <!-- NGワード 1 -->
+        <div class="joker-card">
+            <h3>🃏 NGワード 1</h3>
+            <input type="text" id="input-ng1" placeholder="例：きみ" maxlength="10">
+            <div id="preview-ng1" class="word-preview masked">（未設定）</div>
+            <button class="btn btn-fire" onclick="fireJoker(1)">💥 相手に見せる（発動）</button>
+        </div>
+
+        <!-- NGワード 2 -->
+        <div class="joker-card">
+            <h3>🃏 NGワード 2</h3>
+            <input type="text" id="input-ng2" placeholder="例：すき" maxlength="10">
+            <div id="preview-ng2" class="word-preview masked">（未設定）</div>
+            <button class="btn btn-fire" onclick="fireJoker(2)">💥 相手に見せる（発動）</button>
+        </div>
+
+        <button class="btn" onclick="saveWords()">🔒 ジョーカーをセット（保存）</button>
+        <button class="btn btn-reset" onclick="resetWords()">🔄 リセット</button>
+    </div>
+
+    <!-- ルール確認 -->
+    <div id="rules" class="content-section">
+        <ul>
+            <li><strong>勝敗：</strong> 全員が1回歌い終えた時点で、<span class="hl">手札が最も少ないチームの勝ち</span>。</li>
+            <li><strong>手札交換：</strong> 自分が歌う前なら<span class="hl">1人1回だけ</span>任意の枚数を山札の一番下に戻して引き直し可能。</li>
+            <li><strong>複数枚出し：</strong> 1曲で複数のお題を満たせば、当てはまるカードをすべて出せます（同じカードのまとめ出しも可）。</li>
+            <li><strong>デュエット：</strong> 2人で歌えます。
+                <ul>
+                    <li>メイン：条件カードを<span class="hl">制限なし</span>で出せる</li>
+                    <li>参加者：条件カードを<span class="hl">2枚まで</span>出せる（自分の番は別途歌える）</li>
+                </ul>
+            </li>
+            <li><strong>ジョーカーペナルティ：</strong> 歌詞に入っていたNGワード1つにつき1枚、相手チームの未歌唱プレイヤーが山札から引く。
+                <br><small style="color:#aaa;">※設定した表記通りの部分のみ対象（例：「きみ」の場合、「君」や「黄身」は対象外）。</small>
+            </li>
+        </ul>
+    </div>
+
+    <!-- 巨大表示用ド派手オーバーレイ -->
+    <div id="fullscreen-overlay">
+        <div class="overlay-title">🚨 NG WORD TRAP 🚨</div>
+        <div id="overlay-word-text" class="overlay-word">---</div>
+        <button class="overlay-close" onclick="closeOverlay()">閉じる</button>
+    </div>
+
+    <script>
+        // パターン別お題データ（決定仕様に基づく）
+        const patternData = {
+            1: {
+                "A": "ソロ曲", "2": "デュエット曲", "3": "グループ曲",
+                "4": "昭和の曲", "5": "ランキング入りした曲", "6": "タイトルに数字が入った曲",
+                "7": "タイトルに色が入った曲", "8": "自分が生まれた年の曲", "9": "今の季節の曲",
+                "10": "デンモクの履歴から選ぶ曲", "J": "アニソン",
+                "Q": "女性歌手", "K": "男性歌手"
+            },
+            2: {
+                "A": "ソロ曲", "2": "デュエット曲", "3": "グループ曲",
+                "4": "平成の曲", "5": "1位獲得曲", "6": "数字「1〜3」",
+                "7": "色が入った曲", "8": "生まれた年の曲", "9": "春の曲",
+                "10": "デンモク履歴", "J": "アニソン",
+                "Q": "女性歌手", "K": "男性歌手"
+            },
+            3: {
+                "A": "ソロ曲", "2": "デュエット曲", "3": "グループ曲",
+                "4": "令和の曲", "5": "TOP10入り曲", "6": "数字「4〜6」",
+                "7": "方言・外国語の曲", "8": "10年前の曲", "9": "夏の曲",
+                "10": "全国採点から", "J": "ドラマ・映画主題歌",
+                "Q": "女性歌手", "K": "男性歌手"
+            },
+            4: {
+                "A": "ソロ曲", "2": "デュエット曲", "3": "グループ曲",
+                "4": "昭和の曲", "5": "億超え再生曲", "6": "数字「7〜9」",
+                "7": "動物が入った曲", "8": "5年前の曲", "9": "秋の曲",
+                "10": "新曲から", "J": "CMソング",
+                "Q": "女性歌手", "K": "男性歌手"
+            },
+            5: {
+                "A": "ソロ曲", "2": "デュエット曲", "3": "グループ曲",
+                "4": "平成の曲", "5": "SNSヒット曲", "6": "数字「10以上」",
+                "7": "食べ物・飲み物の曲", "8": "学生時代の曲", "9": "冬の曲",
+                "10": "ピックアップから", "J": "ボカロ・VTuber曲",
+                "Q": "女性歌手", "K": "男性歌手"
+            },
+            6: {
+                "A": "ソロ曲", "2": "デュエット曲", "3": "グループ曲",
+                "4": "令和の曲", "5": "チャート1位曲", "6": "漢字・英語の数字",
+                "7": "乗り物・植物の曲", "8": "去年・今年の曲", "9": "夜・朝の曲",
+                "10": "ランダム選曲機能", "J": "応援ソング",
+                "Q": "女性歌手", "K": "男性歌手"
+            }
+        };
+
+        const cardOrder = ["A", "2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K"];
+
+        // タブ切り替え
+        function switchTab(tabId, btn) {
+            document.querySelectorAll('.content-section').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+            document.getElementById(tabId).classList.add('active');
+            btn.classList.add('active');
+        }
+
+        // 初期ロード
+        window.onload = function() {
+            selectPattern(1);
+
+            const w1 = localStorage.getItem('tk_ng1') || '';
+            const w2 = localStorage.getItem('tk_ng2') || '';
+            if (w1) {
+                document.getElementById('input-ng1').value = w1;
+                document.getElementById('preview-ng1').textContent = w1;
+            }
+            if (w2) {
+                document.getElementById('input-ng2').value = w2;
+                document.getElementById('preview-ng2').textContent = w2;
+            }
+        };
+
+        // パターン選択
+        function selectPattern(num) {
+            document.querySelectorAll('.p-num-btn').forEach((btn, idx) => {
+                if (idx + 1 === num) {
+                    btn.classList.add('active');
+                } else {
+                    btn.classList.remove('active');
+                }
+            });
+
+            const tbody = document.getElementById('theme-table-body');
+            tbody.innerHTML = '';
+
+            const currentData = patternData[num];
+            cardOrder.forEach(card => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td class="card-num">${card}</td>
+                    <td>${currentData[card]}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        // ランダムでパターン決定
+        function pickRandomPattern() {
+            const rand = Math.floor(Math.random() * 6) + 1;
+            selectPattern(rand);
+        }
+
+        // 単語保存
+        function saveWords() {
+            const w1 = document.getElementById('input-ng1').value.trim();
+            const w2 = document.getElementById('input-ng2').value.trim();
+
+            if ((w1 && w1.length < 2) || (w2 && w2.length < 2)) {
+                alert('NGワードは2文字以上で入力してください！');
+                return;
+            }
+
+            localStorage.setItem('tk_ng1', w1);
+            localStorage.setItem('tk_ng2', w2);
+
+            document.getElementById('preview-ng1').textContent = w1 || '（未設定）';
+            document.getElementById('preview-ng2').textContent = w2 || '（未設定）';
+
+            alert('ジョーカー（NGワード）を保存しました！');
+        }
+
+        // 巨大表示発動
+        function fireJoker(index) {
+            const word = localStorage.getItem('tk_ng' + index);
+            if (!word) {
+                alert('先にNGワードを入力して「セット（保存）」してください！');
+                return;
+            }
+
+            document.getElementById('overlay-word-text').textContent = word;
+            document.getElementById('fullscreen-overlay').classList.add('active');
+        }
+
+        // オーバーレイを閉じる
+        function closeOverlay() {
+            document.getElementById('fullscreen-overlay').classList.remove('active');
+        }
+
+        // リセット
+        function resetWords() {
+            if (confirm('NGワードを消去してリセットしますか？')) {
+                localStorage.removeItem('tk_ng1');
+                localStorage.removeItem('tk_ng2');
+                document.getElementById('input-ng1').value = '';
+                document.getElementById('input-ng2').value = '';
+                document.getElementById('preview-ng1').textContent = '（未設定）';
+                document.getElementById('preview-ng2').textContent = '（未設定）';
+            }
+        }
+    </script>
+</body>
+</html>
