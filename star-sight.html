@@ -4,7 +4,6 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>リクエスターゲーム</title>
-  <!-- ファビコンの404エラー防止 -->
   <link rel="shortcut icon" href="#">
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -31,18 +30,19 @@
     }
     button.secondary { background: #444; }
 
-    #starry-sky { width: 100%; position: relative; }
+    #starry-sky { width: 100%; position: relative; padding-bottom: 130px; }
     .sky-section { width: 100%; position: relative; line-height: 0; }
     .sky-bg { width: 100%; height: auto; display: block; }
 
     .star {
-      position: absolute; width: 20px; height: 20px; border-radius: 50%;
+      position: absolute; width: 22px; height: 22px; border-radius: 50%;
       transform: translate(-50%, -50%); border: none; padding: 0; margin: 0;
       touch-action: manipulation; cursor: pointer; z-index: 10;
     }
-    .star::after { content: ''; position: absolute; top: -10px; left: -10px; right: -10px; bottom: -10px; }
+    /* タップ領域を大きく */
+    .star::after { content: ''; position: absolute; top: -8px; left: -8px; right: -8px; bottom: -8px; }
     .star.yellow { background: #ffd700; box-shadow: 0 0 10px #ffd700, 0 0 20px #ffea00; }
-    .star.white { background: rgba(255, 255, 255, 0.3); box-shadow: none; cursor: not-allowed; }
+    .star.white { background: rgba(255, 255, 255, 0.35); box-shadow: 0 0 5px rgba(255,255,255,0.5); cursor: not-allowed; }
     .star.blue { background: #00ffff; box-shadow: 0 0 10px #00ffff, 0 0 20px #00bfff; }
     .star.red { background: #ff4d4d; box-shadow: 0 0 10px #ff0000; cursor: not-allowed; }
 
@@ -60,7 +60,7 @@
 
     #history-panel {
       position: fixed; bottom: 0; left: 50%; transform: translateX(-50%);
-      width: 100%; max-width: 430px; background: rgba(10, 5, 20, 0.9);
+      width: 100%; max-width: 430px; background: rgba(10, 5, 20, 0.92);
       border-top: 1px solid #333; max-height: 120px; overflow-y: auto;
       padding: 10px; font-size: 12px; z-index: 20;
     }
@@ -81,7 +81,6 @@
   <div id="screen-request" class="screen">
     <h2>曲のリクエスト</h2>
     <input type="text" id="input-title" placeholder="歌ってほしい曲名 (必須)">
-    <input type="text" id="input-target" placeholder="歌ってほしい人 (任意)">
     <button id="btn-submit-req">リクエスト登録</button>
     <div id="request-count" style="text-align:center; margin-top:15px;">現在の登録数: 0曲</div>
     <button class="secondary" style="margin-top:20px;" id="btn-to-host">幹事画面へ</button>
@@ -90,30 +89,162 @@
   <!-- 3. 幹事画面 -->
   <div id="screen-host" class="screen">
     <h2>幹事設定画面</h2>
-    <p id="host-stats">リクエスト: 0 / ダミー: 0</p>
-    <div style="margin: 20px 0;">
-      <label>白くするダミー星の数:</label>
-      <input type="number" id="input-dummy-count" value="10" min="0">
-    </div>
+    <p id="host-stats" style="margin-bottom: 20px; text-align: center;">準備ができたら開始ボタンを押してください</p>
     <button id="btn-start-game">ゲーム開始！</button>
   </div>
 
-  <!-- 4. ゲームメイン画面 -->
+  <!-- 4. ゲームメイン画面（画像の星座上の星の位置にピッタリ配置） -->
   <div id="screen-game" class="screen" style="padding: 0;">
     <div id="starry-sky">
+
+      <!-- 1. 牡羊座 & 牡牛座 -->
       <div class="sky-section">
         <img src="./assets/bg_01_aries_taurus.webp" class="sky-bg" alt="1枚目">
-        <button class="star yellow" style="top: 25%; left: 45%;" data-star-id="star001"></button>
-        <button class="star yellow" style="top: 70%; left: 50%;" data-star-id="star002"></button>
+        <!-- 牡羊座 -->
+        <button class="star white" style="top: 26.2%; left: 37.6%;" data-star-id="star001"></button>
+        <button class="star white" style="top: 29.2%; left: 48.8%;" data-star-id="star002"></button>
+        <button class="star white" style="top: 34.0%; left: 65.6%;" data-star-id="star003"></button>
+        <button class="star white" style="top: 39.5%; left: 66.0%;" data-star-id="star004"></button>
+        <!-- 牡牛座 -->
+        <button class="star white" style="top: 64.8%; left: 29.5%;" data-star-id="star005"></button>
+        <button class="star white" style="top: 68.6%; left: 40.5%;" data-star-id="star006"></button>
+        <button class="star white" style="top: 75.3%; left: 51.5%;" data-star-id="star007"></button>
+        <button class="star white" style="top: 78.5%; left: 60.8%;" data-star-id="star008"></button>
+        <button class="star white" style="top: 80.6%; left: 70.0%;" data-star-id="star009"></button>
       </div>
+
+      <!-- 2. 双子座 & 蟹座 -->
       <div class="sky-section">
         <img src="./assets/bg_02_gemini_cancer.webp" class="sky-bg" alt="2枚目">
-        <button class="star yellow" style="top: 30%; left: 40%;" data-star-id="star003"></button>
+        <!-- 双子座 -->
+        <button class="star white" style="top: 24.0%; left: 29.8%;" data-star-id="star010"></button>
+        <button class="star white" style="top: 24.2%; left: 65.5%;" data-star-id="star011"></button>
+        <button class="star white" style="top: 33.6%; left: 35.5%;" data-star-id="star012"></button>
+        <button class="star white" style="top: 37.5%; left: 49.0%;" data-star-id="star013"></button>
+        <button class="star white" style="top: 31.8%; left: 61.2%;" data-star-id="star014"></button>
+        <button class="star white" style="top: 38.6%; left: 62.5%;" data-star-id="star015"></button>
+        <button class="star white" style="top: 40.8%; left: 36.0%;" data-star-id="star016"></button>
+        <button class="star white" style="top: 48.5%; left: 29.8%;" data-star-id="star017"></button>
+
+        <!-- 蟹座 -->
+        <button class="star white" style="top: 63.0%; left: 34.8%;" data-star-id="star018"></button>
+        <button class="star white" style="top: 63.5%; left: 66.2%;" data-star-id="star019"></button>
+        <button class="star white" style="top: 67.8%; left: 57.2%;" data-star-id="star020"></button>
+        <button class="star white" style="top: 72.8%; left: 49.6%;" data-star-id="star021"></button>
+        <button class="star white" style="top: 78.5%; left: 50.2%;" data-star-id="star022"></button>
       </div>
-      <div class="sky-section"><img src="./assets/bg_03_leo_virgo.webp" class="sky-bg" alt="3枚目"></div>
-      <div class="sky-section"><img src="./assets/bg_04_libra_scorpio.webp" class="sky-bg" alt="4枚目"></div>
-      <div class="sky-section"><img src="./assets/bg_05_sagittarius_capricorn.webp" class="sky-bg" alt="5枚目"></div>
-      <div class="sky-section"><img src="./assets/bg_06_aquarius_pisces.webp" class="sky-bg" alt="6枚目"></div>
+
+      <!-- 3. 獅子座 & 乙女座 -->
+      <div class="sky-section">
+        <img src="./assets/bg_03_leo_virgo.webp" class="sky-bg" alt="3枚目">
+        <!-- 獅子座 -->
+        <button class="star white" style="top: 25.8%; left: 48.0%;" data-star-id="star023"></button>
+        <button class="star white" style="top: 29.0%; left: 47.5%;" data-star-id="star024"></button>
+        <button class="star white" style="top: 32.0%; left: 53.0%;" data-star-id="star025"></button>
+        <button class="star white" style="top: 34.0%; left: 39.8%;" data-star-id="star026"></button>
+        <button class="star white" style="top: 41.6%; left: 33.2%;" data-star-id="star027"></button>
+        <button class="star white" style="top: 35.0%; left: 64.8%;" data-star-id="star028"></button>
+        <button class="star white" style="top: 38.2%; left: 62.8%;" data-star-id="star029"></button>
+        <button class="star white" style="top: 41.8%; left: 66.2%;" data-star-id="star030"></button>
+        <!-- 乙女座 -->
+        <button class="star white" style="top: 53.0%; left: 53.0%;" data-star-id="star031"></button>
+        <button class="star white" style="top: 56.8%; left: 52.0%;" data-star-id="star032"></button>
+        <button class="star white" style="top: 62.3%; left: 49.2%;" data-star-id="star033"></button>
+        <button class="star white" style="top: 64.5%; left: 53.0%;" data-star-id="star034"></button>
+        <button class="star white" style="top: 68.2%; left: 61.5%;" data-star-id="star035"></button>
+        <button class="star white" style="top: 74.0%; left: 39.5%;" data-star-id="star036"></button>
+        <button class="star white" style="top: 74.8%; left: 49.0%;" data-star-id="star037"></button>
+        <button class="star white" style="top: 81.8%; left: 59.8%;" data-star-id="star038"></button>
+        <button class="star white" style="top: 84.0%; left: 67.2%;" data-star-id="star039"></button>
+        <button class="star white" style="top: 85.8%; left: 60.8%;" data-star-id="star040"></button>
+      </div>
+
+      <!-- 4. 天秤座 & 蠍座 -->
+      <div class="sky-section">
+        <img src="./assets/bg_04_libra_scorpio.webp" class="sky-bg" alt="4枚目">
+        <!-- 天秤座 -->
+        <button class="star white" style="top: 14.8%; left: 50.0%;" data-star-id="star041"></button>
+        <button class="star white" style="top: 25.8%; left: 31.0%;" data-star-id="star042"></button>
+        <button class="star white" style="top: 28.0%; left: 50.0%;" data-star-id="star043"></button>
+        <button class="star white" style="top: 25.8%; left: 70.0%;" data-star-id="star044"></button>
+        <button class="star white" style="top: 36.8%; left: 24.0%;" data-star-id="star045"></button>
+        <button class="star white" style="top: 36.8%; left: 39.2%;" data-star-id="star046"></button>
+        <button class="star white" style="top: 36.8%; left: 62.0%;" data-star-id="star047"></button>
+        <button class="star white" style="top: 36.8%; left: 77.0%;" data-star-id="star048"></button>
+        <button class="star white" style="top: 43.0%; left: 50.0%;" data-star-id="star049"></button>
+
+        <!-- 蠍座 -->
+        <button class="star white" style="top: 52.2%; left: 57.5%;" data-star-id="star050"></button>
+        <button class="star white" style="top: 56.5%; left: 70.0%;" data-star-id="star051"></button>
+        <button class="star white" style="top: 61.2%; left: 70.8%;" data-star-id="star052"></button>
+        <button class="star white" style="top: 66.0%; left: 64.0%;" data-star-id="star053"></button>
+        <button class="star white" style="top: 70.6%; left: 57.8%;" data-star-id="star054"></button>
+        <button class="star white" style="top: 73.0%; left: 53.0%;" data-star-id="star055"></button>
+        <button class="star white" style="top: 78.5%; left: 55.8%;" data-star-id="star056"></button>
+        <button class="star white" style="top: 82.5%; left: 56.5%;" data-star-id="star057"></button>
+        <button class="star white" style="top: 85.0%; left: 49.0%;" data-star-id="star058"></button>
+        <button class="star white" style="top: 72.8%; left: 30.5%;" data-star-id="star059"></button>
+      </div>
+
+      <!-- 5. 射手座 & 山羊座 -->
+      <div class="sky-section">
+        <img src="./assets/bg_05_sagittarius_capricorn.webp" class="sky-bg" alt="5枚目">
+        <!-- 射手座 -->
+        <button class="star white" style="top: 16.5%; left: 56.8%;" data-star-id="star060"></button>
+        <button class="star white" style="top: 21.8%; left: 68.8%;" data-star-id="star061"></button>
+        <button class="star white" style="top: 27.2%; left: 49.0%;" data-star-id="star062"></button>
+        <button class="star white" style="top: 29.5%; left: 54.2%;" data-star-id="star063"></button>
+        <button class="star white" style="top: 33.5%; left: 67.2%;" data-star-id="star064"></button>
+        <button class="star white" style="top: 35.8%; left: 49.8%;" data-star-id="star065"></button>
+        <button class="star white" style="top: 41.8%; left: 55.2%;" data-star-id="star066"></button>
+        <button class="star white" style="top: 42.0%; left: 36.0%;" data-star-id="star067"></button>
+        <button class="star white" style="top: 48.0%; left: 24.8%;" data-star-id="star068"></button>
+
+        <!-- 山羊座 -->
+        <button class="star white" style="top: 63.8%; left: 48.0%;" data-star-id="star069"></button>
+        <button class="star white" style="top: 68.5%; left: 52.8%;" data-star-id="star070"></button>
+        <button class="star white" style="top: 74.8%; left: 47.8%;" data-star-id="star071"></button>
+        <button class="star white" style="top: 80.0%; left: 41.2%;" data-star-id="star072"></button>
+        <button class="star white" style="top: 80.0%; left: 60.8%;" data-star-id="star073"></button>
+        <button class="star white" style="top: 83.8%; left: 65.8%;" data-star-id="star074"></button>
+        <button class="star white" style="top: 88.0%; left: 61.2%;" data-star-id="star075"></button>
+        <button class="star white" style="top: 76.2%; left: 73.0%;" data-star-id="star076"></button>
+      </div>
+
+      <!-- 6. 水瓶座 & 魚座 -->
+      <div class="sky-section">
+        <img src="./assets/bg_06_aquarius_pisces.webp" class="sky-bg" alt="6枚目">
+        <!-- 水瓶座 -->
+        <button class="star white" style="top: 19.0%; left: 49.0%;" data-star-id="star077"></button>
+        <button class="star white" style="top: 21.0%; left: 42.0%;" data-star-id="star078"></button>
+        <button class="star white" style="top: 24.0%; left: 57.8%;" data-star-id="star079"></button>
+        <button class="star white" style="top: 30.0%; left: 60.0%;" data-star-id="star080"></button>
+
+        <button class="star white" style="top: 32.2%; left: 55.2%;" data-star-id="star081"></button>
+        <button class="star white" style="top: 34.2%; left: 63.0%;" data-star-id="star082"></button>
+        <button class="star white" style="top: 36.5%; left: 33.8%;" data-star-id="star083"></button>
+        <button class="star white" style="top: 41.0%; left: 57.2%;" data-star-id="star084"></button>
+        <button class="star white" style="top: 42.2%; left: 29.0%;" data-star-id="star085"></button>
+
+        <button class="star white" style="top: 44.5%; left: 65.0%;" data-star-id="star086"></button>
+
+        <!-- 魚座 -->
+        <button class="star white" style="top: 60.8%; left: 38.0%;" data-star-id="star087"></button>
+        <button class="star white" style="top: 64.5%; left: 30.2%;" data-star-id="star088"></button>
+
+        <button class="star white" style="top: 65.8%; left: 35.0%;" data-star-id="star089"></button>
+
+        <button class="star white" style="top: 74.2%; left: 31.0%;" data-star-id="star090"></button>
+        <button class="star white" style="top: 75.8%; left: 39.8%;" data-star-id="star091"></button>
+        <button class="star white" style="top: 75.2%; left: 44.5%;" data-star-id="star092"></button>
+        <button class="star white" style="top: 75.8%; left: 48.5%;" data-star-id="star093"></button>
+        <button class="star white" style="top: 72.8%; left: 55.0%;" data-star-id="star094"></button>
+
+        <button class="star white" style="top: 69.2%; left: 68.0%;" data-star-id="star095"></button>
+        <button class="star white" style="top: 76.2%; left: 69.2%;" data-star-id="star096"></button>
+        <button class="star white" style="top: 81.2%; left: 66.5%;" data-star-id="star097"></button>
+      </div>
+
     </div>
 
     <div id="history-panel">
@@ -128,7 +259,6 @@
   <div class="modal-content">
     <h3 id="modal-title">願い星発見！</h3>
     <p id="modal-song" style="font-size:20px; font-weight:bold; margin: 15px 0; color: #ffd700;"></p>
-    <p id="modal-target" style="margin-bottom:15px;"></p>
     <div id="modal-buttons">
       <button id="btn-complete">【完唱】</button>
       <button class="secondary" id="btn-pass">【歌えない】</button>
@@ -136,10 +266,10 @@
   </div>
 </div>
 
-<!-- Firebase SDK (正しいパス: firebase-database.js) -->
+<!-- Firebase SDK -->
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-  import { getDatabase, ref, set, onValue, update, push } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+  import { getDatabase, ref, set, get, onValue, update, push } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 
   const firebaseConfig = {
     apiKey: "AIzaSyC4DQhH_swesAD98Xyjg8d1lcWEkkrHrgw",
@@ -163,6 +293,7 @@
   const myUserId = 'user_' + Math.random().toString(36).substring(2, 9);
   let roomId = '';
   let currentStarId = null;
+  let localStarsData = {};
 
   function showScreen(screenId) {
     document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
@@ -188,65 +319,98 @@
   // リクエスト登録
   document.getElementById('btn-submit-req').addEventListener('click', () => {
     const title = document.getElementById('input-title').value.trim();
-    const target = document.getElementById('input-target').value.trim();
     if (!title) return alert('曲名を入力してください');
 
     push(ref(db, `star_sight/rooms/${roomId}/requests`), {
       title: title,
-      target: target || '誰でも',
       requesterId: myUserId
     });
 
     document.getElementById('input-title').value = '';
-    document.getElementById('input-target').value = '';
     alert('リクエストを追加しました！');
   });
 
   // 幹事画面移動
   document.getElementById('btn-to-host').addEventListener('click', () => showScreen('screen-host'));
 
-  // ゲーム開始
-  document.getElementById('btn-start-game').addEventListener('click', () => {
+  // ゲーム開始：星座上の全星にリクエストをランダム配置
+  document.getElementById('btn-start-game').addEventListener('click', async () => {
+    const reqSnapshot = await get(ref(db, `star_sight/rooms/${roomId}/requests`));
+    const requestsObj = reqSnapshot.val() || {};
+    const requestsList = Object.values(requestsObj);
+
+    // ランダムシャッフル
+    requestsList.sort(() => Math.random() - 0.5);
+
+    const allStarElements = document.querySelectorAll('.star');
     const updates = {};
     updates[`star_sight/rooms/${roomId}/status`] = 'playing';
-    updates[`star_sight/rooms/${roomId}/stars/star001`] = { status: 'yellow', song: 'Pretender', target: '全員' };
-    updates[`star_sight/rooms/${roomId}/stars/star002`] = { status: 'white' };
-    updates[`star_sight/rooms/${roomId}/stars/star003`] = { status: 'yellow', song: '怪獣の花唄', target: '幹事' };
+
+    allStarElements.forEach((starEl, index) => {
+      const starId = starEl.getAttribute('data-star-id');
+      if (index < requestsList.length) {
+        const req = requestsList[index];
+        updates[`star_sight/rooms/${roomId}/stars/${starId}`] = {
+          status: 'yellow',
+          song: req.title,
+          requesterId: req.requesterId
+        };
+      } else {
+        updates[`star_sight/rooms/${roomId}/stars/${starId}`] = {
+          status: 'white'
+        };
+      }
+    });
 
     update(ref(db), updates);
   });
 
-  // 星タップ
+  // 星タップ時の動作
   document.querySelectorAll('.star').forEach(starEl => {
     starEl.addEventListener('click', (e) => {
       currentStarId = e.target.getAttribute('data-star-id');
+      const starData = localStarsData[currentStarId];
+
+      if (!starData || starData.status === 'white' || starData.status === 'red') return;
+
       const modal = document.getElementById('modal-result');
       document.getElementById('modal-title').textContent = '願い星発見！';
-      document.getElementById('modal-song').textContent = 'Pretender';
-      document.getElementById('modal-target').textContent = '歌唱指名: 全員';
+      document.getElementById('modal-song').textContent = starData.song || '';
       modal.classList.add('active');
     });
   });
 
+  // 【完唱】ボタン
   document.getElementById('btn-complete').addEventListener('click', () => {
-    update(ref(db, `star_sight/rooms/${roomId}/stars/${currentStarId}`), { status: 'red' });
-    push(ref(db, `star_sight/rooms/${roomId}/history`), { title: 'Pretender', singer: '参加者' });
+    const starData = localStarsData[currentStarId];
+    if (starData) {
+      update(ref(db, `star_sight/rooms/${roomId}/stars/${currentStarId}`), { status: 'red' });
+      push(ref(db, `star_sight/rooms/${roomId}/history`), { title: starData.song });
+    }
     document.getElementById('modal-result').classList.remove('active');
   });
 
+  // 【歌えない】ボタン
   document.getElementById('btn-pass').addEventListener('click', () => {
     document.getElementById('modal-result').classList.remove('active');
   });
 
-  // リアルタイム受信
+  // リアルタイム通信の監視
   function listenToRoomData() {
+    onValue(ref(db, `star_sight/rooms/${roomId}/requests`), (snapshot) => {
+      const reqs = snapshot.val() || {};
+      const count = Object.keys(reqs).length;
+      document.getElementById('request-count').textContent = `現在の登録数: ${count}曲`;
+    });
+
     onValue(ref(db, `star_sight/rooms/${roomId}/stars`), (snapshot) => {
-      const stars = snapshot.val() || {};
-      Object.keys(stars).forEach(starId => {
+      localStarsData = snapshot.val() || {};
+      Object.keys(localStarsData).forEach(starId => {
         const starEl = document.querySelector(`[data-star-id="${starId}"]`);
-        if (starEl) {
-          starEl.className = `star ${stars[starId].status}`;
-          if (stars[starId].requesterId === myUserId && stars[starId].status === 'yellow') {
+        const starInfo = localStarsData[starId];
+        if (starEl && starInfo) {
+          starEl.className = `star ${starInfo.status}`;
+          if (starInfo.requesterId === myUserId && starInfo.status === 'yellow') {
             starEl.classList.remove('yellow');
             starEl.classList.add('blue');
           }
@@ -264,7 +428,7 @@
       listEl.innerHTML = '';
       Object.values(history).forEach(item => {
         const li = document.createElement('li');
-        li.textContent = `${item.singer}: ${item.title}`;
+        li.textContent = item.title;
         listEl.appendChild(li);
       });
     });
