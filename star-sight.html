@@ -91,6 +91,35 @@
       margin-top: 6px; padding-left: 18px; font-size: 13px; color: #ffd700;
     }
 
+    /* ルール説明スタイル */
+    .rule-card {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(147, 112, 219, 0.4);
+      border-radius: 12px;
+      padding: 16px;
+      margin-top: 20px;
+      font-size: 13px;
+      line-height: 1.6;
+      color: #ddd;
+    }
+    .rule-card h3 {
+      color: #00ffff;
+      font-size: 15px;
+      margin-bottom: 10px;
+      border-bottom: 1px solid rgba(0, 255, 255, 0.3);
+      padding-bottom: 4px;
+    }
+    .rule-card ol, .rule-card ul {
+      padding-left: 18px;
+      margin-bottom: 10px;
+    }
+    .rule-card li {
+      margin-bottom: 6px;
+    }
+    .rule-card strong {
+      color: #ffd700;
+    }
+
     .modal {
       position: fixed; top: 0; left: 0; width: 100%; height: 100%;
       background: rgba(0, 0, 0, 0.8); display: none;
@@ -144,6 +173,39 @@
       </ul>
     </div>
 
+    <!-- ルール・操作説明トグル -->
+    <div class="panel-box">
+      <button id="btn-toggle-rule" class="secondary" style="padding:8px; font-size:13px; margin:0;">📖 ルール・操作説明を表示/非表示</button>
+      <div id="panel-rule-content" style="display:none; margin-top:10px;">
+        <div class="rule-card" style="margin-top:0; padding:10px; font-size:12px;">
+          <h3 style="font-size:13px;">🎮 ルール＆ゲームの流れ</h3>
+          <ol>
+            <li><strong>部屋に入る</strong>：全員で同じ部屋コードで入室。</li>
+            <li><strong>曲登録</strong>：歌ってほしい曲をリクエスト。</li>
+            <li><strong>星を探索</strong>：順番に星をタップして曲を探します。
+              <ul>
+                <li>⚪️ 白の星：他人の曲 or ダミー星</li>
+                <li>🔵 青の星：自分がリクエストした曲</li>
+                <li>🟡 黄の星：完唱・確認済みの星</li>
+              </ul>
+            </li>
+            <li><strong>曲の完唱</strong>：
+              <ul>
+                <li>曲発見！歌えたら<strong>【完唱】</strong>を押して黄色（発見済み）にします。</li>
+                <li>歌えない場合は<strong>【歌えない】</strong>を押して次の人の順番へ。</li>
+              </ul>
+            </li>
+            <li><strong>ゲームクリア</strong>：すべてのリクエスト曲を探して完唱できたらクリア！全星が黄色になります。</li>
+          </ol>
+          <h3 style="font-size:13px; margin-top:8px;">💡 特別ルール</h3>
+          <ul>
+            <li>一度歌った人は<strong>曲探しのみ参加可能</strong>。見つけたら他の人に「歌える？」と声かけ！（ご本人の歌唱はデュエットのみOK）</li>
+            <li>少人数の場合は幹事・司会がコントロールからダミー星を黄色にできます。</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
     <!-- 👑 幹事用機能エリア -->
     <div class="panel-box host-box">
       <h4 style="color:#ffd700; margin-bottom:10px; font-size:14px; text-align:center;">👑 幹事用機能</h4>
@@ -168,6 +230,36 @@
     <input type="text" id="input-room" placeholder="部屋コード (例: 1234)">
     <input type="text" id="input-name" placeholder="あなたの名前">
     <button id="btn-join">入室する</button>
+
+    <!-- 最初の部屋決め画面下のルール説明 -->
+    <div class="rule-card">
+      <h3>🎮 遊び方・ルール</h3>
+      <ol>
+        <li><strong>部屋に入る</strong>：みんなで同じ部屋コードを入力して入室します。</li>
+        <li><strong>曲を登録する</strong>：各自で歌ってほしい曲をリクエスト登録します。</li>
+        <li><strong>順番に星をタッチして探索</strong>：夜空の星を1つずつ開いて曲を探します。
+          <ul style="margin-top:4px;">
+            <li>⚪️ <strong>白色の星</strong>：他人のリクエスト曲 または ダミー星</li>
+            <li>🔵 <strong>青色の星</strong>：自分がリクエストした曲（自分だけに青く見えます）</li>
+            <li>🟡 <strong>黄色の星</strong>：既に完唱された星・確認済みダミー星</li>
+          </ul>
+        </li>
+        <li><strong>見つけた曲を歌う</strong>：
+          <ul>
+            <li>見つけた曲を歌えたら<strong>【完唱】</strong>を押して星を黄色（発見済み）にします。</li>
+            <li>歌えなかったら<strong>【歌えない】</strong>を押して次の人の順番へ回します。</li>
+          </ul>
+        </li>
+        <li><strong>ゲームクリア</strong>：すべてのリクエスト曲を探して完唱できたらクリア！</li>
+      </ol>
+
+      <h3 style="margin-top:12px;">🌟 特殊ルール＆操作のコツ</h3>
+      <ul>
+        <li><strong>歌ったあとの参加</strong>：一度歌った人は「曲を探すだけ」のサポート役になります。曲を見つけたら誰か歌える人がいないか声をかけて確認しましょう！（ご本人はデュエットのみ参加可能）</li>
+        <li><strong>少人数でのプレイ</strong>：人数が少ない場合は司会・幹事担当がコントロールパネルから「ダミー星」をオープンして調整できます。</li>
+        <li>※ 右上のメニューボタンからゲーム中いつでもこの説明を見られます。</li>
+      </ul>
+    </div>
   </div>
 
   <!-- 2. ゲームメイン画面 -->
@@ -347,6 +439,8 @@
   let roomId = '';
   let currentStarId = null;
   let localStarsData = {};
+  let totalReqCount = 0;
+  let isCleared = false;
 
   function showScreen(screenId) {
     document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
@@ -358,6 +452,12 @@
   const controlPanel = document.getElementById('control-panel');
   menuBtn.addEventListener('click', () => controlPanel.classList.toggle('active'));
   document.getElementById('btn-close-panel').addEventListener('click', () => controlPanel.classList.remove('active'));
+
+  // コントロールパネル内のルールトグル
+  document.getElementById('btn-toggle-rule').addEventListener('click', () => {
+    const content = document.getElementById('panel-rule-content');
+    content.style.display = content.style.display === 'none' ? 'block' : 'none';
+  });
 
   // 入室ボタン
   document.getElementById('btn-join').addEventListener('click', async () => {
@@ -475,7 +575,7 @@
       const starData = localStarsData[currentStarId] || { status: 'unopened' };
 
       // 既に発見・確認済み（黄色）の場合はタップしても何もしない
-      if (starData.status === 'opened') return;
+      if (starData.status === 'opened' || isCleared) return;
 
       const modal = document.getElementById('modal-result');
       const modalTitle = document.getElementById('modal-title');
@@ -534,8 +634,9 @@
     onValue(ref(db, `star_sight/rooms/${roomId}/requests`), (snapshot) => {
       const reqs = snapshot.val() || {};
       const reqList = Object.values(reqs);
+      totalReqCount = reqList.length;
       
-      document.getElementById('panel-req-count').textContent = reqList.length;
+      document.getElementById('panel-req-count').textContent = totalReqCount;
 
       // 自分が登録した曲を抽出してリスト表示
       const mySongs = reqList.filter(req => req.requesterId === myUserId);
@@ -559,32 +660,54 @@
       let foundSongCount = 0;
 
       Object.keys(localStarsData).forEach(starId => {
-        const starEl = document.querySelector(`[data-star-id="${starId}"]`);
         const starInfo = localStarsData[starId];
-        
-        if (starInfo) {
-          if (starInfo.song && starInfo.status === 'opened') {
-            foundSongCount++;
-          }
-
-          if (starEl) {
-            // 発見・完唱済みなら黄色
-            if (starInfo.status === 'opened') {
-              starEl.className = 'star yellow';
-            } 
-            // 自分のリクエスト曲かつ未完唱なら青色
-            else if (starInfo.requesterId === myUserId) {
-              starEl.className = 'star blue';
-            } 
-            // それ以外（他人のリクエスト・ダミー星）はデフォルトで白色
-            else {
-              starEl.className = 'star white';
-            }
-          }
+        if (starInfo && starInfo.song && starInfo.status === 'opened') {
+          foundSongCount++;
         }
       });
 
       document.getElementById('panel-found-count').textContent = foundSongCount;
+
+      // すべてのリクエスト曲が見つかった場合 (クリア判定)
+      if (totalReqCount > 0 && foundSongCount >= totalReqCount) {
+        isCleared = true;
+        // すべての星を黄色にする
+        document.querySelectorAll('.star').forEach(starEl => {
+          starEl.className = 'star yellow';
+        });
+
+        // クリアポップアップモーダルを表示（重複を避けるため未表示の場合のみ）
+        const modal = document.getElementById('modal-result');
+        if (!modal.classList.contains('active') && !document.getElementById('btn-clear-ok')) {
+          document.getElementById('modal-title').textContent = "🎉 GAME CLEAR!!";
+          document.getElementById('modal-song').textContent = "全てのリクエスト曲が完唱されました！";
+          document.getElementById('modal-buttons').innerHTML = `<button id="btn-clear-ok">おめでとう！</button>`;
+          modal.classList.add('active');
+
+          document.getElementById('btn-clear-ok').onclick = () => {
+            modal.classList.remove('active');
+          };
+        }
+      } else {
+        isCleared = false;
+        // 通常の星の色付け処理
+        Object.keys(localStarsData).forEach(starId => {
+          const starEl = document.querySelector(`[data-star-id="${starId}"]`);
+          const starInfo = localStarsData[starId];
+          
+          if (starInfo && starEl) {
+            if (starInfo.status === 'opened') {
+              starEl.className = 'star yellow';
+            } 
+            else if (starInfo.requesterId === myUserId) {
+              starEl.className = 'star blue';
+            } 
+            else {
+              starEl.className = 'star white';
+            }
+          }
+        });
+      }
     });
 
     // ステータス監視
