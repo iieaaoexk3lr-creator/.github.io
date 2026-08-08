@@ -29,23 +29,17 @@
       box-shadow: 0 4px 15px rgba(0,0,0,0.3);
     }
     button.secondary { background: #444; }
+    button.danger { background: linear-gradient(135deg, #ff416c 0%, #ff4b2b 100%); }
 
     #starry-sky { width: 100%; position: relative; padding-bottom: 130px; }
     
-    /* 🌌 画像の境目をグラデーションでなめらかにする設定 */
     .sky-section { 
-      width: 100%; 
-      position: relative; 
-      line-height: 0; 
-      margin-top: -10px; /* 境目をわずかに重ねる */
+      width: 100%; position: relative; line-height: 0; margin-top: -10px;
     }
     .sky-section:first-child { margin-top: 0; }
     
     .sky-bg { 
-      width: 100%; 
-      height: auto; 
-      display: block;
-      /* 上下の境界を透過させて溶け込ませるマスク */
+      width: 100%; height: auto; display: block;
       -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 8%, black 92%, transparent 100%);
       mask-image: linear-gradient(to bottom, transparent 0%, black 8%, black 92%, transparent 100%);
     }
@@ -73,13 +67,18 @@
       display: block; width: 20px; height: 2px; background: #fff; border-radius: 2px;
     }
 
+    /* 幹事パネル */
     #host-panel {
-      position: fixed; top: 0; right: -300px; width: 280px; height: 100%;
-      background: rgba(15, 8, 32, 0.95); border-left: 2px solid #6a11cb;
-      padding: 60px 20px 20px 20px; z-index: 85; transition: right 0.3s ease;
-      box-shadow: -5px 0 20px rgba(0,0,0,0.5);
+      position: fixed; top: 0; right: -320px; width: 300px; height: 100%;
+      background: rgba(15, 8, 32, 0.96); border-left: 2px solid #6a11cb;
+      padding: 50px 20px 20px 20px; z-index: 85; transition: right 0.3s ease;
+      box-shadow: -5px 0 20px rgba(0,0,0,0.5); overflow-y: auto;
     }
     #host-panel.active { right: 0; }
+    .host-box {
+      background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 8px; padding: 12px; margin-bottom: 15px; font-size: 14px;
+    }
 
     .modal {
       position: fixed; top: 0; left: 0; width: 100%; height: 100%;
@@ -114,9 +113,27 @@
   <!-- 幹事コントロールパネル -->
   <div id="host-panel">
     <h3 style="text-align:center; margin-bottom:15px; color:#ffd700;">⚙️ 幹事コントロール</h3>
-    <div id="host-panel-count" style="text-align:center; margin-bottom:20px; font-size:14px;">現在登録数: 0曲</div>
+    
+    <div class="host-box">
+      <div><strong>🔑 部屋番号:</strong> <span id="host-room-id" style="color:#00ffff;">-</span></div>
+      <div style="margin-top:6px;"><strong>🎵 登録曲数:</strong> <span id="host-req-count">0</span> 曲</div>
+      <div style="margin-top:4px;"><strong>🎉 発見済み:</strong> <span id="host-found-count">0</span> 曲</div>
+    </div>
+
     <button id="btn-start-game">ゲーム開始！(シャッフル)</button>
+    
+    <div class="host-box" style="margin-top: 15px;">
+      <label style="display:block; margin-bottom:6px; font-size:12px; color:#ccc;">ダミー星（白）をランダムで赤くする</label>
+      <input type="number" id="input-dummy-count" placeholder="数 (例: 5)" min="1" style="padding:8px; margin-bottom:8px;">
+      <button id="btn-open-dummy" class="secondary" style="padding:8px; margin:0; font-size:14px;">ダミー星を赤くする</button>
+    </div>
+
     <button class="secondary" id="btn-close-host" style="margin-top:10px;">閉じる</button>
+
+    <hr style="border:0; border-top:1px solid rgba(255,255,255,0.1); margin: 20px 0;">
+
+    <!-- 🗑 一番下に部屋削除ボタン -->
+    <button id="btn-delete-room" class="danger" style="margin-bottom:20px;">部屋データを削除</button>
   </div>
 
   <!-- 1. 部屋入室画面 -->
@@ -288,7 +305,7 @@
 <!-- Firebase SDK -->
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-  import { getDatabase, ref, set, get, onValue, update, push } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+  import { getDatabase, ref, set, get, onValue, update, push, remove } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 
   const firebaseConfig = {
     apiKey: "AIzaSyC4DQhH_swesAD98Xyjg8d1lcWEkkrHrgw",
@@ -332,6 +349,8 @@
     if (!roomInput || !nameInput) return alert('部屋コードと名前を入力してください');
     
     roomId = roomInput;
+    document.getElementById('host-room-id').textContent = roomId; // 幹事パネルに部屋番号を表示
+
     try {
       await set(ref(db, `star_sight/rooms/${roomId}/players/${myUserId}`), { name: nameInput });
       listenToRoomData();
@@ -355,7 +374,7 @@
     alert('リクエストを追加しました！');
   });
 
-  // ゲーム開始：ランダム配置
+  // ゲーム開始：シャッフル＆配置
   document.getElementById('btn-start-game').addEventListener('click', async () => {
     const reqSnapshot = await get(ref(db, `star_sight/rooms/${roomId}/requests`));
     const requestsObj = reqSnapshot.val() || {};
@@ -392,20 +411,62 @@
     hostPanel.classList.remove('active');
   });
 
+  // 幹事機能：指定数のダミー星（白）をランダムで赤くする
+  document.getElementById('btn-open-dummy').addEventListener('click', async () => {
+    const inputVal = parseInt(document.getElementById('input-dummy-count').value, 10);
+    if (isNaN(inputVal) || inputVal <= 0) return alert('1以上の正しい数字を入力してください');
+
+    // まだ赤くなっていないダミー星（白星）を抽出
+    const dummyStarIds = Object.keys(localStarsData).filter(starId => {
+      const star = localStarsData[starId];
+      return star.status === 'white' && !star.song;
+    });
+
+    if (dummyStarIds.length === 0) {
+      return alert('開けられるダミー星がもうありません');
+    }
+
+    // ランダムにシャッフルして指定数取得
+    dummyStarIds.sort(() => Math.random() - 0.5);
+    const targets = dummyStarIds.slice(0, inputVal);
+
+    const updates = {};
+    targets.forEach(starId => {
+      updates[`star_sight/rooms/${roomId}/stars/${starId}/status`] = 'red';
+    });
+
+    await update(ref(db), updates);
+    document.getElementById('input-dummy-count').value = '';
+    alert(`${targets.length}個のダミー星を赤くしました！`);
+  });
+
+  // 幹事機能：部屋データの削除
+  document.getElementById('btn-delete-room').addEventListener('click', async () => {
+    if (!roomId) return alert('部屋に入室していません');
+    if (!confirm(`本当に部屋 [${roomId}] の全データを削除しますか？\nこの操作は元に戻せません。`)) return;
+
+    try {
+      await remove(ref(db, `star_sight/rooms/${roomId}`));
+      alert('部屋データを削除しました。');
+      location.reload(); // リロードして最初の画面に戻る
+    } catch (err) {
+      alert('削除失敗: ' + err.message);
+    }
+  });
+
   // 星タップ時の分岐処理
   document.querySelectorAll('.star').forEach(starEl => {
     starEl.addEventListener('click', (e) => {
       currentStarId = e.target.getAttribute('data-star-id');
       const starData = localStarsData[currentStarId] || { status: 'white' };
 
-      if (starData.status === 'red') return; // 完唱/確認済みは何も起きない
+      if (starData.status === 'red') return;
 
       const modal = document.getElementById('modal-result');
       const modalTitle = document.getElementById('modal-title');
       const modalSong = document.getElementById('modal-song');
       const modalBtns = document.getElementById('modal-buttons');
 
-      // 1. 自分でリクエストした曲の星だった場合（青色）
       if (starData.requesterId === myUserId) {
         modalTitle.textContent = "リクエスト星";
         modalSong.textContent = "あなたがリクエストした曲です";
@@ -413,10 +474,9 @@
         modal.classList.add('active');
 
         document.getElementById('btn-my-ok').onclick = () => {
-          modal.classList.remove('active'); // 何も起こさず閉じる
+          modal.classList.remove('active');
         };
       }
-      // 2. ダミー星（白色）だった場合
       else if (starData.status === 'white' || !starData.song) {
         modalTitle.textContent = "残念…！";
         modalSong.textContent = "ダミーの星でした ⭐︎";
@@ -428,7 +488,6 @@
           modal.classList.remove('active');
         };
       }
-      // 3. 他人がリクエストしたアタリ曲星（黄色）だった場合
       else {
         modalTitle.textContent = '願い星発見！';
         modalSong.textContent = starData.song;
@@ -453,32 +512,48 @@
 
   // リアルタイム通信の監視
   function listenToRoomData() {
+    // リクエスト曲数のカウント
     onValue(ref(db, `star_sight/rooms/${roomId}/requests`), (snapshot) => {
       const reqs = snapshot.val() || {};
       const count = Object.keys(reqs).length;
       document.getElementById('request-count').textContent = `現在の登録数: ${count}曲`;
-      document.getElementById('host-panel-count').textContent = `現在の登録数: ${count}曲`;
+      document.getElementById('host-req-count').textContent = count;
     });
 
+    // 星の状態同期＆発見数（赤くなった曲星）のカウント
     onValue(ref(db, `star_sight/rooms/${roomId}/stars`), (snapshot) => {
       localStarsData = snapshot.val() || {};
+      let foundSongCount = 0;
+
       Object.keys(localStarsData).forEach(starId => {
         const starEl = document.querySelector(`[data-star-id="${starId}"]`);
         const starInfo = localStarsData[starId];
-        if (starEl && starInfo) {
-          starEl.className = `star ${starInfo.status}`;
-          if (starInfo.requesterId === myUserId && starInfo.status === 'yellow') {
-            starEl.classList.remove('yellow');
-            starEl.classList.add('blue');
+        
+        if (starInfo) {
+          // 曲が入っている星で、かつ赤色（発見済み）になっているものをカウント
+          if (starInfo.song && starInfo.status === 'red') {
+            foundSongCount++;
+          }
+
+          if (starEl) {
+            starEl.className = `star ${starInfo.status}`;
+            if (starInfo.requesterId === myUserId && starInfo.status === 'yellow') {
+              starEl.classList.remove('yellow');
+              starEl.classList.add('blue');
+            }
           }
         }
       });
+
+      document.getElementById('host-found-count').textContent = foundSongCount;
     });
 
+    // ステータス監視
     onValue(ref(db, `star_sight/rooms/${roomId}/status`), (snapshot) => {
       if (snapshot.val() === 'playing') showScreen('screen-game');
     });
 
+    // 完唱履歴の同期
     onValue(ref(db, `star_sight/rooms/${roomId}/history`), (snapshot) => {
       const history = snapshot.val() || {};
       const listEl = document.getElementById('history-list');
