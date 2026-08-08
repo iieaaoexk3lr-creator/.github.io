@@ -31,22 +31,37 @@
     button.secondary { background: #444; }
 
     #starry-sky { width: 100%; position: relative; padding-bottom: 130px; }
-    .sky-section { width: 100%; position: relative; line-height: 0; }
-    .sky-bg { width: 100%; height: auto; display: block; }
+    
+    /* 🌌 画像の境目をグラデーションでなめらかにする設定 */
+    .sky-section { 
+      width: 100%; 
+      position: relative; 
+      line-height: 0; 
+      margin-top: -10px; /* 境目をわずかに重ねる */
+    }
+    .sky-section:first-child { margin-top: 0; }
+    
+    .sky-bg { 
+      width: 100%; 
+      height: auto; 
+      display: block;
+      /* 上下の境界を透過させて溶け込ませるマスク */
+      -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 8%, black 92%, transparent 100%);
+      mask-image: linear-gradient(to bottom, transparent 0%, black 8%, black 92%, transparent 100%);
+    }
 
     .star {
       position: absolute; width: 22px; height: 22px; border-radius: 50%;
       transform: translate(-50%, -50%); border: none; padding: 0; margin: 0;
       touch-action: manipulation; cursor: pointer; z-index: 10;
     }
-    /* タップ領域を広げる設定 */
     .star::after { content: ''; position: absolute; top: -8px; left: -8px; right: -8px; bottom: -8px; }
     .star.yellow { background: #ffd700; box-shadow: 0 0 10px #ffd700, 0 0 20px #ffea00; }
     .star.white { background: rgba(255, 255, 255, 0.6); box-shadow: 0 0 8px rgba(255,255,255,0.8); }
     .star.blue { background: #00ffff; box-shadow: 0 0 10px #00ffff, 0 0 20px #00bfff; }
     .star.red { background: #ff4d4d; box-shadow: 0 0 10px #ff0000; cursor: default; opacity: 0.6; }
 
-    /* 📌 画面右上に固定表示する三本線（ハンバーガーボタン） */
+    /* 固定幹事メニュー */
     #host-menu-btn {
       position: fixed; top: 15px; right: 15px; width: 44px; height: 44px;
       background: rgba(26, 15, 53, 0.85); border: 1px solid #6a11cb;
@@ -58,7 +73,6 @@
       display: block; width: 20px; height: 2px; background: #fff; border-radius: 2px;
     }
 
-    /* 幹事用スライドパネル */
     #host-panel {
       position: fixed; top: 0; right: -300px; width: 280px; height: 100%;
       background: rgba(15, 8, 32, 0.95); border-left: 2px solid #6a11cb;
@@ -97,7 +111,7 @@
     <span></span>
   </div>
 
-  <!-- 右からスライド表示される幹事コントロールパネル -->
+  <!-- 幹事コントロールパネル -->
   <div id="host-panel">
     <h3 style="text-align:center; margin-bottom:15px; color:#ffd700;">⚙️ 幹事コントロール</h3>
     <div id="host-panel-count" style="text-align:center; margin-bottom:20px; font-size:14px;">現在登録数: 0曲</div>
@@ -122,7 +136,7 @@
     <p style="text-align:center; font-size:12px; color:#aaa; margin-top:20px;">右上の三本線メニューからゲームを開始できます。</p>
   </div>
 
-  <!-- 3. ゲームメイン画面（画像の星座上の星の位置） -->
+  <!-- 3. ゲームメイン画面 -->
   <div id="screen-game" class="screen" style="padding: 0;">
     <div id="starry-sky">
 
@@ -267,10 +281,7 @@
   <div class="modal-content">
     <h3 id="modal-title">願い星発見！</h3>
     <p id="modal-song" style="font-size:20px; font-weight:bold; margin: 15px 0; color: #ffd700;"></p>
-    <div id="modal-buttons">
-      <button id="btn-complete">【完唱】</button>
-      <button class="secondary" id="btn-pass">【歌えない】</button>
-    </div>
+    <div id="modal-buttons"></div>
   </div>
 </div>
 
@@ -308,7 +319,7 @@
     document.getElementById(screenId).classList.add('active');
   }
 
-  // 幹事パネルのトグル（開閉）
+  // 幹事パネルの開閉
   const hostMenuBtn = document.getElementById('host-menu-btn');
   const hostPanel = document.getElementById('host-panel');
   hostMenuBtn.addEventListener('click', () => hostPanel.classList.toggle('active'));
@@ -344,7 +355,7 @@
     alert('リクエストを追加しました！');
   });
 
-  // ゲーム開始：全星（約97個）の中から曲数分を「ランダムに抽出」して配置
+  // ゲーム開始：ランダム配置
   document.getElementById('btn-start-game').addEventListener('click', async () => {
     const reqSnapshot = await get(ref(db, `star_sight/rooms/${roomId}/requests`));
     const requestsObj = reqSnapshot.val() || {};
@@ -355,18 +366,14 @@
     }
 
     const allStarElements = Array.from(document.querySelectorAll('.star'));
-    
-    // 星の順番を完全ランダムにシャッフル
     allStarElements.sort(() => Math.random() - 0.5);
 
     const updates = {};
     updates[`star_sight/rooms/${roomId}/status`] = 'playing';
 
-    // 全星をリセットしつつ、ランダムに曲を割り当てる
     allStarElements.forEach((starEl, index) => {
       const starId = starEl.getAttribute('data-star-id');
       if (index < requestsList.length) {
-        // 曲が入るアタリ星
         const req = requestsList[index];
         updates[`star_sight/rooms/${roomId}/stars/${starId}`] = {
           status: 'yellow',
@@ -374,7 +381,6 @@
           requesterId: req.requesterId
         };
       } else {
-        // ハズレのダミー星
         updates[`star_sight/rooms/${roomId}/stars/${starId}`] = {
           status: 'white',
           song: null
@@ -386,34 +392,44 @@
     hostPanel.classList.remove('active');
   });
 
-  // 星タップ時の処理（あたり星＆ダミー星）
+  // 星タップ時の分岐処理
   document.querySelectorAll('.star').forEach(starEl => {
     starEl.addEventListener('click', (e) => {
       currentStarId = e.target.getAttribute('data-star-id');
       const starData = localStarsData[currentStarId] || { status: 'white' };
 
-      // すでに歌われた/開けられた赤星はタップ不可
-      if (starData.status === 'red') return;
+      if (starData.status === 'red') return; // 完唱/確認済みは何も起きない
 
       const modal = document.getElementById('modal-result');
       const modalTitle = document.getElementById('modal-title');
       const modalSong = document.getElementById('modal-song');
       const modalBtns = document.getElementById('modal-buttons');
 
-      if (starData.status === 'white' || !starData.song) {
-        // ⚪️ ダミー星だった場合
+      // 1. 自分でリクエストした曲の星だった場合（青色）
+      if (starData.requesterId === myUserId) {
+        modalTitle.textContent = "リクエスト星";
+        modalSong.textContent = "あなたがリクエストした曲です";
+        modalBtns.innerHTML = `<button id="btn-my-ok">OK</button>`;
+        modal.classList.add('active');
+
+        document.getElementById('btn-my-ok').onclick = () => {
+          modal.classList.remove('active'); // 何も起こさず閉じる
+        };
+      }
+      // 2. ダミー星（白色）だった場合
+      else if (starData.status === 'white' || !starData.song) {
         modalTitle.textContent = "残念…！";
         modalSong.textContent = "ダミーの星でした ⭐︎";
         modalBtns.innerHTML = `<button id="btn-dummy-ok">OK</button>`;
         modal.classList.add('active');
 
         document.getElementById('btn-dummy-ok').onclick = () => {
-          // ダミー星を赤色（確認済み）に変更
           update(ref(db, `star_sight/rooms/${roomId}/stars/${currentStarId}`), { status: 'red' });
           modal.classList.remove('active');
         };
-      } else {
-        // 🟡 🔵 アタリ曲星だった場合
+      }
+      // 3. 他人がリクエストしたアタリ曲星（黄色）だった場合
+      else {
         modalTitle.textContent = '願い星発見！';
         modalSong.textContent = starData.song;
         modalBtns.innerHTML = `
@@ -437,7 +453,6 @@
 
   // リアルタイム通信の監視
   function listenToRoomData() {
-    // リクエスト曲数のカウント
     onValue(ref(db, `star_sight/rooms/${roomId}/requests`), (snapshot) => {
       const reqs = snapshot.val() || {};
       const count = Object.keys(reqs).length;
@@ -445,7 +460,6 @@
       document.getElementById('host-panel-count').textContent = `現在の登録数: ${count}曲`;
     });
 
-    // 星の状態同期
     onValue(ref(db, `star_sight/rooms/${roomId}/stars`), (snapshot) => {
       localStarsData = snapshot.val() || {};
       Object.keys(localStarsData).forEach(starId => {
@@ -453,7 +467,6 @@
         const starInfo = localStarsData[starId];
         if (starEl && starInfo) {
           starEl.className = `star ${starInfo.status}`;
-          // 自分が登録した曲の黄星は自分だけ青色に見える
           if (starInfo.requesterId === myUserId && starInfo.status === 'yellow') {
             starEl.classList.remove('yellow');
             starEl.classList.add('blue');
@@ -462,12 +475,10 @@
       });
     });
 
-    // ステータス監視
     onValue(ref(db, `star_sight/rooms/${roomId}/status`), (snapshot) => {
       if (snapshot.val() === 'playing') showScreen('screen-game');
     });
 
-    // 履歴同期
     onValue(ref(db, `star_sight/rooms/${roomId}/history`), (snapshot) => {
       const history = snapshot.val() || {};
       const listEl = document.getElementById('history-list');
