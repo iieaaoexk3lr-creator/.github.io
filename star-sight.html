@@ -4,6 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>リクエスターゲーム</title>
+  <!-- ファビコンの404エラー防止 -->
+  <link rel="shortcut icon" href="#">
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
@@ -67,7 +69,7 @@
 <body>
 
 <div id="app">
-  <!-- 部屋入室画面 -->
+  <!-- 1. 部屋入室画面 -->
   <div id="screen-entry" class="screen active">
     <h1>リクエスターゲーム</h1>
     <input type="text" id="input-room" placeholder="部屋コード (例: 1234)">
@@ -75,7 +77,7 @@
     <button id="btn-join">入室する</button>
   </div>
 
-  <!-- 曲リクエスト画面 -->
+  <!-- 2. 曲リクエスト画面 -->
   <div id="screen-request" class="screen">
     <h2>曲のリクエスト</h2>
     <input type="text" id="input-title" placeholder="歌ってほしい曲名 (必須)">
@@ -85,7 +87,7 @@
     <button class="secondary" style="margin-top:20px;" id="btn-to-host">幹事画面へ</button>
   </div>
 
-  <!-- 幹事画面 -->
+  <!-- 3. 幹事画面 -->
   <div id="screen-host" class="screen">
     <h2>幹事設定画面</h2>
     <p id="host-stats">リクエスト: 0 / ダミー: 0</p>
@@ -96,10 +98,9 @@
     <button id="btn-start-game">ゲーム開始！</button>
   </div>
 
-  <!-- ゲームメイン画面 -->
+  <!-- 4. ゲームメイン画面 -->
   <div id="screen-game" class="screen" style="padding: 0;">
     <div id="starry-sky">
-      <!-- 画像パスを相対パス (./assets/...) に統一 -->
       <div class="sky-section">
         <img src="./assets/bg_01_aries_taurus.webp" class="sky-bg" alt="1枚目">
         <button class="star yellow" style="top: 25%; left: 45%;" data-star-id="star001"></button>
@@ -122,7 +123,7 @@
   </div>
 </div>
 
-<!-- 結果モーダル -->
+<!-- 5. 結果表示ポップアップ -->
 <div id="modal-result" class="modal">
   <div class="modal-content">
     <h3 id="modal-title">願い星発見！</h3>
@@ -135,10 +136,10 @@
   </div>
 </div>
 
-<!-- Firebase SDK (Google CDNから直接フルURLで読み込み) -->
+<!-- Firebase SDK (正しいパス: firebase-database.js) -->
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-  import { getDatabase, ref, set, onValue, update, push } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-rtdb.js";
+  import { getDatabase, ref, set, onValue, update, push } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 
   const firebaseConfig = {
     apiKey: "AIzaSyC4DQhH_swesAD98Xyjg8d1lcWEkkrHrgw",
@@ -156,7 +157,7 @@
     const app = initializeApp(firebaseConfig);
     db = getDatabase(app);
   } catch (e) {
-    alert("Firebase接続エラー: " + e.message);
+    alert("Firebase初期化エラー: " + e.message);
   }
 
   const myUserId = 'user_' + Math.random().toString(36).substring(2, 9);
@@ -168,7 +169,7 @@
     document.getElementById(screenId).classList.add('active');
   }
 
-  // 入室処理
+  // 入室ボタン
   document.getElementById('btn-join').addEventListener('click', async () => {
     const roomInput = document.getElementById('input-room').value.trim();
     const nameInput = document.getElementById('input-name').value.trim();
@@ -180,7 +181,7 @@
       listenToRoomData();
       showScreen('screen-request');
     } catch (err) {
-      alert("送信に失敗しました。Firebaseのルール設定を確認してください。\n詳細: " + err.message);
+      alert("送信失敗: Firebaseのルール設定を確認してください。\n詳細: " + err.message);
     }
   });
 
@@ -201,7 +202,7 @@
     alert('リクエストを追加しました！');
   });
 
-  // 幹事画面へ
+  // 幹事画面移動
   document.getElementById('btn-to-host').addEventListener('click', () => showScreen('screen-host'));
 
   // ゲーム開始
@@ -237,7 +238,7 @@
     document.getElementById('modal-result').classList.remove('active');
   });
 
-  // リアルタイム通信の監視
+  // リアルタイム受信
   function listenToRoomData() {
     onValue(ref(db, `star_sight/rooms/${roomId}/stars`), (snapshot) => {
       const stars = snapshot.val() || {};
