@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>歌って星探し</title>
+  <style>
+    /* 全体・夜空背景設定 */
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: linear-gradient(180deg, #05030a 0%, #110926 50%, #080314 100%);
+      background-attachment: fixed;
+      color: #fff;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      overflow-x: hidden;
+    }
+
+    /* メインコンテナ（スマホ縦持ち画面幅固定） */
+    #app {
+      max-width: 430px;
+      margin: 0 auto;
+      min-height: 100vh;
+      position: relative;
+    }
+
+    /* 画面切り替え用クラス */
+    .screen { display: none; padding: 20px; }
+    .screen.active { display: block; }
+
+    /* 共通UI部品 */
+    h1, h2 { text-align: center; margin-bottom: 20px; text-shadow: 0 0 8px #9370db; }
+    input, button {
+      width: 100%; padding: 12px; margin-bottom: 12px;
+      border-radius: 8px; border: none; font-size: 16px;
+    }
+    input { background: rgba(255, 255, 255, 0.9); color: #000; }
+    button {
+      background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%);
+      color: #fff; font-weight: bold; cursor: pointer;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+    }
+    button.secondary { background: #444; }
+
+    /* ① 星空エリア（縦スクロール背景） */
+    #starry-sky {
+      width: 100%;
+      position: relative;
+    }
+    .sky-section {
+      width: 100%;
+      position: relative;
+      line-height: 0;
+    }
+    .sky-bg {
+      width: 100%;
+      height: auto;
+      display: block;
+    }
+
+    /* ② 探索星（絶対座標配置） */
+    .star {
+      position: absolute;
+      width: 20px; height: 20px;
+      border-radius: 50%;
+      transform: translate(-50%, -50%);
+      border: none; padding: 0; margin: 0;
+      touch-action: manipulation;
+      cursor: pointer;
+      z-index: 10;
+    }
+    /* タップ判定領域のみ広げる */
+    .star::after {
+      content: ''; position: absolute;
+      top: -10px; left: -10px; right: -10px; bottom: -10px;
+    }
+
+    /* 星の状態カラー */
+    .star.yellow {
+      background: #ffd700;
+      box-shadow: 0 0 10px #ffd700, 0 0 20px #ffea00;
+      animation: pulse 2s infinite alternate ease-in-out;
+    }
+    .star.white {
+      background: rgba(255, 255, 255, 0.3);
+      box-shadow: none; cursor: not-allowed;
+    }
+    .star.blue {
+      background: #00ffff;
+      box-shadow: 0 0 10px #00ffff, 0 0 20px #00bfff;
+      animation: pulse 1.5s infinite alternate ease-in-out;
+    }
+    .star.red {
+      background: #ff4d4d;
+      box-shadow: 0 0 10px #ff0000;
+      cursor: not-allowed;
+    }
+
+    @keyframes pulse {
+      0% { transform: translate(-50%, -50%) scale(0.9); opacity: 0.8; }
+      100% { transform: translate(-50%, -50%) scale(1.3); opacity: 1; }
+    }
+
+    /* ポップアップ・モーダル */
+    .modal {
+      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0, 0, 0, 0.8); display: none;
+      align-items: center; justify-content: center; z-index: 100;
+    }
+    .modal.active { display: flex; }
+    .modal-content {
+      background: #1a0f35; border: 2px solid #6a11cb;
+      padding: 24px; border-radius: 16px; width: 85%; max-width: 360px;
+      text-align: center; box-shadow: 0 0 20px rgba(106, 17, 203, 0.5);
+    }
+
+    /* 履歴エリア */
+    #history-panel {
+      position: fixed; bottom: 0; left: 50%; transform: translateX(-50%);
+      width: 100%; max-width: 430px; background: rgba(10, 5, 20, 0.9);
+      border-top: 1px solid #333; max-height: 120px; overflow-y: auto;
+      padding: 10px; font-size: 12px; z-index: 20;
+    }
+  </style>
+</head>
+<body>
+
+<div id="app">
+  <!-- 部屋入室画面 -->
+  <div id="screen-entry" class="screen active">
+    <h1>歌って星探し</h1>
+    <input type="text" id="input-room" placeholder="部屋コード (例: 1234)">
+    <input type="text" id="input-name" placeholder="あなたの名前">
+    <button onclick="joinRoom()">入室する</button>
+  </div>
+
+  <!-- 曲リクエスト画面 -->
+  <div id="screen-request" class="screen">
+    <h2>曲のリクエスト</h2>
+    <input type="text" id="input-title" placeholder="歌ってほしい曲名 (必須)">
+    <input type="text" id="input-target" placeholder="歌ってほしい人 (任意)">
+    <button onclick="submitRequest()">リクエスト登録</button>
+    <div id="request-count" style="text-align:center; margin-top:15px;">現在の登録数: 0曲</div>
+    <button class="secondary" style="margin-top:20px;" onclick="goToHost()">幹事画面へ</button>
+  </div>
+
+  <!-- 幹事画面 -->
+  <div id="screen-host" class="screen">
+    <h2>幹事設定画面</h2>
+    <p id="host-stats">リクエスト: 0 / ダミー: 0</p>
+    <div style="margin: 20px 0;">
+      <label>白くするダミー星の数:</label>
+      <input type="number" id="input-dummy-count" value="10" min="0">
+    </div>
+    <button onclick="startGame()">ゲーム開始！</button>
+  </div>
+
+  <!-- ゲームメイン画面 (星空) -->
+  <div id="screen-game" class="screen" style="padding: 0;">
+    <div id="starry-sky">
+      <!-- 6枚の背景画像とそれぞれの星 -->
+      <div class="sky-section">
+        <img src="assets/bg_01_aries_taurus.webp" class="sky-bg" alt="1枚目">
+        <button class="star yellow" style="top: 25%; left: 45%;" data-star-id="star001" onclick="tapStar('star001')"></button>
+        <button class="star yellow" style="top: 70%; left: 50%;" data-star-id="star002" onclick="tapStar('star002')"></button>
+      </div>
+      <div class="sky-section">
+        <img src="assets/bg_02_gemini_cancer.webp" class="sky-bg" alt="2枚目">
+        <button class="star yellow" style="top: 30%; left: 40%;" data-star-id="star003" onclick="tapStar('star003')"></button>
+      </div>
+      <div class="sky-section"><img src="assets/bg_03_leo_virgo.webp" class="sky-bg" alt="3枚目"></div>
+      <div class="sky-section"><img src="assets/bg_04_libra_scorpio.webp" class="sky-bg" alt="4枚目"></div>
+      <div class="sky-section"><img src="assets/bg_05_sagittarius_capricorn.webp" class="sky-bg" alt="5枚目"></div>
+      <div class="sky-section"><img src="assets/bg_06_aquarius_pisces.webp" class="sky-bg" alt="6枚目"></div>
+    </div>
+
+    <!-- 履歴パネル -->
+    <div id="history-panel">
+      <strong>📜 完唱履歴</strong>
+      <ol id="history-list"></ol>
+    </div>
+  </div>
+</div>
+
+<!-- 星タップ時の結果モーダル -->
+<div id="modal-result" class="modal">
+  <div class="modal-content">
+    <h3 id="modal-title">願い星発見！</h3>
+    <p id="modal-song" style="font-size:20px; font-weight:bold; margin: 15px 0; color: #ffd700;"></p>
+    <p id="modal-target" style="margin-bottom:15px;"></p>
+    <div id="modal-buttons">
+      <button onclick="handleComplete()">【完唱】</button>
+      <button class="secondary" onclick="handlePass()">【歌えない】</button>
+    </div>
+  </div>
+</div>
+
+<!-- Firebase SDK -->
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+  import { getDatabase, ref, set, onValue, update, push } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-rtdb.js";
+
+  // Firebase 設定
+  const firebaseConfig = {
+    apiKey: "AIzaSyC4DQhH_swesAD98Xyjg8d1lcWEkkrHrgw",
+    authDomain: "gamehistory-m84.firebaseapp.com",
+    databaseURL: "https://gamehistory-m84-default-rtdb.firebaseio.com",
+    projectId: "gamehistory-m84",
+    storageBucket: "gamehistory-m84.firebasestorage.app",
+    messagingSenderId: "475761727837",
+    appId: "1:475761727837:web:06d07e1ab4120a7ccaf0b4",
+    measurementId: "G-3636W6LC4F"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const db = getDatabase(app);
+
+  // グローバル変数
+  window.myUserId = 'user_' + Math.random().toString(36).substring(2, 9);
+  window.roomId = '';
+  window.currentStarId = null;
+
+  // 画面切り替え関数
+  window.showScreen = function(screenId) {
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    document.getElementById(screenId).classList.add('active');
+  };
+
+  // 部屋入室
+  window.joinRoom = function() {
+    const roomInput = document.getElementById('input-room').value.trim();
+    const nameInput = document.getElementById('input-name').value.trim();
+    if (!roomInput || !nameInput) return alert('部屋コードと名前を入力してください');
+    
+    window.roomId = roomInput;
+    // ユーザー情報保存
+    set(ref(db, `star_sight/rooms/${window.roomId}/players/${window.myUserId}`), { name: nameInput });
+    
+    // リアルタイム同期の開始
+    listenToRoomData();
+    window.showScreen('screen-request');
+  };
+
+  // リクエスト送信
+  window.submitRequest = function() {
+    const title = document.getElementById('input-title').value.trim();
+    const target = document.getElementById('input-target').value.trim();
+    if (!title) return alert('曲名を入力してください');
+
+    push(ref(db, `star_sight/rooms/${window.roomId}/requests`), {
+      title: title,
+      target: target || '誰でも',
+      requesterId: window.myUserId
+    });
+
+    document.getElementById('input-title').value = '';
+    document.getElementById('input-target').value = '';
+    alert('リクエストを追加しました！');
+  };
+
+  // リアルタイム監視設定
+  function listenToRoomData() {
+    // 星の状態同期
+    onValue(ref(db, `star_sight/rooms/${window.roomId}/stars`), (snapshot) => {
+      const stars = snapshot.val() || {};
+      Object.keys(stars).forEach(starId => {
+        const starEl = document.querySelector(`[data-star-id="${starId}"]`);
+        if (starEl) {
+          starEl.className = `star ${stars[starId].status}`;
+          // 自分が登録した未発見リクエスト星は「青」に見せる処理
+          if (stars[starId].requesterId === window.myUserId && stars[starId].status === 'yellow') {
+            starEl.classList.remove('yellow');
+            starEl.classList.add('blue');
+          }
+        }
+      });
+    });
+
+    // ゲームフェーズ同期
+    onValue(ref(db, `star_sight/rooms/${window.roomId}/status`), (snapshot) => {
+      if (snapshot.val() === 'playing') {
+        window.showScreen('screen-game');
+      }
+    });
+
+    // 履歴同期
+    onValue(ref(db, `star_sight/rooms/${window.roomId}/history`), (snapshot) => {
+      const history = snapshot.val() || {};
+      const listEl = document.getElementById('history-list');
+      listEl.innerHTML = '';
+      Object.values(history).forEach(item => {
+        const li = document.createElement('li');
+        li.textContent = `${item.singer}: ${item.title}`;
+        listEl.appendChild(li);
+      });
+    });
+  }
+
+  // 幹事画面移動
+  window.goToHost = function() { window.showScreen('screen-host'); };
+
+  // ゲーム開始（ダミー・リクエスト割り当て）
+  window.startGame = function() {
+    const whiteCount = parseInt(document.getElementById('input-dummy-count').value) || 0;
+    
+    // 仮の星データとリクエストをマッピング（拡張可能）
+    const updates = {};
+    updates[`star_sight/rooms/${window.roomId}/status`] = 'playing';
+    updates[`star_sight/rooms/${window.roomId}/stars/star001`] = { status: 'yellow', song: 'Pretender', target: '全員' };
+    updates[`star_sight/rooms/${window.roomId}/stars/star002`] = { status: 'white' }; // ダミー消去例
+    updates[`star_sight/rooms/${window.roomId}/stars/star003`] = { status: 'yellow', song: '怪獣の花唄', target: '幹事' };
+
+    update(ref(db), updates);
+  };
+
+  // 星タップ処理
+  window.tapStar = function(starId) {
+    window.currentStarId = starId;
+    const modal = document.getElementById('modal-result');
+    
+    // 本来はFirebaseから該当星の情報を取得して表示
+    document.getElementById('modal-title').textContent = '願い星発見！';
+    document.getElementById('modal-song').textContent = 'Pretender';
+    document.getElementById('modal-target').textContent = '歌唱指名: 全員';
+    modal.classList.add('active');
+  };
+
+  // 完唱ボタン
+  window.handleComplete = function() {
+    update(ref(db, `star_sight/rooms/${window.roomId}/stars/${window.currentStarId}`), { status: 'red' });
+    push(ref(db, `star_sight/rooms/${window.roomId}/history`), {
+      title: 'Pretender',
+      singer: '参加者'
+    });
+    document.getElementById('modal-result').classList.remove('active');
+  };
+
+  // 歌えないボタン
+  window.handlePass = function() {
+    document.getElementById('modal-result').classList.remove('active');
+  };
+</script>
+</body>
+</html>
