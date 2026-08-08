@@ -50,10 +50,13 @@
       touch-action: manipulation; cursor: pointer; z-index: 10;
     }
     .star::after { content: ''; position: absolute; top: -8px; left: -8px; right: -8px; bottom: -8px; }
-    .star.yellow { background: #ffd700; box-shadow: 0 0 10px #ffd700, 0 0 20px #ffea00; }
+    
+    /* 未発見・ダミー星：白 */
     .star.white { background: rgba(255, 255, 255, 0.6); box-shadow: 0 0 8px rgba(255,255,255,0.8); }
+    /* 自分のリクエスト曲：青 */
     .star.blue { background: #00ffff; box-shadow: 0 0 10px #00ffff, 0 0 20px #00bfff; }
-    .star.red { background: #ff4d4d; box-shadow: 0 0 10px #ff0000; cursor: default; opacity: 0.6; }
+    /* 発見・完唱済み：黄色 */
+    .star.yellow { background: #ffd700; box-shadow: 0 0 10px #ffd700, 0 0 20px #ffea00; cursor: default; opacity: 0.8; }
 
     /* 固定メニューボタン */
     #menu-btn {
@@ -67,7 +70,7 @@
       display: block; width: 20px; height: 2px; background: #fff; border-radius: 2px;
     }
 
-    /* コントロールパネル（参加者・幹事共通） */
+    /* コントロールパネル */
     #control-panel {
       position: fixed; top: 0; right: -320px; width: 300px; height: 100%;
       background: rgba(15, 8, 32, 0.96); border-left: 2px solid #6a11cb;
@@ -148,9 +151,9 @@
       <button id="btn-start-game" style="font-size:14px; padding:10px;">ゲーム開始！(シャッフル)</button>
       
       <div style="margin-top:10px;">
-        <label style="display:block; margin-bottom:4px; font-size:11px; color:#ccc;">ダミー星（白）を赤くする</label>
+        <label style="display:block; margin-bottom:4px; font-size:11px; color:#ccc;">ダミー星（白）を黄色にする</label>
         <input type="number" id="input-dummy-count" placeholder="数 (例: 5)" min="1" style="padding:6px; margin-bottom:6px; font-size:13px;">
-        <button id="btn-open-dummy" class="secondary" style="padding:6px; margin:0; font-size:13px;">指定数赤くする</button>
+        <button id="btn-open-dummy" class="secondary" style="padding:6px; margin:0; font-size:13px;">指定数黄色にする</button>
       </div>
 
       <button id="btn-delete-room" class="danger" style="margin-top:15px; margin-bottom:0; padding:8px; font-size:12px;">部屋データを削除</button>
@@ -387,7 +390,7 @@
     document.getElementById('input-title').value = '';
   });
 
-  // 【幹事用】ゲーム開始：シャッフル＆配置
+  // 【幹事用】ゲーム開始：シャッフル＆配置（全て初期値 status: 'unopened' で登録）
   document.getElementById('btn-start-game').addEventListener('click', async () => {
     const reqSnapshot = await get(ref(db, `star_sight/rooms/${roomId}/requests`));
     const requestsObj = reqSnapshot.val() || {};
@@ -408,13 +411,13 @@
       if (index < requestsList.length) {
         const req = requestsList[index];
         updates[`star_sight/rooms/${roomId}/stars/${starId}`] = {
-          status: 'yellow',
+          status: 'unopened',
           song: req.title,
           requesterId: req.requesterId
         };
       } else {
         updates[`star_sight/rooms/${roomId}/stars/${starId}`] = {
-          status: 'white',
+          status: 'unopened',
           song: null
         };
       }
@@ -424,14 +427,14 @@
     controlPanel.classList.remove('active');
   });
 
-  // 【幹事用】指定数のダミー星（白）をランダムで赤くする
+  // 【幹事用】指定数のダミー星（未開封）をランダムで黄色にする
   document.getElementById('btn-open-dummy').addEventListener('click', async () => {
     const inputVal = parseInt(document.getElementById('input-dummy-count').value, 10);
     if (isNaN(inputVal) || inputVal <= 0) return alert('1以上の正しい数字を入力してください');
 
     const dummyStarIds = Object.keys(localStarsData).filter(starId => {
       const star = localStarsData[starId];
-      return star.status === 'white' && !star.song;
+      return star.status === 'unopened' && !star.song;
     });
 
     if (dummyStarIds.length === 0) {
@@ -443,12 +446,12 @@
 
     const updates = {};
     targets.forEach(starId => {
-      updates[`star_sight/rooms/${roomId}/stars/${starId}/status`] = 'red';
+      updates[`star_sight/rooms/${roomId}/stars/${starId}/status`] = 'opened';
     });
 
     await update(ref(db), updates);
     document.getElementById('input-dummy-count').value = '';
-    alert(`${targets.length}個のダミー星を赤くしました！`);
+    alert(`${targets.length}個のダミー星を黄色（確認済み）にしました！`);
   });
 
   // 【幹事用】部屋データの削除
@@ -469,18 +472,20 @@
   document.querySelectorAll('.star').forEach(starEl => {
     starEl.addEventListener('click', (e) => {
       currentStarId = e.target.getAttribute('data-star-id');
-      const starData = localStarsData[currentStarId] || { status: 'white' };
+      const starData = localStarsData[currentStarId] || { status: 'unopened' };
 
-      if (starData.status === 'red') return;
+      // 既に発見・確認済み（黄色）の場合はタップしても何もしない
+      if (starData.status === 'opened') return;
 
       const modal = document.getElementById('modal-result');
       const modalTitle = document.getElementById('modal-title');
       const modalSong = document.getElementById('modal-song');
       const modalBtns = document.getElementById('modal-buttons');
 
+      // 自分のリクエスト星（青色）をタップした場合
       if (starData.requesterId === myUserId) {
-        modalTitle.textContent = "リクエスト星";
-        modalSong.textContent = "あなたがリクエストした曲です";
+        modalTitle.textContent = "自分のリクエスト星";
+        modalSong.textContent = starData.song || "リクエストした曲";
         modalBtns.innerHTML = `<button id="btn-my-ok">OK</button>`;
         modal.classList.add('active');
 
@@ -488,17 +493,19 @@
           modal.classList.remove('active');
         };
       }
-      else if (starData.status === 'white' || !starData.song) {
+      // ダミー星（白色）をタップした場合
+      else if (!starData.song) {
         modalTitle.textContent = "残念…！";
         modalSong.textContent = "ダミーの星でした ⭐︎";
         modalBtns.innerHTML = `<button id="btn-dummy-ok">OK</button>`;
         modal.classList.add('active');
 
         document.getElementById('btn-dummy-ok').onclick = () => {
-          update(ref(db, `star_sight/rooms/${roomId}/stars/${currentStarId}`), { status: 'red' });
+          update(ref(db, `star_sight/rooms/${roomId}/stars/${currentStarId}`), { status: 'opened' });
           modal.classList.remove('active');
         };
       }
+      // 他人のリクエスト星（白色で見えていたもの）をタップした場合
       else {
         modalTitle.textContent = '願い星発見！';
         modalSong.textContent = starData.song;
@@ -509,7 +516,7 @@
         modal.classList.add('active');
 
         document.getElementById('btn-complete').onclick = () => {
-          update(ref(db, `star_sight/rooms/${roomId}/stars/${currentStarId}`), { status: 'red' });
+          update(ref(db, `star_sight/rooms/${roomId}/stars/${currentStarId}`), { status: 'opened' });
           push(ref(db, `star_sight/rooms/${roomId}/history`), { title: starData.song });
           modal.classList.remove('active');
         };
@@ -546,7 +553,7 @@
       }
     });
 
-    // 星の状態同期＆発見数（赤くなった曲星）のカウント
+    // 星の状態同期＆発見数（完唱された曲星）のカウント
     onValue(ref(db, `star_sight/rooms/${roomId}/stars`), (snapshot) => {
       localStarsData = snapshot.val() || {};
       let foundSongCount = 0;
@@ -556,15 +563,22 @@
         const starInfo = localStarsData[starId];
         
         if (starInfo) {
-          if (starInfo.song && starInfo.status === 'red') {
+          if (starInfo.song && starInfo.status === 'opened') {
             foundSongCount++;
           }
 
           if (starEl) {
-            starEl.className = `star ${starInfo.status}`;
-            if (starInfo.requesterId === myUserId && starInfo.status === 'yellow') {
-              starEl.classList.remove('yellow');
-              starEl.classList.add('blue');
+            // 発見・完唱済みなら黄色
+            if (starInfo.status === 'opened') {
+              starEl.className = 'star yellow';
+            } 
+            // 自分のリクエスト曲かつ未完唱なら青色
+            else if (starInfo.requesterId === myUserId) {
+              starEl.className = 'star blue';
+            } 
+            // それ以外（他人のリクエスト・ダミー星）はデフォルトで白色
+            else {
+              starEl.className = 'star white';
             }
           }
         }
