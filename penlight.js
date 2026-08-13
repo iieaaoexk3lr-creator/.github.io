@@ -40,7 +40,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const valBright = document.getElementById('valBright');
     const valSpeed = document.getElementById('valSpeed');
 
-    // カラープリセット（左右両方に全10種を同じ配置で設置）
+    // カラープリセット
     const colorPresets = [
         { name: '赤', hex: '#FF0000' },
         { name: '橙', hex: '#FF7F00' },
@@ -69,7 +69,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let rainbowTimer = null;
     let fadeIndex = 0;
 
-    // カラーバー（左右どちらにも全10種を同じ順序で生成）
+    // 🎨 カラーバー構築
     function initColorBars() {
         leftBar.innerHTML = '';
         rightBar.innerHTML = '';
@@ -100,10 +100,12 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // 色変更処理
+    // 🎨 手動での色変更処理
     function executeColorChange(colorCode) {
         if (activeMode === 'off') activeMode = 'solid';
         btnOff.classList.remove('active');
+
+        // ★ 変更1：色変更前に必ずタイマーをクリア
         stopRainbowProcessor();
 
         if (colorCode === 'rainbow') {
@@ -133,13 +135,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // 🌈 虹色ループ処理
     function startRainbowProcessor() {
-        let step = 0;
-        penlightBody.style.transition = 'box-shadow 0.2s ease, background 0.2s ease';
+        stopRainbowProcessor(); // 二重起動防止
 
+        let step = 0;
         const flashInterval = Math.max(100, Math.round(600 / speedFactor));
         const fadeInterval = Math.max(200, Math.round(2000 / speedFactor));
 
         if (rainbowPattern === 'flash') {
+            penlightBody.style.transition = 'background 0.1s linear, filter 0.15s linear';
             rainbowTimer = setInterval(() => {
                 activeColor = rainbowSequence[step];
                 applyLightVisual();
@@ -147,9 +150,11 @@ document.addEventListener('DOMContentLoaded', () => {
             }, flashInterval);
         } else {
             const transitionSec = (fadeInterval / 1000).toFixed(1);
-            penlightBody.style.transition = `background ${transitionSec}s linear, box-shadow ${transitionSec}s linear`;
+            penlightBody.style.transition = `background ${transitionSec}s linear, filter 0.15s linear`;
+            
             activeColor = rainbowSequence[fadeIndex];
             applyLightVisual();
+
             rainbowTimer = setInterval(() => {
                 fadeIndex = (fadeIndex + 1) % rainbowSequence.length;
                 activeColor = rainbowSequence[fadeIndex];
@@ -159,10 +164,15 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function stopRainbowProcessor() {
-        if (rainbowTimer) { clearInterval(rainbowTimer); rainbowTimer = null; }
+        if (rainbowTimer) { 
+            clearInterval(rainbowTimer); 
+            rainbowTimer = null; 
+        }
+        // 虹色離脱時に通常のアニメーション推移へ戻す
+        penlightBody.style.transition = 'background 0.15s linear, filter 0.15s linear';
     }
 
-    // ビジュアル適用
+    // 🌟 ビジュアル適用（光量・カラー）
     function applyLightVisual() {
         if (activeMode === 'off') return;
 
@@ -182,19 +192,33 @@ document.addEventListener('DOMContentLoaded', () => {
         `;
     }
 
+    // ⚡ スピード変更時の適用処理
     function applySpeedChange() {
         const blinkTime = (0.1 / speedFactor).toFixed(2);
         const pulseTime = (1.5 / speedFactor).toFixed(2);
 
+        // CSS変数でアニメーション周期を更新
         penlightBody.style.setProperty('--blink-speed', `${blinkTime}s`);
         penlightBody.style.setProperty('--pulse-speed', `${pulseTime}s`);
 
+        // ★ 変更2：エフェクト実行中であれば一度クラスを剥がしてCSSアニメーションを再計算させる
+        if (activeMode === 'blink') {
+            penlightBody.classList.remove('effect-blink');
+            void penlightBody.offsetWidth; // リフロー発生によるアニメーション再リセット
+            penlightBody.classList.add('effect-blink');
+        } else if (activeMode === 'pulse') {
+            penlightBody.classList.remove('effect-pulse');
+            void penlightBody.offsetWidth;
+            penlightBody.classList.add('effect-pulse');
+        }
+
+        // 虹色タイマーの更新
         if (isRainbow) {
-            stopRainbowProcessor();
             startRainbowProcessor();
         }
     }
 
+    // エフェクト（点滅・明滅）の切り替え
     function toggleEffect(modeName, targetBtn, cssClass) {
         if (activeMode === 'off') return;
         const isCurrentActive = (activeMode === modeName);
@@ -217,6 +241,7 @@ document.addEventListener('DOMContentLoaded', () => {
         btnPulse.classList.remove('active');
     }
 
+    // 管理者コマンド送信
     function sendAdminCommand() {
         if (amIAdmin) {
             set(ref(db, 'pen_light/last_command'), {
@@ -231,7 +256,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // 📡 Firebaseリアルタイム連動
+    // 📡 Firebaseリアルタイム連動：管理者IDの監視
     onValue(ref(db, 'pen_light/active_admin_id'), (snapshot) => {
         const currentAdminId = snapshot.val();
         if (currentAdminId === myUserId) {
@@ -249,23 +274,29 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
+    // 📡 Firebaseリアルタイム連動：管理コマンドの受領
     onValue(ref(db, 'pen_light/last_command'), (snapshot) => {
-        if (amIAdmin) return;
+        if (amIAdmin) return; // 自分自身が管理者の場合は受信処理を無視
         const cmd = snapshot.val();
         if (!cmd) return;
-        if (cmd.timestamp < lastMyTapTime) return;
+        if (cmd.timestamp < lastMyTapTime) return; // 自分の最後の手動操作より古いコマンドは無視
+
         applyExternalCommand(cmd);
     });
 
+    // 🔄 同期コマンドの適用ロジック（★大幅改修箇所）
     function applyExternalCommand(cmd) {
-        clearEffectsUI();
+        // ① 全タイマー・全CSSエフェクトの完全リセット
         stopRainbowProcessor();
+        clearEffectsUI();
         btnOff.classList.remove('active');
 
+        // ② 基本設定値の受け取りと表示の同期
         activeMode = cmd.mode;
         rainbowPattern = cmd.pattern || 'flash';
         btnPattern.innerText = (rainbowPattern === 'fade') ? '虹:滑らか' : '虹:一瞬';
 
+        // スライダー／コントロールパネルUIの表示同期
         if (cmd.glow !== undefined) {
             glowFactor = cmd.glow;
             rangeGlow.value = glowFactor;
@@ -281,9 +312,15 @@ document.addEventListener('DOMContentLoaded', () => {
             speedFactor = cmd.speed;
             rangeSpeed.value = speedFactor;
             valSpeed.innerText = speedFactor.toFixed(1);
-            applySpeedChange();
+            
+            // アニメーション周期（--pulse-speed等）の更新
+            const blinkTime = (0.1 / speedFactor).toFixed(2);
+            const pulseTime = (1.5 / speedFactor).toFixed(2);
+            penlightBody.style.setProperty('--blink-speed', `${blinkTime}s`);
+            penlightBody.style.setProperty('--pulse-speed', `${pulseTime}s`);
         }
 
+        // ③ 色とパターンの適用処理
         if (cmd.color === 'rainbow') {
             isRainbow = true;
             btnPattern.disabled = false;
@@ -299,11 +336,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 penlightBody.style.setProperty('--pen-color', '#000000');
                 penlightBody.style.boxShadow = 'none';
                 btnOff.classList.add('active');
-                return;
+                return; // 消灯時はエフェクト付与を行わずに終了
             }
             applyLightVisual();
         }
 
+        // ④ エフェクト（点滅/明滅）の再適用
         if (activeMode === 'blink') {
             btnBlink.classList.add('active');
             penlightBody.classList.add('effect-blink');
@@ -313,7 +351,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // イベント設定
+    // 🎛️ イベントUI操作群
     rangeGlow.addEventListener('input', (e) => {
         lastMyTapTime = Date.now();
         glowFactor = parseFloat(e.target.value);
@@ -347,19 +385,29 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    btnBlink.addEventListener('click', (e) => { e.stopPropagation(); toggleEffect('blink', btnBlink, 'effect-blink'); });
-    btnPulse.addEventListener('click', (e) => { e.stopPropagation(); toggleEffect('pulse', btnPulse, 'effect-pulse'); });
+    btnBlink.addEventListener('click', (e) => { 
+        e.stopPropagation(); 
+        lastMyTapTime = Date.now();
+        toggleEffect('blink', btnBlink, 'effect-blink'); 
+    });
+
+    btnPulse.addEventListener('click', (e) => { 
+        e.stopPropagation(); 
+        lastMyTapTime = Date.now();
+        toggleEffect('pulse', btnPulse, 'effect-pulse'); 
+    });
 
     btnPattern.addEventListener('click', (e) => {
         e.stopPropagation();
         if (!isRainbow) return;
+        lastMyTapTime = Date.now();
         rainbowPattern = (rainbowPattern === 'flash') ? 'fade' : 'flash';
         btnPattern.innerText = (rainbowPattern === 'fade') ? '虹:滑らか' : '虹:一瞬';
-        stopRainbowProcessor();
         startRainbowProcessor();
         sendAdminCommand();
     });
 
+    // 手動強制同期ボタン（自分のTap制限をクリアして最新データに追従）
     btnSync.addEventListener('click', async (e) => {
         e.stopPropagation();
         if (amIAdmin) return;
@@ -367,7 +415,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const snapshot = await get(ref(db, 'pen_light/last_command'));
             const cmd = snapshot.val();
             if (cmd) {
-                lastMyTapTime = 0;
+                lastMyTapTime = 0; // 手動操作によるロックを解除
                 applyExternalCommand(cmd);
             }
         } catch (error) {
@@ -418,7 +466,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // 初期化
+    // 初期化実行
     initColorBars();
     applyLightVisual();
 });
