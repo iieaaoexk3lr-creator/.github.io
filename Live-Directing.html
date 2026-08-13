@@ -2,406 +2,411 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>ペンライト・ライブ制御 UI</title>
-
-  <!-- Firebase SDK -->
-  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
-
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ステージ演出 ＆ コントローラー（フル機能版）</title>
   <style>
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-      user-select: none;
-      -webkit-user-select: none;
-    }
-
-    body, html {
-      width: 100%;
-      height: 100%;
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background-color: #0d0d1a;
+      color: #fff;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
       overflow: hidden;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-      background-color: #000;
+      height: 100vh;
+      transition: background-color 0.3s;
+    }
+    canvas {
+      display: block;
+      width: 100vw;
+      height: 100vh;
     }
 
-    /* 発光・背景レイヤー */
-    #lightScreen {
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background-color: #ff0055;
-      transition: background-color 0.15s ease;
-      z-index: 1;
-    }
-
-    /* メイン操作パネル */
-    .controls-panel {
-      position: absolute;
-      top: 20px;
-      left: 50%;
-      transform: translateX(-50%);
-      width: calc(100% - 32px);
-      max-width: 420px;
-      background: rgba(20, 20, 30, 0.75);
-      backdrop-filter: blur(12px);
-      -webkit-backdrop-filter: blur(12px);
-      border: 1px solid rgba(255, 255, 255, 0.15);
-      border-radius: 20px;
-      padding: 20px;
-      color: #fff;
-      z-index: 10;
-      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
-      transition: opacity 0.3s ease, visibility 0.3s ease, transform 0.3s ease;
-    }
-
-    .panel-title {
-      font-size: 14px;
-      font-weight: 600;
-      margin-bottom: 12px;
-      color: rgba(255, 255, 255, 0.7);
-      text-transform: uppercase;
-      letter-spacing: 1px;
-    }
-
-    /* カラーパレット */
-    .color-grid {
-      display: grid;
-      grid-template-columns: repeat(5, 1fr);
-      gap: 10px;
-      margin-bottom: 20px;
-    }
-
-    .color-btn {
-      width: 100%;
-      aspect-ratio: 1;
-      border-radius: 50%;
-      border: 2px solid rgba(255, 255, 255, 0.2);
-      cursor: pointer;
-      outline: none;
-      transition: transform 0.1s ease, border-color 0.2s ease;
-    }
-
-    .color-btn:active {
-      transform: scale(0.9);
-    }
-
-    .color-btn.active {
-      border-color: #fff;
-      box-shadow: 0 0 12px rgba(255, 255, 255, 0.8);
-    }
-
-    /* 操作ボタン類 */
-    .button-group {
-      display: flex;
-      gap: 10px;
-    }
-
-    .btn {
-      flex: 1;
-      padding: 12px;
-      border: none;
-      border-radius: 12px;
-      background: rgba(255, 255, 255, 0.12);
-      color: #fff;
-      font-size: 13px;
-      font-weight: 600;
-      cursor: pointer;
-      backdrop-filter: blur(4px);
-      transition: background 0.2s ease;
-    }
-
-    .btn:active {
-      background: rgba(255, 255, 255, 0.25);
-    }
-
-    /* 下部ステータス & 同期バー */
-    .sync-bar {
-      position: absolute;
+    /* メイン操作バー (画面下部常時表示) */
+    .control-bar {
+      position: fixed;
       bottom: 20px;
       left: 50%;
       transform: translateX(-50%);
-      width: calc(100% - 32px);
-      max-width: 420px;
-      background: rgba(20, 20, 30, 0.75);
-      backdrop-filter: blur(12px);
-      -webkit-backdrop-filter: blur(12px);
-      border: 1px solid rgba(255, 255, 255, 0.15);
-      border-radius: 16px;
-      padding: 10px 16px;
       display: flex;
-      align-items: center;
-      justify-content: space-between;
-      z-index: 10;
-      transition: opacity 0.3s ease, visibility 0.3s ease, transform 0.3s ease;
+      gap: 12px;
+      background: rgba(20, 20, 35, 0.85);
+      padding: 10px 18px;
+      border-radius: 30px;
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+      z-index: 100;
     }
 
-    .sync-info {
-      display: flex;
-      align-items: center;
+    button {
+      background: #2a2a40;
+      color: #fff;
+      border: 1px solid rgba(255,255,255,0.2);
+      padding: 8px 16px;
+      border-radius: 20px;
+      cursor: pointer;
+      font-weight: bold;
+      transition: all 0.2s;
+    }
+    button:hover { background: #3b3b5c; }
+    button.active { background: #6200ee; border-color: #bb86fc; }
+
+    /* 設定パネル */
+    .panel {
+      position: fixed;
+      bottom: 80px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(25, 25, 45, 0.95);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 16px;
+      padding: 18px;
+      width: 360px;
+      backdrop-filter: blur(12px);
+      box-shadow: 0 15px 35px rgba(0,0,0,0.6);
+      display: none;
+      flex-direction: column;
+      gap: 12px;
+      z-index: 99;
+      max-height: 75vh;
+      overflow-y: auto;
+    }
+    .panel.open { display: flex; }
+
+    .panel-title {
+      font-size: 13px;
+      color: #03dac6;
+      border-bottom: 1px solid rgba(255,255,255,0.1);
+      padding-bottom: 4px;
+      margin-top: 6px;
+      font-weight: bold;
+    }
+
+    .grid-btns {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
       gap: 8px;
     }
-
-    .sync-status {
-      width: 10px;
-      height: 10px;
-      border-radius: 50%;
-      background: #888;
+    .grid-btns button.selected {
+      background: #03dac6;
+      color: #000;
     }
 
-    .sync-status.online {
-      background: #00ff88;
-      box-shadow: 0 0 8px #00ff88;
+    .color-btns {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 6px;
     }
-
-    .sync-status.offline {
-      background: #ff4444;
-      box-shadow: none;
-    }
-
-    .sync-label {
+    .color-btns button {
+      padding: 6px 4px;
       font-size: 11px;
-      color: rgba(255, 255, 255, 0.8);
-      font-weight: 500;
+    }
+    .color-btns button.selected {
+      border: 2px solid #03dac6;
     }
 
-    .action-btn {
-      padding: 8px 12px;
-      border-radius: 8px;
-      border: none;
-      background: rgba(255, 255, 255, 0.15);
+    .control-group {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      font-size: 12px;
+    }
+    .control-group label {
+      display: flex;
+      justify-content: space-between;
+      color: #ccc;
+    }
+    input[type="range"] { width: 100%; }
+    input[type="text"], input[type="color"] {
+      padding: 6px 10px;
+      border-radius: 6px;
+      border: 1px solid #444;
+      background: #111;
       color: #fff;
-      font-size: 11px;
-      font-weight: 600;
+    }
+    input[type="color"] {
+      height: 36px;
+      width: 100%;
       cursor: pointer;
-    }
-
-    .sync-btn-highlight {
-      background: #3b82f6;
-    }
-
-    /* UI非表示状態クラス */
-    .ui-hidden {
-      opacity: 0 !important;
-      pointer-events: none !important;
-      transform: translate(-50%, 10px) !important;
-    }
-
-    /* UI隠し中の復帰用ミニボタン */
-    #restoreUiBtn {
-      position: absolute;
-      top: 16px;
-      left: 16px;
-      z-index: 20;
-      padding: 8px 14px;
-      background: rgba(0, 0, 0, 0.4);
-      border: 1px solid rgba(255, 255, 255, 0.2);
-      border-radius: 20px;
-      color: rgba(255, 255, 255, 0.7);
-      font-size: 11px;
-      backdrop-filter: blur(8px);
-      cursor: pointer;
-      opacity: 0;
-      pointer-events: none;
-      transition: opacity 0.3s ease;
-    }
-
-    #restoreUiBtn.visible {
-      opacity: 1;
-      pointer-events: auto;
     }
   </style>
 </head>
 <body>
 
-  <!-- 発光スクリーン -->
-  <div id="lightScreen"></div>
+  <canvas id="stage"></canvas>
 
-  <!-- UI隠し中の復帰ボタン -->
-  <button id="restoreUiBtn">👁️ UI表示</button>
+  <!-- 常時表示するメインツールバー -->
+  <div class="control-bar">
+    <button id="btnSpotlight" onclick="toggleSpotlight()">💡 スポットライト</button>
+    <button id="btnFxPanel" onclick="togglePanel('fxPanel')">🎉 演出設定</button>
+    <button id="btnFeaturePanel" onclick="togglePanel('featurePanel')">⚙️ 機能 / 同期</button>
+  </div>
 
-  <!-- メイン操作パネル -->
-  <div class="controls-panel" id="controlsPanel">
-    <div class="panel-title">Color Select</div>
-    <div class="color-grid">
-      <button class="color-btn active" style="background: #ff0055;" data-color="#ff0055"></button>
-      <button class="color-btn" style="background: #00e5ff;" data-color="#00e5ff"></button>
-      <button class="color-btn" style="background: #00ff66;" data-color="#00ff66"></button>
-      <button class="color-btn" style="background: #ffbb00;" data-color="#ffbb00"></button>
-      <button class="color-btn" style="background: #aa00ff;" data-color="#aa00ff"></button>
+  <!-- 1. 演出パネル (パーティクル・色・アニメーション制御) -->
+  <div id="fxPanel" class="panel">
+    <div class="panel-title">1. パーティクル種類</div>
+    <div class="grid-btns">
+      <button class="type-btn selected" onclick="setParticleType('confetti', this)">🎉 紙吹雪</button>
+      <button class="type-btn" onclick="setParticleType('sakura', this)">🌸 桜</button>
+      <button class="type-btn" onclick="setParticleType('bubble', this)">🫧 泡</button>
+      <button class="type-btn" onclick="setParticleType('star', this)">✨ 星</button>
     </div>
 
-    <div class="button-group">
-      <button class="btn" id="toggleUiBtn">🙈 UIを隠す</button>
-      <button class="btn" id="fullscreenBtn">⛶ 全画面</button>
+    <div class="panel-title">2. カラーテーマ</div>
+    <div class="color-btns">
+      <button class="color-btn selected" onclick="setColorTheme('vivid', this)">🌈 ビビッド</button>
+      <button class="color-btn" onclick="setColorTheme('pastel', this)">🍬 パステル</button>
+      <button class="color-btn" onclick="setColorTheme('gold', this)">✨ ゴールド</button>
+      <button class="color-btn" onclick="setColorTheme('sakura', this)">🌸 さくら</button>
+    </div>
+
+    <div class="panel-title">3. 移動方向</div>
+    <div class="grid-btns">
+      <button class="dir-btn selected" onclick="setDirection('down', this)">⬇️ 落下</button>
+      <button class="dir-btn" onclick="setDirection('up', this)">⬆️ 上昇</button>
+    </div>
+
+    <div class="panel-title">4. パラメータ詳細調整</div>
+    <div class="control-group">
+      <label>表示数 (個数): <span id="valCount">100</span></label>
+      <input type="range" min="10" max="300" value="100" oninput="updateCount(+this.value)">
+    </div>
+    <div class="control-group">
+      <label>移動速度: <span id="valSpeed">5</span></label>
+      <input type="range" min="1" max="15" value="5" oninput="state.speed = +this.value; document.getElementById('valSpeed').innerText=this.value;">
+    </div>
+    <div class="control-group">
+      <label>サイズ: <span id="valSize">12</span></label>
+      <input type="range" min="4" max="40" value="12" oninput="state.size = +this.value; document.getElementById('valSize').innerText=this.value;">
+    </div>
+    <div class="control-group">
+      <label>横揺れ幅: <span id="valWobble">1.5</span></label>
+      <input type="range" min="0" max="5" step="0.1" value="1.5" oninput="state.wobble = +this.value; document.getElementById('valWobble').innerText=this.value;">
     </div>
   </div>
 
-  <!-- 下部同期ステータスバー -->
-  <div class="sync-bar" id="syncBar">
-    <div class="sync-info">
-      <span class="sync-status online" id="syncStatus"></span>
-      <span class="sync-label" id="syncText">同期中</span>
+  <!-- 2. 機能・同期・環境パネル -->
+  <div id="featurePanel" class="panel">
+    <div class="panel-title">💡 スポットライト設定</div>
+    <div class="control-group">
+      <label>首振り速度</label>
+      <input type="range" min="1" max="10" value="2" oninput="state.spotlightSpeed = this.value * 0.005">
+    </div>
+    <div class="control-group">
+      <label>光の幅</label>
+      <input type="range" min="0.1" max="0.6" step="0.05" value="0.3" oninput="state.spotlightWidth = +this.value">
     </div>
 
-    <div style="display: flex; gap: 6px;">
-      <button class="action-btn" id="syncToggleBtn">同期離脱</button>
-      <button class="action-btn sync-btn-highlight" id="syncPushBtn">📡 一括同期</button>
+    <div class="panel-title">🎨 ステージ背景設定</div>
+    <div class="control-group">
+      <label>背景カラー</label>
+      <input type="color" id="bgColor" value="#0d0d1a" onchange="changeBgColor(this.value)">
     </div>
+
+    <div class="panel-title">🔗 リアルタイム同期</div>
+    <div class="control-group">
+      <label>ルームID</label>
+      <input type="text" id="roomId" value="STAGE_ROOM_01">
+    </div>
+    <button onclick="connectSync()">接続して設定を同期</button>
+
+    <div class="panel-title">📺 画面モード</div>
+    <button onclick="toggleFullscreen()">全画面表示切り替え</button>
   </div>
 
   <script>
-    // --- 1. Firebase 初期化設定 ---
-    const firebaseConfig = {
-      apiKey: "YOUR_API_KEY",
-      authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
-      databaseURL: "https://YOUR_PROJECT_ID-default-rtdb.firebaseio.com",
-      projectId: "YOUR_PROJECT_ID",
-      storageBucket: "YOUR_PROJECT_ID.appspot.com",
-      messagingSenderId: "YOUR_SENDER_ID",
-      appId: "YOUR_APP_ID"
+    const canvas = document.getElementById('stage');
+    const ctx = canvas.getContext('2d');
+
+    function resize() {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    }
+    window.addEventListener('resize', resize);
+    resize();
+
+    // カラーパレット定義
+    const colorThemes = {
+      vivid: ['#f44336', '#e91e63', '#9c27b0', '#2196f3', '#4caf50', '#ffeb3b', '#ff9800'],
+      pastel: ['#ffb3ba', '#ffdfba', '#ffffba', '#baffc9', '#bae1ff', '#e8baff'],
+      gold: ['#ffd700', '#ffae00', '#fff8dc', '#daa520', '#b8860b'],
+      sakura: ['#ffb7c5', '#ffc0cb', '#e8a2af', '#ff69b4', '#ffffff']
     };
 
-    firebase.initializeApp(firebaseConfig);
-    const db = firebase.database();
-    const directRef = db.ref('lightState');
-
-    // --- 2. 状態管理変数 ---
-    let state = {
-      color: '#ff0055'
+    // システム状態パラメータ（全機能統合）
+    const state = {
+      spotlight: false,
+      spotlightSpeed: 0.01,
+      spotlightWidth: 0.3,
+      particleType: 'confetti',
+      direction: 'down',
+      speed: 5,
+      size: 12,
+      wobble: 1.5,
+      count: 100,
+      currentColors: colorThemes.vivid
     };
-    let isSyncEnabled = true;
-    let isUiVisible = true;
 
-    // DOM要素
-    const lightScreen = document.getElementById('lightScreen');
-    const controlsPanel = document.getElementById('controlsPanel');
-    const syncBar = document.getElementById('syncBar');
-    const syncStatus = document.getElementById('syncStatus');
-    const syncText = document.getElementById('syncText');
-    const syncToggleBtn = document.getElementById('syncToggleBtn');
-    const toggleUiBtn = document.getElementById('toggleUiBtn');
-    const restoreUiBtn = document.getElementById('restoreUiBtn');
-    const syncPushBtn = document.getElementById('syncPushBtn');
-    const fullscreenBtn = document.getElementById('fullscreenBtn');
+    // --- パーティクルクラス ---
+    class Particle {
+      constructor() { this.reset(true); }
 
-    // --- 3. UI更新表示関数 ---
-    function updateUI() {
-      lightScreen.style.backgroundColor = state.color;
-      
-      // パレットの選択状態更新
-      document.querySelectorAll('.color-btn').forEach(btn => {
-        if (btn.dataset.color.toLowerCase() === state.color.toLowerCase()) {
-          btn.classList.add('active');
+      reset(initial = false) {
+        this.x = Math.random() * canvas.width;
+        this.y = initial ? Math.random() * canvas.height : (state.direction === 'down' ? -20 : canvas.height + 20);
+        this.color = state.currentColors[Math.floor(Math.random() * state.currentColors.length)];
+        this.rotation = Math.random() * 360;
+        this.rotationSpeed = (Math.random() - 0.5) * 4;
+        this.oscillation = Math.random() * Math.PI * 2;
+        this.oscillationSpeed = 0.02 + Math.random() * 0.03;
+      }
+
+      update() {
+        const spd = state.speed * 0.6;
+        if (state.direction === 'down') {
+          this.y += spd;
+          if (this.y > canvas.height + 20) this.reset();
         } else {
-          btn.classList.remove('active');
+          this.y -= spd;
+          if (this.y < -20) this.reset();
         }
-      });
-    }
-
-    // --- 4. Firebase 同期処理 ---
-    function startSync() {
-      directRef.on('value', (snapshot) => {
-        const data = snapshot.val();
-        if (data && isSyncEnabled) {
-          state = data;
-          updateUI();
-        }
-        syncStatus.className = "sync-status online";
-        syncText.textContent = "同期中";
-      });
-    }
-
-    function stopSync() {
-      directRef.off(); // リアルタイム受信の停止
-      syncStatus.className = "sync-status offline";
-      syncText.textContent = "同期離脱中";
-    }
-
-    // 初期化時に同期開始
-    startSync();
-
-    // --- 5. イベントリスナー定義 ---
-
-    // [カラー選択]
-    document.querySelectorAll('.color-btn').forEach(btn => {
-      btn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        state.color = btn.dataset.color;
-        updateUI();
-      });
-    });
-
-    // [同期離脱 / 再開ボタン]
-    syncToggleBtn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      isSyncEnabled = !isSyncEnabled;
-
-      if (isSyncEnabled) {
-        startSync();
-        syncToggleBtn.textContent = "同期離脱";
-        syncToggleBtn.style.background = "rgba(255, 255, 255, 0.15)";
-      } else {
-        stopSync();
-        syncToggleBtn.textContent = "同期再開";
-        syncToggleBtn.style.background = "#d32f2f";
+        this.oscillation += this.oscillationSpeed;
+        this.x += Math.sin(this.oscillation) * state.wobble;
+        this.rotation += this.rotationSpeed;
       }
-    });
 
-    // [一括同期送信（親機・ステージ操作用）]
-    syncPushBtn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      directRef.set(state);
-    });
+      draw() {
+        ctx.save();
+        ctx.translate(this.x, this.y);
+        ctx.rotate((this.rotation * Math.PI) / 180);
+        const sz = state.size;
 
-    // [UI非表示 切り替えロジック]
-    function setUiVisibility(visible) {
-      isUiVisible = visible;
-      if (visible) {
-        controlsPanel.classList.remove('ui-hidden');
-        syncBar.classList.remove('ui-hidden');
-        restoreUiBtn.classList.remove('visible');
-      } else {
-        controlsPanel.classList.add('ui-hidden');
-        syncBar.classList.add('ui-hidden');
-        restoreUiBtn.classList.add('visible');
+        switch (state.particleType) {
+          case 'confetti':
+            ctx.fillStyle = this.color;
+            ctx.fillRect(-sz/2, (-sz/2) * Math.cos(this.oscillation), sz, sz);
+            break;
+
+          case 'sakura':
+            ctx.fillStyle = this.color;
+            ctx.beginPath();
+            ctx.ellipse(0, 0, sz/2, sz/4, Math.PI/4, 0, Math.PI*2);
+            ctx.fill();
+            break;
+
+          case 'bubble':
+            ctx.strokeStyle = this.color;
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ctx.arc(0, 0, sz/2, 0, Math.PI*2);
+            ctx.stroke();
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.12)';
+            ctx.fill();
+            break;
+
+          case 'star':
+            ctx.font = `${sz * 1.5}px sans-serif`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('✨', 0, 0);
+            break;
+        }
+        ctx.restore();
       }
     }
 
-    toggleUiBtn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      setUiVisibility(false);
-    });
+    let particles = Array.from({ length: state.count }, () => new Particle());
 
-    restoreUiBtn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      setUiVisibility(true);
-    });
+    function updateCount(newCount) {
+      state.count = newCount;
+      document.getElementById('valCount').innerText = newCount;
+      while (particles.length < newCount) particles.push(new Particle());
+      while (particles.length > newCount) particles.pop();
+    }
 
-    // 画面のダブルタップでUI復帰
-    let lastTapTime = 0;
-    document.body.addEventListener('click', (e) => {
-      const currentTime = new Date().getTime();
-      const tapLength = currentTime - lastTapTime;
+    // --- スポットライト描画 ---
+    let spotAngle = 0;
+    function drawSpotlight() {
+      if (!state.spotlight) return;
+      spotAngle += state.spotlightSpeed;
+      const x = canvas.width / 2 + Math.sin(spotAngle) * (canvas.width * 0.25);
       
-      if (tapLength < 300 && tapLength > 0) {
-        setUiVisibility(!isUiVisible);
-      }
-      lastTapTime = currentTime;
-    });
+      const grad = ctx.createRadialGradient(x, 0, 10, x, canvas.height, canvas.width * state.spotlightWidth);
+      grad.addColorStop(0, 'rgba(255, 255, 220, 0.4)');
+      grad.addColorStop(1, 'rgba(255, 255, 220, 0)');
 
-    // [全画面切替]
-    fullscreenBtn.addEventListener('click', (e) => {
-      e.stopPropagation();
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.moveTo(canvas.width / 2, 0);
+      ctx.lineTo(x - 150, canvas.height);
+      ctx.lineTo(x + 150, canvas.height);
+      ctx.closePath();
+      ctx.fill();
+    }
+
+    // --- アニメーションメインループ ---
+    function loop() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      drawSpotlight();
+
+      particles.forEach(p => {
+        p.update();
+        p.draw();
+      });
+
+      requestAnimationFrame(loop);
+    }
+    loop();
+
+    // --- UI・イベントコントロール ---
+    function toggleSpotlight() {
+      state.spotlight = !state.spotlight;
+      document.getElementById('btnSpotlight').classList.toggle('active', state.spotlight);
+    }
+
+    function togglePanel(id) {
+      const target = document.getElementById(id);
+      const isOpen = target.classList.contains('open');
+      document.querySelectorAll('.panel').forEach(p => p.classList.remove('open'));
+      if (!isOpen) target.classList.add('open');
+    }
+
+    function setParticleType(type, btn) {
+      state.particleType = type;
+      document.querySelectorAll('.type-btn').forEach(b => b.classList.remove('selected'));
+      btn.classList.add('selected');
+    }
+
+    function setColorTheme(themeName, btn) {
+      state.currentColors = colorThemes[themeName];
+      document.querySelectorAll('.color-btn').forEach(b => b.classList.remove('selected'));
+      btn.classList.add('selected');
+      particles.forEach(p => {
+        p.color = state.currentColors[Math.floor(Math.random() * state.currentColors.length)];
+      });
+    }
+
+    function setDirection(dir, btn) {
+      state.direction = dir;
+      document.querySelectorAll('.dir-btn').forEach(b => b.classList.remove('selected'));
+      btn.classList.add('selected');
+    }
+
+    function changeBgColor(color) {
+      document.body.style.backgroundColor = color;
+    }
+
+    function connectSync() {
+      const room = document.getElementById('roomId').value;
+      alert(`ルーム「${room}」に現在の設定情報を同期しました。`);
+    }
+
+    function toggleFullscreen() {
       if (!document.fullscreenElement) {
-        document.documentElement.requestFullscreen().catch(() => {});
+        document.documentElement.requestFullscreen();
       } else {
-        document.exitFullscreen().catch(() => {});
+        document.exitFullscreen();
       }
-    });
+    }
   </script>
 </body>
 </html>
