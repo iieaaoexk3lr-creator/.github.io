@@ -30,14 +30,14 @@
       justify-content: space-around;
       align-items: center;
       width: 92%;
-      max-width: 680px;
+      max-width: 500px;
       background: rgba(20, 20, 35, 0.9);
       padding: 12px 16px;
       border-radius: 30px;
       backdrop-filter: blur(12px);
       border: 1px solid rgba(255, 255, 255, 0.2);
       box-shadow: 0 10px 30px rgba(0,0,0,0.6);
-      z-index: 100; /* 最前面パネル(1000)の下、キャンバスの上 */
+      z-index: 100;
     }
 
     button {
@@ -56,7 +56,12 @@
       white-space: nowrap;
     }
     button:hover { background: #3b3b5c; }
-    button.active { background: #6200ee; border-color: #bb86fc; }
+    /* 押されたら発光するアクティブスタイル */
+    button.active { 
+      background: #6200ee; 
+      border-color: #bb86fc;
+      box-shadow: 0 0 12px rgba(187, 134, 252, 0.6);
+    }
 
     /* 最前面に表示される設定パネル */
     .panel {
@@ -69,13 +74,13 @@
       border-radius: 18px;
       padding: 20px;
       width: 90%;
-      max-width: 400px;
+      max-width: 420px;
       backdrop-filter: blur(16px);
       box-shadow: 0 20px 40px rgba(0,0,0,0.8);
       display: none;
       flex-direction: column;
       gap: 14px;
-      z-index: 1000; /* 奥に隠れないよう最前面に指定 */
+      z-index: 1000;
       max-height: 70vh;
       overflow-y: auto;
     }
@@ -145,29 +150,34 @@
 
   <canvas id="stage"></canvas>
 
-  <!-- 横長・位置調整済みのメイン操作バー -->
+  <!-- メイン操作バー（パネルボタンを押すと光ります） -->
   <div class="control-bar">
-    <button id="btnSpotlight" onclick="toggleSpotlight()">💡 スポットライト</button>
     <button id="btnFxPanel" onclick="togglePanel('fxPanel')">🎉 演出設定</button>
     <button id="btnFeaturePanel" onclick="togglePanel('featurePanel')">⚙️ 機能 / 同期</button>
   </div>
 
-  <!-- 1. 演出パネル (最前面 z-index:1000) -->
+  <!-- 1. 演出パネル -->
   <div id="fxPanel" class="panel">
     <div class="panel-title">1. パーティクル種類</div>
     <div class="grid-btns">
-      <button class="type-btn selected" onclick="setParticleType('confetti', this)">🎉 紙吹雪 (角・角削)</button>
+      <button class="type-btn selected" onclick="setParticleType('confetti_rect', this)">⏹️ 四角紙吹雪</button>
+      <button class="type-btn" onclick="setParticleType('confetti_tri', this)">🔺 三角紙吹雪</button>
       <button class="type-btn" onclick="setParticleType('heart', this)">💖 ハート</button>
       <button class="type-btn" onclick="setParticleType('star', this)">★ 星</button>
       <button class="type-btn" onclick="setParticleType('bubble', this)">🫧 泡</button>
+      <button class="type-btn" onclick="setParticleType('note', this)">🎵 音符</button>
     </div>
 
-    <div class="panel-title">2. カラーテーマ</div>
+    <div class="panel-title">2. カラー設定</div>
     <div class="color-btns">
       <button class="color-btn selected" onclick="setColorTheme('vivid', this)">🌈 ビビッド</button>
       <button class="color-btn" onclick="setColorTheme('pastel', this)">🍬 パステル</button>
       <button class="color-btn" onclick="setColorTheme('gold', this)">✨ ゴールド</button>
       <button class="color-btn" onclick="setColorTheme('pink', this)">💖 ピンク</button>
+    </div>
+    <div class="control-group" style="margin-top: 4px;">
+      <label>指定カラー (原色一括設定)</label>
+      <input type="color" id="customParticleColor" value="#ff0000" oninput="setCustomParticleColor(this.value)">
     </div>
 
     <div class="panel-title">3. 移動方向</div>
@@ -186,8 +196,8 @@
       <input type="range" min="1" max="15" value="5" oninput="state.speed = +this.value; document.getElementById('valSpeed').innerText=this.value;">
     </div>
     <div class="control-group">
-      <label>サイズ (特大対応): <span id="valSize">20</span>px</label>
-      <input type="range" min="8" max="100" value="20" oninput="state.size = +this.value; document.getElementById('valSize').innerText=this.value;">
+      <label>サイズ (最大150px): <span id="valSize">20</span>px</label>
+      <input type="range" min="8" max="150" value="20" oninput="state.size = +this.value; document.getElementById('valSize').innerText=this.value;">
     </div>
     <div class="control-group">
       <label>横揺れ幅: <span id="valWobble">1.5</span></label>
@@ -198,13 +208,16 @@
   <!-- 2. 機能・環境・スポットライト詳細パネル -->
   <div id="featurePanel" class="panel">
     <div class="panel-title">💡 スポットライト設定</div>
+    <!-- 一番上に点灯/消灯ボタンを移動 -->
+    <button id="btnSpotlightToggle" onclick="toggleSpotlight()" style="margin-bottom: 6px;">💡 スポットライト OFF</button>
+    
     <div class="grid-btns">
       <button class="spot-pos-btn selected" onclick="setSpotlightPos('top', this)">⬆️ 上から照らす</button>
       <button class="spot-pos-btn" onclick="setSpotlightPos('bottom', this)">⬇️ 下から照らす</button>
     </div>
     <div class="control-group">
       <label>ライト色</label>
-      <input type="color" id="spotColor" value="#ffffdd" onchange="state.spotlightColor = this.value">
+      <input type="color" id="spotColor" value="#ffffdd" oninput="state.spotlightColor = this.value">
     </div>
     <div class="control-group">
       <label>光の幅 (照射角度)</label>
@@ -254,11 +267,11 @@
     // システム状態パラメータ
     const state = {
       spotlight: false,
-      spotlightPos: 'top', // 'top' | 'bottom'
+      spotlightPos: 'top',
       spotlightColor: '#ffffdd',
       spotlightSpeed: 0.015,
       spotlightWidth: 0.3,
-      particleType: 'confetti',
+      particleType: 'confetti_rect',
       direction: 'down',
       speed: 5,
       size: 20,
@@ -267,8 +280,7 @@
       currentColors: colorThemes.vivid
     };
 
-    // --- 描画ヘルパー関数 (図形) ---
-    // 1. シンプルな星 (★)
+    // --- 高速ベクター描画ヘルパー ---
     function drawStar(ctx, r) {
       ctx.beginPath();
       for (let i = 0; i < 5; i++) {
@@ -279,7 +291,6 @@
       ctx.fill();
     }
 
-    // 2. ハート (💖)
     function drawHeart(ctx, sz) {
       ctx.beginPath();
       const topCurveHeight = sz * 0.3;
@@ -292,7 +303,6 @@
       ctx.fill();
     }
 
-    // 3. 三角形
     function drawTriangle(ctx, sz) {
       ctx.beginPath();
       ctx.moveTo(0, -sz / 2);
@@ -302,30 +312,47 @@
       ctx.fill();
     }
 
+    // 超軽量・Native Canvasコマンドで描画する音符（八分音符）
+    function drawMusicNote(ctx, sz) {
+      ctx.beginPath();
+      // 符頭（斜めの楕円）
+      ctx.ellipse(-sz * 0.2, sz * 0.2, sz * 0.25, sz * 0.18, -Math.PI / 6, 0, Math.PI * 2);
+      ctx.fill();
+      // 符幹（縦棒）
+      ctx.lineWidth = Math.max(1.5, sz * 0.1);
+      ctx.beginPath();
+      ctx.moveTo(sz * 0.02, sz * 0.15);
+      ctx.lineTo(sz * 0.02, -sz * 0.4);
+      ctx.stroke();
+      // 符尾（はた）
+      ctx.beginPath();
+      ctx.moveTo(sz * 0.02, -sz * 0.4);
+      ctx.quadraticCurveTo(sz * 0.25, -sz * 0.2, sz * 0.2, 0);
+      ctx.stroke();
+    }
+
     // --- パーティクルクラス ---
     class Particle {
       constructor() { this.reset(true); }
 
       reset(initial = false) {
         this.x = Math.random() * canvas.width;
-        this.y = initial ? Math.random() * canvas.height : (state.direction === 'down' ? -30 : canvas.height + 30);
+        this.y = initial ? Math.random() * canvas.height : (state.direction === 'down' ? -50 : canvas.height + 50);
         this.color = state.currentColors[Math.floor(Math.random() * state.currentColors.length)];
         this.rotation = Math.random() * 360;
         this.rotationSpeed = (Math.random() - 0.5) * 4;
         this.oscillation = Math.random() * Math.PI * 2;
         this.oscillationSpeed = 0.02 + Math.random() * 0.03;
-        // 紙吹雪用の四角 / 三角フラグ
-        this.shape = Math.random() > 0.5 ? 'rect' : 'triangle';
       }
 
       update() {
         const spd = state.speed * 0.6;
         if (state.direction === 'down') {
           this.y += spd;
-          if (this.y > canvas.height + 40) this.reset();
+          if (this.y > canvas.height + 60) this.reset();
         } else {
           this.y -= spd;
-          if (this.y < -40) this.reset();
+          if (this.y < -60) this.reset();
         }
         this.oscillation += this.oscillationSpeed;
         this.x += Math.sin(this.oscillation) * state.wobble;
@@ -342,12 +369,12 @@
         ctx.strokeStyle = this.color;
 
         switch (state.particleType) {
-          case 'confetti':
-            if (this.shape === 'rect') {
-              ctx.fillRect(-sz/2, (-sz/2) * Math.cos(this.oscillation), sz, sz);
-            } else {
-              drawTriangle(ctx, sz);
-            }
+          case 'confetti_rect':
+            ctx.fillRect(-sz/2, (-sz/2) * Math.cos(this.oscillation), sz, sz);
+            break;
+
+          case 'confetti_tri':
+            drawTriangle(ctx, sz);
             break;
 
           case 'heart':
@@ -367,6 +394,10 @@
             ctx.fillStyle = 'rgba(255, 255, 255, 0.15)';
             ctx.fill();
             break;
+
+          case 'note':
+            drawMusicNote(ctx, sz);
+            break;
         }
         ctx.restore();
       }
@@ -381,18 +412,17 @@
       while (particles.length > newCount) particles.pop();
     }
 
-    // --- スポットライト描画 (発光点固定・首振りアニメーション) ---
+    // --- スポットライト描画 ---
     let spotAngle = 0;
     function drawSpotlight() {
       if (!state.spotlight) return;
       spotAngle += state.spotlightSpeed;
 
       const isTop = state.spotlightPos === 'top';
-      const originX = canvas.width / 2; // 中央固定
+      const originX = canvas.width / 2;
       const originY = isTop ? 0 : canvas.height;
       const targetY = isTop ? canvas.height : 0;
 
-      // ライトの向き(角度)をゆらゆら動かす
       const sweepWidth = canvas.width * 0.4;
       const targetX = canvas.width / 2 + Math.sin(spotAngle) * sweepWidth;
 
@@ -401,11 +431,12 @@
         targetX, targetY, canvas.width * state.spotlightWidth
       );
 
-      // hexカラーをrgbaに変換してグラデーション作成
-      const hex = state.spotlightColor;
-      const r = parseInt(hex.slice(1,3), 16) || 255;
-      const g = parseInt(hex.slice(3,5), 16) || 255;
-      const b = parseInt(hex.slice(5,7), 16) || 220;
+      // 色文字列(hex)をリアルタイムに分解して透明度設定
+      let hex = state.spotlightColor.replace('#', '');
+      if (hex.length === 3) hex = hex.split('').map(c => c + c).join('');
+      const r = parseInt(hex.substring(0, 2), 16) || 255;
+      const g = parseInt(hex.substring(2, 4), 16) || 255;
+      const b = parseInt(hex.substring(4, 6), 16) || 220;
 
       grad.addColorStop(0, `rgba(${r}, ${g}, ${b}, 0.6)`);
       grad.addColorStop(1, `rgba(${r}, ${g}, ${b}, 0)`);
@@ -437,14 +468,31 @@
     // --- UI・イベントコントロール ---
     function toggleSpotlight() {
       state.spotlight = !state.spotlight;
-      document.getElementById('btnSpotlight').classList.toggle('active', state.spotlight);
+      const btn = document.getElementById('btnSpotlightToggle');
+      if (state.spotlight) {
+        btn.innerText = '💡 スポットライト ON';
+        btn.classList.add('active');
+      } else {
+        btn.innerText = '💡 スポットライト OFF';
+        btn.classList.remove('active');
+      }
     }
 
     function togglePanel(id) {
       const target = document.getElementById(id);
       const isOpen = target.classList.contains('open');
+
+      // 一旦すべてのパネルを閉じて発光をオフにする
       document.querySelectorAll('.panel').forEach(p => p.classList.remove('open'));
-      if (!isOpen) target.classList.add('open');
+      document.getElementById('btnFxPanel').classList.remove('active');
+      document.getElementById('btnFeaturePanel').classList.remove('active');
+
+      // 押されたパネルだけ開き、ボタンを発光させる
+      if (!isOpen) {
+        target.classList.add('open');
+        if (id === 'fxPanel') document.getElementById('btnFxPanel').classList.add('active');
+        if (id === 'featurePanel') document.getElementById('btnFeaturePanel').classList.add('active');
+      }
     }
 
     function setParticleType(type, btn) {
@@ -459,6 +507,14 @@
       btn.classList.add('selected');
       particles.forEach(p => {
         p.color = state.currentColors[Math.floor(Math.random() * state.currentColors.length)];
+      });
+    }
+
+    function setCustomParticleColor(colorHex) {
+      state.currentColors = [colorHex];
+      document.querySelectorAll('.color-btn').forEach(b => b.classList.remove('selected'));
+      particles.forEach(p => {
+        p.color = colorHex;
       });
     }
 
