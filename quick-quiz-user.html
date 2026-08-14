@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>quick-quiz-User</title>
+
+<!-- Firebase JS SDK (v10.8.0) -->
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+  import { getDatabase, ref, set, onValue, get } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+
+  // Firebase 設定情報
+  const firebaseConfig = {
+    apiKey: "AIzaSyC4DQhH_swesAD98Xyjg8d1lcWEkkrHrgw",
+    authDomain: "gamehistory-m84.firebaseapp.com",
+    databaseURL: "https://gamehistory-m84-default-rtdb.firebaseio.com",
+    projectId: "gamehistory-m84",
+    storageBucket: "gamehistory-m84.firebasestorage.app",
+    messagingSenderId: "475761727837",
+    appId: "1:475761727837:web:06d07e1ab4120a7ccaf0b4",
+    measurementId: "G-3636W6LC4F"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const db = getDatabase(app);
+
+  // --- グローバル変数 ---
+  let currentRoomId = "";
+  let currentRoundId = "";
+  let currentQuestion = 1;
+  let currentMemberId = "";
+  let currentMemberName = "";
+  let serverTimeOffset = 0;
+  let isPressedThisQuestion = false;
+  let isDisabledThisQuestion = false;
+
+  // --- HTML要素の取得 ---
+  const setupSection = document.getElementById("setupSection");
+  const quizSection = document.getElementById("quizSection");
+  const roomIdInput = document.getElementById("roomIdInput");
+  const memberSelect = document.getElementById("memberSelect");
+  const joinBtn = document.getElementById("joinBtn");
+  const resetUserBtn = document.getElementById("resetUserBtn");
+
+  const displayRoom = document.getElementById("displayRoom");
+  const displayRoundQuestion = document.getElementById("displayRoundQuestion");
+  const displayPlayerName = document.getElementById("displayPlayerName");
+  const displayScore = document.getElementById("displayScore");
+  const buzzButton = document.getElementById("buzzButton");
+  const statusDisplay = document.getElementById("status");
+  const timeDisplay = document.getElementById("time");
+
+  // --- 1. サーバー時刻のオフセット同期 ---
+  const offsetRef = ref(db, ".info/serverTimeOffset");
+  onValue(offsetRef, (snap) => {
+    serverTimeOffset = snap.val() || 0;
+  });
+
+  // --- 2. 初期化 / localStorage 自動復帰 ---
+  window.addEventListener("DOMContentLoaded", () => {
+    const savedRoom = localStorage.getItem("qq_roomId");
+    const savedRound = localStorage.getItem("qq_roundId");
+    const savedMemberId = localStorage.getItem("qq_memberId");
+    const savedMemberName = localStorage.getItem("qq_memberName");
+
+    if (savedRoom && savedRound && savedMemberId && savedMemberName) {
+      currentRoomId = savedRoom;
+      currentRoundId = savedRound;
+      currentMemberId = savedMemberId;
+      currentMemberName = savedMemberName;
+      
+      startQuizSession();
+    }
+  });
+
+  // 部屋情報読み込み（設定画面）
+  document.getElementById("loadRoomBtn").onclick = async () => {
+    const roomId = roomIdInput.value.trim();
+    if (!roomId) return alert("部屋番号を入力してください");
+
+    try {
+      // 現在の戦（round）を取得
+      const currentSnap = await get(ref(db, `quick-quiz/rooms/${roomId}/current`));
+      if (!currentSnap.exists()) {
+        return alert("部屋が見つかりません");
+      }
+      const currentData = currentSnap.val();
+      currentRoundId = currentData.round || "round1";
+      currentRoomId = roomId;
+
+      // メンバー一覧を取得
+      const membersSnap = await get(ref(db, `quick-quiz/rooms/${roomId}/rounds/${currentRoundId}/members`));
+      memberSelect.innerHTML = '<option value="">-- 自分を選択 --</option>';
+      
+      if (membersSnap.exists()) {
+        const members = membersSnap.val();
+        Object.keys(members).forEach((mId) => {
+          const opt = document.createElement("option");
+          opt.value = mId;
+          opt.innerText = members[mId].name || mId;
+          memberSelect.appendChild(opt);
+        });
+        memberSelect.disabled = false;
+        joinBtn.disabled = false;
+      } else {
+        alert("この戦には参加者が登録されていません");
+      }
+    } catch (e) {
+      console.error(e);
+      alert("接続エラーが発生しました");
+    }
+  };
+
+  // 入室確定
+  joinBtn.onclick = () => {
+    const selectedId = memberSelect.value;
+    if (!selectedId) return alert("名前を選択してください");
+
+    currentMemberId = selectedId;
+    currentMemberName = memberSelect.options[memberSelect.selectedIndex].text;
+
+    // localStorage へ保持
+    localStorage.setItem("qq_roomId", currentRoomId);
+    localStorage.setItem("qq_roundId", currentRoundId);
+    localStorage.setItem("qq_memberId", currentMemberId);
+    localStorage.setItem("qq_memberName", currentMemberName);
+
+    startQuizSession();
+  };
+
+  // メンバー再選択（ログアウト）
+  resetUserBtn.onclick = () => {
+    if (!confirm("プレイヤー選択をやり直しますか？")) return;
+    localStorage.removeItem("qq_roomId");
+    localStorage.removeItem("qq_roundId");
+    localStorage.removeItem("qq_memberId");
+    localStorage.removeItem("qq_memberName");
+    location.reload();
+  };
+
+  // --- 3. クイズセッション開始 & Realtime 監視 ---
+  function startQuizSession() {
+    setupSection.style.display = "none";
+    quizSection.style.display = "block";
+
+    displayRoom.innerText = `部屋: ${currentRoomId}`;
+    displayPlayerName.innerText = `プレイヤー: ${currentMemberName}`;
+
+    // ① ゲーム全体状態 (current) の監視
+    const currentRef = ref(db, `quick-quiz/rooms/${currentRoomId}/current`);
+    onValue(currentRef, (snap) => {
+      if (!snap.exists()) return;
+      const data = snap.val();
+
+      // 戦が切り替わった場合
+      if (data.round && data.round !== currentRoundId) {
+        currentRoundId = data.round;
+        localStorage.setItem("qq_roundId", currentRoundId);
+        // 新しい戦のポイント等を再監視
+        listenToMyPoints();
+      }
+
+      // 問題番号が変わった場合（新しい問題へ進んだら初期化）
+      if (data.question !== currentQuestion) {
+        currentQuestion = data.question;
+        isPressedThisQuestion = false;
+        isDisabledThisQuestion = false;
+        timeDisplay.innerText = "--:--:--.---";
+      }
+
+      displayRoundQuestion.innerText = `${formatRoundName(currentRoundId)} - 第 ${currentQuestion} 問`;
+
+      // 状態判定 (accepting / closed / waiting など)
+      updateButtonState(data.phase);
+    });
+
+    // ② 自分のポイントの監視
+    listenToMyPoints();
+
+    // ③ 自分がこの問題でペナルティ(回答権はく奪)されていないか監視
+    listenToMyAnswerStatus();
+  }
+
+  // 自分のポイント監視
+  function listenToMyPoints() {
+    const myPointRef = ref(db, `quick-quiz/rooms/${currentRoomId}/rounds/${currentRoundId}/members/${currentMemberId}/points`);
+    onValue(myPointRef, (snap) => {
+      const pts = snap.exists() ? snap.val() : 0;
+      displayScore.innerText = `ポイント: ${pts}`;
+    });
+  }
+
+  // 自分の回答権状態を監視（Admin側からの判定結果）
+  function listenToMyAnswerStatus() {
+    const myAnsRef = ref(db, `quick-quiz/rooms/${currentRoomId}/answers/${currentRoundId}/q${currentQuestion}/${currentMemberId}`);
+    onValue(myAnsRef, (snap) => {
+      if (snap.exists()) {
+        const ansData = snap.val();
+        if (ansData.disabled) {
+          isDisabledThisQuestion = true;
+          statusDisplay.innerText = "回答権なし (不正解)";
+          buzzButton.disabled = true;
+          buzzButton.style.background = "#555";
+        }
+      }
+    });
+  }
+
+  // ボタン有効・無効化の判定制御
+  function updateButtonState(phase) {
+    if (isDisabledThisQuestion) {
+      buzzButton.disabled = true;
+      buzzButton.style.background = "#555";
+      statusDisplay.innerText = "回答権なし (不正解)";
+      return;
+    }
+
+    if (isPressedThisQuestion) {
+      buzzButton.disabled = true;
+      buzzButton.style.background = "#555";
+      statusDisplay.innerText = "受付済み！判定待ち";
+      return;
+    }
+
+    if (phase === "accepting") {
+      buzzButton.disabled = false;
+      buzzButton.style.background = "#ff4444";
+      statusDisplay.innerText = "早押しできます！";
+    } else if (phase === "closed") {
+      buzzButton.disabled = true;
+      buzzButton.style.background = "#555";
+      statusDisplay.innerText = "受付終了";
+    } else {
+      buzzButton.disabled = true;
+      buzzButton.style.background = "#555";
+      statusDisplay.innerText = "待機中...";
+    }
+  }
+
+  // --- 4. 早押しボタン押下処理 ---
+  buzzButton.onclick = async () => {
+    if (buzzButton.disabled || isPressedThisQuestion || isDisabledThisQuestion) return;
+
+    isPressedThisQuestion = true;
+    buzzButton.disabled = true;
+    buzzButton.style.background = "#555";
+
+    // 時刻算出
+    const clientNow = Date.now();
+    const serverAdjusted = clientNow + serverTimeOffset;
+
+    // 表示更新
+    const timeStr = formatTimeString(new Date(serverAdjusted));
+    timeDisplay.innerText = timeStr;
+    statusDisplay.innerText = "押しました！";
+
+    // Firebaseへ押下情報を書き込み
+    const answerRef = ref(db, `quick-quiz/rooms/${currentRoomId}/answers/${currentRoundId}/q${currentQuestion}/${currentMemberId}`);
+    try {
+      await set(answerRef, {
+        clientPressedAt: clientNow,
+        serverAdjustedPressedAt: serverAdjusted,
+        disabled: false
+      });
+    } catch (e) {
+      console.error("書き込みエラー:", e);
+      alert("送信に失敗しました");
+      isPressedThisQuestion = false;
+      buzzButton.disabled = false;
+    }
+  };
+
+  // ユーティリティ: 時刻フォーマット (HH:mm:ss.SSS)
+  function formatTimeString(dateObj) {
+    const h = String(dateObj.getHours()).padStart(2, "0");
+    const m = String(dateObj.getMinutes()).padStart(2, "0");
+    const s = String(dateObj.getSeconds()).padStart(2, "0");
+    const ms = String(dateObj.getMilliseconds()).padStart(3, "0");
+    return `${h}:${m}:${s}.${ms}`;
+  }
+
+  // ユーティリティ: ラウンド表記整形
+  function formatRoundName(rId) {
+    return rId.replace("round", "第 ") + " 戦";
+  }
+</script>
+
+<style>
+body {
+  font-family: sans-serif;
+  background: #111;
+  color: white;
+  text-align: center;
+  margin: 0;
+  padding: 20px;
+}
+
+h1 {
+  font-size: 28px;
+  margin-bottom: 10px;
+  color: #ff9900;
+}
+
+/* セットアップエリア */
+.card {
+  background: #222;
+  border-radius: 12px;
+  padding: 20px;
+  max-width: 400px;
+  margin: 20px auto;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+}
+
+input, select {
+  width: 80%;
+  padding: 12px;
+  margin: 10px 0;
+  font-size: 18px;
+  border-radius: 8px;
+  border: 1px solid #444;
+  background: #333;
+  color: white;
+  text-align: center;
+}
+
+.actionBtn {
+  background: #2196F3;
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  font-size: 18px;
+  font-weight: bold;
+  border-radius: 8px;
+  cursor: pointer;
+  margin-top: 10px;
+}
+
+.actionBtn:disabled {
+  background: #555;
+  cursor: not-allowed;
+}
+
+/* クイズエリア */
+#displayRoom {
+  font-size: 14px;
+  color: #aaa;
+}
+
+#displayRoundQuestion {
+  font-size: 24px;
+  font-weight: bold;
+  margin: 10px 0;
+  color: #4CAF50;
+}
+
+#displayPlayerName {
+  font-size: 22px;
+  margin-bottom: 5px;
+}
+
+#displayScore {
+  font-size: 32px;
+  font-weight: bold;
+  color: #FFD700;
+  margin-bottom: 15px;
+}
+
+#time {
+  font-size: 36px;
+  margin: 15px 0;
+  font-family: monospace;
+  color: #00E5FF;
+}
+
+#buzzButton {
+  width: 280px;
+  height: 280px;
+  border-radius: 50%;
+  background: #ff4444;
+  color: white;
+  font-size: 48px;
+  font-weight: bold;
+  border: 8px solid #cc0000;
+  margin: 20px auto;
+  display: block;
+  cursor: pointer;
+  box-shadow: 0 8px 20px rgba(255, 68, 68, 0.4);
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+#buzzButton:active {
+  transform: scale(0.95);
+}
+
+#status {
+  font-size: 24px;
+  font-weight: bold;
+  margin-top: 15px;
+  min-height: 35px;
+}
+
+#resetUserBtn {
+  background: transparent;
+  color: #888;
+  border: 1px solid #444;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  margin-top: 30px;
+  cursor: pointer;
+}
+</style>
+</head>
+
+<body>
+
+<h1>quick-quiz-User</h1>
+
+<!-- 初期設定画面 -->
+<div id="setupSection" class="card">
+  <h2>部屋に参加</h2>
+  <div>
+    <input type="text" id="roomIdInput" placeholder="部屋番号 (例: 1234)">
+    <button class="actionBtn" id="loadRoomBtn">接続</button>
+  </div>
+  <div style="margin-top: 15px;">
+    <select id="memberSelect" disabled>
+      <option value="">-- 先に部屋接続してください --</option>
+    </select>
+  </div>
+  <button class="actionBtn" id="joinBtn" style="background:#4CAF50;" disabled>決定して参加</button>
+</div>
+
+<!-- クイズ操作画面 -->
+<div id="quizSection" style="display: none;">
+  <div id="displayRoom">部屋: ----</div>
+  <div id="displayRoundQuestion">第 - 戦 - 第 - 問</div>
+  <div id="displayPlayerName">プレイヤー: ----</div>
+  <div id="displayScore">ポイント: 0</div>
+
+  <div id="time">--:--:--.---</div>
+
+  <button id="buzzButton" disabled>早押し！</button>
+
+  <div id="status">待機中...</div>
+
+  <div>
+    <button id="resetUserBtn">名前を選び直す</button>
+  </div>
+</div>
+
+</body>
+</html>
