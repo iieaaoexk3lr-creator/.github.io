@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>quick-quiz-Directing</title>
+
+<!-- Firebase JS SDK (v10.8.0) -->
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+  import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+
+  // Firebase 設定情報
+  const firebaseConfig = {
+    apiKey: "AIzaSyC4DQhH_swesAD98Xyjg8d1lcWEkkrHrgw",
+    authDomain: "gamehistory-m84.firebaseapp.com",
+    databaseURL: "https://gamehistory-m84-default-rtdb.firebaseio.com",
+    projectId: "gamehistory-m84",
+    storageBucket: "gamehistory-m84.firebasestorage.app",
+    messagingSenderId: "475761727837",
+    appId: "1:475761727837:web:06d07e1ab4120a7ccaf0b4",
+    measurementId: "G-3636W6LC4F"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const db = getDatabase(app);
+
+  // --- 規定のランプカラー定義（1人〜7人） ---
+  const LAMP_COLORS = [
+    "#ff4444", // 1: 赤
+    "#ff9900", // 2: オレンジ
+    "#ffea00", // 3: 黄色
+    "#00e676", // 4: 緑
+    "#00e5ff", // 5: 青
+    "#2979ff", // 6: 藍
+    "#d500f9"  // 7: 紫
+  ];
+
+  const MAX_POINTS = 100; // ランプ最大値（100ptで満タン）
+
+  // --- グローバル変数 ---
+  let currentRoomId = "1234";
+  let currentRoundNum = 1;
+  let currentQuestion = 1;
+  let currentPhase = "waiting";
+
+  let membersData = {};
+  let answersData = {};
+  let previousAnswersCount = 0;
+  let lastPlayTime = 0; // SE冷却タイマー
+
+  let audioCtx = null;
+
+  // --- HTML要素 ---
+  const roomIdInput = document.getElementById("roomIdInput");
+  const connectBtn = document.getElementById("connectBtn");
+  const audioUnlockBtn = document.getElementById("audioUnlockBtn");
+  const audioStatus = document.getElementById("audioStatus");
+
+  const displayRound = document.getElementById("displayRound");
+  const displayQuestion = document.getElementById("displayQuestion");
+  const phaseBadge = document.getElementById("phaseBadge");
+  const lampsContainer = document.getElementById("lampsContainer");
+  const buzzRankList = document.getElementById("buzzRankList");
+
+  // Web Audio 初期化（ブラウザ制限解除）
+  audioUnlockBtn.onclick = () => {
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    audioCtx.resume().then(() => {
+      audioUnlockBtn.style.display = "none";
+      audioStatus.innerText = "🔊 音声準備完了";
+      audioStatus.style.color = "#00e676";
+    });
+  };
+
+  connectBtn.onclick = () => {
+    const val = roomIdInput.value.trim();
+    if (!val) return alert("部屋番号を入力してください");
+    currentRoomId = val;
+    initDirectingSession();
+  };
+
+  function initDirectingSession() {
+    document.getElementById("setupOverlay").style.display = "none";
+
+    // ① current ノード監視
+    const currentRef = ref(db, `quick-quiz/rooms/${currentRoomId}/current`);
+    onValue(currentRef, (snap) => {
+      if (!snap.exists()) return;
+      const data = snap.val();
+
+      const newRoundNum = parseInt((data.round || "round1").replace("round", "")) || 1;
+      const newQuestion = data.question || 1;
+
+      // 問題が進んだら回答履歴カウントをリセット
+      if (newQuestion !== currentQuestion || newRoundNum !== currentRoundNum) {
+        previousAnswersCount = 0;
+      }
+
+      currentRoundNum = newRoundNum;
+      currentQuestion = newQuestion;
+      currentPhase = data.phase || "waiting";
+
+      displayRound.innerText = `第 ${currentRoundNum} 戦`;
+      displayQuestion.innerText = `第 ${currentQuestion} 問`;
+
+      updatePhaseBadge();
+      listenToMembers();
+      listenToAnswers();
+    });
+  }
+
+  function updatePhaseBadge() {
+    const map = {
+      waiting: { text: "待機中", bg: "#444" },
+      accepting: { text: "早押し受付中！", bg: "#ff4444" },
+      closed: { text: "受付終了", bg: "#ff9900" },
+      result: { text: "結果発表", bg: "#00e676" }
+    };
+    const info = map[currentPhase] || { text: currentPhase, bg: "#555" };
+    phaseBadge.innerText = info.text;
+    phaseBadge.style.background = info.bg;
+  }
+
+  // ② members 監視 (縦型ランプ描画)
+  function listenToMembers() {
+    const roundId = `round${currentRoundNum}`;
+    const membersRef = ref(db, `quick-quiz/rooms/${currentRoomId}/rounds/${roundId}/members`);
+    onValue(membersRef, (snap) => {
+      membersData = snap.exists() ? snap.val() : {};
+      renderLamps();
+    });
+  }
+
+  // ③ answers 監視 (早押し音・順位表示)
+  function listenToAnswers() {
+    const roundId = `round${currentRoundNum}`;
+    const answersRef = ref(db, `quick-quiz/rooms/${currentRoomId}/answers/${roundId}/q${currentQuestion}`);
+    onValue(answersRef, (snap) => {
+      answersData = snap.exists() ? snap.val() : {};
+
+      const currentAnswersCount = Object.keys(answersData).length;
+
+      // 新しくボタンが押された場合
+      if (currentAnswersCount > previousAnswersCount) {
+        playBuzzSoundWithCooldown();
+      }
+      previousAnswersCount = currentAnswersCount;
+
+      renderBuzzRank();
+    });
+  }
+
+  // --- 縦型液体ランプの描画 ---
+  function renderLamps() {
+    lampsContainer.innerHTML = "";
+
+    // メンバーを displayOrder 順に並び替え
+    const memberList = Object.keys(membersData).map(mId => ({
+      id: mId,
+      ...membersData[mId]
+    }));
+    memberList.sort((a, b) => (a.displayOrder || 99) - (b.displayOrder || 99));
+
+    memberList.forEach((m, index) => {
+      const color = LAMP_COLORS[index % LAMP_COLORS.length];
+      const pts = m.points || 0;
+      const fillPercent = Math.min(Math.max((pts / MAX_POINTS) * 100, 0), 100);
+
+      // 早押し中の発光チェック
+      const isPressed = answersData[m.id] && answersData[m.id].serverAdjustedPressedAt;
+
+      const column = document.createElement("div");
+      column.className = "lamp-column";
+
+      column.innerHTML = `
+        <div class="lamp-glass ${isPressed ? 'lamp-active' : ''}" style="--lamp-color: ${color}">
+          <div class="lamp-liquid" style="height: ${fillPercent}%; background: ${color}; box-shadow: 0 0 20px ${color}"></div>
+        </div>
+        <div class="player-name">${m.name}</div>
+        <div class="player-pts">${pts} <span style="font-size:16px;">pt</span></div>
+      `;
+
+      lampsContainer.appendChild(column);
+    });
+  }
+
+  // --- 早押し順位リストの描画 ---
+  function renderBuzzRank() {
+    buzzRankList.innerHTML = "";
+
+    const pressedArray = [];
+    Object.keys(answersData).forEach(mId => {
+      const item = answersData[mId];
+      if (item && item.serverAdjustedPressedAt) {
+        pressedArray.push({
+          memberId: mId,
+          name: membersData[mId] ? membersData[mId].name : mId,
+          serverTime: item.serverAdjustedPressedAt,
+          disabled: item.disabled || false
+        });
+      }
+    });
+
+    // 時刻順ソート
+    pressedArray.sort((a, b) => {
+      if (a.serverTime !== b.serverTime) return a.serverTime - b.serverTime;
+      return a.name.localeCompare(b.name, "ja");
+    });
+
+    pressedArray.forEach((item, index) => {
+      const timeStr = formatTimeString(new Date(item.serverTime));
+      const row = document.createElement("div");
+      row.className = "rank-row " + (item.disabled ? "disabled-row" : "");
+
+      row.innerHTML = `
+        <div class="rank-num">${index + 1}位</div>
+        <div class="rank-name">${item.name} ${item.disabled ? '(不正解)' : ''}</div>
+        <div class="rank-time">${timeStr}</div>
+      `;
+      buzzRankList.appendChild(row);
+    });
+  }
+
+  // --- 3秒クールダウン制御付きピンポーン音 ---
+  function playBuzzSoundWithCooldown() {
+    const now = Date.now();
+    // 前回鳴ってから3秒（3000ms）未満なら再生をスキップ
+    if (now - lastPlayTime < 3000) return;
+    lastPlayTime = now;
+
+    playBuzzSound();
+  }
+
+  // Web Audio API オシレーター生成音（提示プロトタイプに基づく）
+  function playBuzzSound() {
+    if (!audioCtx) return;
+
+    // 1音目 (784Hz / ソ)
+    const osc1 = audioCtx.createOscillator();
+    const gain1 = audioCtx.createGain();
+    osc1.type = "sine";
+    osc1.frequency.setValueAtTime(784, audioCtx.currentTime);
+    gain1.gain.setValueAtTime(0.3, audioCtx.currentTime);
+    osc1.connect(gain1);
+    gain1.connect(audioCtx.destination);
+    osc1.start();
+    osc1.stop(audioCtx.currentTime + 0.18);
+
+    // 2音目 (1046Hz / ド)
+    const osc2 = audioCtx.createOscillator();
+    const gain2 = audioCtx.createGain();
+    osc2.type = "sine";
+    osc2.frequency.setValueAtTime(1046, audioCtx.currentTime + 0.18);
+    gain2.gain.setValueAtTime(0.3, audioCtx.currentTime + 0.18);
+    osc2.connect(gain2);
+    gain2.connect(audioCtx.destination);
+    osc2.start(audioCtx.currentTime + 0.18);
+    osc2.stop(audioCtx.currentTime + 0.45);
+  }
+
+  function formatTimeString(dateObj) {
+    const h = String(dateObj.getHours()).padStart(2, "0");
+    const m = String(dateObj.getMinutes()).padStart(2, "0");
+    const s = String(dateObj.getSeconds()).padStart(2, "0");
+    const ms = String(dateObj.getMilliseconds()).padStart(3, "0");
+    return `${h}:${m}:${s}.${ms}`;
+  }
+</script>
+
+<style>
+body {
+  font-family: sans-serif;
+  background: #08080c;
+  color: white;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* オーバーレイ初期設定 */
+#setupOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.9);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  z-index: 100;
+}
+
+.setup-card {
+  background: #1a1a24;
+  padding: 30px;
+  border-radius: 16px;
+  text-align: center;
+  border: 1px solid #333;
+}
+
+/* ヘッダー */
+header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 15px 40px;
+  background: rgba(255,255,255,0.03);
+  border-bottom: 1px solid rgba(255,255,255,0.1);
+}
+
+.title-info {
+  display: flex;
+  align-items: baseline;
+  gap: 20px;
+}
+
+.round-title { font-size: 32px; font-weight: bold; color: #ff9900; }
+.question-title { font-size: 40px; font-weight: bold; color: #00E5FF; }
+
+.phase-badge {
+  padding: 8px 24px;
+  border-radius: 30px;
+  font-size: 24px;
+  font-weight: bold;
+  box-shadow: 0 0 15px rgba(0,0,0,0.5);
+}
+
+/* メインエリア */
+main {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  padding: 20px 40px;
+  gap: 30px;
+  height: calc(100vh - 100px);
+}
+
+/* ランプエリア */
+.lamp-stage {
+  display: flex;
+  justify-content: space-around;
+  align-items: flex-end;
+  background: rgba(0,0,0,0.4);
+  border-radius: 20px;
+  padding: 30px;
+  border: 1px solid rgba(255,255,255,0.05);
+}
+
+.lamp-column {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  height: 100%;
+  justify-content: flex-end;
+  flex: 1;
+}
+
+.lamp-glass {
+  width: 70px;
+  height: 60%;
+  background: rgba(255,255,255,0.05);
+  border: 3px solid rgba(255,255,255,0.2);
+  border-radius: 35px;
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  align-items: flex-end;
+  transition: border-color 0.3s, box-shadow 0.3s;
+}
+
+.lamp-glass.lamp-active {
+  border-color: #fff;
+  box-shadow: 0 0 30px var(--lamp-color);
+  animation: pulse 0.8s infinite alternate;
+}
+
+@keyframes pulse {
+  from { transform: scale(1); }
+  to { transform: scale(1.05); }
+}
+
+.lamp-liquid {
+  width: 100%;
+  border-radius: 0 0 30px 30px;
+  transition: height 1.2s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.player-name {
+  font-size: 26px;
+  font-weight: bold;
+  margin-top: 15px;
+  text-shadow: 0 2px 4px rgba(0,0,0,0.8);
+}
+
+.player-pts {
+  font-size: 36px;
+  font-weight: bold;
+  color: #FFD700;
+}
+
+/* 早押しリアルタイム順位エリア */
+.buzz-stage {
+  background: rgba(20,20,30,0.8);
+  border-radius: 20px;
+  padding: 20px;
+  border: 1px solid rgba(0,229,255,0.2);
+  display: flex;
+  flex-direction: column;
+}
+
+.buzz-stage h2 {
+  font-size: 24px;
+  color: #00E5FF;
+  margin: 0 0 15px 0;
+  text-align: center;
+  border-bottom: 2px solid rgba(0,229,255,0.2);
+  padding-bottom: 10px;
+}
+
+.rank-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: rgba(255,255,255,0.05);
+  padding: 12px 18px;
+  margin-bottom: 10px;
+  border-radius: 10px;
+  border-left: 5px solid #00E5FF;
+  animation: slideIn 0.3s ease-out;
+}
+
+.rank-row.disabled-row {
+  border-left-color: #555;
+  opacity: 0.4;
+}
+
+@keyframes slideIn {
+  from { opacity: 0; transform: translateX(20px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+.rank-num { font-size: 28px; font-weight: bold; color: #FFD700; width: 60px; }
+.rank-name { font-size: 24px; font-weight: bold; flex: 1; }
+.rank-time { font-family: monospace; font-size: 20px; color: #00E5FF; }
+
+button {
+  background: #2196F3;
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  font-size: 18px;
+  font-weight: bold;
+  border-radius: 8px;
+  cursor: pointer;
+}
+</style>
+</head>
+
+<body>
+
+<!-- 初期接続・音声制限解除オーバーレイ -->
+<div id="setupOverlay">
+  <div class="setup-card">
+    <h1 style="color:#ff9900; margin-top:0;">quick-quiz-Directing</h1>
+    <p>大型画面・プロジェクター表示モード</p>
+    
+    <div style="margin: 20px 0;">
+      <button id="audioUnlockBtn" style="background:#ff4444; font-size:20px; padding:15px 30px;">
+        🔊 画面をクリックして音声を有効化
+      </button>
+      <div id="audioStatus" style="margin-top:10px; font-size:14px; color:#aaa;">※ブラウザの音声自動再生ブロックを解除します</div>
+    </div>
+
+    <div style="margin-top:20px;">
+      部屋番号: <input type="text" id="roomIdInput" value="1234" style="font-size:18px; width:100px; text-align:center; padding:6px; border-radius:6px;">
+      <button id="connectBtn" style="background:#4CAF50;">接続開始</button>
+    </div>
+  </div>
+</div>
+
+<!-- メイン演出画面 -->
+<header>
+  <div class="title-info">
+    <span class="round-title" id="displayRound">第 1 戦</span>
+    <span class="question-title" id="displayQuestion">第 1 問</span>
+  </div>
+  <div id="phaseBadge" class="phase-badge">待機中</div>
+</header>
+
+<main>
+  <!-- 縦型液体ランプ表示エリア -->
+  <div class="lamp-stage" id="lampsContainer">
+    <!-- JSで動的に縦型ランプ生成 -->
+  </div>
+
+  <!-- 早押しリアルタイム順位表示エリア -->
+  <div class="buzz-stage">
+    <h2>早押し！</h2>
+    <div id="buzzRankList">
+      <!-- JSでリアルタイム追加 -->
+    </div>
+  </div>
+</main>
+
+</body>
+</html>
