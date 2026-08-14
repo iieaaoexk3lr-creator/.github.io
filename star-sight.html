@@ -369,7 +369,7 @@
     <button class="secondary" id="btn-close-panel" style="margin-top:5px; padding:8px; font-size:14px;">閉じる</button>
   </div>
 
-  <!-- 1. 部屋入室画面（タイトル修正版） -->
+  <!-- 1. 部屋入室画面 -->
   <div id="screen-entry" class="screen active">
     <!-- 背景アニメーション装飾 -->
     <div class="space-bg-decor"></div>
@@ -398,7 +398,7 @@
       <h3>✨ 遊び方・基本ルール</h3>
       <ol>
         <li><strong>部屋に入る</strong>：メンバーと同じ部屋コードを入力して入室します。</li>
-        <li><strong>曲をリクエスト</strong>：右上のメニューより、歌ってほしい曲を自由に入力します。</li>
+        <li><strong>曲をリクエスト</strong>：右上のメニューより、歌ってほしい曲、一緒に歌いたい曲を自由に入力します。</li>
         <li><strong>星をタッチして探索</strong>：夜空の星を1つずつ開いて曲を探します。
           <ul style="margin-top:4px;">
             <li>⚪️ <strong>白色の星</strong>：他人のリクエスト曲 または ダミー星</li>
@@ -417,7 +417,7 @@
 
       <h3 style="margin-top:14px;">🌟 特殊ルール＆コツ</h3>
       <ul>
-        <li><strong>歌唱後のサポート</strong>：一度歌った人は「曲を探すだけ」のサポート役になります。見つけたら誰か歌える人がいないか声をかけましょう！（ご本人はデュエットのみ参加可能）</li>
+        <li><strong>歌唱後のサポート</strong>：規定数歌った人は「曲を探すだけ」のサポート役になります。見つけたら誰か歌える人がいないか声をかけましょう！（ご本人はデュエットのみ参加可能）</li>
         <li><strong>少人数プレイ</strong>：幹事・司会担当はメニューから「ダミー星」をオープンして難易度を調整できます。</li>
       </ul>
     </div>
@@ -718,7 +718,7 @@
     alert(`${targets.length}個のダミー星を黄色（確認済み）にしました！`);
   });
 
-  // 【幹事用】ダミー星を一括で全部黄色にする機能（追加）
+  // 【幹事用】ダミー星を一括で全部黄色にする機能
   document.getElementById('btn-open-all-dummy').addEventListener('click', async () => {
     const dummyStarIds = Object.keys(localStarsData).filter(starId => {
       const star = localStarsData[starId];
@@ -754,11 +754,30 @@
     }
   });
 
-  // 星タップ時の分岐処理
+  // 星の観測ロック解除関数
+  async function unlockStar(starId) {
+    if (!starId) return;
+    const starRef = ref(db, `star_sight/rooms/${roomId}/stars/${starId}`);
+    const snap = await get(starRef);
+    const val = snap.val();
+    // 自分がロック中で、未解禁状態であれば unopened に戻す
+    if (val && val.status === 'inspecting' && val.inspectorId === myUserId) {
+      await update(starRef, {
+        status: 'unopened',
+        inspectorId: null,
+        inspectorName: null
+      });
+    }
+  }
+
+  // 星タップ時の分岐処理 (観測中排他制御を追加)
   document.querySelectorAll('.star').forEach(starEl => {
-    starEl.addEventListener('click', (e) => {
+    starEl.addEventListener('click', async (e) => {
       currentStarId = e.target.getAttribute('data-star-id');
-      const starData = localStarsData[currentStarId] || { status: 'unopened' };
+      const starRef = ref(db, `star_sight/rooms/${roomId}/stars/${currentStarId}`);
+      
+      const snap = await get(starRef);
+      const starData = snap.val() || { status: 'unopened' };
 
       // 既に発見・確認済み（黄色）の場合はタップしても何もしない
       if (starData.status === 'opened' || isCleared) return;
@@ -768,6 +787,26 @@
       const modalSong = document.getElementById('modal-song');
       const modalBtns = document.getElementById('modal-buttons');
 
+      // 他の誰かが現在観測中（完唱か歌えないの選択中）の場合
+      if (starData.status === 'inspecting' && starData.inspectorId !== myUserId) {
+        modalTitle.textContent = "観測中の星です";
+        modalSong.textContent = `${starData.inspectorName || '誰か'} が今この星を探索しています 🌟`;
+        modalBtns.innerHTML = `<button id="btn-inspecting-ok" class="btn-glow">閉じる</button>`;
+        modal.classList.add('active');
+
+        document.getElementById('btn-inspecting-ok').onclick = () => {
+          modal.classList.remove('active');
+        };
+        return;
+      }
+
+      // 観測ロックを付与
+      await update(starRef, {
+        status: 'inspecting',
+        inspectorId: myUserId,
+        inspectorName: myUserName || '名無し'
+      });
+
       // 自分のリクエスト星（青色）をタップした場合
       if (starData.requesterId === myUserId) {
         modalTitle.textContent = "自分のリクエスト星";
@@ -775,7 +814,8 @@
         modalBtns.innerHTML = `<button id="btn-my-ok" class="btn-glow">OK</button>`;
         modal.classList.add('active');
 
-        document.getElementById('btn-my-ok').onclick = () => {
+        document.getElementById('btn-my-ok').onclick = async () => {
+          await unlockStar(currentStarId);
           modal.classList.remove('active');
         };
       }
@@ -786,8 +826,12 @@
         modalBtns.innerHTML = `<button id="btn-dummy-ok" class="btn-glow">OK</button>`;
         modal.classList.add('active');
 
-        document.getElementById('btn-dummy-ok').onclick = () => {
-          update(ref(db, `star_sight/rooms/${roomId}/stars/${currentStarId}`), { status: 'opened' });
+        document.getElementById('btn-dummy-ok').onclick = async () => {
+          await update(ref(db, `star_sight/rooms/${roomId}/stars/${currentStarId}`), { 
+            status: 'opened',
+            inspectorId: null,
+            inspectorName: null
+          });
           modal.classList.remove('active');
         };
       }
@@ -801,13 +845,17 @@
         `;
         modal.classList.add('active');
 
-        document.getElementById('btn-complete').onclick = () => {
+        document.getElementById('btn-complete').onclick = async () => {
           // 願い人（リクエストした人）の名前を取得
           const reqPlayer = playersMap[starData.requesterId];
           const requesterName = reqPlayer ? reqPlayer.name : '不明';
 
-          update(ref(db, `star_sight/rooms/${roomId}/stars/${currentStarId}`), { status: 'opened' });
-          push(ref(db, `star_sight/rooms/${roomId}/history`), { 
+          await update(ref(db, `star_sight/rooms/${roomId}/stars/${currentStarId}`), { 
+            status: 'opened',
+            inspectorId: null,
+            inspectorName: null
+          });
+          await push(ref(db, `star_sight/rooms/${roomId}/history`), { 
             title: starData.song,
             requesterName: requesterName,
             finderName: myUserName || '名無し'
@@ -815,7 +863,8 @@
           modal.classList.remove('active');
         };
 
-        document.getElementById('btn-pass').onclick = () => {
+        document.getElementById('btn-pass').onclick = async () => {
+          await unlockStar(currentStarId);
           modal.classList.remove('active');
         };
       }
@@ -879,7 +928,7 @@
         const modal = document.getElementById('modal-result');
         if (!modal.classList.contains('active') && !document.getElementById('btn-clear-ok')) {
           document.getElementById('modal-title').textContent = "🎉 GAME CLEAR!!";
-          document.getElementById('modal-song').textContent = "全てのリクエスト曲が完唱されました！";
+          document.getElementById('modal-song').textContent = "全てのリクエスト曲が発見されました！";
           document.getElementById('modal-buttons').innerHTML = `<button id="btn-clear-ok" class="btn-glow">おめでとう！</button>`;
           modal.classList.add('active');
 
@@ -914,7 +963,7 @@
       if (snapshot.val() === 'playing') showScreen('screen-game');
     });
 
-    // 完唱履歴の同期（願い人と発見者の表示を追加）
+    // 完唱履歴の同期
     onValue(ref(db, `star_sight/rooms/${roomId}/history`), (snapshot) => {
       const history = snapshot.val() || {};
       const listEl = document.getElementById('history-list');
