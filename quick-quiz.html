@@ -3,21 +3,24 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Quick Quiz - 早押しシステム</title>
+  <title>Quick Quiz - Premium System</title>
   <style>
     :root {
-      --bg-color: #0b0f19;
-      --card-bg: #161f33;
+      --bg-gradient: radial-gradient(circle at center, #1a1f35 0%, #080b12 100%);
+      --card-bg: rgba(22, 31, 51, 0.7);
+      --card-border: rgba(255, 255, 255, 0.1);
       --accent-yellow: #ffd700;
       --accent-red: #ff3366;
+      --accent-blue: #00d2ff;
       --text-color: #ffffff;
+      --font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     }
 
     body {
       margin: 0;
       padding: 0;
-      font-family: 'Helvetica Neue', Arial, sans-serif;
-      background-color: var(--bg-color);
+      font-family: var(--font-family);
+      background: var(--bg-gradient);
       color: var(--text-color);
       display: flex;
       flex-direction: column;
@@ -29,56 +32,86 @@
     /* 右上管理メニューボタン */
     .menu-btn {
       position: fixed;
-      top: 15px;
-      right: 15px;
+      top: 20px;
+      right: 20px;
       z-index: 100;
-      background: rgba(255, 255, 255, 0.1);
-      border: 1px solid rgba(255, 255, 255, 0.2);
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.18);
       color: #fff;
       font-size: 24px;
-      width: 45px;
-      height: 45px;
-      border-radius: 8px;
+      width: 50px;
+      height: 50px;
+      border-radius: 12px;
       cursor: pointer;
-      backdrop-filter: blur(5px);
+      backdrop-filter: blur(10px);
+      box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+      transition: all 0.3s ease;
+    }
+    .menu-btn:hover {
+      background: rgba(255, 255, 255, 0.2);
+      transform: scale(1.05);
     }
 
     /* 管理用ドロワー */
     .drawer {
       position: fixed;
       top: 0;
-      right: -320px;
-      width: 300px;
+      right: -360px;
+      width: 340px;
       height: 100%;
-      background: var(--card-bg);
-      box-shadow: -5px 0 15px rgba(0,0,0,0.5);
+      background: rgba(15, 21, 37, 0.95);
+      backdrop-filter: blur(15px);
+      border-left: 1px solid var(--card-border);
+      box-shadow: -10px 0 30px rgba(0,0,0,0.8);
       z-index: 99;
-      transition: right 0.3s ease;
-      padding: 20px;
+      transition: right 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      padding: 25px;
       box-sizing: border-box;
       overflow-y: auto;
     }
     .drawer.open { right: 0; }
-    .drawer h3 { border-bottom: 2px solid var(--accent-yellow); padding-bottom: 8px; margin-top: 40px;}
-    .drawer-section { margin-bottom: 20px; }
+    .drawer h3 { border-bottom: 2px solid var(--accent-blue); padding-bottom: 8px; margin-top: 40px; font-weight: 700;}
+    .drawer-section { margin-bottom: 25px; }
     .drawer button {
       width: 100%;
-      padding: 10px;
-      margin: 5px 0;
+      padding: 12px;
+      margin: 6px 0;
       border: none;
-      border-radius: 5px;
+      border-radius: 8px;
       font-weight: bold;
       cursor: pointer;
+      transition: all 0.2s ease;
     }
-    .btn-correct { background: #4caf50; color: white; }
-    .btn-wrong { background: #f44336; color: white; }
-    .btn-reset { background: #2196f3; color: white; }
+    .btn-correct { background: linear-gradient(135deg, #2e7d32, #4caf50); color: white; }
+    .btn-wrong { background: linear-gradient(135deg, #c62828, #f44336); color: white; }
+    .btn-reset { background: linear-gradient(135deg, #1565c0, #2196f3); color: white; }
+    .drawer button:hover { opacity: 0.9; transform: translateY(-1px); }
+
+    /* 得点手動調整リスト */
+    .score-edit-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+      background: rgba(255,255,255,0.05);
+      padding: 6px 10px;
+      border-radius: 6px;
+    }
+    .score-edit-item input {
+      width: 60px;
+      padding: 4px;
+      text-align: center;
+      background: #0b0f19;
+      border: 1px solid #444;
+      color: #fff;
+      border-radius: 4px;
+    }
 
     /* 全体コンテナ */
     .container {
       width: 100%;
-      max-width: 1000px;
-      padding: 20px;
+      max-width: 1200px;
+      padding: 30px 20px;
       box-sizing: border-box;
       display: flex;
       flex-direction: column;
@@ -88,64 +121,79 @@
     /* 得点板・演出エリア */
     .scoreboard {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-      gap: 15px;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 20px;
       width: 100%;
     }
 
     .team-group {
-      background: rgba(255,255,255,0.03);
-      border: 1px solid rgba(255,255,255,0.1);
-      border-radius: 12px;
-      padding: 15px;
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 16px;
+      padding: 20px;
+      backdrop-filter: blur(10px);
+      box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
     }
     .team-title {
       font-size: 1.1rem;
-      color: #aaa;
-      margin-bottom: 10px;
+      letter-spacing: 1px;
+      color: #8a99ad;
+      margin-bottom: 15px;
       display: flex;
       justify-content: space-between;
+      font-weight: 600;
     }
 
     .player-card {
-      background: var(--card-bg);
+      background: rgba(255, 255, 255, 0.03);
       border: 2px solid transparent;
-      border-radius: 8px;
-      padding: 12px 15px;
-      margin-bottom: 8px;
+      border-radius: 10px;
+      padding: 14px 18px;
+      margin-bottom: 10px;
       display: flex;
       justify-content: space-between;
       align-items: center;
-      transition: all 0.2s ease;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      cursor: default;
+    }
+    .is-admin-mode .player-card {
+      cursor: pointer;
     }
 
-    /* 回答権獲得（黄色発光） */
+    /* Base Active: 参加中状態（青発光） */
+    .player-card.active-participant {
+      border-color: var(--accent-blue);
+      box-shadow: 0 0 15px rgba(0, 210, 255, 0.4);
+      background: rgba(0, 210, 255, 0.08);
+    }
+
+    /* 回答権獲得（黄色発光：最優先） */
     .player-card.answering {
-      border-color: var(--accent-yellow);
-      box-shadow: 0 0 20px var(--accent-yellow);
-      background: #2a2400;
-      animation: pulse 1s infinite alternate;
+      border-color: var(--accent-yellow) !important;
+      box-shadow: 0 0 25px var(--accent-yellow) !important;
+      background: rgba(255, 215, 0, 0.15) !important;
+      animation: pulse 0.8s infinite alternate;
     }
 
-    /* 正解演出（赤色点滅） */
+    /* 正解演出（赤色点滅：最優先） */
     .player-card.correct {
-      border-color: var(--accent-red);
-      box-shadow: 0 0 30px var(--accent-red);
-      background: #330011;
-      animation: flash-red 0.4s infinite alternate;
+      border-color: var(--accent-red) !important;
+      box-shadow: 0 0 35px var(--accent-red) !important;
+      background: rgba(255, 51, 102, 0.2) !important;
+      animation: flash-red 0.35s infinite alternate;
     }
 
     @keyframes pulse {
       from { transform: scale(1); }
-      to { transform: scale(1.02); }
+      to { transform: scale(1.03); }
     }
     @keyframes flash-red {
       from { opacity: 1; }
-      to { opacity: 0.5; }
+      to { opacity: 0.4; }
     }
 
-    .player-name { font-size: 1.2rem; font-weight: bold; }
-    .player-score { font-size: 1.5rem; font-weight: bold; color: var(--accent-yellow); }
+    .player-name { font-size: 1.25rem; font-weight: 600; letter-spacing: 0.5px; }
+    .player-score { font-size: 1.6rem; font-weight: 800; color: var(--accent-yellow); text-shadow: 0 0 10px rgba(255, 215, 0, 0.3); }
 
     /* 早押しボタンエリア */
     .buzzer-zone {
@@ -153,40 +201,42 @@
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      margin-top: 10px;
+      margin-top: 20px;
     }
 
     .buzzer-btn {
       width: 100%;
-      max-width: 400px;
-      height: 180px;
-      background: linear-gradient(145deg, #ff4d4d, #cc0000);
+      max-width: 450px;
+      height: 200px;
+      background: linear-gradient(145deg, #ff3366, #cc0044);
       border: none;
-      border-radius: 20px;
-      box-shadow: 0 10px 0 #800000, 0 15px 20px rgba(0,0,0,0.5);
+      border-radius: 28px;
+      box-shadow: 0 12px 0 #800022, 0 20px 30px rgba(255, 51, 102, 0.4);
       color: white;
-      font-size: 2.5rem;
-      font-weight: bold;
+      font-size: 3rem;
+      font-weight: 900;
+      letter-spacing: 2px;
       cursor: pointer;
       user-select: none;
-      active: transform 0.1s;
+      transition: all 0.1s ease;
     }
     .buzzer-btn:active:not(:disabled) {
-      transform: translateY(6px);
-      box-shadow: 0 4px 0 #800000, 0 8px 10px rgba(0,0,0,0.5);
+      transform: translateY(8px);
+      box-shadow: 0 4px 0 #800022, 0 10px 15px rgba(255, 51, 102, 0.4);
     }
     .buzzer-btn:disabled {
-      background: #444;
-      box-shadow: 0 10px 0 #222;
+      background: #2a2e3d;
+      box-shadow: 0 10px 0 #151821;
+      color: #5a6275;
       cursor: not-allowed;
-      opacity: 0.6;
     }
 
-    /* 入室オーバーレイ */
+    /* 入室モーダル */
     .modal-overlay {
       position: fixed;
       top: 0; left: 0; width: 100%; height: 100%;
-      background: rgba(0,0,0,0.85);
+      background: rgba(5, 7, 13, 0.9);
+      backdrop-filter: blur(12px);
       display: flex;
       justify-content: center;
       align-items: center;
@@ -194,31 +244,37 @@
     }
     .modal-content {
       background: var(--card-bg);
-      padding: 30px;
-      border-radius: 12px;
+      border: 1px solid var(--card-border);
+      padding: 35px;
+      border-radius: 20px;
       width: 90%;
-      max-width: 400px;
+      max-width: 420px;
+      box-shadow: 0 20px 50px rgba(0,0,0,0.6);
     }
+    .modal-content h2 { margin-top: 0; font-weight: 800; letter-spacing: 1px; color: var(--accent-blue); }
     .modal-content input, .modal-content select {
       width: 100%;
-      padding: 10px;
+      padding: 12px;
       margin: 10px 0;
-      border-radius: 5px;
-      border: 1px solid #444;
-      background: #0b0f19;
+      border-radius: 8px;
+      border: 1px solid rgba(255,255,255,0.15);
+      background: rgba(0, 0, 0, 0.4);
       color: #fff;
       box-sizing: border-box;
+      font-size: 1rem;
     }
     .modal-content button {
       width: 100%;
-      padding: 12px;
-      background: var(--accent-yellow);
+      padding: 14px;
+      background: linear-gradient(135deg, var(--accent-blue), #0088ff);
       border: none;
-      border-radius: 5px;
+      border-radius: 8px;
       font-weight: bold;
-      font-size: 1rem;
+      font-size: 1.1rem;
+      color: white;
       cursor: pointer;
-      margin-top: 10px;
+      margin-top: 15px;
+      box-shadow: 0 4px 15px rgba(0, 210, 255, 0.3);
     }
   </style>
 </head>
@@ -231,21 +287,17 @@
   <div class="drawer" id="drawer">
     <h3>管理コントロール</h3>
     <div class="drawer-section">
-      <label>一回あたりの参加人数:</label>
-      <select id="modeSelect" onchange="updateGameMode(this.value)">
-        <option value="0">全員モード</option>
-        <option value="2">2人限定</option>
-        <option value="4">4人限定</option>
-      </select>
-    </div>
-    <div class="drawer-section">
       <h4>判定操作</h4>
       <button class="btn-correct" onclick="handleJudge(true)">正解 [◯]</button>
       <button class="btn-wrong" onclick="handleJudge(false)">不正解 [✕]</button>
       <button class="btn-reset" onclick="resetBuzzer()">ボタンリセット</button>
     </div>
     <div class="drawer-section">
-      <button onclick="clearRoomData()" style="background:#666; color:white;">ルームリセット</button>
+      <h4>得点直接調整</h4>
+      <div id="scoreEditList"></div>
+    </div>
+    <div class="drawer-section">
+      <button onclick="clearRoomData()" style="background:#444; color:white;">ルームリセット</button>
     </div>
   </div>
 
@@ -253,31 +305,32 @@
   <div class="modal-overlay" id="entryModal">
     <div class="modal-content">
       <h2>Quick Quiz 入室</h2>
-      <input type="text" id="roomId" placeholder="部屋番号 (例: 1234)" value="1000">
+      <input type="text" id="roomId" placeholder="部屋番号 (例: 1234)">
       <input type="text" id="playerName" placeholder="個人名">
       <input type="text" id="teamName" placeholder="チーム名 (任意/個人は空欄)">
-      <label><input type="checkbox" id="isAdmin"> 管理者として入室</label>
+      <label style="display:flex; align-items:center; gap:8px; margin-top:10px;">
+        <input type="checkbox" id="isAdmin" style="width:auto; margin:0;"> 管理者モードで入室
+      </label>
       <button onclick="joinRoom()">参加する</button>
     </div>
   </div>
 
   <!-- メイン表示領域 -->
-  <div class="container">
+  <div class="container" id="mainContainer">
     <!-- 1. 演出・得点板ゾーン -->
     <div class="scoreboard" id="scoreboard"></div>
 
     <!-- 2. 早押しボタンゾーン -->
-    <div class="buzzer-zone">
+    <div class="buzzer-zone" id="buzzerZone">
       <button class="buzzer-btn" id="buzzerBtn" onclick="pressBuzzer()" disabled>PUSH!</button>
     </div>
   </div>
 
-  <!-- Web API ＆ Firebase JS SDK v9 (Compat) -->
+  <!-- Firebase JS SDK v9 (Compat) -->
   <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
 
   <script>
-    // Firebase 設定
     const firebaseConfig = {
       apiKey: "AIzaSyC4DQhH_swesAD98Xyjg8d1lcWEkkrHrgw",
       authDomain: "gamehistory-m84.firebaseapp.com",
@@ -292,20 +345,25 @@
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
 
-    // アプリケーション用グローバル変数
     let currentUser = { id: '', name: '', team: '', room: '', isAdmin: false };
-    let timeOffset = 0; // NTP Web時刻差分
+    let timeOffset = 0;
     let roomRef = null;
 
-    // Web時刻（NTP相当）オフセットの取得
+    // ローカルストレージデータの読み込み・自動セット
+    window.addEventListener('DOMContentLoaded', () => {
+      const savedUser = JSON.parse(localStorage.getItem('qq_user_info') || '{}');
+      if (savedUser.room) document.getElementById('roomId').value = savedUser.room;
+      if (savedUser.name) document.getElementById('playerName').value = savedUser.name;
+      if (savedUser.team) document.getElementById('teamName').value = savedUser.team;
+      if (savedUser.isAdmin) document.getElementById('isAdmin').checked = savedUser.isAdmin;
+    });
+
     function syncTime() {
-      const offsetRef = db.ref(".info/serverTimeOffset");
-      offsetRef.on("value", (snap) => {
+      db.ref(".info/serverTimeOffset").on("value", (snap) => {
         timeOffset = snap.val() || 0;
       });
     }
 
-    // 入室処理
     function joinRoom() {
       const room = document.getElementById('roomId').value.trim();
       const name = document.getElementById('playerName').value.trim();
@@ -317,23 +375,26 @@
         return;
       }
 
-      currentUser = {
-        id: 'user_' + Math.random().toString(36).substr(2, 9),
-        name: name || '管理者',
-        team: team,
-        room: room,
-        isAdmin: isAdmin
-      };
+      const savedUser = JSON.parse(localStorage.getItem('qq_user_info') || '{}');
+      const userId = (savedUser.room === room && savedUser.id) ? savedUser.id : 'user_' + Math.random().toString(36).substr(2, 9);
+
+      currentUser = { id: userId, name: name || '管理者', team, room, isAdmin };
+
+      // ローカルストレージ保存（引き継ぎ用）
+      localStorage.setItem('qq_user_info', JSON.stringify(currentUser));
 
       roomRef = db.ref(`quick-quiz/rooms/${room}`);
 
       if (!isAdmin) {
-        // プレイヤーとして追加
-        roomRef.child(`players/${currentUser.id}`).set({
+        roomRef.child(`players/${currentUser.id}`).update({
           name: currentUser.name,
-          team: currentUser.team,
-          score: 0
+          team: currentUser.team
         });
+        // スコア初期設定（存在しない場合のみ0）
+        roomRef.child(`players/${currentUser.id}/score`).transaction(s => s === null ? 0 : s);
+      } else {
+        document.getElementById('buzzerZone').style.display = 'none'; // 管理者はボタン非表示
+        document.getElementById('mainContainer').classList.add('is-admin-mode');
       }
 
       document.getElementById('entryModal').style.display = 'none';
@@ -341,27 +402,27 @@
       listenRoomData();
     }
 
-    // リアルタイムリスナー
     function listenRoomData() {
       roomRef.on('value', (snapshot) => {
         const data = snapshot.val() || {};
         renderScoreboard(data.players || {}, data.state || {});
-        updateBuzzerState(data.state || {}, data.players || {});
+        updateBuzzerState(data.state || {});
+        if (currentUser.isAdmin) {
+          renderScoreEditList(data.players || {});
+        }
       });
     }
 
-    // 得点板と演出の描画
     function renderScoreboard(players, state) {
       const scoreboard = document.getElementById('scoreboard');
       scoreboard.innerHTML = '';
 
-      // チーム毎にグループ化
       const teams = {};
       Object.keys(players).forEach(id => {
         const p = players[id];
         if (!teams[p.team]) teams[p.team] = { total: 0, members: [] };
         teams[p.team].members.push({ id, ...p });
-        teams[p.team].total += p.score;
+        teams[p.team].total += (p.score || 0);
       });
 
       const answeringId = state.answeringId;
@@ -370,27 +431,30 @@
       Object.keys(teams).forEach(teamName => {
         const teamGroup = document.createElement('div');
         teamGroup.className = 'team-group';
-        
-        teamGroup.innerHTML = `
-          <div class="team-title">
-            <span>${teamName}</span>
-            <span>合計: ${teams[teamName].total}pt</span>
-          </div>
-        `;
+        teamGroup.innerHTML = `<div class="team-title"><span>${teamName}</span><span>TOTAL: ${teams[teamName].total}pt</span></div>`;
 
         teams[teamName].members.forEach(p => {
           const card = document.createElement('div');
           let classList = 'player-card';
 
+          if (p.active) classList += ' active-participant'; // 青色発光
           if (answeringId === p.id) {
-            classList += isCorrect ? ' correct' : ' answering';
+            classList += isCorrect ? ' correct' : ' answering'; // 黄色・赤色が優先上書き
           }
 
           card.className = classList;
           card.innerHTML = `
             <span class="player-name">${p.name}</span>
-            <span class="player-score">${p.score}</span>
+            <span class="player-score">${p.score || 0}</span>
           `;
+
+          // 管理者がタップで青色発光（参加中）切替
+          if (currentUser.isAdmin) {
+            card.onclick = () => {
+              roomRef.child(`players/${p.id}/active`).set(!p.active);
+            };
+          }
+
           teamGroup.appendChild(card);
         });
 
@@ -398,8 +462,8 @@
       });
     }
 
-    // 早押しボタン状態の制御
-    function updateBuzzerState(state, players) {
+    function updateBuzzerState(state) {
+      if (currentUser.isAdmin) return;
       const btn = document.getElementById('buzzerBtn');
       const answeringId = state.answeringId;
 
@@ -407,77 +471,72 @@
         btn.disabled = true;
         btn.innerText = (answeringId === currentUser.id) ? '回答中！' : 'ロック中';
       } else {
-        btn.disabled = currentUser.isAdmin;
+        btn.disabled = false;
         btn.innerText = 'PUSH!';
       }
     }
 
-    // 早押しタップ（Web標準時刻をミリ秒で保持して書き込み）
     function pressBuzzer() {
       if (currentUser.isAdmin) return;
-
       const exactTime = Date.now() + timeOffset;
       
       roomRef.child('state').transaction((current) => {
         if (!current || !current.answeringId) {
-          return {
-            answeringId: currentUser.id,
-            timestamp: exactTime,
-            isCorrect: false
-          };
+          return { answeringId: currentUser.id, timestamp: exactTime, isCorrect: false };
         }
-        return; // 既に誰かが押している場合はスキップ
+        return;
       });
     }
 
-    // ドロワー開閉
     function toggleDrawer() {
       document.getElementById('drawer').classList.toggle('open');
     }
 
-    // [管理者機能] 正誤判定
     function handleJudge(isCorrect) {
-      if (!currentUser.isAdmin) {
-        alert('管理者権限が必要です。');
-        return;
-      }
+      if (!currentUser.isAdmin) return;
 
       roomRef.get().then((snap) => {
         const data = snap.val() || {};
         const answeringId = data.state?.answeringId;
-
         if (!answeringId) return;
 
         if (isCorrect) {
-          // 正解演出（赤点滅フラグ）適用と加点
           roomRef.child('state/isCorrect').set(true);
-          
           const currentScore = data.players[answeringId]?.score || 0;
           roomRef.child(`players/${answeringId}/score`).set(currentScore + 10);
-
           playAudioSignal(true);
-
-          setTimeout(() => {
-            resetBuzzer();
-          }, 2000);
+          setTimeout(() => { resetBuzzer(); }, 2000);
         } else {
-          // 不正解
           playAudioSignal(false);
           resetBuzzer();
         }
       });
     }
 
-    // [管理者機能] ボタンリセット
     function resetBuzzer() {
-      roomRef.child('state').set({
-        answeringId: null,
-        timestamp: null,
-        isCorrect: false
+      roomRef.child('state').set({ answeringId: null, timestamp: null, isCorrect: false });
+    }
+
+    // [管理者機能] 点数の直接調整リスト描画
+    function renderScoreEditList(players) {
+      const container = document.getElementById('scoreEditList');
+      container.innerHTML = '';
+      Object.keys(players).forEach(id => {
+        const p = players[id];
+        const item = document.createElement('div');
+        item.className = 'score-edit-item';
+        item.innerHTML = `
+          <span>${p.name}</span>
+          <input type="number" value="${p.score || 0}" onchange="updatePlayerScore('${id}', this.value)">
+        `;
+        container.appendChild(item);
       });
     }
 
-    // 音声エフェクトの再生（Web Audio API）
+    function updatePlayerScore(playerId, newScore) {
+      roomRef.child(`players/${playerId}/score`).set(parseInt(newScore, 10) || 0);
+    }
+
     function playAudioSignal(isCorrect) {
       const ctx = new (window.AudioContext || window.webkitAudioContext)();
       const osc = ctx.createOscillator();
@@ -486,14 +545,12 @@
       gain.connect(ctx.destination);
 
       if (isCorrect) {
-        // ピンポン音
         osc.frequency.setValueAtTime(880, ctx.currentTime);
         osc.frequency.setValueAtTime(1760, ctx.currentTime + 0.15);
         gain.gain.setValueAtTime(0.3, ctx.currentTime);
         osc.start();
         osc.stop(ctx.currentTime + 0.4);
       } else {
-        // ブブー音
         osc.type = 'sawtooth';
         osc.frequency.setValueAtTime(150, ctx.currentTime);
         gain.gain.setValueAtTime(0.3, ctx.currentTime);
@@ -502,7 +559,6 @@
       }
     }
 
-    // ルームデータ消去
     function clearRoomData() {
       if (confirm('部屋のデータを初期化しますか？')) {
         roomRef.remove();
