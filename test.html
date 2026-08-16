@@ -1,682 +1,451 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>【幹事用】ID固定型スマート部屋割り</title>
-    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
-    <style>
-        :root {
-            --primary: #6f42c1;
-            --success: #28a745;
-            --info: #17a2b8;
-            --danger: #dc3545;
-            --dark: #343a40;
-            --light: #f8f9fa;
-        }
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Sans-Serif; max-width: 600px; margin: 0 auto; padding: 10px; background: #e9ecef; color: #333; word-break: break-all; }
-        h1 { text-align: center; font-size: 20px; color: var(--dark); margin: 10px 0; }
-        .card { background: white; padding: 15px; border-radius: 12px; margin-bottom: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); box-sizing: border-box; }
-        
-        .btn { display: inline-flex; align-items: center; justify-content: center; background: #007bff; color: white; border: none; padding: 12px; border-radius: 8px; font-size: 15px; font-weight: bold; cursor: pointer; width: 100%; box-sizing: border-box; margin-bottom: 8px; -webkit-appearance: none; }
-        .btn-sm { padding: 6px 10px; font-size: 12px; width: auto; margin-bottom: 0; }
-        .btn-danger-sm { background: var(--danger); padding: 4px 8px; font-size: 11px; width: auto; margin-bottom: 0; border-radius: 4px; color: white; border: none; font-weight: bold; }
-        .btn-outline { background: transparent; color: #666; border: 1px solid #ccc; }
-        
-        label { display: block; font-weight: bold; font-size: 13px; margin-bottom: 5px; color: #555; text-align: left; }
-        .input-field { width: 100%; padding: 12px; font-size: 16px; box-sizing: border-box; border: 1px solid #ced4da; border-radius: 8px; margin-bottom: 12px; background: var(--light); }
-        
-        /* 💡 テンプレート用ボタンスタイル */
-        .template-btn-group { display: flex; gap: 8px; margin-bottom: 8px; flex-wrap: wrap; }
-        .btn-tmpl { background: #6c757d; color: white; font-size: 11px; padding: 4px 8px; border-radius: 4px; border: none; cursor: pointer; font-weight: bold; }
-        .btn-tmpl:hover { background: #5a6268; }
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>早押しクイズ＆対戦メンバー分けシステム（3画面構成）</title>
+  <style>
+    * { box-sizing: border-box; font-family: sans-serif; }
+    body { background-color: #f4f6f8; margin: 0; padding: 16px; color: #333; }
+    .container { max-width: 900px; margin: 0 auto; }
+    
+    /* 上部テスト用画面切替ナビ */
+    .view-nav { display: flex; gap: 8px; margin-bottom: 16px; background: #e9ecef; padding: 8px; border-radius: 8px; }
+    .view-btn { flex: 1; padding: 10px; border: none; background: #fff; font-weight: bold; cursor: pointer; border-radius: 6px; }
+    .view-btn.active { background: #0d6efd; color: white; }
 
-        .tab-container { display: flex; background: #dee2e6; border-radius: 8px; padding: 4px; margin-bottom: 15px; box-sizing: border-box; }
-        .tab-btn { flex: 1; border: none; background: transparent; padding: 10px; font-size: 13px; font-weight: bold; color: #555; cursor: pointer; text-align: center; border-radius: 6px; min-width: 0; white-space: nowrap; }
-        .tab-btn.active { background: white; color: var(--primary); box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-        .tab-content { display: none; }
-        .tab-content.active { display: block; }
+    .card { background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); margin-bottom: 24px; }
+    .hidden { display: none; }
+    label { display: block; font-size: 14px; font-weight: bold; margin-bottom: 4px; }
+    input[type="text"], select { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; margin-bottom: 12px; font-size: 16px; }
+    button { cursor: pointer; border: none; border-radius: 4px; font-weight: bold; font-size: 15px; }
 
-        .room-row { background: var(--light); padding: 12px; border-radius: 8px; margin-bottom: 10px; border: 1px solid #dee2e6; position: relative; box-sizing: border-box; }
-        .room-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 8px; }
-        .room-box-result { border-left: 4px solid var(--primary); background: #fff; padding: 12px; margin-bottom: 10px; border-radius: 0 8px 8px 0; box-shadow: 0 1px 3px rgba(0,0,0,0.05); box-sizing: border-box; }
-        .room-title-bar { display: flex; justify-content: space-between; align-items: center; font-weight: bold; font-size: 14px; border-bottom: 1px dashed #eee; padding-bottom: 4px; margin-bottom: 8px; color: #495057; flex-wrap: wrap; gap: 4px; }
-        
-        .member-container-flex { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
-        .member-wrapper { display: inline-flex; align-items: center; background: #e2f0d9; color: #385723; padding: 4px 8px; border-radius: 6px; font-size: 13px; font-weight: bold; max-width: 100%; box-sizing: border-box; }
-        .member-name-span { max-width: 80px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        .move-select { background: transparent; border: none; font-size: 11px; color: #007bff; margin-left: 3px; font-weight: bold; outline: none; padding-right: 2px; }
-        
-        .member-list-item { display: flex; justify-content: space-between; align-items: center; background: var(--light); padding: 10px; border-radius: 8px; margin-bottom: 6px; border: 1px solid #dee2e6; font-size: 14px; font-weight: bold; box-sizing: border-box; }
-        .st-indicator { font-size: 11px; padding: 2px 6px; border-radius: 4px; margin-left: 6px; font-weight: normal; }
+    /* バッジ */
+    .badge { display: inline-block; padding: 3px 8px; border-radius: 4px; color: white; font-size: 12px; font-weight: bold; }
+    .team-個人 { background-color: #6c757d; }
+    .team-チームA { background-color: #0d6efd; }
+    .team-チームB { background-color: #dc3545; }
+    .team-チームC { background-color: #198754; }
+    .team-default { background-color: #0dcaf0; }
 
-        /* 💡 追加：会計バッジ用のスタイル */
-        .pay-btn { font-size: 11px; padding: 3px 8px; border-radius: 4px; font-weight: bold; border: 1px solid #ccc; cursor: pointer; margin-left: 6px; }
-        .pay-unpaid { background: #fff; color: var(--danger); border-color: var(--danger); }
-        .pay-paid { background: var(--success); color: white; border-color: var(--success); }
+    /* 1. 参加者用画面（早押しボタン） */
+    .buzzer-btn { width: 100%; height: 200px; border-radius: 50%; background: #dc3545; color: white; font-size: 32px; font-weight: bold; border: 8px solid #a71d2a; box-shadow: 0 8px 0 #72121c; cursor: pointer; margin-top: 20px; }
+    .buzzer-btn:active { transform: translateY(4px); box-shadow: 0 4px 0 #72121c; }
+    .buzzer-btn:disabled { background: #6c757d; border-color: #495057; box-shadow: none; cursor: not-allowed; }
 
-        .status-header { background: #e2e3e5; padding: 10px; border-radius: 8px; font-size: 13px; margin-bottom: 15px; text-align: center; font-weight: bold; box-sizing: border-box; }
-        .badge-code { background: #fff; padding: 4px 8px; border-radius: 4px; font-family: monospace; color: var(--danger); font-size: 13px; border: 1px solid #ccc; max-width: 100%; display: inline-block; overflow: hidden; text-overflow: ellipsis; }
-        hr { border: 0; border-top: 1px dashed #ccc; margin: 15px 0; }
+    /* 2. 管理者用画面 */
+    .participant-list { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+    .participant-chip { background: #f8f9fa; border: 1px solid #ddd; padding: 6px 12px; border-radius: 20px; display: flex; align-items: center; gap: 8px; }
+    .group-card { border: 1px solid #e0e0e0; background: #fafafa; padding: 12px; border-radius: 6px; margin-bottom: 12px; }
+    .member-item { display: flex; justify-content: space-between; align-items: center; padding: 10px; background: white; border: 1px solid #ddd; border-radius: 4px; margin-bottom: 6px; cursor: pointer; }
+    .member-item.selected { border: 2px solid #0d6efd; background-color: #e3f2fd; }
 
-        /* 💡 追加：管理履歴リスト用のスタイル */
-        .history-list { margin-top: 15px; text-align: left; }
-        .history-item { display: flex; justify-content: space-between; align-items: center; padding: 10px; background: var(--light); border: 1px solid #ced4da; border-radius: 8px; margin-bottom: 8px; font-size: 14px; }
-        .history-link { font-weight: bold; color: var(--primary); cursor: pointer; text-decoration: none; flex-grow: 1; margin-right: 10px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        .history-code { font-size: 11px; color: #666; font-weight: normal; display: block; }
-    </style>
+    /* 3. 演出用画面（モニター用） */
+    .display-screen { background: #1a1a2e; color: #fff; padding: 30px; border-radius: 12px; text-align: center; min-height: 400px; }
+    .buzzer-first { font-size: 48px; color: #ffcc00; margin: 20px 0; padding: 20px; border: 4px dashed #ffcc00; border-radius: 8px; animation: pulse 1s infinite alternate; }
+    @keyframes pulse { from { transform: scale(1); } to { transform: scale(1.02); } }
+    .grid-matches { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-top: 20px; text-align: left; }
+    .display-match-card { background: #16213e; border: 1px solid #0f3460; padding: 16px; border-radius: 8px; }
+  </style>
 </head>
 <body>
 
-    <datalist id="modelOptions"><option value="DAM"><option value="JOYSOUND"></datalist>
-    <datalist id="capacityOptions"><option value="5"><option value="8"><option value="10"><option value="15"><option value="20"></datalist>
-    <datalist id="memoOptions"><option value="企画部屋"><option value="アニソン部屋"><option value="懐メロ部屋"><option value="休憩部屋"><option value="着替え部屋"></datalist>
+<div class="container">
+  <!-- テスト用：画面切替ナビゲーション -->
+  <div class="view-nav">
+    <button class="view-btn active" onclick="switchView('participant')">📱 1. 参加者用（入室＆早押し）</button>
+    <button class="view-btn" onclick="switchView('admin')">⚙️ 2. 管理者用（チーム＆対戦分け）</button>
+    <button class="view-btn" onclick="switchView('display')">📺 3. 演出用（全体モニター）</button>
+  </div>
 
-    <h1>🔑 部屋割り管理室（幹事用）</h1>
+  <!-- ================================================================= -->
+  <!-- 画面 1: 参加者用ページ (部屋番号・名前・チーム選択・早押しボタン)   -->
+  <!-- ================================================================= -->
+  <div id="view-participant" class="card">
+    <div id="participant-login-form">
+      <h2>部屋に入室</h2>
+      <form onsubmit="handleJoin(event)">
+        <label>部屋番号</label>
+        <input type="text" id="p-room" value="101" required>
 
-    <div id="step1_connection" class="card">
-        <h3 style="margin-top:0; text-align:center; font-size:16px;">イベント管理室への入室</h3>
-        <input type="text" id="groupNameInput" class="input-field" placeholder="例: カラオケサークル集会">
-        <button class="btn" style="background: var(--primary);" onclick="createNewGroupSession()">👥 新規グループ部屋を作成</button>
-        <div style="text-align: center; color: #888; font-size: 12px; margin: 10px 0;">ー または ー</div>
-        <input type="text" id="existingCodeInput" class="input-field" placeholder="コードを貼り付け">
-        <button class="btn" style="background: var(--info);" onclick="joinExistingGroupSession()">🔑 コードでログイン</button>
-        
-        <div id="historyContainer" style="display: none;">
-            <hr>
-            <h4 style="margin: 10px 0; font-size: 14px; color: var(--dark); text-align: center;">📂 作成済みのイベント履歴</h4>
-            <div id="historyListArea" class="history-list"></div>
-        </div>
+        <label>お名前（ニックネーム）</label>
+        <input type="text" id="p-name" placeholder="例: たろう" required>
+
+        <label>所属チーム</label>
+        <select id="p-team">
+          <!-- JSで動的付与 -->
+        </select>
+
+        <button type="submit" style="width:100%; padding:12px; background:#0d6efd; color:#fff;">部屋に入る</button>
+      </form>
     </div>
 
-    <div id="step2_mainDashboard" style="display: none;">
-        <div class="status-header">
-            <span id="activeGroupName" style="color:var(--primary);"></span><br>
-            <span style="font-weight:normal; font-size:12px; color:#666;">部屋コード:</span> 
-            <span id="displayCodeText" class="badge-code"></span>
-            <button class="btn btn-sm btn-outline" style="margin-left:5px; padding:2px 6px;" onclick="copyRoomCode()">コピー</button>
-            <button class="btn btn-sm btn-outline" style="margin-left:5px; padding:2px 6px; border-color: var(--primary); color: var(--primary);" onclick="exitToMainMenu()">⚙️ 履歴・別イベントへ</button>
-        </div>
-
-        <button class="btn btn-outline" style="font-size:13px; padding:8px; margin-bottom:10px; background:#fff;" onclick="toggleDescriptionArea()">
-            📢 コメント記入欄の表示 / 非表示を切り替え
-        </button>
-
-        <div id="descriptionCardContainer" class="card" style="background: #f1f3f5; border: 1px solid #ced4da; display: block;">
-            <label for="eventDescriptionInput">📢 カラオケ会の説明文（いつでも変更可能）</label>
-            
-            <div class="template-btn-group">
-                <span style="font-size: 11px; color: #666; align-self: center;">⚡テンプレ挿入：</span>
-                <button type="button" class="btn-tmpl" onclick="applyTemplate('karaoke')">🎵 カラオケ会</button>
-                <button type="button" class="btn-tmpl" onclick="applyTemplate('nijikai')">🍻 二次会・飲み会</button>
-                <button type="button" class="btn-tmpl" style="background:#dc3545;" onclick="applyTemplate('clear')">🧹 クリア</button>
-            </div>
-
-            <textarea id="eventDescriptionInput" rows="7" class="input-field" style="font-size:14px; font-family:inherit; resize:vertical; margin-bottom:8px; line-height:1.4;" placeholder="上のボタンを押すか、自由に説明文を入力してください。"></textarea>
-            <button class="btn btn-sm" style="background: var(--primary); width:100%;" onclick="saveEventDescription()">📝 説明文を更新して配信</button>
-        </div>
-
-        <div class="tab-container">
-            <button class="tab-btn active" onclick="switchTab('tab_settings')">🛠️ 部屋設定</button>
-            <button class="tab-btn" onclick="switchTab('tab_members')">👥 参加者状況</button>
-            <button class="tab-btn" onclick="switchTab('tab_shuffle')">🔀 受付＆部屋割り</button>
-        </div>
-
-        <div id="tab_settings" class="tab-content active card">
-            <div id="roomsSetupContainer"></div>
-            <button class="btn btn-outline" style="font-size:13px; padding:8px;" onclick="addRoomRowSetup('', '', 5, '', '')">＋ 新しい部屋を追加</button>
-            <hr>
-            <button class="btn" style="background: var(--success);" onclick="saveRoomsSetupOnly()">💾 部屋構成の変更を保存</button>
-        </div>
-
-        <div id="tab_members" class="tab-content card">
-            <div style="background:#e9ecef; padding:10px; border-radius:8px; margin-bottom:15px; font-size:12px;">
-                <b style="color:var(--success)">📢 LINE配布用URL:</b>
-                <input type="text" id="shareUrl" class="input-field" style="margin: 5px 0; padding:8px; font-size:12px;" readonly>
-                <button class="btn btn-success" style="padding:8px; font-size:12px; margin-bottom:0;" onclick="copyShareUrl()">📋 LINE用URLをコピー</button>
-            </div>
-            <div id="joinedMembersArea"></div>
-        </div>
-
-        <div id="tab_shuffle" class="tab-content card">
-            <button class="btn" style="background: var(--primary); padding:13px;" onclick="executeSmartShuffle()">🔀 部屋にいるメンバーだけで自動シャッフル配信</button>
-            <p style="font-size:11px; color:#666; margin-top:-5px; text-align:center;">※「未参加枠」「未定枠」「不参加枠」の人はシャッフルされずキープされます</p>
-            <div id="resultInside"></div>
-        </div>
-
-        <div class="card" style="border: 1px solid #f5c6cb; background-color: #fdf3f4; margin-top:20px;">
-            <button class="btn btn-danger" style="padding:10px; font-size:13px; margin-bottom:0;" onclick="resetCurrentEvent()">🧹 グループデータを完全に削除して終了</button>
-        </div>
+    <!-- 入室後の早押し画面 -->
+    <div id="participant-buzzer-area" class="hidden" style="text-align: center;">
+      <p style="font-size: 14px; color: #666;">
+        部屋番号: <strong id="p-status-room">101</strong> | 
+        名前: <strong id="p-status-name">-</strong> | 
+        チーム: <span id="p-status-team-badge" class="badge team-個人">個人</span>
+      </p>
+      
+      <h3>早押しボタン</h3>
+      <button id="p-buzzer-btn" class="buzzer-btn" onclick="pressBuzzer()">PUSH!</button>
+      <p id="p-buzzer-msg" style="margin-top: 12px; font-weight: bold; color: #28a745;"></p>
     </div>
+  </div>
+
+  <!-- ================================================================= -->
+  <!-- 画面 2: 管理者用ページ (チーム設定・メンバー変更・メンバー分け・判定) -->
+  <!-- ================================================================= -->
+  <div id="view-admin" class="card hidden">
+    <h2>管理者ダッシュボード</h2>
+
+    <!-- 設定 ＆ 部屋フィルタ -->
+    <div style="background: #f8f9fa; padding: 12px; border-radius: 6px; margin-bottom: 16px;">
+      <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+        <div style="flex: 1; min-width: 140px;">
+          <label>管理対象の部屋番号</label>
+          <input type="text" id="a-room-filter" value="101" oninput="renderApp()">
+        </div>
+        <div style="flex: 2; min-width: 200px;">
+          <label>チーム選択肢の追加</label>
+          <div style="display: flex; gap: 6px;">
+            <input type="text" id="a-new-team" placeholder="例: チームD" style="margin:0;">
+            <button style="padding:0 16px; background:#6c757d; color:#fff;" onclick="addTeamOption()">追加</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- リアルタイム早押し判定状況 -->
+    <div style="background:#fff3cd; border:1px solid #ffe69c; padding:12px; border-radius:6px; margin-bottom:16px;">
+      <h4 style="margin:0 0 6px 0; color:#664d03;">⚡ 早押しリアルタイム着地情報</h4>
+      <p id="a-buzzer-result" style="margin:0; font-weight:bold; color:#856404;">まだ誰も押していません</p>
+      <button style="margin-top:8px; padding:4px 8px; background:#dc3545; color:#fff; font-size:12px;" onclick="resetBuzzer()">早押しリセット</button>
+    </div>
+
+    <!-- 参加者一覧 ＆ チーム変更 -->
+    <h3>部屋 <span id="a-display-room">101</span> の入室者 (<span id="a-participant-count">0</span>名)</h3>
+    <div id="a-participant-list" class="participant-list"></div>
+
+    <hr style="margin: 20px 0; border: none; border-top: 1px solid #eee;">
+
+    <!-- 対戦分けコントロール -->
+    <h3>対戦メンバー分け（1戦完結）</h3>
+    <div style="display: flex; gap: 12px; align-items: center; margin-bottom: 16px; flex-wrap: wrap;">
+      <div style="width: 140px;">
+        <label>1対戦の定員</label>
+        <select id="a-capacity" style="margin:0;">
+          <option value="2">2人 (1v1)</option>
+          <option value="3">3人</option>
+          <option value="4" selected>4人 (グループ)</option>
+        </select>
+      </div>
+      <div style="align-self: flex-end;">
+        <button style="padding:10px 16px; background:#198754; color:#fff;" onclick="generateMatches()">🎲 シャッフル対戦作成</button>
+      </div>
+    </div>
+
+    <!-- スワップ可能な対戦分け結果 -->
+    <div id="a-match-results"></div>
+  </div>
+
+  <!-- ================================================================= -->
+  <!-- 画面 3: 演出用ページ (スクリーン・大画面モニター用)                 -->
+  <!-- ================================================================= -->
+  <div id="view-display" class="card hidden" style="background:transparent; padding:0; box-shadow:none;">
+    <div class="display-screen">
+      <h2 style="margin:0; color:#8a99ad; font-size:20px;">部屋 <span id="d-room-no">101</span> 対戦モニター</h2>
+      
+      <!-- 早押しランプ表示 -->
+      <div id="d-buzzer-container">
+        <div class="buzzer-first">
+          <span style="font-size: 20px; display:block; color:#aaa;">FIRST PRESS</span>
+          <span id="d-first-name">待機中...</span>
+          <span id="d-first-team" class="badge team-個人" style="font-size:16px; vertical-align:middle;">-</span>
+        </div>
+      </div>
+
+      <!-- 決定された対戦分け一覧表示 -->
+      <h3 style="text-align:left; border-bottom:1px solid #0f3460; padding-bottom:8px; margin-top:30px;">本日の対戦組み合わせ</h3>
+      <div id="d-match-grid" class="grid-matches">
+        <p style="color:#666;">対戦分けが作成されるとここに表示されます</p>
+      </div>
+    </div>
+  </div>
+</div>
 
 <script>
-const firebaseConfig = {
-  apiKey: "AIzaSyDfMGBuQYpuyOMGt_hEdPgR_z42d92E8Lo",
-  authDomain: "heyagae-84.firebaseapp.com",
-  databaseURL: "https://heyagae-84-default-rtdb.firebaseio.com",
-  projectId: "heyagae-84",
-  storageBucket: "heyagae-84.firebasestorage.app",
-  messagingSenderId: "199911902929",
-  appId: "1:199911902929:web:447aa228c15e4b80b7bff0",
-  measurementId: "G-BCG3FMW3KS"
-};
+  // ==========================================
+  // アプリケーション状態 (メモリ同期)
+  // ==========================================
+  let teamOptions = ['個人', 'チームA', 'チームB', 'チームC'];
+  let participants = []; // { id, roomNo, name, team }
+  let currentParticipantId = null;
+  let matchGroups = [];  // { id, name, members: [] }
+  let selectedSwapTarget = null; // { groupId, memberIndex }
+  let firstBuzzerUser = null; // 早押し1位のデータ
 
-firebase.initializeApp(firebaseConfig);
-const db = firebase.firestore();
-const kanjiStorageKey = "heyawari_kanji_group_id";
-const historyStorageKey = "heyawari_kanji_history_list";
+  window.onload = () => {
+    updateTeamDropdown();
+    renderApp();
+  };
 
-let uniqueGroupId = "";
-let groupDisplayName = "";
-let currentFullMemberObjects = []; 
-let cachedRoomsSetup = [];
-let historyMatrix = {};
-let unsubscribeMembers = null;
-let unsubscribeStatus = null;
-let isFirstDescriptionLoad = true;
+  // 画面表示切り替え (テスト用タブ)
+  function switchView(viewName) {
+    document.querySelectorAll('.view-btn').forEach(btn => btn.classList.remove('active'));
+    document.getElementById('view-participant').classList.add('hidden');
+    document.getElementById('view-admin').classList.add('hidden');
+    document.getElementById('view-display').classList.add('hidden');
 
-window.onload = function() {
-    renderHistoryList();
-    const savedGroupId = localStorage.getItem(kanjiStorageKey);
-    if (savedGroupId) { uniqueGroupId = savedGroupId; resumeGroupSession(); }
-};
-
-function renderHistoryList() {
-    const historyData = localStorage.getItem(historyStorageKey);
-    const historyList = historyData ? JSON.parse(historyData) : [];
-    const container = document.getElementById('historyContainer');
-    const area = document.getElementById('historyListArea');
-    
-    if (historyList.length === 0) {
-        container.style.display = 'none';
-        return;
-    }
-    
-    container.style.display = 'block';
-    let html = "";
-    historyList.forEach(item => {
-        html += `
-            <div class="history-item">
-                <div class="history-link" onclick="loadFromHistory('${item.id}')">
-                    🎤 ${item.title}
-                    <span class="history-code">コード: ${item.id}</span>
-                </div>
-                <button class="btn-danger-sm" style="padding: 4px 6px; font-size:10px;" onclick="removeFromHistoryList('${item.id}', event)">❌</button>
-            </div>
-        `;
-    });
-    area.innerHTML = html;
-}
-
-function saveToHistoryList(id, title) {
-    if (!id || !title) return;
-    const historyData = localStorage.getItem(historyStorageKey);
-    let historyList = historyData ? JSON.parse(historyData) : [];
-    
-    historyList = historyList.filter(item => item.id !== id);
-    historyList.unshift({ id: id, title: title });
-    
-    localStorage.setItem(historyStorageKey, JSON.stringify(historyList));
-    renderHistoryList();
-}
-
-function removeFromHistoryList(id, event) {
-    event.stopPropagation();
-    if (!confirm("このイベントを履歴から削除しますか？\n（Firebase上のデータは削除されません）")) return;
-    
-    const historyData = localStorage.getItem(historyStorageKey);
-    if (!historyData) return;
-    let historyList = JSON.parse(historyData);
-    historyList = historyList.filter(item => item.id !== id);
-    
-    localStorage.setItem(historyStorageKey, JSON.stringify(historyList));
-    renderHistoryList();
-    
-    if (uniqueGroupId === id) {
-        clearKanjiState();
-    }
-}
-
-function loadFromHistory(id) {
-    uniqueGroupId = id;
-    localStorage.setItem(kanjiStorageKey, uniqueGroupId);
-    isFirstDescriptionLoad = true;
-    resumeGroupSession();
-}
-
-function exitToMainMenu() {
-    if (unsubscribeMembers) unsubscribeMembers();
-    if (unsubscribeStatus) unsubscribeStatus();
-    localStorage.removeItem(kanjiStorageKey);
-    uniqueGroupId = "";
-    document.getElementById('roomsSetupContainer').innerHTML = "";
-    document.getElementById('resultInside').innerHTML = '';
-    document.getElementById('step2_mainDashboard').style.display = 'none';
-    document.getElementById('step1_connection').style.display = 'block';
-    renderHistoryList();
-}
-
-function toggleDescriptionArea() {
-    const container = document.getElementById('descriptionCardContainer');
-    if (container.style.display === 'none') {
-        container.style.display = 'block';
+    if (viewName === 'participant') {
+      document.querySelectorAll('.view-btn')[0].classList.add('active');
+      document.getElementById('view-participant').classList.remove('hidden');
+    } else if (viewName === 'admin') {
+      document.querySelectorAll('.view-btn')[1].classList.add('active');
+      document.getElementById('view-admin').classList.remove('hidden');
     } else {
-        container.style.display = 'none';
+      document.querySelectorAll('.view-btn')[2].classList.add('active');
+      document.getElementById('view-display').classList.add('hidden');
+      document.getElementById('view-display').classList.remove('hidden');
     }
-}
+    renderApp();
+  }
 
-function applyTemplate(type) {
-    const textarea = document.getElementById('eventDescriptionInput');
+  // チーム選択肢の描画
+  function updateTeamDropdown() {
+    const select = document.getElementById('p-team');
+    select.innerHTML = teamOptions.map(t => `<option value="${t}">${t}</option>`).join('');
+  }
+
+  // チーム追加 (管理者)
+  function addTeamOption() {
+    const input = document.getElementById('a-new-team');
+    const val = input.value.trim();
+    if (val && !teamOptions.includes(val)) {
+      teamOptions.push(val);
+      updateTeamDropdown();
+      renderApp();
+      input.value = '';
+    }
+  }
+
+  // 参加者入室処理
+  function handleJoin(e) {
+    e.preventDefault();
+    const roomNo = document.getElementById('p-room').value.trim();
+    const name = document.getElementById('p-name').value.trim();
+    const team = document.getElementById('p-team').value;
+
+    const newParticipant = {
+      id: 'user_' + Date.now(),
+      roomNo, name, team
+    };
+
+    participants.push(newParticipant);
+    currentParticipantId = newParticipant.id;
+
+    // 早押し画面へ表示切替
+    document.getElementById('participant-login-form').classList.add('hidden');
+    document.getElementById('participant-buzzer-area').classList.remove('hidden');
+
+    document.getElementById('p-status-room').innerText = roomNo;
+    document.getElementById('p-status-name').innerText = name;
     
-    if (type === 'clear') {
-        if(confirm("入力内容をクリアしますか？")) textarea.value = "";
-        return;
-    }
+    const badge = document.getElementById('p-status-team-badge');
+    badge.innerText = team;
+    badge.className = `badge ${getTeamBadgeClass(team)}`;
 
-    if (textarea.value.trim() !== "") {
-        if (!confirm("現在入力されている内容が上書きされますが、よろしいですか？")) return;
-    }
+    renderApp();
+  }
 
-    if (type === 'karaoke') {
-        textarea.value = `【日時】 月 日()  : 〜 : \n【場所】店\n【会費】円（ドリンクバー込み）\n【締め切り】 月 日まで\n【備考・コメント】\n途中退室される方は幹事までご連絡ください。`;
-    } else if (type === 'nijikai') {
-        textarea.value = `【日時】 月 日()  : ~\n【場所】\n【会費】\n【締め秒読み】 月 日中まで\n【備考・コメント】\n遅刻しそうな場合は一言書き込みをお願いします！`;
-    }
-}
+  // 早押しボタン押下
+  function pressBuzzer() {
+    if (firstBuzzerUser) return; // 既に誰かが押していれば無効
 
-function switchTab(tabId) {
-    document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
-    document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
-    if(event && event.currentTarget) {
-        event.currentTarget.classList.add('active');
-    }
-    document.getElementById(tabId).classList.add('active');
-}
+    const me = participants.find(p => p.id === currentParticipantId);
+    if (!me) return;
 
-function handleRoomNameBlur(input) {
-    let val = input.value.trim();
-    if (!val) return;
-    let normalized = val.replace(/[０-９]/g, s => String.fromCharCode(s.charCodeAt(0) - 0xFEE0));
-    if (/^\d+$/.test(normalized) && !val.endsWith("号室")) { input.value = val + "号室"; }
-}
+    firstBuzzerUser = me;
+    document.getElementById('p-buzzer-msg').innerText = 'ランプが点灯しました！(1番目)';
+    document.getElementById('p-buzzer-btn').disabled = true;
 
-function addRoomRowSetup(roomId="", name="", cap=5, model="", memo="") {
-    const container = document.getElementById('roomsSetupContainer');
-    if(!roomId) {
-        roomId = "room_" + (Date.now() + Math.floor(Math.random() * 1000));
-    }
-    const currentCount = container.children.length + 1;
+    renderApp();
+  }
 
-    const div = document.createElement('div');
-    div.className = 'room-row';
-    div.setAttribute('data-room-id', roomId);
-    div.innerHTML = `
-        <div style="font-size:11px; color:#666; font-weight:bold; margin-bottom:4px;">部屋通し番号: No.${currentCount}</div>
-        <div class="room-grid">
-            <div><label>部屋番号/名:</label><input type="text" class="setup-room-name" value="${name}" placeholder="例: 101" onblur="handleRoomNameBlur(this)" style="width:100%; padding:6px; border-radius:4px; border:1px solid #ccc; box-sizing:border-box;"></div>
-            <div><label>キャパ(定員):</label><input type="text" inputmode="numeric" list="capacityOptions" class="setup-room-cap" value="${cap}" style="width:100%; padding:6px; border-radius:4px; border:1px solid #ccc; box-sizing:border-box;"></div>
-        </div>
-        <div class="room-grid">
-            <div><label>機種:</label><input type="text" list="modelOptions" class="setup-room-model" value="${model}" style="width:100%; padding:6px; border-radius:4px; border:1px solid #ccc; box-sizing:border-box;"></div>
-            <div><label>その他メモ:</label><input type="text" list="memoOptions" class="setup-room-memo" value="${memo}" style="width:100%; padding:6px; border-radius:4px; border:1px solid #ccc; box-sizing:border-box;"></div>
-        </div>
-        <button class="btn btn-sm btn-outline" style="color:var(--danger); border-color:var(--danger); position:absolute; right:8px; top:8px; padding:2px 6px;" onclick="this.parentElement.remove()">削除</button>
-    `;
-    container.appendChild(div);
-}
+  // 早押しリセット (管理者)
+  function resetBuzzer() {
+    firstBuzzerUser = null;
+    document.getElementById('p-buzzer-msg').innerText = '';
+    document.getElementById('p-buzzer-btn').disabled = false;
+    renderApp();
+  }
 
-function createNewGroupSession() {
-    groupDisplayName = document.getElementById('groupNameInput').value.trim();
-    if (!groupDisplayName) { alert("イベント名を入力してください"); return; }
-    uniqueGroupId = encodeURIComponent(groupDisplayName).replace(/%/g, '') + "_" + Date.now();
+  // チームバッジ色切り替え
+  function getTeamBadgeClass(team) {
+    if (['個人', 'チームA', 'チームB', 'チームC'].includes(team)) return `team-${team}`;
+    return 'team-default';
+  }
 
-    const initialRoomId = "room_" + Date.now();
-    db.collection("multigroups").doc(uniqueGroupId).set({
-        title: groupDisplayName,
-        description: "", 
-        roomsSetup: [{ id: initialRoomId, name: "101号室", capacity: 5, model: "DAM", memo: "", members: [] }],
-        currentResult: null, status: "active", createdAt: firebase.firestore.FieldValue.serverTimestamp()
-    }).then(() => { 
-        localStorage.setItem(kanjiStorageKey, uniqueGroupId); 
-        saveToHistoryList(uniqueGroupId, groupDisplayName);
-        isFirstDescriptionLoad = true; 
-        resumeGroupSession(); 
-    });
-}
+  // アプリ全体の描画更新
+  function renderApp() {
+    const targetRoom = document.getElementById('a-room-filter').value.trim();
+    const roomParticipants = participants.filter(p => p.roomNo === targetRoom);
 
-function joinExistingGroupSession() {
-    const inputCode = document.getElementById('existingCodeInput').value.trim();
-    if (!inputCode) return;
-    db.collection("multigroups").doc(inputCode).get().then(doc => {
-        if (doc.exists && doc.data().status !== "reset") {
-            uniqueGroupId = inputCode; 
-            localStorage.setItem(kanjiStorageKey, uniqueGroupId); 
-            saveToHistoryList(uniqueGroupId, doc.data().title);
-            isFirstDescriptionLoad = true; 
-            resumeGroupSession();
-        } else { alert("有効なコードが見つかりません。"); }
-    });
-}
+    // --- 管理者画面の描画 ---
+    document.getElementById('a-display-room').innerText = targetRoom;
+    document.getElementById('a-participant-count').innerText = roomParticipants.length;
 
-function resumeGroupSession() {
-    document.getElementById('displayCodeText').innerText = uniqueGroupId;
-
-    if (unsubscribeStatus) unsubscribeStatus();
-    unsubscribeStatus = db.collection("multigroups").doc(uniqueGroupId).onSnapshot(doc => {
-        if (!doc.exists || doc.data().status === "reset") { clearKanjiState(); return; }
-        const data = doc.data();
-        groupDisplayName = data.title;
-        cachedRoomsSetup = data.roomsSetup || [];
-        document.getElementById('step1_connection').style.display = 'none';
-        document.getElementById('step2_mainDashboard').style.display = 'block';
-        document.getElementById('activeGroupName').innerText = groupDisplayName;
-        
-        saveToHistoryList(uniqueGroupId, groupDisplayName);
-
-        if (isFirstDescriptionLoad) {
-            document.getElementById('eventDescriptionInput').value = data.description || "";
-            isFirstDescriptionLoad = false;
-        }
-
-        const container = document.getElementById('roomsSetupContainer');
-        if (container.children.length === 0) {
-            cachedRoomsSetup.forEach(r => addRoomRowSetup(r.id, r.name, r.capacity, r.model, r.memo));
-        }
-        syncAndRenderRooms(data.currentResult);
-        document.getElementById('shareUrl').value = window.location.href.replace('heyawari.html', 'heyawari2.html') + `?groupId=${uniqueGroupId}`;
-    });
-
-    if (unsubscribeMembers) unsubscribeMembers();
-    unsubscribeMembers = db.collection("multigroups").doc(uniqueGroupId).collection("members").onSnapshot(snapshot => {
-        currentFullMemberObjects = [];
-        let html = "";
-        snapshot.forEach(doc => {
-            const m = doc.data();
-            currentFullMemberObjects.push(m);
-            
-            let stColor = m.status === "⭕参加" ? "background:#e2f0d9;color:#385723;" : (m.status === "🔺未確定" ? "background:#fff3cd;color:#856404;" : "background:#f8d7da;color:#721c24;");
-            
-            const isPaid = (m.paymentStatus === "済");
-            const payClass = isPaid ? "pay-paid" : "pay-unpaid";
-            const payText = isPaid ? "💰 領収" : "💸 未収";
-
-            html += `
-                <div class="member-list-item">
-                    <div>
-                        <span>👤 ${m.name} <span class="st-indicator" style="${stColor}">${m.status}</span></span>
-                        <button class="pay-btn ${payClass}" onclick="togglePaymentStatus('${m.name}', '${m.paymentStatus || '未'}')">${payText}</button>
-                    </div>
-                    <button class="btn-danger-sm" onclick="removeMemberFromFirebase('${m.name}')">削除</button>
-                </div>
-            `;
-        });
-        document.getElementById('joinedMembersArea').innerHTML = html || '<span style="color:#999; font-size:13px;">参加登録を待っています。</span>';
-        
-        db.collection("multigroups").doc(uniqueGroupId).get().then(d => { if(d.exists) syncAndRenderRooms(d.data().currentResult); });
-    });
-}
-
-function togglePaymentStatus(memberName, currentStatus) {
-    const nextStatus = (currentStatus === "済") ? "未" : "済";
-    db.collection("multigroups").doc(uniqueGroupId).collection("members").doc(memberName).update({
-        paymentStatus: nextStatus
-    }).catch(e => alert("会計更新エラー: " + e));
-}
-
-function saveEventDescription() {
-    const descText = document.getElementById('eventDescriptionInput').value;
-    db.collection("multigroups").doc(uniqueGroupId).update({
-        description: descText
-    }).then(() => {
-        alert("📢 説明文を更新し、参加者画面へリアルタイム配信しました！");
-    }).catch(e => alert("エラー: " + e));
-}
-
-function removeMemberFromFirebase(name) {
-    if(!confirm(`「${name}」さんを完全削除しますか？`)) return;
-    db.collection("multigroups").doc(uniqueGroupId).collection("members").doc(name).delete();
-}
-
-function saveRoomsSetupOnly() {
-    const rows = document.querySelectorAll('.room-row');
-    
-    let newSetup = [];
-    rows.forEach((row, i) => {
-        const roomId = row.getAttribute('data-room-id');
-        const name = row.querySelector('.setup-room-name').value.trim() || `部屋${i+1}`;
-        const cap = parseInt(row.querySelector('.setup-room-cap').value) || 5;
-        const model = row.querySelector('.setup-room-model').value.trim();
-        const memo = row.querySelector('.setup-room-memo').value.trim();
-        
-        newSetup.push({
-            id: roomId,
-            name: name,
-            capacity: cap,
-            model: model, memo: memo, members: []
-        });
-    });
-    
-    db.collection("multigroups").doc(uniqueGroupId).update({ 
-        roomsSetup: newSetup 
-    }).then(() => {
-        db.collection("multigroups").doc(uniqueGroupId).get().then(doc => {
-            if(doc.exists) syncAndRenderRooms(doc.data().currentResult);
-        });
-        alert("💾 部屋構成を上書き保存しました！部屋名が変わってもメンバーは維持されます。");
-    });
-}
-
-function syncAndRenderRooms(dbRooms) {
-    let baseNormalRooms = JSON.parse(JSON.stringify(cachedRoomsSetup || []));
-    baseNormalRooms.forEach(r => r.members = []); 
-
-    let notArrived = { id: "special_not_arrived", name: "⚠️ 未参加（受付待ち・固定枠）", members: [], isSpecial: true };
-    let unconfirmed = { id: "special_unconfirmed", name: "🔺 保留・未確定（固定枠）", members: [], isSpecial: true };
-    let leftHome = { id: "special_left_home", name: "❌ 帰宅・不参加（固定枠）", members: [], isSpecial: true };
-
-    let allValidNames = currentFullMemberObjects.map(obj => obj.name);
-
-    if (dbRooms && dbRooms.length > 0) {
-        dbRooms.forEach(oldRoom => {
-            if (!oldRoom.isSpecial) {
-                let targetRoom = baseNormalRooms.find(r => r.id === oldRoom.id);
-                if (targetRoom && oldRoom.members) {
-                    targetRoom.members = oldRoom.members.filter(m => allValidNames.includes(m));
-                } else if (!targetRoom && oldRoom.members) {
-                    notArrived.members = notArrived.members.concat(oldRoom.members.filter(m => allValidNames.includes(m)));
-                }
-            } else {
-                let validM = oldRoom.members ? oldRoom.members.filter(m => allValidNames.includes(m)) : [];
-                if (oldRoom.id === "special_not_arrived") notArrived.members = notArrived.members.concat(validM);
-                if (oldRoom.id === "special_unconfirmed") unconfirmed.members = unconfirmed.members.concat(validM);
-                if (oldRoom.id === "special_left_home") leftHome.members = leftHome.members.concat(validM);
-            }
-        });
-    }
-
-    notArrived.members = [...new Set(notArrived.members)];
-    unconfirmed.members = [...new Set(unconfirmed.members)];
-    leftHome.members = [...new Set(leftHome.members)];
-
-    let assignedNames = [];
-    baseNormalRooms.forEach(r => { assignedNames = assignedNames.concat(r.members); });
-    assignedNames = assignedNames.concat(notArrived.members, unconfirmed.members, leftHome.members);
-
-    currentFullMemberObjects.forEach(obj => {
-        if (!assignedNames.includes(obj.name)) {
-            if (obj.status === "⭕参加") notArrived.members.push(obj.name);
-            else if (obj.status === "🔺未確定") unconfirmed.members.push(obj.name);
-            else if (obj.status === "❌不参加") leftHome.members.push(obj.name);
-        }
-    });
-
-    currentFullMemberObjects.forEach(obj => {
-        if (obj.status === "❌不参加" && !leftHome.members.includes(obj.name)) {
-            baseNormalRooms.forEach(r => { r.members = r.members.filter(m => m !== obj.name); });
-            notArrived.members = notArrived.members.filter(m => m !== obj.name);
-            unconfirmed.members = unconfirmed.members.filter(m => m !== obj.name);
-            if(!leftHome.members.includes(obj.name)) leftHome.members.push(obj.name);
-        }
-        if (obj.status === "🔺未確定" && !unconfirmed.members.includes(obj.name) && !leftHome.members.includes(obj.name)) {
-            baseNormalRooms.forEach(r => { r.members = r.members.filter(m => m !== obj.name); });
-            notArrived.members = notArrived.members.filter(m => m !== obj.name);
-            leftHome.members = leftHome.members.filter(m => m !== obj.name);
-            if(!unconfirmed.members.includes(obj.name)) unconfirmed.members.push(obj.name);
-        }
-        if (obj.status === "⭕参加" && (leftHome.members.includes(obj.name) || unconfirmed.members.includes(obj.name))) {
-            leftHome.members = leftHome.members.filter(m => m !== obj.name);
-            unconfirmed.members = unconfirmed.members.filter(m => m !== obj.name);
-            if(!notArrived.members.includes(obj.name)) notArrived.members.push(obj.name);
-        }
-    });
-
-    let finalRoomsStructure = [...baseNormalRooms, notArrived, unconfirmed, leftHome];
-
-    let html = '';
-    finalRoomsStructure.forEach((r, roomIdx) => {
-        const isSpec = r.isSpecial;
-        const extraInfo = [r.model, r.memo].filter(Boolean).join(' / ');
-        let boxColor = 'border-left:4px solid var(--primary); background:#fff;';
-        if(r.id === "special_not_arrived") boxColor = 'border-left:4px solid var(--success); background:#f2faf4;';
-        if(r.id === "special_unconfirmed") boxColor = 'border-left:4px solid var(--warning); background:#fffdf2;';
-        if(r.id === "special_left_home") boxColor = 'border-left:4px solid var(--danger); background:#fdf3f4;';
-
-        html += `
-            <div class="room-box-result" style="${boxColor}">
-                <div class="room-title-bar">
-                    <span style="font-weight:bold;">${r.name} ${extraInfo ? `<span>(${extraInfo})</span>` : ''}</span>
-                    <span style="color:#666; font-size:12px;">${r.members.length}人</span>
-                </div>
-                <div class="member-container-flex">
+    // 参加者リスト & チーム変更
+    const aList = document.getElementById('a-participant-list');
+    if (roomParticipants.length === 0) {
+      aList.innerHTML = '<p style="color:#888; margin:0;">入室者が居ません</p>';
+    } else {
+      aList.innerHTML = roomParticipants.map(p => {
+        const opts = teamOptions.map(t => `<option value="${t}" ${t===p.team?'selected':''}>${t}</option>`).join('');
+        return `
+          <div class="participant-chip">
+            <strong>${p.name}</strong>
+            <span class="badge ${getTeamBadgeClass(p.team)}">
+              <select onchange="updateParticipantTeam('${p.id}', this.value)" style="border:none; background:transparent; color:#fff; font-weight:bold;">
+                ${opts}
+              </select>
+            </span>
+          </div>
         `;
-        
-        if (r.members.length === 0) {
-            html += `<span style="color:#ccc; font-size:11px; padding:4px 0;">空き</span>`;
-        } else {
-            r.members.forEach(m => {
-                let selectHtml = `<select class="move-select" onchange="moveMemberManually('${m}', ${roomIdx}, this.value)">`;
-                selectHtml += `<option value="" disabled selected>➡部屋移動</option>`;
-                finalRoomsStructure.forEach((targetRoom, targetIdx) => {
-                    if (roomIdx !== targetIdx) {
-                        selectHtml += `<option value="${targetIdx}">${targetRoom.name.substring(0,8)}</option>`;
-                    }
-                });
-                selectHtml += `</select>`;
-                
-                html += `
-                    <span class="member-wrapper" style="${isSpec ? 'background:#e9ecef; color:#495057;':''}">
-                        <span class="member-name-span">${m}</span>
-                        ${selectHtml}
-                    </span>
-                `;
-            });
-        }
-        html += `</div></div>`;
-    });
-    document.getElementById('resultInside').innerHTML = html;
+      }).join('');
+    }
 
-    db.collection("multigroups").doc(uniqueGroupId).update({ currentResult: finalRoomsStructure });
-}
+    // 早押し判定表示
+    const aBuzzerRes = document.getElementById('a-buzzer-result');
+    if (firstBuzzerUser && firstBuzzerUser.roomNo === targetRoom) {
+      aBuzzerRes.innerHTML = `🎉 1番目: <strong>${firstBuzzerUser.name}</strong> (${firstBuzzerUser.team})`;
+    } else {
+      aBuzzerRes.innerText = 'まだ誰も押していません';
+    }
 
-function moveMemberManually(memberName, fromRoomIdx, toRoomIdx) {
-    db.collection("multigroups").doc(uniqueGroupId).get().then(doc => {
-        if (!doc.exists) return;
-        let rooms = doc.data().currentResult || [];
-        if(rooms.length === 0) return;
+    renderMatchResultsAdmin();
 
-        rooms[fromRoomIdx].members = rooms[fromRoomIdx].members.filter(m => m !== memberName);
-        rooms[toRoomIdx].members.push(memberName);
+    // --- 演出用画面（モニター）の描画 ---
+    document.getElementById('d-room-no').innerText = targetRoom;
+    if (firstBuzzerUser && firstBuzzerUser.roomNo === targetRoom) {
+      document.getElementById('d-first-name').innerText = firstBuzzerUser.name;
+      const dTeam = document.getElementById('d-first-team');
+      dTeam.innerText = firstBuzzerUser.team;
+      dTeam.className = `badge ${getTeamBadgeClass(firstBuzzerUser.team)}`;
+    } else {
+      document.getElementById('d-first-name').innerText = '待機中...';
+      document.getElementById('d-first-team').innerText = '-';
+      document.getElementById('d-first-team').className = 'badge team-個人';
+    }
 
-        let targetId = rooms[toRoomIdx].id;
-        if (targetId === "special_unconfirmed") {
-            db.collection("multigroups").doc(uniqueGroupId).collection("members").doc(memberName).update({ status: "🔺未確定" });
-        } else if (targetId === "special_left_home") {
-            db.collection("multigroups").doc(uniqueGroupId).collection("members").doc(memberName).update({ status: "❌不参加" });
-        } else if (targetId === "special_not_arrived") {
-            db.collection("multigroups").doc(uniqueGroupId).collection("members").doc(memberName).update({ status: "⭕参加" });
-        }
+    const dGrid = document.getElementById('d-match-grid');
+    if (matchGroups.length === 0) {
+      dGrid.innerHTML = '<p style="color:#666;">対戦分けが作成されるとここに表示されます</p>';
+    } else {
+      dGrid.innerHTML = matchGroups.map(g => `
+        <div class="display-match-card">
+          <h4 style="margin:0 0 8px 0; color:#ffcc00; border-bottom:1px solid #333; padding-bottom:4px;">${g.name}</h4>
+          ${g.members.map(m => `
+            <div style="margin-bottom:6px; display:flex; justify-content:space-between; align-items:center;">
+              <span style="font-size:18px; font-weight:bold;">${m.name}</span>
+              <span class="badge ${getTeamBadgeClass(m.team)}">${m.team}</span>
+            </div>
+          `).join('')}
+        </div>
+      `).join('');
+    }
+  }
 
-        db.collection("multigroups").doc(uniqueGroupId).update({ currentResult: rooms });
-    });
-}
+  // 管理者によるチーム変更
+  function updateParticipantTeam(pId, newTeam) {
+    const target = participants.find(p => p.id === pId);
+    if (target) {
+      target.team = newTeam;
+      // 対戦表内も更新
+      matchGroups.forEach(g => {
+        g.members.forEach(m => { if (m.id === pId) m.team = newTeam; });
+      });
+      renderApp();
+    }
+  }
 
-function executeSmartShuffle() {
-    db.collection("multigroups").doc(uniqueGroupId).get().then(doc => {
-        if (!doc.exists) return;
-        const data = doc.data();
-        let rooms = data.currentResult || [];
-        if (rooms.length === 0) return;
+  // 1戦完結対戦シャッフル作成
+  function generateMatches() {
+    const targetRoom = document.getElementById('a-room-filter').value.trim();
+    const roomParticipants = participants.filter(p => p.roomNo === targetRoom);
 
-        let notArrived = rooms.find(r => r.id === "special_not_arrived");
-        let unconfirmed = rooms.find(r => r.id === "special_unconfirmed");
-        let leftHome = rooms.find(r => r.id === "special_left_home");
+    if (roomParticipants.length === 0) {
+      alert('該当の部屋に参加者がいません。');
+      return;
+    }
 
-        let normalRooms = rooms.filter(r => !r.isSpecial);
-        let shuffleTargets = [];
-        normalRooms.forEach(r => { shuffleTargets = shuffleTargets.concat(r.members); r.members = []; });
+    const cap = parseInt(document.getElementById('a-capacity').value, 10);
+    const shuffled = [...roomParticipants].sort(() => Math.random() - 0.5);
 
-        if (shuffleTargets.length === 0) {
-            alert("現在、各部屋に配置されている『受付済み』の参加者がいません。まずは下の未参加枠からメンバーを部屋へ移動（受付）させてください。");
-            return;
-        }
+    matchGroups = [];
+    let gIdx = 1;
+    for (let i = 0; i < shuffled.length; i += cap) {
+      matchGroups.push({
+        id: `g_${gIdx}`,
+        name: `対戦 ${gIdx}`,
+        members: shuffled.slice(i, i + cap)
+      });
+      gIdx++;
+    }
 
-        shuffleTargets.sort(() => Math.random() - 0.5);
+    selectedSwapTarget = null;
+    renderApp();
+  }
 
-        while (shuffleTargets.length > 0) {
-            const member = shuffleTargets.pop();
-            let bestRoomIdx = -1; let minPenalty = Infinity;
-            for (let i = 0; i < normalRooms.length; i++) {
-                if (normalRooms[i].members.length >= normalRooms[i].capacity) continue;
-                let penalty = 0;
-                normalRooms[i].members.forEach(exM => {
-                    const pairKey = [member, exM].sort().join('-'); penalty += (historyMatrix[pairKey] || 0) * 10;
-                });
-                penalty += normalRooms[i].members.length;
-                if (penalty < minPenalty) { minPenalty = penalty; bestRoomIdx = i; }
-            }
-            if (bestRoomIdx !== -1) normalRooms[bestRoomIdx].members.push(member);
-            else { alert("通常部屋の定員が不足しています。"); return; }
-        }
+  // 手動スワップ（入れ替え）
+  function handleMemberClick(groupId, memberIndex) {
+    if (!selectedSwapTarget) {
+      selectedSwapTarget = { groupId, memberIndex };
+    } else if (selectedSwapTarget.groupId === groupId && selectedSwapTarget.memberIndex === memberIndex) {
+      selectedSwapTarget = null;
+    } else {
+      const src = matchGroups.find(g => g.id === selectedSwapTarget.groupId);
+      const tgt = matchGroups.find(g => g.id === groupId);
 
-        let finalRooms = [...normalRooms, notArrived, unconfirmed, leftHome];
-        db.collection("multigroups").doc(uniqueGroupId).update({ currentResult: finalRooms });
-    });
-}
+      const temp = src.members[selectedSwapTarget.memberIndex];
+      src.members[selectedSwapTarget.memberIndex] = tgt.members[memberIndex];
+      tgt.members[memberIndex] = temp;
 
-function clearKanjiState() {
-    localStorage.removeItem(kanjiStorageKey);
-    if (unsubscribeMembers) unsubscribeMembers();
-    if (unsubscribeStatus) unsubscribeStatus();
-    uniqueGroupId = "";
-    document.getElementById('roomsSetupContainer').innerHTML = "";
-    document.getElementById('resultInside').innerHTML = '';
-    document.getElementById('step2_mainDashboard').style.display = 'none';
-    document.getElementById('step1_connection').style.display = 'block';
-    renderHistoryList();
-}
+      selectedSwapTarget = null;
+    }
+    renderApp();
+  }
 
-async function resetCurrentEvent() {
-    if (!confirm("完全にデータを削除して解散しますか？\n(この操作をすると、他の幹事や参加者もアクセスできなくなります)")) return;
-    try {
-        const targetId = uniqueGroupId;
-        await db.collection("multigroups").doc(targetId).update({ currentResult: null, status: "reset" });
-        const snapshot = await db.collection("multigroups").doc(targetId).collection("members").get();
-        const batch = db.batch(); snapshot.forEach(doc => batch.delete(doc.ref)); await batch.commit();
-        
-        const historyData = localStorage.getItem(historyStorageKey);
-        if (historyData) {
-            let historyList = JSON.parse(historyData);
-            historyList = historyList.filter(item => item.id !== targetId);
-            localStorage.setItem(historyStorageKey, JSON.stringify(historyList));
-        }
-        
-        clearKanjiState(); alert("🧹 初期化しました");
-    } catch (e) { alert(e); }
-}
+  // 管理者対戦分け描画
+  function renderMatchResultsAdmin() {
+    const container = document.getElementById('a-match-results');
+    if (matchGroups.length === 0) {
+      container.innerHTML = '';
+      return;
+    }
 
-function copyRoomCode() { navigator.clipboard.writeText(uniqueGroupId); alert("コードをコピーしました"); }
-function copyShareUrl() { navigator.clipboard.writeText(document.getElementById('shareUrl').value); alert("URLをコピーしました"); }
+    container.innerHTML = '<h4>対戦組み（枠をタップして手動スワップできます）</h4>' +
+      matchGroups.map(g => {
+        const membersHtml = g.members.map((m, idx) => {
+          const isSel = selectedSwapTarget && selectedSwapTarget.groupId === g.id && selectedSwapTarget.memberIndex === idx;
+          return `
+            <div class="member-item ${isSel ? 'selected' : ''}" onclick="handleMemberClick('${g.id}', ${idx})">
+              <div>
+                <span class="badge ${getTeamBadgeClass(m.team)}">${m.team}</span>
+                <strong style="margin-left: 6px;">${m.name}</strong>
+              </div>
+              <small style="color:${isSel?'#0d6efd':'#888'}; font-weight:bold;">
+                ${isSel ? '選択中' : '選択'}
+              </small>
+            </div>
+          `;
+        }).join('');
+
+        return `<div class="group-card"><h4 style="margin:0 0 8px 0;">${g.name}</h4>${membersHtml}</div>`;
+      }).join('');
+  }
 </script>
+
 </body>
 </html>
