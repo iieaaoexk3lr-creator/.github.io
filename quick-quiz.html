@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Quick Quiz - 早押しシステム</title>
+  <style>
+    :root {
+      --bg-color: #0b0f19;
+      --card-bg: #161f33;
+      --accent-yellow: #ffd700;
+      --accent-red: #ff3366;
+      --text-color: #ffffff;
+    }
+
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: 'Helvetica Neue', Arial, sans-serif;
+      background-color: var(--bg-color);
+      color: var(--text-color);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* 右上管理メニューボタン */
+    .menu-btn {
+      position: fixed;
+      top: 15px;
+      right: 15px;
+      z-index: 100;
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      color: #fff;
+      font-size: 24px;
+      width: 45px;
+      height: 45px;
+      border-radius: 8px;
+      cursor: pointer;
+      backdrop-filter: blur(5px);
+    }
+
+    /* 管理用ドロワー */
+    .drawer {
+      position: fixed;
+      top: 0;
+      right: -320px;
+      width: 300px;
+      height: 100%;
+      background: var(--card-bg);
+      box-shadow: -5px 0 15px rgba(0,0,0,0.5);
+      z-index: 99;
+      transition: right 0.3s ease;
+      padding: 20px;
+      box-sizing: border-box;
+      overflow-y: auto;
+    }
+    .drawer.open { right: 0; }
+    .drawer h3 { border-bottom: 2px solid var(--accent-yellow); padding-bottom: 8px; margin-top: 40px;}
+    .drawer-section { margin-bottom: 20px; }
+    .drawer button {
+      width: 100%;
+      padding: 10px;
+      margin: 5px 0;
+      border: none;
+      border-radius: 5px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+    .btn-correct { background: #4caf50; color: white; }
+    .btn-wrong { background: #f44336; color: white; }
+    .btn-reset { background: #2196f3; color: white; }
+
+    /* 全体コンテナ */
+    .container {
+      width: 100%;
+      max-width: 1000px;
+      padding: 20px;
+      box-sizing: border-box;
+      display: flex;
+      flex-direction: column;
+      gap: 30px;
+    }
+
+    /* 得点板・演出エリア */
+    .scoreboard {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 15px;
+      width: 100%;
+    }
+
+    .team-group {
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 12px;
+      padding: 15px;
+    }
+    .team-title {
+      font-size: 1.1rem;
+      color: #aaa;
+      margin-bottom: 10px;
+      display: flex;
+      justify-content: space-between;
+    }
+
+    .player-card {
+      background: var(--card-bg);
+      border: 2px solid transparent;
+      border-radius: 8px;
+      padding: 12px 15px;
+      margin-bottom: 8px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      transition: all 0.2s ease;
+    }
+
+    /* 回答権獲得（黄色発光） */
+    .player-card.answering {
+      border-color: var(--accent-yellow);
+      box-shadow: 0 0 20px var(--accent-yellow);
+      background: #2a2400;
+      animation: pulse 1s infinite alternate;
+    }
+
+    /* 正解演出（赤色点滅） */
+    .player-card.correct {
+      border-color: var(--accent-red);
+      box-shadow: 0 0 30px var(--accent-red);
+      background: #330011;
+      animation: flash-red 0.4s infinite alternate;
+    }
+
+    @keyframes pulse {
+      from { transform: scale(1); }
+      to { transform: scale(1.02); }
+    }
+    @keyframes flash-red {
+      from { opacity: 1; }
+      to { opacity: 0.5; }
+    }
+
+    .player-name { font-size: 1.2rem; font-weight: bold; }
+    .player-score { font-size: 1.5rem; font-weight: bold; color: var(--accent-yellow); }
+
+    /* 早押しボタンエリア */
+    .buzzer-zone {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      margin-top: 10px;
+    }
+
+    .buzzer-btn {
+      width: 100%;
+      max-width: 400px;
+      height: 180px;
+      background: linear-gradient(145deg, #ff4d4d, #cc0000);
+      border: none;
+      border-radius: 20px;
+      box-shadow: 0 10px 0 #800000, 0 15px 20px rgba(0,0,0,0.5);
+      color: white;
+      font-size: 2.5rem;
+      font-weight: bold;
+      cursor: pointer;
+      user-select: none;
+      active: transform 0.1s;
+    }
+    .buzzer-btn:active:not(:disabled) {
+      transform: translateY(6px);
+      box-shadow: 0 4px 0 #800000, 0 8px 10px rgba(0,0,0,0.5);
+    }
+    .buzzer-btn:disabled {
+      background: #444;
+      box-shadow: 0 10px 0 #222;
+      cursor: not-allowed;
+      opacity: 0.6;
+    }
+
+    /* 入室オーバーレイ */
+    .modal-overlay {
+      position: fixed;
+      top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0,0,0,0.85);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 200;
+    }
+    .modal-content {
+      background: var(--card-bg);
+      padding: 30px;
+      border-radius: 12px;
+      width: 90%;
+      max-width: 400px;
+    }
+    .modal-content input, .modal-content select {
+      width: 100%;
+      padding: 10px;
+      margin: 10px 0;
+      border-radius: 5px;
+      border: 1px solid #444;
+      background: #0b0f19;
+      color: #fff;
+      box-sizing: border-box;
+    }
+    .modal-content button {
+      width: 100%;
+      padding: 12px;
+      background: var(--accent-yellow);
+      border: none;
+      border-radius: 5px;
+      font-weight: bold;
+      font-size: 1rem;
+      cursor: pointer;
+      margin-top: 10px;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- 右上管理ボタン -->
+  <button class="menu-btn" onclick="toggleDrawer()">≡</button>
+
+  <!-- 管理者ドロワー -->
+  <div class="drawer" id="drawer">
+    <h3>管理コントロール</h3>
+    <div class="drawer-section">
+      <label>一回あたりの参加人数:</label>
+      <select id="modeSelect" onchange="updateGameMode(this.value)">
+        <option value="0">全員モード</option>
+        <option value="2">2人限定</option>
+        <option value="4">4人限定</option>
+      </select>
+    </div>
+    <div class="drawer-section">
+      <h4>判定操作</h4>
+      <button class="btn-correct" onclick="handleJudge(true)">正解 [◯]</button>
+      <button class="btn-wrong" onclick="handleJudge(false)">不正解 [✕]</button>
+      <button class="btn-reset" onclick="resetBuzzer()">ボタンリセット</button>
+    </div>
+    <div class="drawer-section">
+      <button onclick="clearRoomData()" style="background:#666; color:white;">ルームリセット</button>
+    </div>
+  </div>
+
+  <!-- 入室モーダル -->
+  <div class="modal-overlay" id="entryModal">
+    <div class="modal-content">
+      <h2>Quick Quiz 入室</h2>
+      <input type="text" id="roomId" placeholder="部屋番号 (例: 1234)" value="1000">
+      <input type="text" id="playerName" placeholder="個人名">
+      <input type="text" id="teamName" placeholder="チーム名 (任意/個人は空欄)">
+      <label><input type="checkbox" id="isAdmin"> 管理者として入室</label>
+      <button onclick="joinRoom()">参加する</button>
+    </div>
+  </div>
+
+  <!-- メイン表示領域 -->
+  <div class="container">
+    <!-- 1. 演出・得点板ゾーン -->
+    <div class="scoreboard" id="scoreboard"></div>
+
+    <!-- 2. 早押しボタンゾーン -->
+    <div class="buzzer-zone">
+      <button class="buzzer-btn" id="buzzerBtn" onclick="pressBuzzer()" disabled>PUSH!</button>
+    </div>
+  </div>
+
+  <!-- Web API ＆ Firebase JS SDK v9 (Compat) -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
+
+  <script>
+    // Firebase 設定
+    const firebaseConfig = {
+      apiKey: "AIzaSyC4DQhH_swesAD98Xyjg8d1lcWEkkrHrgw",
+      authDomain: "gamehistory-m84.firebaseapp.com",
+      databaseURL: "https://gamehistory-m84-default-rtdb.firebaseio.com",
+      projectId: "gamehistory-m84",
+      storageBucket: "gamehistory-m84.firebasestorage.app",
+      messagingSenderId: "475761727837",
+      appId: "1:475761727837:web:06d07e1ab4120a7ccaf0b4",
+      measurementId: "G-3636W6LC4F"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    // アプリケーション用グローバル変数
+    let currentUser = { id: '', name: '', team: '', room: '', isAdmin: false };
+    let timeOffset = 0; // NTP Web時刻差分
+    let roomRef = null;
+
+    // Web時刻（NTP相当）オフセットの取得
+    function syncTime() {
+      const offsetRef = db.ref(".info/serverTimeOffset");
+      offsetRef.on("value", (snap) => {
+        timeOffset = snap.val() || 0;
+      });
+    }
+
+    // 入室処理
+    function joinRoom() {
+      const room = document.getElementById('roomId').value.trim();
+      const name = document.getElementById('playerName').value.trim();
+      const team = document.getElementById('teamName').value.trim() || '個人';
+      const isAdmin = document.getElementById('isAdmin').checked;
+
+      if (!room || (!name && !isAdmin)) {
+        alert('部屋番号と名前を入力してください。');
+        return;
+      }
+
+      currentUser = {
+        id: 'user_' + Math.random().toString(36).substr(2, 9),
+        name: name || '管理者',
+        team: team,
+        room: room,
+        isAdmin: isAdmin
+      };
+
+      roomRef = db.ref(`quick-quiz/rooms/${room}`);
+
+      if (!isAdmin) {
+        // プレイヤーとして追加
+        roomRef.child(`players/${currentUser.id}`).set({
+          name: currentUser.name,
+          team: currentUser.team,
+          score: 0
+        });
+      }
+
+      document.getElementById('entryModal').style.display = 'none';
+      syncTime();
+      listenRoomData();
+    }
+
+    // リアルタイムリスナー
+    function listenRoomData() {
+      roomRef.on('value', (snapshot) => {
+        const data = snapshot.val() || {};
+        renderScoreboard(data.players || {}, data.state || {});
+        updateBuzzerState(data.state || {}, data.players || {});
+      });
+    }
+
+    // 得点板と演出の描画
+    function renderScoreboard(players, state) {
+      const scoreboard = document.getElementById('scoreboard');
+      scoreboard.innerHTML = '';
+
+      // チーム毎にグループ化
+      const teams = {};
+      Object.keys(players).forEach(id => {
+        const p = players[id];
+        if (!teams[p.team]) teams[p.team] = { total: 0, members: [] };
+        teams[p.team].members.push({ id, ...p });
+        teams[p.team].total += p.score;
+      });
+
+      const answeringId = state.answeringId;
+      const isCorrect = state.isCorrect;
+
+      Object.keys(teams).forEach(teamName => {
+        const teamGroup = document.createElement('div');
+        teamGroup.className = 'team-group';
+        
+        teamGroup.innerHTML = `
+          <div class="team-title">
+            <span>${teamName}</span>
+            <span>合計: ${teams[teamName].total}pt</span>
+          </div>
+        `;
+
+        teams[teamName].members.forEach(p => {
+          const card = document.createElement('div');
+          let classList = 'player-card';
+
+          if (answeringId === p.id) {
+            classList += isCorrect ? ' correct' : ' answering';
+          }
+
+          card.className = classList;
+          card.innerHTML = `
+            <span class="player-name">${p.name}</span>
+            <span class="player-score">${p.score}</span>
+          `;
+          teamGroup.appendChild(card);
+        });
+
+        scoreboard.appendChild(teamGroup);
+      });
+    }
+
+    // 早押しボタン状態の制御
+    function updateBuzzerState(state, players) {
+      const btn = document.getElementById('buzzerBtn');
+      const answeringId = state.answeringId;
+
+      if (answeringId) {
+        btn.disabled = true;
+        btn.innerText = (answeringId === currentUser.id) ? '回答中！' : 'ロック中';
+      } else {
+        btn.disabled = currentUser.isAdmin;
+        btn.innerText = 'PUSH!';
+      }
+    }
+
+    // 早押しタップ（Web標準時刻をミリ秒で保持して書き込み）
+    function pressBuzzer() {
+      if (currentUser.isAdmin) return;
+
+      const exactTime = Date.now() + timeOffset;
+      
+      roomRef.child('state').transaction((current) => {
+        if (!current || !current.answeringId) {
+          return {
+            answeringId: currentUser.id,
+            timestamp: exactTime,
+            isCorrect: false
+          };
+        }
+        return; // 既に誰かが押している場合はスキップ
+      });
+    }
+
+    // ドロワー開閉
+    function toggleDrawer() {
+      document.getElementById('drawer').classList.toggle('open');
+    }
+
+    // [管理者機能] 正誤判定
+    function handleJudge(isCorrect) {
+      if (!currentUser.isAdmin) {
+        alert('管理者権限が必要です。');
+        return;
+      }
+
+      roomRef.get().then((snap) => {
+        const data = snap.val() || {};
+        const answeringId = data.state?.answeringId;
+
+        if (!answeringId) return;
+
+        if (isCorrect) {
+          // 正解演出（赤点滅フラグ）適用と加点
+          roomRef.child('state/isCorrect').set(true);
+          
+          const currentScore = data.players[answeringId]?.score || 0;
+          roomRef.child(`players/${answeringId}/score`).set(currentScore + 10);
+
+          playAudioSignal(true);
+
+          setTimeout(() => {
+            resetBuzzer();
+          }, 2000);
+        } else {
+          // 不正解
+          playAudioSignal(false);
+          resetBuzzer();
+        }
+      });
+    }
+
+    // [管理者機能] ボタンリセット
+    function resetBuzzer() {
+      roomRef.child('state').set({
+        answeringId: null,
+        timestamp: null,
+        isCorrect: false
+      });
+    }
+
+    // 音声エフェクトの再生（Web Audio API）
+    function playAudioSignal(isCorrect) {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+
+      if (isCorrect) {
+        // ピンポン音
+        osc.frequency.setValueAtTime(880, ctx.currentTime);
+        osc.frequency.setValueAtTime(1760, ctx.currentTime + 0.15);
+        gain.gain.setValueAtTime(0.3, ctx.currentTime);
+        osc.start();
+        osc.stop(ctx.currentTime + 0.4);
+      } else {
+        // ブブー音
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(150, ctx.currentTime);
+        gain.gain.setValueAtTime(0.3, ctx.currentTime);
+        osc.start();
+        osc.stop(ctx.currentTime + 0.3);
+      }
+    }
+
+    // ルームデータ消去
+    function clearRoomData() {
+      if (confirm('部屋のデータを初期化しますか？')) {
+        roomRef.remove();
+      }
+    }
+  </script>
+</body>
+</html>
