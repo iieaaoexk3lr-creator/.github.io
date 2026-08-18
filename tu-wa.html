@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Among Us 通話コントロール</title>
+  <script src="https://meet.jit.si/external_api.js"></script>
+  <style>
+    body { margin: 0; background: #111; color: #fff; font-family: sans-serif; text-align: center; padding: 10px; }
+    .status-box { font-size: 16px; color: #f1c40f; margin-bottom: 12px; font-weight: bold; }
+    .btn-group { display: flex; flex-direction: column; gap: 8px; max-width: 400px; margin: 0 auto; }
+    button { padding: 14px; font-size: 15px; font-weight: bold; border: none; border-radius: 8px; cursor: pointer; color: white; }
+    .btn-play { background: #e74c3c; }   /* 赤：ゲーム開始 */
+    .btn-meet { background: #2ecc71; }   /* 緑：会議 */
+    .btn-reset { background: #3498db; }  /* 青：決着 */
+    .btn-ghost { background: #8e44ad; margin-top: 10px; } /* 紫：天界 */
+    #meet { width: 1px; height: 1px; opacity: 0; }
+  </style>
+</head>
+<body>
+
+  <div class="status-box" id="status">状態：接続中...</div>
+
+  <div class="btn-group">
+    <!-- 全員共通で操作可能なリモコンボタン（主に部屋主が押す） -->
+    <button class="btn-play" onclick="sendSignal('PLAY_START')">🎮 ゲーム開始（全員ミュート）</button>
+    <button class="btn-meet" onclick="sendSignal('MEETING_START')">📣 会議（ミュート解除）</button>
+    <button class="btn-reset" onclick="sendSignal('RESET_GAME')">🔄 決着（全員復活＆初期化）</button>
+    
+    <!-- 個人の死亡用ボタン -->
+    <button class="btn-ghost" onclick="goToGhostRoom()">💀 やられた（天界へ移動）</button>
+  </div>
+
+  <div id="meet"></div>
+
+  <script>
+    const domain = 'meet.jit.si';
+    let api = null;
+    let currentRoom = '';
+
+    // ページを開いたら全員「生者ルーム」に入る
+    goToLiveRoom();
+
+    // 1. 生者ルームへ接続（初期状態はミュート）
+    function goToLiveRoom() {
+      document.getElementById('status').innerText = '状態：生者ルーム（プレイ中）';
+      joinRoom('AmongUs_Live_Room_2026', true);
+    }
+
+    // 2. 天界ルームへ接続（常時マイクON）
+    function goToGhostRoom() {
+      document.getElementById('status').innerText = '状態：👻 天界（自由通話OK）';
+      joinRoom('AmongUs_Ghost_Room_2026', false);
+    }
+
+    // ルーム接続＆メッセージ受信の設定
+    function joinRoom(roomName, isMuted) {
+      if (api) api.dispose(); // 前の部屋を切断
+      currentRoom = roomName;
+
+      api = new JitsiMeetExternalAPI(domain, {
+        roomName: roomName,
+        parentNode: document.querySelector('#meet'),
+        configOverwrite: { startWithAudioMuted: isMuted }
+      });
+
+      // 他の誰か（部屋主など）が押したシグナルを受信した時の処理
+      api.addEventListener('endpointTextMessageReceived', function(event) {
+        handleSignal(event.data.eventData.text);
+      });
+    }
+
+    // ボタンを押した時（誰かが押すと全員にシグナルが飛ぶ）
+    function sendSignal(command) {
+      if (api) {
+        // 同じ部屋にいる全員に送信
+        api.executeCommand('sendEndpointTextMessage', '', command);
+      }
+      // 自分自身の画面・マイクも処理
+      handleSignal(command);
+    }
+
+    // シグナルに応じた実際の動作
+    function handleSignal(command) {
+      if (command === 'PLAY_START' && currentRoom === 'AmongUs_Live_Room_2026') {
+        api.executeCommand('setAudioMute', true);  // 生者はミュート
+      } else if (command === 'MEETING_START' && currentRoom === 'AmongUs_Live_Room_2026') {
+        api.executeCommand('setAudioMute', false); // 生者はミュート解除
+      } else if (command === 'RESET_GAME') {
+        goToLiveRoom(); // 天界にいる人も含め全員が生者ルームへ復帰＆初期化
+      }
+    }
+  </script>
+</body>
+</html>
