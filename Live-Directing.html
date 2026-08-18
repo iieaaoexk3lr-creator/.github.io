@@ -228,7 +228,7 @@
       <input type="range" min="1" max="10" value="3" oninput="state.spotlightSpeed = this.value * 0.005">
     </div>
 
-    <!-- 追加：連発花火設定 -->
+    <!-- 連発花火設定 -->
     <div class="panel-title">🎆 連発花火設定</div>
     <button id="btnFireworkToggle" onclick="toggleFirework()" style="margin-bottom: 6px;">🎆 連発花火 OFF</button>
     
@@ -285,7 +285,7 @@
 
     // 花火専用カラーテーマ
     const fireworkThemes = {
-      vivid: ['#ff2a6d', '#05d9e8', '#ff2a85', '#f5d300', '#00ff66', '#ff9900'],
+      vivid: ['#ff2a6d', '#05d9e8', '#ff2a85', '#f5d300', '#00ff66', '#ff9900', '#ff00ff', '#00ffff'],
       spark: ['#ff4500', '#ff8c00', '#ffa500', '#ffd700', '#ffcc00', '#ffffff'],
       white: ['#ffffff', '#f0f8ff', '#e6e6fa', '#dddddd', '#ffffff']
     };
@@ -308,6 +308,7 @@
       firework: false,
       fireworkSize: 100,
       fireworkFreq: 3,
+      fireworkThemeName: 'vivid',
       fireworkColors: fireworkThemes.vivid
     };
 
@@ -484,10 +485,17 @@
     function createFirework() {
       const x = Math.random() * (canvas.width * 0.8) + (canvas.width * 0.1);
       const y = Math.random() * (canvas.height * 0.5) + (canvas.height * 0.1);
-      const color = state.fireworkColors[Math.floor(Math.random() * state.fireworkColors.length)];
       const count = Math.floor(state.fireworkSize * 0.6);
       
+      // ビビッド以外のときは全火花で1つの単色を共有
+      const baseColor = state.fireworkColors[Math.floor(Math.random() * state.fireworkColors.length)];
+
       for (let i = 0; i < count; i++) {
+        // ビビッドテーマのときは火花1つずつにランダムな色を割り当て
+        const color = (state.fireworkThemeName === 'vivid') 
+          ? state.fireworkColors[Math.floor(Math.random() * state.fireworkColors.length)]
+          : baseColor;
+          
         fireworks.push(new FireworkParticle(x, y, color, state.fireworkSize));
       }
     }
@@ -572,7 +580,6 @@
       if (state.spotlight) {
         btn.innerText = '💡 スポットライト ON';
         btn.classList.add('active');
-        // スポットライトON時は花火をOFFにする
         if (state.firework) toggleFirework();
       } else {
         btn.innerText = '💡 スポットライト OFF';
@@ -586,7 +593,6 @@
       if (state.firework) {
         btn.innerText = '🎆 連発花火 ON';
         btn.classList.add('active');
-        // 花火ON時はスポットライトをOFFにする
         if (state.spotlight) toggleSpotlight();
       } else {
         btn.innerText = '🎆 連発花火 OFF';
@@ -595,6 +601,7 @@
     }
 
     function setFireworkTheme(themeName, btn) {
+      state.fireworkThemeName = themeName;
       state.fireworkColors = fireworkThemes[themeName];
       document.querySelectorAll('.fw-color-btn').forEach(b => b.classList.remove('selected'));
       btn.classList.add('selected');
@@ -604,12 +611,10 @@
       const target = document.getElementById(id);
       const isOpen = target.classList.contains('open');
 
-      // 一旦すべてのパネルを閉じて発光をオフにする
       document.querySelectorAll('.panel').forEach(p => p.classList.remove('open'));
       document.getElementById('btnFxPanel').classList.remove('active');
       document.getElementById('btnFeaturePanel').classList.remove('active');
 
-      // 押されたパネルだけ開き、ボタンを発光させる
       if (!isOpen) {
         target.classList.add('open');
         if (id === 'fxPanel') document.getElementById('btnFxPanel').classList.add('active');
