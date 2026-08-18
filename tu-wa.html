@@ -3,32 +3,78 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Among Us 通話コントロール</title>
+  <title>アモアス通話リモコン</title>
   <script src="https://meet.jit.si/external_api.js"></script>
   <style>
-    body { margin: 0; background: #111; color: #fff; font-family: sans-serif; text-align: center; padding: 10px; }
-    .status-box { font-size: 16px; color: #f1c40f; margin-bottom: 12px; font-weight: bold; }
-    .btn-group { display: flex; flex-direction: column; gap: 8px; max-width: 400px; margin: 0 auto; }
-    button { padding: 14px; font-size: 15px; font-weight: bold; border: none; border-radius: 8px; cursor: pointer; color: white; }
-    .btn-play { background: #e74c3c; }   /* 赤：ゲーム開始 */
-    .btn-meet { background: #2ecc71; }   /* 緑：会議 */
-    .btn-reset { background: #3498db; }  /* 青：決着 */
-    .btn-ghost { background: #8e44ad; margin-top: 10px; } /* 紫：天界 */
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: #111; color: #fff; font-family: sans-serif; text-align: center; padding: 8px; }
+    
+    .status-box { font-size: 12px; color: #f1c40f; margin-bottom: 8px; font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+    /* 2×2のグリッドレイアウト */
+    .btn-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr; /* 横に半分ずつ2つ並べる */
+      gap: 6px;
+      max-width: 320px;
+      margin: 0 auto;
+    }
+
+    button {
+      padding: 12px 4px;
+      font-size: 13px;
+      font-weight: bold;
+      border: 2px solid transparent;
+      border-radius: 8px;
+      cursor: pointer;
+      color: white;
+      transition: all 0.2s ease;
+      outline: none;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      line-height: 1.2;
+    }
+
+    .btn-play { background: #c0392b; }  /* 赤：ゲーム開始 */
+    .btn-meet { background: #27ae60; }  /* 緑：会議 */
+    .btn-reset { background: #2980b9; } /* 青：決着 */
+    .btn-ghost { background: #8e44ad; } /* 紫：天界 */
+
+    /* 選択中のボタンを光らせる（アニメーション付き） */
+    button.active {
+      border-color: #fff !important;
+      box-shadow: 0 0 12px #fff, inset 0 0 8px rgba(255,255,255,0.5);
+      transform: scale(0.98);
+      animation: pulse 1.5s infinite alternate;
+    }
+
+    @keyframes pulse {
+      0% { box-shadow: 0 0 8px #fff, inset 0 0 4px rgba(255,255,255,0.5); }
+      100% { box-shadow: 0 0 18px #fff, 0 0 10px #fff, inset 0 0 10px rgba(255,255,255,0.8); }
+    }
+
     #meet { width: 1px; height: 1px; opacity: 0; }
   </style>
 </head>
 <body>
 
-  <div class="status-box" id="status">状態：接続中...</div>
+  <div class="status-box" id="status">接続中...</div>
 
-  <div class="btn-group">
-    <!-- 全員共通で操作可能なリモコンボタン（主に部屋主が押す） -->
-    <button class="btn-play" onclick="sendSignal('PLAY_START')">🎮 ゲーム開始（全員ミュート）</button>
-    <button class="btn-meet" onclick="sendSignal('MEETING_START')">📣 会議（ミュート解除）</button>
-    <button class="btn-reset" onclick="sendSignal('RESET_GAME')">🔄 決着（全員復活＆初期化）</button>
-    
-    <!-- 個人の死亡用ボタン -->
-    <button class="btn-ghost" onclick="goToGhostRoom()">💀 やられた（天界へ移動）</button>
+  <div class="btn-grid">
+    <button id="btn-play" class="btn-play" onclick="sendSignal('PLAY_START')">
+      🎮 ゲーム開始<span>(生者ミュート)</span>
+    </button>
+    <button id="btn-meet" class="btn-meet" onclick="sendSignal('MEETING_START')">
+      📣 会議<span>(マイクON)</span>
+    </button>
+    <button id="btn-reset" class="btn-reset" onclick="sendSignal('RESET_GAME')">
+      🔄 決着<span>(全員復活)</span>
+    </button>
+    <button id="btn-ghost" class="btn-ghost" onclick="goToGhostRoom()">
+      💀 やられた<span>(天界移動)</span>
+    </button>
   </div>
 
   <div id="meet"></div>
@@ -38,24 +84,23 @@
     let api = null;
     let currentRoom = '';
 
-    // ページを開いたら全員「生者ルーム」に入る
+    // 接続初期化
     goToLiveRoom();
 
-    // 1. 生者ルームへ接続（初期状態はミュート）
     function goToLiveRoom() {
       document.getElementById('status').innerText = '状態：生者ルーム（プレイ中）';
       joinRoom('AmongUs_Live_Room_2026', true);
+      setActiveButton('btn-play'); // 初期状態は「ゲーム開始（ミュート）」を発光
     }
 
-    // 2. 天界ルームへ接続（常時マイクON）
     function goToGhostRoom() {
-      document.getElementById('status').innerText = '状態：👻 天界（自由通話OK）';
+      document.getElementById('status').innerText = '状態：👻 天界（常時通話OK）';
       joinRoom('AmongUs_Ghost_Room_2026', false);
+      setActiveButton('btn-ghost'); // 天界移動時は「やられた」を発光
     }
 
-    // ルーム接続＆メッセージ受信の設定
     function joinRoom(roomName, isMuted) {
-      if (api) api.dispose(); // 前の部屋を切断
+      if (api) api.dispose();
       currentRoom = roomName;
 
       api = new JitsiMeetExternalAPI(domain, {
@@ -64,31 +109,38 @@
         configOverwrite: { startWithAudioMuted: isMuted }
       });
 
-      // 他の誰か（部屋主など）が押したシグナルを受信した時の処理
       api.addEventListener('endpointTextMessageReceived', function(event) {
         handleSignal(event.data.eventData.text);
       });
     }
 
-    // ボタンを押した時（誰かが押すと全員にシグナルが飛ぶ）
     function sendSignal(command) {
       if (api) {
-        // 同じ部屋にいる全員に送信
         api.executeCommand('sendEndpointTextMessage', '', command);
       }
-      // 自分自身の画面・マイクも処理
       handleSignal(command);
     }
 
-    // シグナルに応じた実際の動作
     function handleSignal(command) {
       if (command === 'PLAY_START' && currentRoom === 'AmongUs_Live_Room_2026') {
-        api.executeCommand('setAudioMute', true);  // 生者はミュート
+        api.executeCommand('setAudioMute', true);
+        setActiveButton('btn-play');
+        document.getElementById('status').innerText = '状態：生者（ミュート中）';
       } else if (command === 'MEETING_START' && currentRoom === 'AmongUs_Live_Room_2026') {
-        api.executeCommand('setAudioMute', false); // 生者はミュート解除
+        api.executeCommand('setAudioMute', false);
+        setActiveButton('btn-meet');
+        document.getElementById('status').innerText = '状態：生者（会話中）';
       } else if (command === 'RESET_GAME') {
-        goToLiveRoom(); // 天界にいる人も含め全員が生者ルームへ復帰＆初期化
+        goToLiveRoom();
       }
+    }
+
+    // ボタンの発光表示を切り替える関数
+    function setActiveButton(activeId) {
+      const buttons = document.querySelectorAll('.btn-grid button');
+      buttons.forEach(btn => btn.classList.remove('active'));
+      const target = document.getElementById(activeId);
+      if (target) target.classList.add('active');
     }
   </script>
 </body>
