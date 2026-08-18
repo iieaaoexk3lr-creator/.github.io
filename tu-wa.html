@@ -3,19 +3,19 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>アモアス通話リモコン（完全部屋切替式）</title>
+  <title>アモアス通話リモコン（Jitsi UI表示版）</title>
   <script src="https://meet.jit.si/external_api.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
   
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { background: #111; color: #fff; font-family: sans-serif; text-align: center; padding: 12px; }
+    body { background: #111; color: #fff; font-family: sans-serif; text-align: center; padding: 8px; }
     
     /* 入室画面 */
     #room-login {
       max-width: 320px;
-      margin: 40px auto;
+      margin: 30px auto;
       padding: 20px;
       background: #222;
       border-radius: 12px;
@@ -47,30 +47,31 @@
     #main-app { display: none; }
 
     .status-box { 
-      font-size: 14px; 
+      font-size: 13px; 
       color: #f1c40f; 
-      margin-bottom: 12px; 
+      margin-bottom: 8px; 
       font-weight: bold; 
-      padding: 8px;
+      padding: 6px;
       background: #222;
       border-radius: 6px;
     }
-    .room-title { font-size: 13px; color: #aaa; margin-bottom: 8px; }
+    .room-title { font-size: 12px; color: #aaa; margin-bottom: 6px; }
 
+    /* ボタン配置 */
     .btn-grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 10px;
-      max-width: 340px;
-      margin: 0 auto;
+      gap: 8px;
+      max-width: 400px;
+      margin: 0 auto 12px auto;
     }
 
     .btn-grid button {
-      padding: 16px 6px;
-      font-size: 14px;
+      padding: 12px 4px;
+      font-size: 13px;
       font-weight: bold;
       border: 2px solid transparent;
-      border-radius: 10px;
+      border-radius: 8px;
       cursor: pointer;
       color: white;
       transition: all 0.15s ease;
@@ -79,7 +80,7 @@
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      line-height: 1.3;
+      line-height: 1.2;
     }
 
     .btn-grid button:active { transform: scale(0.95); }
@@ -91,18 +92,25 @@
 
     button.active {
       border-color: #fff !important;
-      box-shadow: 0 0 12px #fff;
+      box-shadow: 0 0 10px #fff;
       transform: scale(0.98);
     }
 
-    /* クリックの邪魔にならない安全な非表示レイアウト */
-    #meet { 
-      width: 0; 
-      height: 0; 
-      overflow: hidden; 
-      position: absolute; 
-      top: -9999px; 
-      left: -9999px; 
+    /* 埋め込みJitsi画面エリア */
+    #meet-container {
+      width: 100%;
+      max-width: 500px;
+      height: 280px; /* 操作UIが見やすい高さ */
+      margin: 0 auto;
+      background: #000;
+      border-radius: 12px;
+      overflow: hidden;
+      border: 1px solid #444;
+    }
+
+    #meet {
+      width: 100%;
+      height: 100%;
     }
   </style>
 </head>
@@ -120,24 +128,27 @@
     <div class="room-title" id="room-display">部屋名: -</div>
     <div class="status-box" id="status">接続中...</div>
 
+    <!-- リモコンボタン -->
     <div class="btn-grid">
       <button id="btn-play" class="btn-play" onclick="setGameState('MUTE_ROOM')">
-        🎮 ゲーム開始<span>(ミュート部屋へ移動)</span>
+        🎮 ゲーム開始<span>(無音部屋へ移動)</span>
       </button>
       <button id="btn-meet" class="btn-meet" onclick="setGameState('LIVE_ROOM')">
         📣 会議 / ロビー<span>(通話部屋へ移動)</span>
       </button>
       <button id="btn-reset" class="btn-reset" onclick="setGameState('RESET_GAME')">
-        🔄 決着<span>(全員を会議部屋へ戻す)</span>
+        🔄 決着<span>(全員を会議部屋へ)</span>
       </button>
       <button id="btn-ghost" class="btn-ghost" onclick="clickGhost()">
-        💀 やられた<span>(自分だけ天界へ移動)</span>
+        💀 やられた<span>(自分だけ天界へ)</span>
       </button>
     </div>
-  </div>
 
-  <!-- Jitsi埋め込み用 -->
-  <div id="meet"></div>
+    <!-- 3. Jitsi UI 埋め込みエリア -->
+    <div id="meet-container">
+      <div id="meet"></div>
+    </div>
+  </div>
 
   <script>
     const firebaseConfig = {
@@ -175,8 +186,6 @@
       document.getElementById('room-display').innerText = '部屋名: ' + currentRoomName;
 
       stateRef = db.ref('tu-wa/' + currentRoomName);
-
-      // 初期状態を監視開始
       listenToFirebase();
     }
 
@@ -184,7 +193,6 @@
       stateRef.on('value', (snapshot) => {
         const data = snapshot.val();
         if (!data || !data.current_state) {
-          // 初期値がない場合は会議ルームからスタート
           switchRoom('LIVE');
           return;
         }
@@ -192,24 +200,16 @@
         const state = data.current_state;
 
         if (state === 'MUTE_ROOM') {
-          // 幽霊でなければ、無音（ミュート専用）部屋へ移動
-          if (!isGhost) {
-            switchRoom('MUTE');
-          }
+          if (!isGhost) switchRoom('MUTE');
         } else if (state === 'LIVE_ROOM') {
-          // 幽霊でなければ、生者通話部屋へ移動
-          if (!isGhost) {
-            switchRoom('LIVE');
-          }
+          if (!isGhost) switchRoom('LIVE');
         } else if (state === 'RESET_GAME') {
-          // 決着を押されたら天界フラグを解除して、全員で生者通話部屋へ復帰
           isGhost = false;
           switchRoom('LIVE');
         }
       });
     }
 
-    // Firebase経由で全体の部屋状態を更新
     function setGameState(newState) {
       if (stateRef) {
         stateRef.set({
@@ -219,49 +219,50 @@
       }
     }
 
-    // 「やられた」ボタン（自分のみ天界部屋へ切り替え）
     function clickGhost() {
       if (isGhost) return;
       isGhost = true;
       switchRoom('GHOST');
     }
 
-    // 部屋切替のコア処理
     function switchRoom(targetType) {
       const fullRoomName = 'tu-wa_' + currentRoomName + '_' + targetType;
 
-      // すでに同じ部屋に接続している場合は無駄に切り替えない
       if (currentConnectedRoom === fullRoomName && api) return;
 
-      // 既存の接続を切断
       if (api) {
         try { api.dispose(); } catch (e) {}
         api = null;
       }
 
       currentConnectedRoom = fullRoomName;
-
-      // タイプ別の初期設定
       const startMuted = (targetType === 'MUTE');
 
+      // Jitsi埋め込み設定（操作バー・設定メニューを表示）
       api = new JitsiMeetExternalAPI(domain, {
         roomName: fullRoomName,
         parentNode: document.querySelector('#meet'),
         configOverwrite: { 
           startWithAudioMuted: startMuted,
-          startWithVideoMuted: true
+          startWithVideoMuted: true, // カメラは初期OFF
+          prejoinPageEnabled: false,  // 入室前確認画面をスキップ
+          // 表示するツールバー（マイク・設定・切断等）
+          toolbarButtons: ['microphone', 'settings', 'hangup']
+        },
+        interfaceConfigOverwrite: {
+          SHOW_JITSI_WATERMARK: false,
+          MOBILE_APP_PROMPT: false
         }
       });
 
-      // 状態表示とボタン表示の変更
       if (targetType === 'MUTE') {
-        document.getElementById('status').innerText = '状態：🎮 ゲーム中（無音部屋に接続中）';
+        document.getElementById('status').innerText = '状態：🎮 ゲーム中（無音部屋）';
         setActiveButton('btn-play');
       } else if (targetType === 'LIVE') {
-        document.getElementById('status').innerText = '状態：📣 会議 / ロビー（生者通話中）';
+        document.getElementById('status').innerText = '状態：📣 会議 / ロビー（会話中）';
         setActiveButton('btn-meet');
       } else if (targetType === 'GHOST') {
-        document.getElementById('status').innerText = '状態：💀 天界（幽霊同士で会話中）';
+        document.getElementById('status').innerText = '状態：💀 天界（幽霊会話中）';
         setActiveButton('btn-ghost');
       }
     }
