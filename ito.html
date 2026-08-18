@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ito (イト) 風 Web Web Game</title>
+  <style>
+    :root {
+      --bg-color: #121214;
+      --card-bg: #1e1e24;
+      --accent-color: #ff4757;
+      --accent-green: #2ed573;
+      --text-color: #ffffff;
+      --sub-text: #a0a0a0;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background-color: var(--bg-color);
+      color: var(--text-color);
+      margin: 0;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .container {
+      width: 100%;
+      max-width: 600px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+    h1 {
+      text-align: center;
+      margin: 8px 0;
+      font-size: 1.8rem;
+    }
+    .card {
+      background: var(--card-bg);
+      border-radius: 12px;
+      padding: 16px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    }
+    /* ステータスバー */
+    .status-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 1.1rem;
+      font-weight: bold;
+    }
+    .lives { color: var(--accent-color); font-size: 1.4rem; }
+    
+    /* お題セクション */
+    .theme-box {
+      text-align: center;
+    }
+    .theme-title { font-size: 0.9rem; color: var(--sub-text); }
+    .theme-text { font-size: 1.4rem; font-weight: bold; margin: 8px 0; color: #eccc68; }
+
+    /* ボタン類 */
+    button {
+      background: #3742fa;
+      color: white;
+      border: none;
+      padding: 10px 16px;
+      border-radius: 8px;
+      font-weight: bold;
+      cursor: pointer;
+      transition: opacity 0.2s;
+    }
+    button:hover { opacity: 0.9; }
+    button.secondary { background: #57606f; }
+    button.danger { background: var(--accent-color); }
+    
+    /* プレイヤー手札リスト */
+    .player-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .player-item {
+      background: #2f3542;
+      border-radius: 8px;
+      padding: 12px;
+    }
+    .player-header {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 8px;
+    }
+    .hand-cards {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .num-card {
+      background: #ffa502;
+      color: #000;
+      font-weight: bold;
+      padding: 8px 12px;
+      border-radius: 6px;
+      cursor: pointer;
+      user-select: none;
+    }
+    .num-card.secret {
+      background: #747d8c;
+      color: #fff;
+    }
+
+    /* プレイログ（場） */
+    .play-field {
+      min-height: 80px;
+    }
+    .field-cards {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-top: 8px;
+    }
+    .field-card {
+      background: var(--accent-green);
+      color: #000;
+      font-weight: bold;
+      padding: 8px 12px;
+      border-radius: 6px;
+    }
+    .field-card.error {
+      background: var(--accent-color);
+      color: #fff;
+    }
+
+    /* ログ表示 */
+    .log-area {
+      font-size: 0.85rem;
+      color: var(--sub-text);
+      max-height: 100px;
+      overflow-y: auto;
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <h1>🕷️ ito (クモノイト)</h1>
+
+  <!-- ゲーム設定（初回のみ表示） -->
+  <div id="setup-card" class="card">
+    <h2>ゲーム準備</h2>
+    <label>プレイヤー数: 
+      <select id="player-count">
+        <option value="2">2人</option>
+        <option value="3" selected>3人</option>
+        <option value="4">4人</option>
+        <option value="5">5人</option>
+        <option value="6">6人</option>
+      </select>
+    </label>
+    <button onclick="startGame()" style="margin-left: 12px;">ゲーム開始</button>
+  </div>
+
+  <!-- メインゲームエリア -->
+  <div id="game-area" style="display: none;" class="container">
+    
+    <!-- ステータスバー -->
+    <div class="card status-bar">
+      <div>ステージ: <span id="stage-num">1</span>/3</div>
+      <div>ライフ: <span id="life-icons" class="lives">❤️❤️❤️</span></div>
+    </div>
+
+    <!-- お題エリア -->
+    <div class="card theme-box">
+      <div class="theme-title">今ラウンドのお題</div>
+      <div id="current-theme" class="theme-text">--</div>
+      <button class="secondary" onclick="drawTheme()">お題を変更する</button>
+    </div>
+
+    <!-- 場（出されたカード） -->
+    <div class="card play-field">
+      <div class="theme-title">場（出したカード）</div>
+      <div id="field-cards" class="field-cards"></div>
+    </div>
+
+    <!-- 手札（各プレイヤー） -->
+    <div class="card">
+      <div class="theme-title" style="margin-bottom: 8px;">プレイヤー手札（クリックで場に出す）</div>
+      <div id="player-list" class="player-list"></div>
+    </div>
+
+    <!-- ログ -->
+    <div class="card log-area" id="log-box"></div>
+
+  </div>
+</div>
+
+<script>
+  // お題データベース（公式・オリジナル約50種）
+  const themes = [
+    "食べ物の人気", "強い生き物", "ほしいドラえもんのひみつ道具", "有名な曲",
+    "無人島に持っていきたいもの", "ゾンビ世界で生き残れそうな武器", "カッコいい言葉",
+    "なりたい職業", "うれしいプレゼント", "やってみたいアクティビティ",
+    "居酒屋の人気メニュー", "お弁当に入っていたらうれしいおかず", "遊園地の人気アトラクション",
+    "行きたい旅行先", "言われて嬉しい言葉", "コンビニでつい買ってしまうもの",
+    "世界で評価されそうな日本の文化", "タイムマシンで行きたい時代", "超能力で持ちたい能力",
+    "映画の登場人物になれるなら", "理想のプロポーズの場所", "人生で大切なもの"
+  ];
+
+  let state = {
+    players: 3,
+    stage: 1,
+    lives: 3,
+    deck: [],
+    hands: [], // [[num, num], [num]]
+    field: [], // [{player, value, status: 'ok'|'error'}]
+    theme: ""
+  };
+
+  function startGame() {
+    state.players = parseInt(document.getElementById('player-count').value);
+    state.stage = 1;
+    state.lives = 3;
+    document.getElementById('setup-card').style.display = 'none';
+    document.getElementById('game-area').style.display = 'flex';
+    initStage();
+  }
+
+  function initStage() {
+    // デッキ作成 (1-100) & シャッフル
+    state.deck = Array.from({length: 100}, (_, i) => i + 1);
+    state.deck.sort(() => Math.random() - 0.5);
+
+    // 手札配布 (ステージ数 = 枚数)
+    state.hands = [];
+    for (let p = 0; p < state.players; p++) {
+      let hand = [];
+      for (let i = 0; i < state.stage; i++) {
+        hand.push(state.deck.pop());
+      }
+      hand.sort((a, b) => a - b);
+      state.hands.push(hand);
+    }
+
+    state.field = [];
+    drawTheme();
+    updateUI();
+    addLog(`--- ステージ ${state.stage} 開始 (手札 ${state.stage} 枚) ---`);
+  }
+
+  function drawTheme() {
+    const rand = Math.floor(Math.random() * themes.length);
+    state.theme = themes[rand];
+    document.getElementById('current-theme').innerText = state.theme;
+  }
+
+  function toggleSecret(el) {
+    el.classList.toggle('secret');
+  }
+
+  function playCard(playerIdx, cardValue) {
+    if (confirm(`P${playerIdx + 1} が 「${cardValue}」 を場に出しますか？`)) {
+      // 手札から削除
+      const hIdx = state.hands[playerIdx].indexOf(cardValue);
+      if (hIdx > -1) state.hands[playerIdx].splice(hIdx, 1);
+
+      // 判定処理：現在残っている全手札の中に、出したカードより小さい数字がないかチェック
+      let lowerCardsFound = [];
+      state.hands.forEach((hand, pIdx) => {
+        hand.forEach(val => {
+          if (val < cardValue) {
+            lowerCardsFound.push({ player: pIdx + 1, val: val });
+          }
+        });
+      });
+
+      if (lowerCardsFound.length > 0) {
+        // 失敗！
+        state.field.push({ player: playerIdx + 1, value: cardValue, status: 'error' });
+        const damage = lowerCardsFound.length;
+        state.lives -= damage;
+        addLog(`❌ ミス！ P${playerIdx + 1} が ${cardValue} を提出。より小さい数字(${lowerCardsFound.map(c=>`P${c.player}:${c.val}`).join(', ')})が残っていたため ${damage} ダメージ！`);
+
+        // 浮いた小さいカードも手札から取り除いて場に晒す
+        lowerCardsFound.forEach(c => {
+          const h = state.hands[c.player - 1];
+          const idx = h.indexOf(c.val);
+          if (idx > -1) h.splice(idx, 1);
+          state.field.push({ player: c.player, value: c.val, status: 'error' });
+        });
+
+      } else {
+        // 成功！
+        state.field.push({ player: playerIdx + 1, value: cardValue, status: 'ok' });
+        addLog(`✅ P${playerIdx + 1} が ${cardValue} を出しました。`);
+      }
+
+      checkGameCondition();
+      updateUI();
+    }
+  }
+
+  function checkGameCondition() {
+    if (state.lives <= 0) {
+      setTimeout(() => {
+        alert("💀 ライフが0になりました。ゲームオーバーです！");
+        location.reload();
+      }, 100);
+      return;
+    }
+
+    // 全員の手札がなくなったらステージクリア
+    const totalRemainingHand = state.hands.reduce((sum, h) => sum + h.length, 0);
+    if (totalRemainingHand === 0) {
+      if (state.stage === 3) {
+        setTimeout(() => {
+          alert("🎉🎉🎉 おめでとうございます！3rdステージをクリアして完全勝利です！ 🎉🎉🎉");
+          location.reload();
+        }, 100);
+      } else {
+        setTimeout(() => {
+          state.stage++;
+          state.lives = Math.min(3, state.lives + 1); // ライフ1回復（最大3）
+          alert(`✨ ステージクリア！ ライフが1回復して Stage ${state.stage} へ進みます！`);
+          initStage();
+        }, 100);
+      }
+    }
+  }
+
+  function updateUI() {
+    // ライフ＆ステージ
+    document.getElementById('stage-num').innerText = state.stage;
+    document.getElementById('life-icons').innerText = '❤️'.repeat(Math.max(0, state.lives));
+
+    // 場
+    const fieldDiv = document.getElementById('field-cards');
+    fieldDiv.innerHTML = '';
+    state.field.forEach(item => {
+      const cardEl = document.createElement('div');
+      cardEl.className = `field-card ${item.status === 'error' ? 'error' : ''}`;
+      cardEl.innerText = `P${item.player}: ${item.value}`;
+      fieldDiv.appendChild(cardEl);
+    });
+
+    // プレイヤー手札
+    const playerListDiv = document.getElementById('player-list');
+    playerListDiv.innerHTML = '';
+    state.hands.forEach((hand, pIdx) => {
+      const pDiv = document.createElement('div');
+      pDiv.className = 'player-item';
+
+      const pHeader = document.createElement('div');
+      pHeader.className = 'player-header';
+      pHeader.innerHTML = `<strong>プレイヤー ${pIdx + 1}</strong> (${hand.length}枚)`;
+
+      const cardsDiv = document.createElement('div');
+      cardsDiv.className = 'hand-cards';
+
+      hand.forEach(num => {
+        const cEl = document.createElement('div');
+        cEl.className = 'num-card secret'; // 初期は伏せ状態
+        cEl.innerText = num;
+        // タップで表示・非表示切り替え、長押しまたはボタンで提出
+        cEl.onclick = () => toggleSecret(cEl);
+        cEl.ondblclick = () => playCard(pIdx, num);
+        cardsDiv.appendChild(cEl);
+      });
+
+      pDiv.appendChild(pHeader);
+      pDiv.appendChild(cardsDiv);
+      playerListDiv.appendChild(pDiv);
+    });
+  }
+
+  function addLog(msg) {
+    const box = document.getElementById('log-box');
+    box.innerHTML = `<div>${msg}</div>` + box.innerHTML;
+  }
+</script>
+</body>
+</html>
