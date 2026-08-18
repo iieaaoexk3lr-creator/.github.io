@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>アモアス通話リモコン（Jitsi UI表示版）</title>
+  <title>アモアス通話リモコン（設定UI表示版）</title>
   <script src="https://meet.jit.si/external_api.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
@@ -100,7 +100,7 @@
     #meet-container {
       width: 100%;
       max-width: 500px;
-      height: 280px; /* 操作UIが見やすい高さ */
+      height: 300px; /* 操作UIが余裕を持って表示される高さ */
       margin: 0 auto;
       background: #000;
       border-radius: 12px;
@@ -238,20 +238,26 @@
       currentConnectedRoom = fullRoomName;
       const startMuted = (targetType === 'MUTE');
 
-      // Jitsi埋め込み設定（操作バー・設定メニューを表示）
+      // 電話案内・ダイアルインを完全無効化し、直接通話画面を展開する設定
       api = new JitsiMeetExternalAPI(domain, {
         roomName: fullRoomName,
         parentNode: document.querySelector('#meet'),
         configOverwrite: { 
           startWithAudioMuted: startMuted,
-          startWithVideoMuted: true, // カメラは初期OFF
-          prejoinPageEnabled: false,  // 入室前確認画面をスキップ
-          // 表示するツールバー（マイク・設定・切断等）
-          toolbarButtons: ['microphone', 'settings', 'hangup']
+          startWithVideoMuted: true,
+          prejoinPageEnabled: false,         // 事前準備画面を無効化
+          disableDeepLinking: true,          // アプリ起動ポップアップを無効化
+          enableDialOut: false,              // 電話発信機能を無効化
+          disableThirdPartyRequests: true,   // 外部情報（電話番号PIN含む）の読み込みを無効化
+          hideConferenceSubject: true,
+          hideConferenceTimer: false,
+          toolbarButtons: ['microphone', 'settings', 'hangup'] // マイク・設定（歯車）のみ表示
         },
         interfaceConfigOverwrite: {
           SHOW_JITSI_WATERMARK: false,
-          MOBILE_APP_PROMPT: false
+          MOBILE_APP_PROMPT: false,
+          HIDE_INVITE_MORE_HEADER: true,      // 招待・PIN表示を隠す
+          SETTINGS_SECTIONS: ['devices']     // 設定メニューを「デバイス切替（マイク・スピーカー）」のみに絞る
         }
       });
 
