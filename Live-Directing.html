@@ -20,7 +20,7 @@
       height: 100vh;
     }
 
-    /* 横長＆スマホ対応メイン操作バー */
+    /* メイン操作バー */
     .control-bar {
       position: fixed;
       bottom: calc(24px + env(safe-area-inset-bottom, 0px));
@@ -56,14 +56,13 @@
       white-space: nowrap;
     }
     button:hover { background: #3b3b5c; }
-    /* 押されたら発光するアクティブスタイル */
     button.active { 
       background: #6200ee; 
       border-color: #bb86fc;
       box-shadow: 0 0 12px rgba(187, 134, 252, 0.6);
     }
 
-    /* 最前面に表示される設定パネル */
+    /* 設定パネル */
     .panel {
       position: fixed;
       bottom: calc(90px + env(safe-area-inset-bottom, 0px));
@@ -150,7 +149,7 @@
 
   <canvas id="stage"></canvas>
 
-  <!-- メイン操作バー（パネルボタンを押すと光ります） -->
+  <!-- メイン操作バー -->
   <div class="control-bar">
     <button id="btnFxPanel" onclick="togglePanel('fxPanel')">🎉 演出設定</button>
     <button id="btnFeaturePanel" onclick="togglePanel('featurePanel')">⚙️ 機能 / 同期</button>
@@ -165,7 +164,7 @@
       <button class="type-btn" onclick="setParticleType('heart', this)">💖 ハート</button>
       <button class="type-btn" onclick="setParticleType('star', this)">★ 星</button>
       <button class="type-btn" onclick="setParticleType('bubble', this)">🫧 泡</button>
-      <button class="type-btn" onclick="setParticleType('note', this)">🎵 音符</button>
+      <button class="type-btn" onclick="setParticleType('note', this)">🎵 音符 (4種順繰り)</button>
     </div>
 
     <div class="panel-title">2. カラー設定</div>
@@ -188,19 +187,27 @@
 
     <div class="panel-title">4. パラメータ詳細調整</div>
     <div class="control-group">
-      <label>表示数 (個数): <span id="valCount">100</span></label>
-      <input type="range" min="10" max="300" value="100" oninput="updateCount(+this.value)">
+      <label>基準表示数 (個数): <span id="valCount">10</span></label>
+      <input type="range" min="5" max="150" value="10" oninput="updateBaseCount(+this.value)">
     </div>
     <div class="control-group">
       <label>移動速度: <span id="valSpeed">5</span></label>
       <input type="range" min="1" max="15" value="5" oninput="state.speed = +this.value; document.getElementById('valSpeed').innerText=this.value;">
     </div>
     <div class="control-group">
-      <label>サイズ (最大150px): <span id="valSize">20</span>px</label>
-      <input type="range" min="8" max="150" value="20" oninput="state.size = +this.value; document.getElementById('valSize').innerText=this.value;">
+      <label>サイズ (最大200px): <span id="valSize">40</span>px</label>
+      <input type="range" min="10" max="200" value="40" oninput="state.size = +this.value; document.getElementById('valSize').innerText=this.value;">
     </div>
     <div class="control-group">
-      <label>横揺れ幅: <span id="valWobble">1.5</span></label>
+      <label>ドリフト (横流れ幅): <span id="valDrift">2.0</span></label>
+      <input type="range" min="0" max="10" step="0.5" value="2.0" oninput="state.drift = +this.value; document.getElementById('valDrift').innerText=this.value;">
+    </div>
+    <div class="control-group">
+      <label>自転速度: <span id="valRotateSpeed">2.0</span></label>
+      <input type="range" min="0" max="10" step="0.5" value="2.0" oninput="state.rotateSpeed = +this.value; document.getElementById('valRotateSpeed').innerText=this.value;">
+    </div>
+    <div class="control-group">
+      <label>ひらひら揺れ幅: <span id="valWobble">1.5</span></label>
       <input type="range" min="0" max="5" step="0.1" value="1.5" oninput="state.wobble = +this.value; document.getElementById('valWobble').innerText=this.value;">
     </div>
   </div>
@@ -208,7 +215,6 @@
   <!-- 2. 機能・環境・スポットライト詳細パネル -->
   <div id="featurePanel" class="panel">
     <div class="panel-title">💡 スポットライト設定</div>
-    <!-- 一番上に点灯/消灯ボタンを移動 -->
     <button id="btnSpotlightToggle" onclick="toggleSpotlight()" style="margin-bottom: 6px;">💡 スポットライト OFF</button>
     
     <div class="grid-btns">
@@ -217,7 +223,11 @@
     </div>
     <div class="control-group">
       <label>ライト色</label>
-      <input type="color" id="spotColor" value="#ffffdd" oninput="state.spotlightColor = this.value">
+      <input type="color" id="spotColor" value="#ffffdd" oninput="updateSpotColor(this.value)">
+    </div>
+    <div class="control-group">
+      <label>光の濃淡 (不透明度): <span id="valSpotAlpha">0.6</span></label>
+      <input type="range" min="0.1" max="1.0" step="0.05" value="0.6" oninput="state.spotlightAlpha = +this.value; document.getElementById('valSpotAlpha').innerText=this.value;">
     </div>
     <div class="control-group">
       <label>光の幅 (照射角度)</label>
@@ -269,16 +279,29 @@
       spotlight: false,
       spotlightPos: 'top',
       spotlightColor: '#ffffdd',
+      spotlightAlpha: 0.6,
       spotlightSpeed: 0.015,
       spotlightWidth: 0.3,
       particleType: 'confetti_rect',
       direction: 'down',
       speed: 5,
-      size: 20,
+      size: 40,
+      drift: 2.0,
+      rotateSpeed: 2.0,
       wobble: 1.5,
-      count: 100,
+      baseCount: 10,
+      targetCount: 10,
       currentColors: colorThemes.vivid
     };
+
+    // 2秒ごとに目標数を±2ゆらす処理
+    setInterval(() => {
+      const variation = Math.floor(Math.random() * 5) - 2;
+      state.targetCount = Math.max(1, state.baseCount + variation);
+    }, 2000);
+
+    // 音符サイクルのグローバルカウンター（0:二分, 1:四分, 2:八分, 3:十六分）
+    let noteCycleCounter = 0;
 
     // --- 高速ベクター描画ヘルパー ---
     function drawStar(ctx, r) {
@@ -312,23 +335,48 @@
       ctx.fill();
     }
 
-    // 超軽量・Native Canvasコマンドで描画する音符（八分音符）
-    function drawMusicNote(ctx, sz) {
+    // 4種類の音符を描画（角丸・超軽量処理）
+    function drawMusicNote(ctx, sz, noteType) {
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      ctx.lineWidth = Math.max(2, sz * 0.1);
+
+      // 1. 符頭
       ctx.beginPath();
-      // 符頭（斜めの楕円）
       ctx.ellipse(-sz * 0.2, sz * 0.2, sz * 0.25, sz * 0.18, -Math.PI / 6, 0, Math.PI * 2);
-      ctx.fill();
-      // 符幹（縦棒）
-      ctx.lineWidth = Math.max(1.5, sz * 0.1);
+      
+      if (noteType === 0) {
+        // 二分音符：白抜き
+        ctx.stroke();
+      } else {
+        // 四分・八分・十六分音符：黒塗り
+        ctx.fill();
+      }
+
+      // 2. 符幹（棒）
       ctx.beginPath();
       ctx.moveTo(sz * 0.02, sz * 0.15);
-      ctx.lineTo(sz * 0.02, -sz * 0.4);
+      ctx.lineTo(sz * 0.02, -sz * 0.45);
       ctx.stroke();
-      // 符尾（はた）
-      ctx.beginPath();
-      ctx.moveTo(sz * 0.02, -sz * 0.4);
-      ctx.quadraticCurveTo(sz * 0.25, -sz * 0.2, sz * 0.2, 0);
-      ctx.stroke();
+
+      // 3. 符尾（旗）
+      if (noteType === 2) {
+        // 八分音符：旗1本
+        ctx.beginPath();
+        ctx.moveTo(sz * 0.02, -sz * 0.45);
+        ctx.quadraticCurveTo(sz * 0.25, -sz * 0.25, sz * 0.2, -0.05);
+        ctx.stroke();
+      } else if (noteType === 3) {
+        // 十六分音符：旗2本
+        ctx.beginPath();
+        ctx.moveTo(sz * 0.02, -sz * 0.45);
+        ctx.quadraticCurveTo(sz * 0.25, -sz * 0.25, sz * 0.2, -0.05);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(sz * 0.02, -sz * 0.3);
+        ctx.quadraticCurveTo(sz * 0.25, -sz * 0.1, sz * 0.2, 0.1);
+        ctx.stroke();
+      }
     }
 
     // --- パーティクルクラス ---
@@ -337,29 +385,56 @@
 
       reset(initial = false) {
         this.x = Math.random() * canvas.width;
-        this.y = initial ? Math.random() * canvas.height : (state.direction === 'down' ? -50 : canvas.height + 50);
+        const offset = Math.random() * 300 + 50;
+        this.y = initial ? Math.random() * canvas.height : (state.direction === 'down' ? -offset : canvas.height + offset);
         this.color = state.currentColors[Math.floor(Math.random() * state.currentColors.length)];
         this.rotation = Math.random() * 360;
-        this.rotationSpeed = (Math.random() - 0.5) * 4;
+        this.driftDir = (Math.random() - 0.5) * 2;
+        this.rotDir = (Math.random() - 0.5) * 2;
         this.oscillation = Math.random() * Math.PI * 2;
         this.oscillationSpeed = 0.02 + Math.random() * 0.03;
+        this.isWaiting = false;
+
+        // 音符の種類（0:二分, 1:四分, 2:八分, 3:十六分）を順番に割り当てる
+        this.noteType = noteCycleCounter;
+        noteCycleCounter = (noteCycleCounter + 1) % 4;
       }
 
       update() {
+        if (this.isWaiting) return;
+
         const spd = state.speed * 0.6;
         if (state.direction === 'down') {
           this.y += spd;
-          if (this.y > canvas.height + 60) this.reset();
+          if (this.y > canvas.height + 100) {
+            if (particles.filter(p => !p.isWaiting).length > state.targetCount) {
+              this.isWaiting = true;
+            } else {
+              this.reset();
+            }
+          }
         } else {
           this.y -= spd;
-          if (this.y < -60) this.reset();
+          if (this.y < -100) {
+            if (particles.filter(p => !p.isWaiting).length > state.targetCount) {
+              this.isWaiting = true;
+            } else {
+              this.reset();
+            }
+          }
         }
+
         this.oscillation += this.oscillationSpeed;
-        this.x += Math.sin(this.oscillation) * state.wobble;
-        this.rotation += this.rotationSpeed;
+        this.x += (Math.sin(this.oscillation) * state.wobble) + (this.driftDir * state.drift * 0.5);
+        this.rotation += this.rotDir * state.rotateSpeed;
+
+        if (this.x < -100) this.x = canvas.width + 100;
+        if (this.x > canvas.width + 100) this.x = -100;
       }
 
       draw() {
+        if (this.isWaiting) return;
+
         ctx.save();
         ctx.translate(this.x, this.y);
         ctx.rotate((this.rotation * Math.PI) / 180);
@@ -396,20 +471,19 @@
             break;
 
           case 'note':
-            drawMusicNote(ctx, sz);
+            drawMusicNote(ctx, sz, this.noteType);
             break;
         }
         ctx.restore();
       }
     }
 
-    let particles = Array.from({ length: state.count }, () => new Particle());
+    let particles = Array.from({ length: 150 }, () => new Particle());
 
-    function updateCount(newCount) {
-      state.count = newCount;
+    function updateBaseCount(newCount) {
+      state.baseCount = newCount;
+      state.targetCount = newCount;
       document.getElementById('valCount').innerText = newCount;
-      while (particles.length < newCount) particles.push(new Particle());
-      while (particles.length > newCount) particles.pop();
     }
 
     // --- スポットライト描画 ---
@@ -431,14 +505,13 @@
         targetX, targetY, canvas.width * state.spotlightWidth
       );
 
-      // 色文字列(hex)をリアルタイムに分解して透明度設定
       let hex = state.spotlightColor.replace('#', '');
       if (hex.length === 3) hex = hex.split('').map(c => c + c).join('');
       const r = parseInt(hex.substring(0, 2), 16) || 255;
       const g = parseInt(hex.substring(2, 4), 16) || 255;
       const b = parseInt(hex.substring(4, 6), 16) || 220;
 
-      grad.addColorStop(0, `rgba(${r}, ${g}, ${b}, 0.6)`);
+      grad.addColorStop(0, `rgba(${r}, ${g}, ${b}, ${state.spotlightAlpha})`);
       grad.addColorStop(1, `rgba(${r}, ${g}, ${b}, 0)`);
 
       ctx.fillStyle = grad;
@@ -455,6 +528,15 @@
     function loop() {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       drawSpotlight();
+
+      const activeParticles = particles.filter(p => !p.isWaiting);
+      if (activeParticles.length < state.targetCount) {
+        const waitingParticle = particles.find(p => p.isWaiting);
+        if (waitingParticle) {
+          waitingParticle.isWaiting = false;
+          waitingParticle.reset();
+        }
+      }
 
       particles.forEach(p => {
         p.update();
@@ -478,16 +560,18 @@
       }
     }
 
+    function updateSpotColor(colorHex) {
+      state.spotlightColor = colorHex;
+    }
+
     function togglePanel(id) {
       const target = document.getElementById(id);
       const isOpen = target.classList.contains('open');
 
-      // 一旦すべてのパネルを閉じて発光をオフにする
       document.querySelectorAll('.panel').forEach(p => p.classList.remove('open'));
       document.getElementById('btnFxPanel').classList.remove('active');
       document.getElementById('btnFeaturePanel').classList.remove('active');
 
-      // 押されたパネルだけ開き、ボタンを発光させる
       if (!isOpen) {
         target.classList.add('open');
         if (id === 'fxPanel') document.getElementById('btnFxPanel').classList.add('active');
