@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>アモアス通話リモコン（部屋名指定）</title>
+  <title>アモアス通話リモコン（バグ修正版）</title>
   <!-- Jitsi Meet API -->
   <script src="https://meet.jit.si/external_api.js"></script>
   <!-- Firebase SDK -->
@@ -14,7 +14,6 @@
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { background: #111; color: #fff; font-family: sans-serif; text-align: center; padding: 8px; }
     
-    /* 部屋名入力画面 */
     #room-login {
       max-width: 320px;
       margin: 40px auto;
@@ -46,7 +45,6 @@
       cursor: pointer;
     }
 
-    /* メイン操作画面（初期は非表示） */
     #main-app { display: none; }
 
     .status-box { font-size: 12px; color: #f1c40f; margin-bottom: 8px; font-weight: bold; }
@@ -82,8 +80,7 @@
     .btn-reset { background: #2980b9; } /* 青：決着 */
     .btn-ghost { background: #8e44ad; } /* 紫：天界 */
 
-    /* 選択中のボタンを発光表示 */
-    .btn-grid button.active {
+    button.active {
       border-color: #fff !important;
       box-shadow: 0 0 12px #fff, inset 0 0 8px rgba(255,255,255,0.5);
       transform: scale(0.98);
@@ -131,7 +128,6 @@
   <div id="meet"></div>
 
   <script>
-    // Firebaseの初期化
     const firebaseConfig = {
       apiKey: "AIzaSyC4DQhH_swesAD98Xyjg8d1lcWEkkrHrgw",
       authDomain: "gamehistory-m84.firebaseapp.com",
@@ -152,7 +148,6 @@
     let api = null;
     let isGhost = false;
 
-    // 「入室する」ボタンを押した時の処理
     function enterRoom() {
       const input = document.getElementById('room-input').value.trim();
       if (!input) {
@@ -162,26 +157,25 @@
 
       currentRoomName = input;
 
-      // 画面切り替え
       document.getElementById('room-login').style.display = 'none';
       document.getElementById('main-app').style.display = 'block';
       document.getElementById('room-display').innerText = '部屋名: ' + currentRoomName;
 
-      // 部屋名ごとに Firebase ノードを設定（例: tu-wa/room123/current_state）
-      stateRef = db.ref('tu-wa/' + currentRoomName + '/current_state');
+      stateRef = db.ref('tu-wa/' + currentRoomName);
 
-      // 部屋の状態監視を開始
+      // Firebase監視開始
       listenToFirebase();
 
-      // Jitsi 通話に入室（初期状態はマイクON）
+      // 初期化（生者部屋）
       joinRoom(currentRoomName + '_LIVE', false);
     }
 
-    // Firebaseの状態変化を監視する関数
     function listenToFirebase() {
       stateRef.on('value', (snapshot) => {
-        const state = snapshot.val();
-        if (!state) return;
+        const data = snapshot.val();
+        if (!data || !data.current_state) return;
+
+        const state = data.current_state;
 
         if (state === 'PLAY_START') {
           if (!isGhost) {
@@ -196,30 +190,36 @@
             document.getElementById('status').innerText = '状態：会議 / ロビー（会話OK）';
           }
         } else if (state === 'RESET_GAME') {
-          // 誰かが決着を押すと、天界にいた人も戻る
+          // 決着が押された場合：全員が生者ルームへ復帰
           isGhost = false;
           joinRoom(currentRoomName + '_LIVE', false);
         }
       });
     }
 
-    // 全員同期用ボタンの処理（ゲーム開始・会議・決着）
+    // 全員同期用（タイムスタンプを付与してFirebaseの更新イベントを確実に発火させる）
     function setGameState(newState) {
       if (stateRef) {
-        stateRef.set(newState);
+        stateRef.set({
+          current_state: newState,
+          updatedAt: Date.now()
+        });
       }
     }
 
-    // 自分の端末のみ天界へ移動（やられたボタン）
+    // 「やられた」ボタン（自分だけ天界へ移動）
     function clickGhost() {
-      if (isGhost) return;
+      if (isGhost) return; // すでに天界にいる場合は連打防止
       isGhost = true;
       joinRoom(currentRoomName + '_GHOST', false);
     }
 
-    // 通話部屋への接続処理
+    // Jitsi接続＆切替関数
     function joinRoom(roomName, startMuted) {
-      if (api) api.dispose();
+      if (api) {
+        try { api.dispose(); } catch (e) {}
+        api = null;
+      }
 
       api = new JitsiMeetExternalAPI(domain, {
         roomName: 'tu-wa_' + roomName,
@@ -238,7 +238,6 @@
       });
     }
 
-    // ボタン発光切り替え
     function setActiveButton(activeId) {
       const buttons = document.querySelectorAll('.btn-grid button');
       buttons.forEach(btn => btn.classList.remove('active'));
