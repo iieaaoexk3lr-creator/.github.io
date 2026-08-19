@@ -5,11 +5,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>汎用 通話＆個人戦績リモコン</title>
   
-  <!-- LiveKit Client SDK -->
+  <!-- 1. JOSE (JWT生成用) を一番最初に読み込む -->
+  <script src="https://unpkg.com/jose@4.14.4/dist/browser/index.umd.js"></script>
+  <!-- 2. LiveKit Client SDK -->
   <script src="https://cdn.jsdelivr.net/npm/livekit-client/dist/livekit-client.umd.min.js"></script>
-  <!-- JOSE (JWT生成用) -->
-  <script src="https://cdn.jsdelivr.net/npm/jose@4.14.4/dist/browser/index.umd.min.js"></script>
-  <!-- Firebase -->
+  <!-- 3. Firebase -->
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
 
@@ -67,7 +67,6 @@
       padding: 2px 6px; border-radius: 10px;
     }
 
-    /* 音声入力中の点灯バッジ */
     .speaking-badge {
       background: #2ecc71; color: #000; font-weight: bold; font-size: 10px;
       padding: 2px 6px; border-radius: 8px; animation: pulse 1s infinite alternate;
@@ -170,7 +169,6 @@
     </div>
   </div>
 
-  <!-- 音声エレメント保持用 -->
   <div id="audio-container"></div>
 
   <script>
@@ -199,9 +197,12 @@
     let userPresenceRef = null;
 
     let isMicEnabled = true;
-    let speakingUsers = new Set(); // 現在音声を検出しているユーザーのリスト
+    let speakingUsers = new Set();
 
     async function generateToken(roomName, participantName) {
+      if (typeof jose === 'undefined') {
+        throw new Error("JOSEライブラリの読み込みに失敗しています。");
+      }
       const secret = new TextEncoder().encode(LIVEKIT_API_SECRET);
       return await new jose.SignJWT({
         video: { room: roomName, roomJoin: true, canPublish: true, canSubscribe: true }
@@ -213,7 +214,6 @@
         .sign(secret);
     }
 
-    // 手動で音声再生を強制実行する処理
     function unblockAudio() {
       if (currentLiveKitRoom) {
         currentLiveKitRoom.startAudio().then(() => {
@@ -249,7 +249,7 @@
         const room = new LiveKit.Room({ 
           adaptiveStream: true, 
           dynacast: true,
-          autoSubscribe: true, // 自動音声購読を明示化
+          autoSubscribe: true,
           audioCaptureDefaults: {
             echoCancellation: true,
             noiseSuppression: true,
@@ -257,7 +257,6 @@
           }
         });
 
-        // 音声トラック受信時
         room.on(LiveKit.RoomEvent.TrackSubscribed, (track, publication, participant) => {
           if (track.kind === LiveKit.Track.Kind.Audio) {
             const container = document.getElementById('audio-container');
@@ -277,7 +276,6 @@
           track.detach().forEach(el => el.remove());
         });
 
-        // ★ 音声入力検知（誰かが発言/マイク入力された時にリアルタイムで発火）
         room.on(LiveKit.RoomEvent.ActiveSpeakersChanged, (speakers) => {
           speakingUsers.clear();
           speakers.forEach(s => speakingUsers.add(s.identity));
@@ -365,7 +363,7 @@
 
       sortedKeys.forEach(targetName => {
         const userData = cachedUsers[targetName];
-        const isSpeaking = speakingUsers.has(targetName); // 声が入力中かどうか
+        const isSpeaking = speakingUsers.has(targetName);
         const isMuted = userData.isForceMuted;
         const wins = userData.wins || 0;
         const isSelf = targetName === userName;
