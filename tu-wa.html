@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>汎用 通話リモコン (人数表示つき)</title>
+  <title>汎用 通話＆個人戦績リモコン</title>
   
   <!-- LiveKit Client SDK -->
   <script src="https://cdn.jsdelivr.net/npm/livekit-client/dist/livekit-client.umd.min.js"></script>
@@ -37,25 +37,44 @@
     }
     .room-title { font-size: 13px; color: #aaa; margin-bottom: 8px; }
 
-    /* 人数カウントエリア */
-    .member-counter {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 8px;
-      max-width: 360px;
-      margin: 0 auto 12px;
+    /* 通話ユーティリティバー（スピーカー・自分マイク） */
+    .util-bar {
+      display: flex; gap: 8px; max-width: 360px; margin: 0 auto 12px;
     }
-    .count-card {
-      background: #222;
-      border: 1px solid #444;
-      border-radius: 8px;
-      padding: 8px 4px;
+    .util-btn {
+      flex: 1; padding: 10px; font-size: 12px; font-weight: bold;
+      border: 1px solid #444; border-radius: 8px; background: #2c3e50; color: white; cursor: pointer;
     }
-    .count-title { font-size: 11px; color: #bbb; margin-bottom: 2px; }
-    .count-num { font-size: 18px; font-weight: bold; }
-    .live-color { color: #2ecc71; }
-    .ghost-color { color: #9b59b6; }
-    .member-list { font-size: 10px; color: #888; margin-top: 4px; line-height: 1.2; word-break: break-all; }
+    .util-btn.off { background: #7f8c8d; }
+
+    /* 参加者＆個人戦績リスト */
+    .user-list-box {
+      max-width: 360px; margin: 0 auto 12px; background: #222;
+      border: 1px solid #444; border-radius: 8px; padding: 10px; text-align: left;
+    }
+    .user-list-title { font-size: 12px; color: #aaa; margin-bottom: 8px; border-bottom: 1px solid #333; padding-bottom: 4px; display: flex; justify-content: space-between; }
+    .user-item {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 8px 6px; border-bottom: 1px solid #2a2a2a; font-size: 13px; border-radius: 6px; transition: background 0.2s;
+    }
+    .user-item.speaking { background: #1e3725; border-left: 4px solid #2ecc71; } /* 発言中ハイライト */
+    .user-item:last-child { border-bottom: none; }
+    
+    .user-info { display: flex; align-items: center; gap: 6px; }
+    .win-badge {
+      background: #f39c12; color: #000; font-weight: bold; font-size: 11px;
+      padding: 2px 6px; border-radius: 10px;
+    }
+
+    .user-actions { display: flex; gap: 4px; }
+    .user-actions button {
+      padding: 5px 8px; font-size: 10px; font-weight: bold;
+      border: none; border-radius: 4px; cursor: pointer; color: white;
+    }
+    .btn-win-add { background: #f39c12; }
+    .btn-win-add:active { transform: scale(0.9); }
+    .btn-force-mute { background: #c0392b; }
+    .btn-force-mute.muted { background: #27ae60; }
 
     .btn-grid {
       display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
@@ -63,7 +82,7 @@
     }
 
     .btn-grid button {
-      padding: 14px 6px; font-size: 13px; font-weight: bold;
+      padding: 12px 6px; font-size: 12px; font-weight: bold;
       border: 2px solid transparent; border-radius: 10px; cursor: pointer;
       color: white; transition: all 0.15s ease; outline: none;
       display: flex; flex-direction: column; align-items: center; justify-content: center;
@@ -72,12 +91,12 @@
 
     .btn-grid button:active { transform: scale(0.95); }
 
-    .btn-start { background: #27ae60; } /* 通話開始 / 通話解禁 */
-    .btn-mute  { background: #e67e22; } /* ミュート (個人) */
-    .btn-allmute { background: #c0392b; } /* 全体ミュート */
-    .btn-dead  { background: #7f8c8d; } /* やられた (観戦) */
-    .btn-ghost { background: #8e44ad; } /* 幽霊部屋 */
-    .btn-reset { background: #2980b9; grid-column: span 2; } /* ゲームリセット */
+    .btn-start { background: #27ae60; }
+    .btn-mute  { background: #e67e22; }
+    .btn-allmute { background: #c0392b; }
+    .btn-dead  { background: #7f8c8d; }
+    .btn-ghost { background: #8e44ad; }
+    .btn-reset { background: #2980b9; grid-column: span 2; }
 
     button.active {
       border-color: #fff !important;
@@ -85,14 +104,14 @@
       transform: scale(0.98);
     }
 
-    span { font-size: 10px; font-weight: normal; margin-top: 4px; opacity: 0.85; }
+    span { font-size: 10px; font-weight: normal; margin-top: 2px; opacity: 0.85; }
   </style>
 </head>
 <body>
 
   <!-- ログイン画面 -->
   <div id="login-screen">
-    <h3 style="margin-bottom: 12px;">汎用 通話リモコン</h3>
+    <h3 style="margin-bottom: 12px;">汎用 通話＆個人戦績リモコン</h3>
     <input type="text" id="room-input" placeholder="部屋名 (例: room1)" />
     <input type="text" id="name-input" placeholder="あなたの名前" />
     <button onclick="enterRoom()">接続する</button>
@@ -103,18 +122,19 @@
     <div class="room-title" id="room-display">部屋名: -</div>
     <div class="status-box" id="status">初期化中...</div>
 
-    <!-- 人数表示カウンター -->
-    <div class="member-counter">
-      <div class="count-card">
-        <div class="count-title">🚶‍♂️ 生者部屋</div>
-        <div class="count-num live-color" id="live-count">0 人</div>
-        <div class="member-list" id="live-members">-</div>
+    <!-- 通話機能ユーティリティバー -->
+    <div class="util-bar">
+      <button id="btn-self-mic" class="util-btn" onclick="toggleSelfMic()">🎤 マイク: ON</button>
+      <button id="btn-speaker" class="util-btn" onclick="toggleSpeaker()">🔊 スピーカー: ON</button>
+    </div>
+
+    <!-- 参加者＆個人戦績リストエリア -->
+    <div class="user-list-box">
+      <div class="user-list-title">
+        <span>🏆 参加者・個人戦績</span>
+        <span style="font-size:10px; color:#2ecc71;">■ 発言中</span>
       </div>
-      <div class="count-card">
-        <div class="count-title">👻 幽霊部屋</div>
-        <div class="count-num ghost-color" id="ghost-count">0 人</div>
-        <div class="member-list" id="ghost-members">-</div>
-      </div>
+      <div id="user-list-container"></div>
     </div>
 
     <div class="btn-grid">
@@ -142,7 +162,6 @@
   <div id="audio-container" style="display:none;"></div>
 
   <script>
-    // LiveKit & Firebase 設定
     const LIVEKIT_URL = "wss://tu-wa-o1g4cyfi.livekit.cloud";
     const LIVEKIT_API_KEY = "APIycbMDVJPz54b";
     const LIVEKIT_API_SECRET = "g7g4xG5ueKeLAJ9kSqpnqsk0FwTPe2vDZhmKtLx04M4B";
@@ -167,30 +186,28 @@
     let stateRef = null;
     let userPresenceRef = null;
 
-    // JWTトークン生成
+    let isMicEnabled = true;
+    let isSpeakerEnabled = true;
+    let speakingUsers = new Set(); // 発言中のユーザー
+
     async function generateToken(roomName, participantName) {
       const secret = new TextEncoder().encode(LIVEKIT_API_SECRET);
-      const alg = 'HS256';
       return await new jose.SignJWT({
         video: { room: roomName, roomJoin: true, canPublish: true, canSubscribe: true }
       })
-        .setProtectedHeader({ alg })
+        .setProtectedHeader({ alg: 'HS256' })
         .setIssuer(LIVEKIT_API_KEY)
         .setSubject(participantName)
         .setExpirationTime('2h')
         .sign(secret);
     }
 
-    // 通話部屋への接続・移動処理
     async function connectToLiveKit(channelType, enableMic) {
       const targetRoomName = `tuwa_${currentRoomName}_${channelType}`;
-
-      // Firebaseへ自分の現在の所属（LIVEかGHOSTか）を更新
       updateUserPresence(channelType);
 
-      // 既に同じ部屋にいる場合は切断せずマイク切り替えのみ
       if (currentLiveKitRoom && currentLiveKitRoom.name === targetRoomName) {
-        await currentLiveKitRoom.localParticipant.setMicrophoneEnabled(enableMic);
+        await setMicState(enableMic);
         return;
       }
 
@@ -205,9 +222,11 @@
         const token = await generateToken(targetRoomName, userName);
         const room = new LiveKit.Room({ adaptiveStream: true, dynacast: true });
 
-        room.on(LiveKit.RoomEvent.TrackSubscribed, (track) => {
+        room.on(LiveKit.RoomEvent.TrackSubscribed, (track, publication, participant) => {
           if (track.kind === LiveKit.Track.Kind.Audio) {
             const el = track.attach();
+            el.dataset.identity = participant.identity;
+            el.muted = !isSpeakerEnabled;
             document.getElementById('audio-container').appendChild(el);
           }
         });
@@ -216,8 +235,15 @@
           track.detach().forEach(el => el.remove());
         });
 
+        // 発言中インジケーターの監視
+        room.on(LiveKit.RoomEvent.ActiveSpeakersChanged, (speakers) => {
+          speakingUsers.clear();
+          speakers.forEach(s => speakingUsers.add(s.identity));
+          renderUserList();
+        });
+
         await room.connect(LIVEKIT_URL, token);
-        await room.localParticipant.setMicrophoneEnabled(enableMic);
+        await setMicState(enableMic);
         currentLiveKitRoom = room;
 
       } catch (err) {
@@ -226,7 +252,6 @@
       }
     }
 
-    // 入室ボタン処理
     function enterRoom() {
       const roomInput = document.getElementById('room-input').value.trim();
       const nameInput = document.getElementById('name-input').value.trim();
@@ -245,62 +270,144 @@
 
       stateRef = db.ref('tu-wa-v2/' + currentRoomName);
       
-      // Firebaseに自分の接続情報（プレゼンス）を保持・切断時に自動削除
       userPresenceRef = db.ref(`tu-wa-v2/${currentRoomName}/users/${userName}`);
       userPresenceRef.onDisconnect().remove();
 
       listenToFirebase();
       listenToUserPresence();
+      
+      actionStart();
     }
 
-    // 自分の所在場所をFirebaseに書き込む
     function updateUserPresence(roomType) {
       if (userPresenceRef) {
-        userPresenceRef.set({
-          type: roomType, // 'LIVE' または 'GHOST'
-          updatedAt: Date.now()
+        userPresenceRef.transaction((current) => {
+          return {
+            type: roomType,
+            isForceMuted: current ? (current.isForceMuted || false) : false,
+            wins: current ? (current.wins || 0) : 0, // 勝利数を保持
+            updatedAt: Date.now()
+          };
         });
       }
     }
 
-    // 全員の所在（生者・幽霊の人数とメンバーリスト）をリアルタイム監視
+    // ユーザーリストのリアルタイム同期とレンダリング
+    let cachedUsers = {};
     function listenToUserPresence() {
       const usersRef = db.ref(`tu-wa-v2/${currentRoomName}/users`);
       usersRef.on('value', (snapshot) => {
-        const users = snapshot.val() || {};
-        let liveMembers = [];
-        let ghostMembers = [];
-
-        Object.keys(users).forEach(name => {
-          if (users[name].type === 'GHOST') {
-            ghostMembers.push(name);
-          } else {
-            liveMembers.push(name);
+        cachedUsers = snapshot.val() || {};
+        
+        // 自分に対する「強制消音」を適用
+        if (cachedUsers[userName]) {
+          const myForceMute = cachedUsers[userName].isForceMuted;
+          if (myForceMute && isMicEnabled) {
+            setMicState(false);
+            document.getElementById('status').innerText = '状態：🔇 強制消音されました';
           }
-        });
+        }
 
-        // UI表示を更新
-        document.getElementById('live-count').innerText = `${liveMembers.length} 人`;
-        document.getElementById('live-members').innerText = liveMembers.length > 0 ? liveMembers.join(', ') : '-';
-
-        document.getElementById('ghost-count').innerText = `${ghostMembers.length} 人`;
-        document.getElementById('ghost-members').innerText = ghostMembers.length > 0 ? ghostMembers.join(', ') : '-';
+        renderUserList();
       });
     }
 
-    // 全体ミュートなどの共有状態を監視
+    function renderUserList() {
+      const container = document.getElementById('user-list-container');
+      container.innerHTML = '';
+
+      // 勝利数の多い順（降順）にソートして並べる
+      const sortedKeys = Object.keys(cachedUsers).sort((a, b) => {
+        const winsA = cachedUsers[a].wins || 0;
+        const winsB = cachedUsers[b].wins || 0;
+        return winsB - winsA;
+      });
+
+      sortedKeys.forEach(targetName => {
+        const userData = cachedUsers[targetName];
+        const isSpeaking = speakingUsers.has(targetName);
+        const isMuted = userData.isForceMuted;
+        const wins = userData.wins || 0;
+        const isSelf = targetName === userName;
+
+        const userRow = document.createElement('div');
+        userRow.className = `user-item ${isSpeaking ? 'speaking' : ''}`;
+
+        userRow.innerHTML = `
+          <div class="user-info">
+            <span class="win-badge">🏆 ${wins}勝</span>
+            <span>
+              ${targetName} ${isSelf ? '(自分)' : ''} 
+              ${userData.type === 'GHOST' ? '👻' : '🚶‍♂️'}
+              ${isMuted ? '🔇' : ''}
+            </span>
+          </div>
+          <div class="user-actions">
+            <button class="btn-win-add" onclick="addWin('${targetName}')">🏆+1勝</button>
+            <button class="btn-force-mute ${isMuted ? 'muted' : ''}" onclick="toggleForceMute('${targetName}', ${!isMuted})">
+              ${isMuted ? '解禁' : '発言禁止'}
+            </button>
+          </div>
+        `;
+        container.appendChild(userRow);
+      });
+    }
+
+    // 個人の勝利数を+1加算する
+    function addWin(targetName) {
+      const userWinRef = db.ref(`tu-wa-v2/${currentRoomName}/users/${targetName}/wins`);
+      userWinRef.transaction((currentWins) => {
+        return (currentWins || 0) + 1;
+      });
+    }
+
+    // 他のプレイヤーの強制ミュート
+    function toggleForceMute(targetName, forceMuteState) {
+      db.ref(`tu-wa-v2/${currentRoomName}/users/${targetName}/isForceMuted`).set(forceMuteState);
+    }
+
+    // --- マイク / スピーカー機能 ---
+    async function setMicState(enable) {
+      isMicEnabled = enable;
+      if (currentLiveKitRoom) {
+        await currentLiveKitRoom.localParticipant.setMicrophoneEnabled(enable);
+      }
+      const btn = document.getElementById('btn-self-mic');
+      btn.innerText = `🎤 マイク: ${enable ? 'ON' : 'OFF'}`;
+      btn.classList.toggle('off', !enable);
+    }
+
+    function toggleSelfMic() {
+      setMicState(!isMicEnabled);
+    }
+
+    function toggleSpeaker() {
+      isSpeakerEnabled = !isSpeakerEnabled;
+      const audioEls = document.querySelectorAll('#audio-container audio');
+      audioEls.forEach(el => el.muted = !isSpeakerEnabled);
+
+      const btn = document.getElementById('btn-speaker');
+      btn.innerText = `🔊 スピーカー: ${isSpeakerEnabled ? 'ON' : 'OFF'}`;
+      btn.classList.toggle('off', !isSpeakerEnabled);
+    }
+
+    // --- 全体命令監視 ---
     function listenToFirebase() {
       stateRef.child('global_state').on('value', async (snapshot) => {
         const globalState = snapshot.val();
         if (!globalState) return;
 
         if (globalState === 'ALL_MUTE') {
-          if (currentLiveKitRoom && currentLiveKitRoom.name.endsWith('_LIVE')) {
-            await currentLiveKitRoom.localParticipant.setMicrophoneEnabled(false);
-            document.getElementById('status').innerText = '状態：🛑 全体ミュート中（マイクOFF）';
-            setActiveButton('btn-allmute');
+          if (currentLiveKitRoom && currentLiveKitRoom.name.includes('_LIVE')) {
+            await setMicState(false);
           }
+          document.getElementById('status').innerText = '状態：🛑 全体ミュート中（全員マイクOFF）';
+          setActiveButton('btn-allmute');
         } else if (globalState === 'RESET') {
+          // 強制ミュートの解除
+          Object.keys(cachedUsers).forEach(name => {
+            db.ref(`tu-wa-v2/${currentRoomName}/users/${name}/isForceMuted`).set(false);
+          });
           await connectToLiveKit('LIVE', true);
           document.getElementById('status').innerText = '状態：🎤 会話可能（生者部屋）';
           setActiveButton('btn-start');
@@ -308,50 +415,43 @@
       });
     }
 
-    // --- 各ボタンの動作 ---
-
-    // 1. 通話開始 / 解禁
+    // --- 各操作ボタン ---
     async function actionStart() {
+      if (stateRef) stateRef.child('global_state').set('START');
       await connectToLiveKit('LIVE', true);
       document.getElementById('status').innerText = '状態：🎤 会話可能（生者部屋）';
       setActiveButton('btn-start');
     }
 
-    // 2. ミュート（自分だけ）
     async function actionMute() {
-      if (currentLiveKitRoom) {
-        await currentLiveKitRoom.localParticipant.setMicrophoneEnabled(false);
-      }
+      await setMicState(false);
       document.getElementById('status').innerText = '状態：🔇 ミュート中（自分のみマイクOFF）';
       setActiveButton('btn-mute');
     }
 
-    // 3. 全体ミュート
-    function actionAllMute() {
-      if (stateRef) {
-        stateRef.child('global_state').set('ALL_MUTE');
+    async function actionAllMute() {
+      if (currentLiveKitRoom && currentLiveKitRoom.name.includes('_LIVE')) {
+        await setMicState(false);
       }
+      document.getElementById('status').innerText = '状態：🛑 全体ミュート中（全員マイクOFF）';
+      setActiveButton('btn-allmute');
+      if (stateRef) stateRef.child('global_state').set('ALL_MUTE');
     }
 
-    // 4. やられた（観戦状態・生者部屋扱い）
     async function actionDead() {
       await connectToLiveKit('LIVE', false);
       document.getElementById('status').innerText = '状態：💀 死亡（生者の声を観戦中・発言不可）';
       setActiveButton('btn-dead');
     }
 
-    // 5. 幽霊部屋（幽霊部屋へ移動して会話）
     async function actionGhost() {
       await connectToLiveKit('GHOST', true);
       document.getElementById('status').innerText = '状態：👻 幽霊部屋（幽霊同士で会話中）';
       setActiveButton('btn-ghost');
     }
 
-    // 6. 全員リセット
     function actionReset() {
-      if (stateRef) {
-        stateRef.child('global_state').set('RESET');
-      }
+      if (stateRef) stateRef.child('global_state').set('RESET');
     }
 
     function setActiveButton(activeId) {
