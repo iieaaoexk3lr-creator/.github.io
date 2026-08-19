@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>汎用 通話＆個人戦績リモコン</title>
   
-  <!-- LiveKit Client SDK (トラッキングブロック対策でunpkgの最新構成に変更) -->
+  <!-- LiveKit Client SDK -->
   <script src="https://unpkg.com/livekit-client/dist/livekit-client.umd.js" crossorigin="anonymous"></script>
   <!-- Firebase -->
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
@@ -35,16 +35,16 @@
     }
     .room-title { font-size: 13px; color: #aaa; margin-bottom: 8px; }
 
-    /* 通話ユーティリティバー */
-    .util-bar {
-      display: flex; gap: 8px; max-width: 360px; margin: 0 auto 12px;
+    /* メイン通話開始ボタン */
+    .start-bar {
+      max-width: 360px; margin: 0 auto 12px;
     }
-    .util-btn {
-      flex: 1; padding: 10px; font-size: 12px; font-weight: bold;
-      border: 1px solid #444; border-radius: 8px; background: #2c3e50; color: white; cursor: pointer;
+    .btn-main-start {
+      width: 100%; padding: 14px; font-size: 16px; font-weight: bold;
+      border: 2px solid #27ae60; border-radius: 10px; background: #27ae60; color: white; cursor: pointer;
+      box-shadow: 0 0 8px rgba(39, 174, 96, 0.4);
     }
-    .util-btn.off { background: #7f8c8d; }
-    .util-btn.audio-enable { background: #e67e22; }
+    .btn-main-start:active { transform: scale(0.98); }
 
     /* 参加者＆個人戦績リスト */
     .user-list-box {
@@ -99,7 +99,7 @@
 
     .btn-grid button:active { transform: scale(0.95); }
 
-    .btn-start { background: #27ae60; }
+    .btn-talk  { background: #27ae60; }
     .btn-mute  { background: #e67e22; }
     .btn-allmute { background: #c0392b; }
     .btn-dead  { background: #7f8c8d; }
@@ -122,18 +122,17 @@
     <h3 style="margin-bottom: 12px;">汎用 通話＆個人戦績リモコン</h3>
     <input type="text" id="room-input" placeholder="部屋名 (例: room1)" />
     <input type="text" id="name-input" placeholder="あなたの名前" />
-    <button onclick="enterRoom()">接続する</button>
+    <button onclick="enterRoom()">ログイン</button>
   </div>
 
   <!-- 操作画面 -->
   <div id="main-app">
     <div class="room-title" id="room-display">部屋名: -</div>
-    <div class="status-box" id="status">初期化中...</div>
+    <div class="status-box" id="status">まず最初に「通話開始」を押してください</div>
 
-    <!-- 通話機能ユーティリティバー -->
-    <div class="util-bar">
-      <button id="btn-self-mic" class="util-btn" onclick="toggleSelfMic()">🎤 マイク: ON</button>
-      <button id="btn-enable-audio" class="util-btn audio-enable" onclick="unblockAudio()">🔊 声が聞こえない時押す</button>
+    <!-- メイン通話開始ボタン（音声再生ブロック解除兼用） -->
+    <div class="start-bar">
+      <button id="btn-start" class="btn-main-start" onclick="startAudioAndConnect()">🎤 通話開始</button>
     </div>
 
     <!-- 参加者＆個人戦績リストエリア -->
@@ -145,9 +144,10 @@
       <div id="user-list-container"></div>
     </div>
 
+    <!-- 操作ボタン群 -->
     <div class="btn-grid">
-      <button id="btn-start" class="btn-start" onclick="actionStart()">
-        🎤 通話開始 / 解禁<span>(生者部屋・マイクON)</span>
+      <button id="btn-talk" class="btn-talk" onclick="actionTalk()">
+        🎤 通話 / 解禁<span>(生者部屋・マイクON)</span>
       </button>
       <button id="btn-mute" class="btn-mute" onclick="actionMute()">
         🔇 ミュート<span>(自分のみマイクOFF)</span>
@@ -197,7 +197,6 @@
     let isMicEnabled = true;
     let speakingUsers = new Set();
 
-    // ★ 日本語（UTF-8）完全対応 JWT生成関数
     async function generateToken(roomName, participantName) {
       function arrayBufferToBase64Url(buffer) {
         let binary = '';
@@ -251,25 +250,21 @@
       return `${dataToSign}.${encodedSignature}`;
     }
 
-    function unblockAudio() {
+    // 最初に押す「通話開始」の統合処理
+    async function startAudioAndConnect() {
       if (currentLiveKitRoom) {
-        currentLiveKitRoom.startAudio().then(() => {
-          alert("音声再生を許可しました！");
-        }).catch(err => {
-          console.log("Audio unblock error:", err);
-        });
+        currentLiveKitRoom.startAudio().catch(()=>{});
       }
       const audios = document.querySelectorAll('#audio-container audio');
-      audios.forEach(a => {
-        a.play().catch(()=>{});
-      });
+      audios.forEach(a => a.play().catch(()=>{}));
+
+      await actionTalk();
     }
 
     async function connectToLiveKit(channelType, enableMic) {
-      // LiveKitライブラリの読み込み確認
       const LK = window.LivekitClient || window.LiveKit;
       if (!LK) {
-        alert("LiveKitライブラリの読み込みに失敗しました。ブラウザの追跡防止機能をオフにするか、ページを再読み込みしてください。");
+        alert("LiveKitライブラリの読み込みに失敗しました。ページを再読み込みしてください。");
         document.getElementById('status').innerText = 'ライブラリ読み込みエラー';
         return;
       }
@@ -361,8 +356,6 @@
 
       listenToFirebase();
       listenToUserPresence();
-      
-      actionStart();
     }
 
     function updateUserPresence(roomType) {
@@ -453,13 +446,6 @@
       if (currentLiveKitRoom) {
         await currentLiveKitRoom.localParticipant.setMicrophoneEnabled(enable);
       }
-      const btn = document.getElementById('btn-self-mic');
-      btn.innerText = `🎤 マイク: ${enable ? 'ON' : 'OFF'}`;
-      btn.classList.toggle('off', !enable);
-    }
-
-    function toggleSelfMic() {
-      setMicState(!isMicEnabled);
     }
 
     function listenToFirebase() {
@@ -479,16 +465,17 @@
           });
           await connectToLiveKit('LIVE', true);
           document.getElementById('status').innerText = '状態：🎤 会話可能（生者部屋）';
-          setActiveButton('btn-start');
+          setActiveButton('btn-talk');
         }
       });
     }
 
-    async function actionStart() {
+    // 「通話 / 解禁 (マイクON)」ボタンの処理
+    async function actionTalk() {
       if (stateRef) stateRef.child('global_state').set('START');
       await connectToLiveKit('LIVE', true);
-      document.getElementById('status').innerText = '状態：🎤 会話可能（生者部屋）';
-      setActiveButton('btn-start');
+      document.getElementById('status').innerText = '状態：🎤 会話可能（生者部屋・マイクON）';
+      setActiveButton('btn-talk');
     }
 
     async function actionMute() {
@@ -514,7 +501,7 @@
 
     async function actionGhost() {
       await connectToLiveKit('GHOST', true);
-      document.getElementById('status').innerText = '状態：👻 幽霊部屋（幽霊同士で会話中）';
+      document.getElementById('status').innerText = '状態：👻 幽霊部屋（幽霊同士で会話）';
       setActiveButton('btn-ghost');
     }
 
