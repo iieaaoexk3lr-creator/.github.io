@@ -130,7 +130,7 @@
     <div class="room-title" id="room-display">部屋名: -</div>
     <div class="status-box" id="status">まず最初に「通話開始」を押してください</div>
 
-    <!-- メイン通話開始ボタン（音声再生ブロック解除兼用） -->
+    <!-- メイン通話開始ボタン -->
     <div class="start-bar">
       <button id="btn-start" class="btn-main-start" onclick="startAudioAndConnect()">🎤 通話開始</button>
     </div>
@@ -204,16 +204,11 @@
         for (let i = 0; i < bytes.byteLength; i++) {
           binary += String.fromCharCode(bytes[i]);
         }
-        return btoa(binary)
-          .replace(/=/g, '')
-          .replace(/\+/g, '-')
-          .replace(/\//g, '_');
+        return btoa(binary).replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_');
       }
 
       function objectToBase64Url(obj) {
-        const jsonStr = JSON.stringify(obj);
-        const utf8Bytes = new TextEncoder().encode(jsonStr);
-        return arrayBufferToBase64Url(utf8Bytes);
+        return arrayBufferToBase64Url(new TextEncoder().encode(JSON.stringify(obj)));
       }
 
       const header = { alg: "HS256", typ: "JWT" };
@@ -231,58 +226,49 @@
       const dataToSign = `${encodedHeader}.${encodedPayload}`;
 
       const encoder = new TextEncoder();
-      const keyData = encoder.encode(LIVEKIT_API_SECRET);
       const cryptoKey = await crypto.subtle.importKey(
-        "raw",
-        keyData,
-        { name: "HMAC", hash: "SHA-256" },
-        false,
-        ["sign"]
+        "raw", encoder.encode(LIVEKIT_API_SECRET),
+        { name: "HMAC", hash: "SHA-256" }, false, ["sign"]
       );
 
-      const signature = await crypto.subtle.sign(
-        "HMAC",
-        cryptoKey,
-        encoder.encode(dataToSign)
-      );
-
-      const encodedSignature = arrayBufferToBase64Url(signature);
-      return `${dataToSign}.${encodedSignature}`;
+      const signature = await crypto.subtle.sign("HMAC", cryptoKey, encoder.encode(dataToSign));
+      return `${dataToSign}.${arrayBufferToBase64Url(signature)}`;
     }
 
-    // 最初に押す「通話開始」の統合処理
     async function startAudioAndConnect() {
-      if (currentLiveKitRoom) {
-        currentLiveKitRoom.startAudio().catch(()=>{});
-      }
-      const audios = document.querySelectorAll('#audio-container audio');
-      audios.forEach(a => a.play().catch(()=>{}));
-
       await actionTalk();
     }
 
     async function connectToLiveKit(channelType, enableMic) {
       const LK = window.LivekitClient || window.LiveKit;
       if (!LK) {
-        alert("LiveKitライブラリの読み込みに失敗しました。ページを再読み込みしてください。");
-        document.getElementById('status').innerText = 'ライブラリ読み込みエラー';
+        alert("LiveKitライブラリの読み込みに失敗しました。");
         return;
       }
 
       const targetRoomName = `tuwa_${currentRoomName}_${channelType}`;
       updateUserPresence(channelType);
 
-      if (currentLiveKitRoom && currentLiveKitRoom.name === targetRoomName) {
+      // 同じ部屋かつ既に接続済みの場合はマイク切り替えのみ
+      if (currentLiveKitRoom && currentLiveKitRoom.name === targetRoomName && currentLiveKitRoom.state === LK.RoomState.Connected) {
         await setMicState(enableMic);
         return;
       }
 
+      document.getElementById('status').innerText = '接続切り替え中...';
+
+      // 既存接続のクリーンアップ（古いオーディオ要素を全削除）
       if (currentLiveKitRoom) {
-        await currentLiveKitRoom.disconnect();
+        try {
+          await currentLiveKitRoom.disconnect();
+        } catch (e) {
+          console.log("切断エラー無視:", e);
+        }
         currentLiveKitRoom = null;
       }
-
-      document.getElementById('status').innerText = '接続切り替え中...';
+      
+      const container = document.getElementById('audio-container');
+      container.innerHTML = ''; // 古い<audio>要素を全て破棄
 
       try {
         const token = await generateToken(targetRoomName, userName);
@@ -297,9 +283,9 @@
           }
         });
 
+        // 音声トラック受信イベント
         room.on(LK.RoomEvent.TrackSubscribed, (track, publication, participant) => {
           if (track.kind === LK.Track.Kind.Audio) {
-            const container = document.getElementById('audio-container');
             const oldEl = document.getElementById(`audio_${participant.identity}`);
             if (oldEl) oldEl.remove();
 
@@ -307,8 +293,11 @@
             el.id = `audio_${participant.identity}`;
             el.autoplay = true;
             container.appendChild(el);
-            
-            el.play().catch(err => console.log("自動再生ブロック検出:", err));
+
+            // 音声コンテキストの開放と再生
+            room.startAudio().then(() => {
+              el.play().catch(err => console.log("再生ブロック修正実行:", err));
+            });
           }
         });
 
@@ -324,8 +313,9 @@
 
         await room.connect(LIVEKIT_URL, token);
         await room.startAudio();
-        await setMicState(enableMic);
+        
         currentLiveKitRoom = room;
+        await setMicState(enableMic);
 
       } catch (err) {
         console.error("LiveKit接続エラー:", err);
@@ -350,7 +340,6 @@
       document.getElementById('room-display').innerText = `部屋名: ${currentRoomName} (${userName})`;
 
       stateRef = db.ref('tu-wa-v2/' + currentRoomName);
-      
       userPresenceRef = db.ref(`tu-wa-v2/${currentRoomName}/users/${userName}`);
       userPresenceRef.onDisconnect().remove();
 
@@ -394,9 +383,7 @@
       container.innerHTML = '';
 
       const sortedKeys = Object.keys(cachedUsers).sort((a, b) => {
-        const winsA = cachedUsers[a].wins || 0;
-        const winsB = cachedUsers[b].wins || 0;
-        return winsB - winsA;
+        return (cachedUsers[b].wins || 0) - (cachedUsers[a].wins || 0);
       });
 
       sortedKeys.forEach(targetName => {
@@ -431,10 +418,7 @@
     }
 
     function addWin(targetName) {
-      const userWinRef = db.ref(`tu-wa-v2/${currentRoomName}/users/${targetName}/wins`);
-      userWinRef.transaction((currentWins) => {
-        return (currentWins || 0) + 1;
-      });
+      db.ref(`tu-wa-v2/${currentRoomName}/users/${targetName}/wins`).transaction(w => (w || 0) + 1);
     }
 
     function toggleForceMute(targetName, forceMuteState) {
@@ -443,7 +427,7 @@
 
     async function setMicState(enable) {
       isMicEnabled = enable;
-      if (currentLiveKitRoom) {
+      if (currentLiveKitRoom && currentLiveKitRoom.localParticipant) {
         await currentLiveKitRoom.localParticipant.setMicrophoneEnabled(enable);
       }
     }
@@ -470,7 +454,6 @@
       });
     }
 
-    // 「通話 / 解禁 (マイクON)」ボタンの処理
     async function actionTalk() {
       if (stateRef) stateRef.child('global_state').set('START');
       await connectToLiveKit('LIVE', true);
