@@ -5,8 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>汎用 通話＆個人戦績リモコン</title>
   
-  <!-- LiveKit Client SDK (バージョン指定で安定化) -->
-  <script src="https://cdn.jsdelivr.net/npm/livekit-client@1.15.4/dist/livekit-client.umd.min.js"></script>
+  <!-- LiveKit Client SDK (トラッキングブロック対策でunpkgの最新構成に変更) -->
+  <script src="https://unpkg.com/livekit-client/dist/livekit-client.umd.js" crossorigin="anonymous"></script>
   <!-- Firebase -->
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
@@ -266,6 +266,14 @@
     }
 
     async function connectToLiveKit(channelType, enableMic) {
+      // LiveKitライブラリの読み込み確認
+      const LK = window.LivekitClient || window.LiveKit;
+      if (!LK) {
+        alert("LiveKitライブラリの読み込みに失敗しました。ブラウザの追跡防止機能をオフにするか、ページを再読み込みしてください。");
+        document.getElementById('status').innerText = 'ライブラリ読み込みエラー';
+        return;
+      }
+
       const targetRoomName = `tuwa_${currentRoomName}_${channelType}`;
       updateUserPresence(channelType);
 
@@ -283,7 +291,7 @@
 
       try {
         const token = await generateToken(targetRoomName, userName);
-        const room = new LiveKit.Room({ 
+        const room = new LK.Room({ 
           adaptiveStream: true, 
           dynacast: true,
           autoSubscribe: true,
@@ -294,8 +302,8 @@
           }
         });
 
-        room.on(LiveKit.RoomEvent.TrackSubscribed, (track, publication, participant) => {
-          if (track.kind === LiveKit.Track.Kind.Audio) {
+        room.on(LK.RoomEvent.TrackSubscribed, (track, publication, participant) => {
+          if (track.kind === LK.Track.Kind.Audio) {
             const container = document.getElementById('audio-container');
             const oldEl = document.getElementById(`audio_${participant.identity}`);
             if (oldEl) oldEl.remove();
@@ -309,11 +317,11 @@
           }
         });
 
-        room.on(LiveKit.RoomEvent.TrackUnsubscribed, (track) => {
+        room.on(LK.RoomEvent.TrackUnsubscribed, (track) => {
           track.detach().forEach(el => el.remove());
         });
 
-        room.on(LiveKit.RoomEvent.ActiveSpeakersChanged, (speakers) => {
+        room.on(LK.RoomEvent.ActiveSpeakersChanged, (speakers) => {
           speakingUsers.clear();
           speakers.forEach(s => speakingUsers.add(s.identity));
           renderUserList();
