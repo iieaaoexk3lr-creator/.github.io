@@ -249,7 +249,6 @@
       const targetRoomName = `tuwa_${currentRoomName}_${channelType}`;
       updateUserPresence(channelType);
 
-      // 修正箇所: 接続判定を文字列 'connected' で確実に行う
       if (currentLiveKitRoom && currentLiveKitRoom.name === targetRoomName && currentLiveKitRoom.state === 'connected') {
         await setMicState(enableMic);
         return;
@@ -257,7 +256,6 @@
 
       document.getElementById('status').innerText = '接続切り替え中...';
 
-      // 既存接続のクリーンアップ（古いオーディオ要素を全削除）
       if (currentLiveKitRoom) {
         try {
           await currentLiveKitRoom.disconnect();
@@ -268,7 +266,7 @@
       }
       
       const container = document.getElementById('audio-container');
-      container.innerHTML = ''; // 古い<audio>要素を全て破棄
+      container.innerHTML = '';
 
       try {
         const token = await generateToken(targetRoomName, userName);
@@ -283,7 +281,6 @@
           }
         });
 
-        // 音声トラック受信イベント
         room.on(LK.RoomEvent.TrackSubscribed, (track, publication, participant) => {
           if (track.kind === LK.Track.Kind.Audio) {
             const oldEl = document.getElementById(`audio_${participant.identity}`);
@@ -294,7 +291,6 @@
             el.autoplay = true;
             container.appendChild(el);
 
-            // 音声コンテキストの開放と再生
             room.startAudio().then(() => {
               el.play().catch(err => console.log("再生ブロック修正実行:", err));
             });
@@ -378,6 +374,7 @@
       });
     }
 
+    /* 修正箇所: 幽霊・生者アイコンの非表示化 */
     function renderUserList() {
       const container = document.getElementById('user-list-container');
       container.innerHTML = '';
@@ -401,7 +398,6 @@
             <span class="win-badge">🏆 ${wins}勝</span>
             <span>
               ${targetName} ${isSelf ? '(自分)' : ''} 
-              ${userData.type === 'GHOST' ? '👻' : '🚶‍♂️'}
               ${isMuted ? '🔇' : ''}
             </span>
             ${isSpeaking ? '<span class="speaking-badge">🔊 声入力中</span>' : ''}
