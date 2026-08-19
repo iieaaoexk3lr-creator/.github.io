@@ -197,13 +197,11 @@
     let isMicEnabled = true;
     let speakingUsers = new Set();
 
-    // ★ 外部ライブラリなしでブラウザの標準Web Crypto APIのみを使ってJWTを生成する関数
+    // ★ 日本語対応版のBase64/JWT生成関数
     async function generateToken(roomName, participantName) {
       function base64UrlEncode(str) {
-        return btoa(str)
-          .replace(/=/g, '')
-          .replace(/\+/g, '-')
-          .replace(/\//g, '_');
+        const bytes = new TextEncoder().encode(str);
+        return arrayBufferToBase64Url(bytes);
       }
 
       function arrayBufferToBase64Url(buffer) {
