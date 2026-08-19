@@ -249,8 +249,8 @@
       const targetRoomName = `tuwa_${currentRoomName}_${channelType}`;
       updateUserPresence(channelType);
 
-      // 同じ部屋かつ既に接続済みの場合はマイク切り替えのみ
-      if (currentLiveKitRoom && currentLiveKitRoom.name === targetRoomName && currentLiveKitRoom.state === LK.RoomState.Connected) {
+      // 修正箇所: 接続判定を文字列 'connected' で確実に行う
+      if (currentLiveKitRoom && currentLiveKitRoom.name === targetRoomName && currentLiveKitRoom.state === 'connected') {
         await setMicState(enableMic);
         return;
       }
