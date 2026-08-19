@@ -5,8 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>汎用 通話＆個人戦績リモコン</title>
   
-  <!-- LiveKit Client SDK -->
-  <script src="https://cdn.jsdelivr.net/npm/livekit-client/dist/livekit-client.umd.min.js"></script>
+  <!-- LiveKit Client SDK (バージョン指定で安定化) -->
+  <script src="https://cdn.jsdelivr.net/npm/livekit-client@1.15.4/dist/livekit-client.umd.min.js"></script>
   <!-- Firebase -->
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
@@ -197,13 +197,8 @@
     let isMicEnabled = true;
     let speakingUsers = new Set();
 
-    // ★ 日本語対応版のBase64/JWT生成関数
+    // ★ 日本語（UTF-8）完全対応 JWT生成関数
     async function generateToken(roomName, participantName) {
-      function base64UrlEncode(str) {
-        const bytes = new TextEncoder().encode(str);
-        return arrayBufferToBase64Url(bytes);
-      }
-
       function arrayBufferToBase64Url(buffer) {
         let binary = '';
         const bytes = new Uint8Array(buffer);
@@ -216,6 +211,12 @@
           .replace(/\//g, '_');
       }
 
+      function objectToBase64Url(obj) {
+        const jsonStr = JSON.stringify(obj);
+        const utf8Bytes = new TextEncoder().encode(jsonStr);
+        return arrayBufferToBase64Url(utf8Bytes);
+      }
+
       const header = { alg: "HS256", typ: "JWT" };
       const now = Math.floor(Date.now() / 1000);
       const payload = {
@@ -226,8 +227,8 @@
         video: { room: roomName, roomJoin: true, canPublish: true, canSubscribe: true }
       };
 
-      const encodedHeader = base64UrlEncode(JSON.stringify(header));
-      const encodedPayload = base64UrlEncode(JSON.stringify(payload));
+      const encodedHeader = objectToBase64Url(header);
+      const encodedPayload = objectToBase64Url(payload);
       const dataToSign = `${encodedHeader}.${encodedPayload}`;
 
       const encoder = new TextEncoder();
