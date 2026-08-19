@@ -5,11 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>汎用 通話＆個人戦績リモコン</title>
   
-  <!-- 1. JOSE (JWT生成用) を一番最初に読み込む -->
-  <script src="https://unpkg.com/jose@4.14.4/dist/browser/index.umd.js"></script>
-  <!-- 2. LiveKit Client SDK -->
+  <!-- LiveKit Client SDK -->
   <script src="https://cdn.jsdelivr.net/npm/livekit-client/dist/livekit-client.umd.min.js"></script>
-  <!-- 3. Firebase -->
+  <!-- Firebase -->
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
 
@@ -199,19 +197,59 @@
     let isMicEnabled = true;
     let speakingUsers = new Set();
 
+    // ★ 外部ライブラリなしでブラウザの標準Web Crypto APIのみを使ってJWTを生成する関数
     async function generateToken(roomName, participantName) {
-      if (typeof jose === 'undefined') {
-        throw new Error("JOSEライブラリの読み込みに失敗しています。");
+      function base64UrlEncode(str) {
+        return btoa(str)
+          .replace(/=/g, '')
+          .replace(/\+/g, '-')
+          .replace(/\//g, '_');
       }
-      const secret = new TextEncoder().encode(LIVEKIT_API_SECRET);
-      return await new jose.SignJWT({
+
+      function arrayBufferToBase64Url(buffer) {
+        let binary = '';
+        const bytes = new Uint8Array(buffer);
+        for (let i = 0; i < bytes.byteLength; i++) {
+          binary += String.fromCharCode(bytes[i]);
+        }
+        return btoa(binary)
+          .replace(/=/g, '')
+          .replace(/\+/g, '-')
+          .replace(/\//g, '_');
+      }
+
+      const header = { alg: "HS256", typ: "JWT" };
+      const now = Math.floor(Date.now() / 1000);
+      const payload = {
+        iss: LIVEKIT_API_KEY,
+        sub: participantName,
+        exp: now + (2 * 60 * 60),
+        nbf: now - 5,
         video: { room: roomName, roomJoin: true, canPublish: true, canSubscribe: true }
-      })
-        .setProtectedHeader({ alg: 'HS256' })
-        .setIssuer(LIVEKIT_API_KEY)
-        .setSubject(participantName)
-        .setExpirationTime('2h')
-        .sign(secret);
+      };
+
+      const encodedHeader = base64UrlEncode(JSON.stringify(header));
+      const encodedPayload = base64UrlEncode(JSON.stringify(payload));
+      const dataToSign = `${encodedHeader}.${encodedPayload}`;
+
+      const encoder = new TextEncoder();
+      const keyData = encoder.encode(LIVEKIT_API_SECRET);
+      const cryptoKey = await crypto.subtle.importKey(
+        "raw",
+        keyData,
+        { name: "HMAC", hash: "SHA-256" },
+        false,
+        ["sign"]
+      );
+
+      const signature = await crypto.subtle.sign(
+        "HMAC",
+        cryptoKey,
+        encoder.encode(dataToSign)
+      );
+
+      const encodedSignature = arrayBufferToBase64Url(signature);
+      return `${dataToSign}.${encodedSignature}`;
     }
 
     function unblockAudio() {
