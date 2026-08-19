@@ -16,7 +16,7 @@
     body { background: #111; color: #fff; font-family: sans-serif; text-align: center; padding: 12px; }
     
     #login-screen {
-      max-width: 320px; margin: 40px auto; padding: 20px;
+      max-width: 320px; margin: 20px auto; padding: 20px;
       background: #222; border-radius: 12px; border: 1px solid #444;
     }
     #login-screen input {
@@ -27,6 +27,15 @@
       width: 100%; padding: 12px; background: #27ae60; color: #fff;
       font-size: 16px; font-weight: bold; border: none; border-radius: 6px; cursor: pointer;
     }
+
+    /* ログイン画面の説明文スタイリング */
+    .notice-box {
+      background: #2a2a2a; border: 1px solid #555; border-radius: 8px;
+      padding: 12px; margin-bottom: 16px; font-size: 12px; text-align: left; line-height: 1.5; color: #ddd;
+    }
+    .notice-box ul { padding-left: 18px; margin-top: 6px; }
+    .notice-box li { margin-bottom: 4px; }
+    .notice-highlight { color: #f1c40f; font-weight: bold; }
 
     #main-app { display: none; }
     .status-box { 
@@ -113,6 +122,16 @@
     }
 
     span { font-size: 10px; font-weight: normal; margin-top: 2px; opacity: 0.85; }
+
+    /* 操作説明エリアのスタイリング */
+    .guide-box {
+      max-width: 360px; margin: 16px auto 0; background: #222;
+      border: 1px solid #444; border-radius: 8px; padding: 12px; text-align: left;
+    }
+    .guide-title { font-size: 12px; color: #aaa; margin-bottom: 8px; border-bottom: 1px solid #333; padding-bottom: 4px; font-weight: bold; }
+    .guide-list { font-size: 11px; line-height: 1.6; color: #ccc; }
+    .guide-list dt { font-weight: bold; color: #fff; margin-top: 6px; }
+    .guide-list dd { margin-left: 0; color: #bbb; }
   </style>
 </head>
 <body>
@@ -120,6 +139,16 @@
   <!-- ログイン画面 -->
   <div id="login-screen">
     <h3 style="margin-bottom: 12px;">汎用 通話＆個人戦績リモコン</h3>
+
+    <!-- 入室前の注意・案内文 -->
+    <div class="notice-box">
+      <div class="notice-highlight">📱 ご利用前の確認事項</div>
+      <ul>
+        <li>LINEやTwitter等のアプリ内ブラウザではマイクが動かない場合があります。<span class="notice-highlight">Safari</span> または <span class="notice-highlight">Chrome</span> で開いてください。</li>
+        <li>入室後にマイク使用許可のダイアログが出た場合は<span class="notice-highlight">「許可」</span>を選択してください。</li>
+      </ul>
+    </div>
+
     <input type="text" id="room-input" placeholder="部屋名 (例: room1)" />
     <input type="text" id="name-input" placeholder="あなたの名前" />
     <button onclick="enterRoom()">ログイン</button>
@@ -164,6 +193,25 @@
       <button id="btn-reset" class="btn-reset" onclick="actionReset()">
         🔄 全員初期化・復帰<span>(全員を生者部屋・会話可に戻す)</span>
       </button>
+    </div>
+
+    <!-- 下部の操作説明エリア -->
+    <div class="guide-box">
+      <div class="guide-title">📖 ボタンの使い方説明</div>
+      <dl class="guide-list">
+        <dt>🎤 通話 / 解禁</dt>
+        <dd>生者部屋に入り、マイクをオンにします（ゲーム開始時や生還時）。</dd>
+        <dt>🔇 ミュート</dt>
+        <dd>自分のマイクだけを一時的にオフにします。</dd>
+        <dt>🛑 全体ミュート</dt>
+        <dd>議論時間やゲーム開始時に全員のマイクを強制オフにします（全体同期）。</dd>
+        <dt>💀 やられた</dt>
+        <dd>生者の声を聴くだけの聞き専になります。自分の声は誰にも届きません。</dd>
+        <dt>👻 幽霊部屋</dt>
+        <dd>脱落者同士で会話する部屋に移動します。他の参加者には移動がわかりません。</dd>
+        <dt>🔄 全員初期化・復帰</dt>
+        <dd>ゲーム終了時、全員を生者部屋へ戻しマイクを解禁します（全体同期）。</dd>
+      </dl>
     </div>
   </div>
 
@@ -374,7 +422,6 @@
       });
     }
 
-    /* 修正箇所: 幽霊・生者アイコンの非表示化 */
     function renderUserList() {
       const container = document.getElementById('user-list-container');
       container.innerHTML = '';
