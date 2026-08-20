@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0">
+  <title>歌いながらイライラ棒</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+    body, html {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      background-color: #000;
+      color: #fff;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      overflow: hidden;
+      touch-action: none;
+    }
+
+    /* UIレイアウト */
+    #header {
+      position: absolute;
+      top: 10px;
+      left: 15px;
+      right: 15px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      z-index: 10;
+      pointer-events: none;
+    }
+    .score-box {
+      font-size: 20px;
+      font-weight: bold;
+      background: rgba(0, 0, 0, 0.6);
+      padding: 6px 16px;
+      border-radius: 20px;
+      border: 1px solid #444;
+    }
+    .score-num {
+      color: #00ffcc;
+      font-size: 24px;
+    }
+    .btn-reset {
+      pointer-events: auto;
+      background: #333;
+      color: #ccc;
+      border: 1px solid #666;
+      padding: 6px 14px;
+      border-radius: 12px;
+      font-size: 12px;
+      cursor: pointer;
+    }
+    .btn-reset:active {
+      background: #555;
+    }
+
+    /* 描画キャンバス */
+    canvas {
+      display: block;
+      width: 100vw;
+      height: 100vh;
+    }
+
+    /* メッセージポップアップ */
+    #overlay {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      font-size: 36px;
+      font-weight: 900;
+      text-align: center;
+      pointer-events: none;
+      display: none;
+      z-index: 20;
+      text-shadow: 0 0 10px rgba(0,0,0,0.8);
+    }
+
+    /* 画面縦向き時の警告 */
+    #portrait-warning {
+      display: none;
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: #111;
+      z-index: 100;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      text-align: center;
+      font-size: 18px;
+    }
+    @media (orientation: portrait) {
+      #portrait-warning { display: flex; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- 縦向きの場合に横画面化を促すカバー -->
+  <div id="portrait-warning">
+    <p style="font-size: 40px; margin-bottom: 10px;">🔄</p>
+    <p>スマホを<b>横向き</b>にしてプレイしてください</p>
+  </div>
+
+  <div id="header">
+    <div class="score-box">クリア数: <span id="clear-count" class="score-num">0</span></div>
+    <button class="btn-reset" onclick="resetGame()">カウントリセット</button>
+  </div>
+
+  <div id="overlay"></div>
+  <canvas id="stage"></canvas>
+
+<script>
+  const canvas = document.getElementById('stage');
+  const ctx = canvas.getContext('2d');
+  const clearEl = document.getElementById('clear-count');
+  const overlay = document.getElementById('overlay');
+
+  let clearCount = 0;
+  let isPlaying = false;
+  let path = [];
+  const pathWidth = 46; // コースの太さ
+
+  function init() {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+    generateCourse();
+  }
+
+  // コース自動生成
+  function generateCourse() {
+    path = [];
+    const segments = 5;
+    const startX = 70;
+    const endX = canvas.width - 70;
+    const stepX = (endX - startX) / segments;
+
+    // スタート
+    path.push({ x: startX, y: canvas.height / 2 });
+
+    // 中継ポイント
+    for (let i = 1; i < segments; i++) {
+      const x = startX + stepX * i;
+      const minY = 80;
+      const maxY = canvas.height - 80;
+      const y = Math.random() * (maxY - minY) + minY;
+      path.push({ x, y });
+    }
+
+    // ゴール
+    path.push({ x: endX, y: canvas.height / 2 });
+    draw();
+  }
+
+  // 描画処理
+  function draw() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // 壁（外枠）
+    ctx.strokeStyle = '#ff3366';
+    ctx.lineWidth = pathWidth + 8;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.beginPath();
+    path.forEach((p, i) => i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y));
+    ctx.stroke();
+
+    // 通路（安全エリア）
+    ctx.strokeStyle = '#111827';
+    ctx.lineWidth = pathWidth;
+    ctx.beginPath();
+    path.forEach((p, i) => i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y));
+    ctx.stroke();
+
+    // スタート（緑）
+    ctx.fillStyle = '#10B981';
+    ctx.beginPath();
+    ctx.arc(path[0].x, path[0].y, 28, 0, Math.PI * 2);
+    ctx.fill();
+
+    // ゴール（黄）
+    ctx.fillStyle = '#F59E0B';
+    ctx.beginPath();
+    ctx.arc(path[path.length - 1].x, path[path.length - 1].y, 28, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // 判定ロジック
+  function handleTouch(e) {
+    if (e.touches.length === 0) return;
+    const touch = e.touches[0];
+    const x = touch.clientX;
+    const y = touch.clientY;
+
+    const start = path[0];
+    const goal = path[path.length - 1];
+
+    // スタート判定
+    if (!isPlaying) {
+      const distStart = Math.hypot(x - start.x, y - start.y);
+      if (distStart < 30) {
+        isPlaying = true;
+      }
+      return;
+    }
+
+    // ゴール判定
+    const distGoal = Math.hypot(x - goal.x, y - goal.y);
+    if (distGoal < 28) {
+      onSuccess();
+      return;
+    }
+
+    // 壁接触判定（ピクセルカラー判定）
+    const pixel = ctx.getImageData(x, y, 1, 1).data;
+    // 背景（黒）か壁（赤系統）に触れたらミス
+    if (pixel[0] > 100 || (pixel[0] === 0 && pixel[1] === 0 && pixel[2] === 0)) {
+      onFail();
+    }
+  }
+
+  function onSuccess() {
+    isPlaying = false;
+    clearCount++;
+    clearEl.textContent = clearCount;
+    showMsg('CLEAR! +1', '#10B981');
+    setTimeout(generateCourse, 1000);
+  }
+
+  function onFail() {
+    isPlaying = false;
+    showMsg('ビリビリ!! 0pt', '#EF4444');
+    if (navigator.vibrate) navigator.vibrate(150); // バイブレーション演出
+    setTimeout(generateCourse, 1000);
+  }
+
+  function showMsg(text, color) {
+    overlay.textContent = text;
+    overlay.style.color = color;
+    overlay.style.display = 'block';
+    setTimeout(() => overlay.style.display = 'none', 800);
+  }
+
+  function resetGame() {
+    clearCount = 0;
+    clearEl.textContent = 0;
+    isPlaying = false;
+    generateCourse();
+  }
+
+  // イベント登録
+  window.addEventListener('resize', init);
+  canvas.addEventListener('touchstart', handleTouch);
+  canvas.addEventListener('touchmove', handleTouch);
+  canvas.addEventListener('touchend', () => { isPlaying = false; });
+
+  window.onload = init;
+</script>
+</body>
+</html>
