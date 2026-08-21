@@ -2,268 +2,160 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0">
-  <title>歌いながらドキドキ棒</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>ドキドキ棒</title>
   <style>
-    * {
-      box-sizing: border-box;
-      user-select: none;
-      -webkit-user-select: none;
-    }
-    body, html {
-      margin: 0;
-      padding: 0;
-      width: 100%;
-      height: 100%;
-      background-color: #000;
-      color: #fff;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-      overflow: hidden;
-      touch-action: none;
-    }
-
-    /* UIレイアウト */
-    #header {
-      position: absolute;
-      top: 10px;
-      left: 15px;
-      right: 15px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      z-index: 10;
-      pointer-events: none;
-    }
-    .score-box {
-      font-size: 20px;
-      font-weight: bold;
-      background: rgba(0, 0, 0, 0.6);
-      padding: 6px 16px;
-      border-radius: 20px;
-      border: 1px solid #444;
-    }
-    .score-num {
-      color: #00ffcc;
-      font-size: 24px;
-    }
-    .btn-reset {
-      pointer-events: auto;
-      background: #333;
-      color: #ccc;
-      border: 1px solid #666;
-      padding: 6px 14px;
-      border-radius: 12px;
-      font-size: 12px;
-      cursor: pointer;
-    }
-    .btn-reset:active {
-      background: #555;
-    }
-
-    /* 描画キャンバス */
-    canvas {
-      display: block;
-      width: 100vw;
-      height: 100vh;
-    }
-
-    /* メッセージポップアップ */
-    #overlay {
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      font-size: 36px;
-      font-weight: 900;
-      text-align: center;
-      pointer-events: none;
-      display: none;
-      z-index: 20;
-      text-shadow: 0 0 10px rgba(0,0,0,0.8);
-    }
-
-    /* 画面縦向き時の警告 */
-    #portrait-warning {
-      display: none;
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100vw;
-      height: 100vh;
-      background: #111;
-      z-index: 100;
-      flex-direction: column;
-      justify-content: center;
-      align-items: center;
-      text-align: center;
-      font-size: 18px;
-    }
-    @media (orientation: portrait) {
-      #portrait-warning { display: flex; }
-    }
+    body, html { margin: 0; padding: 0; width: 100%; height: 100%; background: #000; color: #fff; font-family: sans-serif; overflow: hidden; touch-action: none; }
+    
+    #ui { position: absolute; top: 10px; left: 10px; z-index: 10; display: flex; flex-direction: column; gap: 5px; }
+    
+    .stats-box { background: rgba(0,0,0,0.7); padding: 8px; border-radius: 8px; border: 1px solid #444; font-size: 14px; }
+    .title-text { color: #ff0077; font-weight: bold; font-size: 20px; margin-bottom: 5px; }
+    .score-row { display: flex; gap: 10px; }
+    
+    .controls { display: flex; gap: 5px; margin-top: 5px; }
+    .btn { background: #333; color: white; border: 1px solid #666; padding: 5px 10px; border-radius: 4px; cursor: pointer; font-size: 12px; }
+    .btn.active { background: #ff0077; border-color: #cc0066; }
+    
+    canvas { display: block; }
+    #overlay { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 40px; font-weight: bold; display: none; pointer-events: none; text-shadow: 2px 2px 5px #000;}
   </style>
 </head>
 <body>
 
-  <!-- 縦向きの場合に横画面化を促すカバー -->
-  <div id="portrait-warning">
-    <p style="font-size: 40px; margin-bottom: 10px;">🔄</p>
-    <p>スマホを<b>横向き</b>にしてプレイしてください</p>
+<div id="ui">
+  <div class="stats-box">
+    <div class="title-text">ドキドキ棒</div>
+    <div class="score-row">
+      <div>E: <span id="count-easy">0</span></div>
+      <div>N: <span id="count-normal">0</span></div>
+      <div>H: <span id="count-hard">0</span></div>
+    </div>
+    <div style="font-size: 18px; margin-top: 5px;">総合点: <span id="total-score" style="color:#00ffcc; font-weight:bold;">0</span></div>
   </div>
-
-  <div id="header">
-    <div class="score-box">クリア数: <span id="clear-count" class="score-num">0</span></div>
-    <button class="btn-reset" onclick="resetGame()">カウントリセット</button>
+  <div class="controls">
+    <button class="btn active" id="btn-easy" onclick="setDiff('easy')">Easy</button>
+    <button class="btn" id="btn-normal" onclick="setDiff('normal')">Normal</button>
+    <button class="btn" id="btn-hard" onclick="setDiff('hard')">Hard</button>
+    <button class="btn" style="background:#880000;" onclick="resetStats()">リセット</button>
   </div>
+</div>
 
-  <div id="overlay"></div>
-  <canvas id="stage"></canvas>
+<div id="overlay"></div>
+<canvas id="stage"></canvas>
 
 <script>
-  const canvas = document.getElementById('stage');
-  const ctx = canvas.getContext('2d');
-  const clearEl = document.getElementById('clear-count');
-  const overlay = document.getElementById('overlay');
+const canvas = document.getElementById('stage');
+const ctx = canvas.getContext('2d');
+let stats = { easy: 0, normal: 0, hard: 0, total: 0 };
+let isPlaying = false;
+let difficulty = 'easy';
+let path = [], trace = [];
+const pathWidth = 40;
 
-  let clearCount = 0;
-  let isPlaying = false;
-  let path = [];
-  const pathWidth = 46; // コースの太さ
+// データ読み込み
+function loadStats() {
+  const saved = localStorage.getItem('dokidoki_stats');
+  if (saved) stats = JSON.parse(saved);
+  updateDisplay();
+}
 
-  function init() {
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
+function updateDisplay() {
+  document.getElementById('count-easy').innerText = stats.easy;
+  document.getElementById('count-normal').innerText = stats.normal;
+  document.getElementById('count-hard').innerText = stats.hard;
+  document.getElementById('total-score').innerText = stats.total;
+}
+
+function saveStats() {
+  localStorage.setItem('dokidoki_stats', JSON.stringify(stats));
+  updateDisplay();
+}
+
+function setDiff(d) {
+  difficulty = d;
+  document.querySelectorAll('.btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('btn-' + d).classList.add('active');
+  generateCourse();
+}
+
+function resetStats() {
+  if (confirm("記録をすべてリセットしますか？")) {
+    stats = { easy: 0, normal: 0, hard: 0, total: 0 };
+    saveStats();
     generateCourse();
   }
+}
 
-  // コース自動生成
-  function generateCourse() {
-    path = [];
-    const segments = 5;
-    const startX = 70;
-    const endX = canvas.width - 70;
-    const stepX = (endX - startX) / segments;
+function init() {
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+  loadStats();
+  generateCourse();
+}
 
-    // スタート
-    path.push({ x: startX, y: canvas.height / 2 });
+function generateCourse() {
+  path = [];
+  const w = canvas.width, h = canvas.height;
+  const startX = 60, endX = w - 60;
+  
+  if (difficulty === 'easy') {
+    path = [{x: startX, y: h/2}, {x: w/2, y: h/4}, {x: endX, y: h/2}];
+  } else if (difficulty === 'normal') {
+    path = [{x: startX, y: h/2}, {x: w*0.3, y: h/4}, {x: w*0.6, y: h*0.75}, {x: endX, y: h/2}];
+  } else {
+    path = [{x: startX, y: h/2}, {x: w*0.3, y: h/6}, {x: w*0.5, y: h*0.8}, {x: w*0.7, y: h/6}, {x: endX, y: h/2}];
+  }
+  trace = [];
+  draw();
+}
 
-    // 中継ポイント
-    for (let i = 1; i < segments; i++) {
-      const x = startX + stepX * i;
-      const minY = 80;
-      const maxY = canvas.height - 80;
-      const y = Math.random() * (maxY - minY) + minY;
-      path.push({ x, y });
-    }
+function draw() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.strokeStyle = '#ff3366'; ctx.lineWidth = pathWidth + 10; ctx.lineCap = 'round';
+  ctx.beginPath(); path.forEach((p, i) => i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y)); ctx.stroke();
+  ctx.strokeStyle = '#000'; ctx.lineWidth = pathWidth;
+  ctx.beginPath(); path.forEach((p, i) => i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y)); ctx.stroke();
+  ctx.strokeStyle = '#fff'; ctx.lineWidth = 3;
+  ctx.beginPath(); trace.forEach((p, i) => i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y)); ctx.stroke();
+  ctx.fillStyle = '#0f0'; ctx.beginPath(); ctx.arc(path[0].x, path[0].y, 20, 0, Math.PI*2); ctx.fill();
+  ctx.fillStyle = '#f00'; ctx.beginPath(); ctx.arc(path[path.length-1].x, path[path.length-1].y, 20, 0, Math.PI*2); ctx.fill();
+}
 
-    // ゴール
-    path.push({ x: endX, y: canvas.height / 2 });
-    draw();
+canvas.addEventListener('touchmove', (e) => {
+  const x = e.touches[0].clientX, y = e.touches[0].clientY;
+  const distStart = Math.hypot(x - path[0].x, y - path[0].y);
+  if (distStart < 30) { isPlaying = true; trace = []; }
+  if (!isPlaying) return;
+
+  if (Math.hypot(x - path[path.length-1].x, y - path[path.length-1].y) < 20) {
+    isPlaying = false;
+    const points = { easy: 1, normal: 2, hard: 3 };
+    stats[difficulty]++;
+    stats.total += points[difficulty];
+    saveStats();
+    showMsg('CLEAR! +' + points[difficulty], '#0f0'); setTimeout(generateCourse, 1000); return;
   }
 
-  // 描画処理
-  function draw() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-    // 壁（外枠）
-    ctx.strokeStyle = '#ff3366';
-    ctx.lineWidth = pathWidth + 8;
-    ctx.lineCap = 'round';
-    ctx.lineJoin = 'round';
-    ctx.beginPath();
-    path.forEach((p, i) => i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y));
-    ctx.stroke();
-
-    // 通路（安全エリア）
-    ctx.strokeStyle = '#111827';
-    ctx.lineWidth = pathWidth;
-    ctx.beginPath();
-    path.forEach((p, i) => i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y));
-    ctx.stroke();
-
-    // スタート（緑）
-    ctx.fillStyle = '#10B981';
-    ctx.beginPath();
-    ctx.arc(path[0].x, path[0].y, 28, 0, Math.PI * 2);
-    ctx.fill();
-
-    // ゴール（黄）
-    ctx.fillStyle = '#F59E0B';
-    ctx.beginPath();
-    ctx.arc(path[path.length - 1].x, path[path.length - 1].y, 28, 0, Math.PI * 2);
-    ctx.fill();
-  }
-
-  // 判定ロジック
-  function handleTouch(e) {
-    if (e.touches.length === 0) return;
-    const touch = e.touches[0];
-    const x = touch.clientX;
-    const y = touch.clientY;
-
-    const start = path[0];
-    const goal = path[path.length - 1];
-
-    // スタート判定
-    if (!isPlaying) {
-      const distStart = Math.hypot(x - start.x, y - start.y);
-      if (distStart < 30) {
-        isPlaying = true;
-      }
-      return;
-    }
-
-    // ゴール判定
-    const distGoal = Math.hypot(x - goal.x, y - goal.y);
-    if (distGoal < 28) {
-      onSuccess();
-      return;
-    }
-
-    // 壁接触判定（ピクセルカラー判定）
+  if (distStart > 30) {
     const pixel = ctx.getImageData(x, y, 1, 1).data;
-    // 背景（黒）か壁（赤系統）に触れたらミス
-    if (pixel[0] > 100 || (pixel[0] === 0 && pixel[1] === 0 && pixel[2] === 0)) {
-      onFail();
+    if (pixel[0] > 100) {
+      isPlaying = false; showMsg('ビリビリ！', '#ff3366'); 
+      if (navigator.vibrate) navigator.vibrate(200);
+      setTimeout(generateCourse, 1000); return;
     }
+    trace.push({x, y});
   }
+  draw();
+});
 
-  function onSuccess() {
-    isPlaying = false;
-    clearCount++;
-    clearEl.textContent = clearCount;
-    showMsg('CLEAR! +1', '#10B981');
-    setTimeout(generateCourse, 1000);
-  }
+function showMsg(t, c) {
+  const o = document.getElementById('overlay');
+  o.innerText = t; o.style.color = c; o.style.display = 'block';
+  setTimeout(() => o.style.display = 'none', 800);
+}
 
-  function onFail() {
-    isPlaying = false;
-    showMsg('ビリビリ!! 0pt', '#EF4444');
-    if (navigator.vibrate) navigator.vibrate(150); // バイブレーション演出
-    setTimeout(generateCourse, 1000);
-  }
-
-  function showMsg(text, color) {
-    overlay.textContent = text;
-    overlay.style.color = color;
-    overlay.style.display = 'block';
-    setTimeout(() => overlay.style.display = 'none', 800);
-  }
-
-  function resetGame() {
-    clearCount = 0;
-    clearEl.textContent = 0;
-    isPlaying = false;
-    generateCourse();
-  }
-
-  // イベント登録
-  window.addEventListener('resize', init);
-  canvas.addEventListener('touchstart', handleTouch);
-  canvas.addEventListener('touchmove', handleTouch);
-  canvas.addEventListener('touchend', () => { isPlaying = false; });
-
-  window.onload = init;
+window.onload = init;
 </script>
 </body>
 </html>
