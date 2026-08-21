@@ -47,7 +47,7 @@ const ctx = canvas.getContext('2d');
 let stats = { easy: 0, normal: 0, hard: 0, total: 0 };
 let isPlaying = false;
 let difficulty = 'easy';
-let nodes = []; // コースの制御点
+let nodes = []; 
 let trace = [];
 
 function loadStats() {
@@ -76,7 +76,7 @@ function setDiff(d) {
 }
 
 function resetStats() {
-  if (confirm("リセットしますか？")) {
+  if (confirm("記録をリセットしますか？")) {
     stats = { easy: 0, normal: 0, hard: 0, total: 0 };
     saveStats();
     generateCourse();
@@ -90,23 +90,21 @@ function init() {
   generateCourse();
 }
 
-// 難易度ごとの設定（点の数と幅）
 function generateCourse() {
   const cfg = {
-    easy: { pts: 4, minW: 70, maxW: 90 },
-    normal: { pts: 6, minW: 50, maxW: 70 },
-    hard: { pts: 9, minW: 30, maxW: 60 }
+    easy: { pts: 4, minW: 60, maxW: 80 },
+    normal: { pts: 6, minW: 40, maxW: 60 },
+    hard: { pts: 8, minW: 20, maxW: 50 }
   }[difficulty];
 
   nodes = [];
   const w = canvas.width, h = canvas.height;
   
-  // 点を生成
+  // スタートからゴールまで滑らかに繋がるように点を配置
   for (let i = 0; i < cfg.pts; i++) {
-    const x = 80 + (w - 160) * (i / (cfg.pts - 1));
-    // 最初の点と最後の点は真ん中に固定
+    const x = 50 + (w - 100) * (i / (cfg.pts - 1));
+    // 最初の点と最後の点は画面中央の高さ、それ以外はランダムに上下
     let y = (i === 0 || i === cfg.pts - 1) ? h/2 : (h * 0.2 + Math.random() * h * 0.6);
-    // ランダムな幅
     const width = cfg.minW + Math.random() * (cfg.maxW - cfg.minW);
     nodes.push({ x, y, w: width });
   }
@@ -117,34 +115,35 @@ function generateCourse() {
 function draw() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   
-  // 曲線を描画する（quadraticCurveToを使用）
-  ctx.lineCap = 'round';
-  ctx.lineJoin = 'round';
-
-  // 壁の描画
-  ctx.strokeStyle = '#ff3366'; 
+  // 壁の描画（一筆書きでつなぐ）
+  ctx.strokeStyle = '#ff3366';
   ctx.lineWidth = 100; // 壁の厚み
+  ctx.lineJoin = 'round';
+  ctx.lineCap = 'round';
   
   ctx.beginPath();
   ctx.moveTo(nodes[0].x, nodes[0].y);
   for (let i = 0; i < nodes.length - 1; i++) {
-    const p0 = nodes[i], p1 = nodes[i+1];
-    const midX = (p0.x + p1.x) / 2;
-    const midY = (p0.y + p1.y) / 2;
-    ctx.quadraticCurveTo(p0.x, p0.y, midX, midY);
+    // 中間点を制御点として滑らかな曲線を描く
+    const midX = (nodes[i].x + nodes[i+1].x) / 2;
+    const midY = (nodes[i].y + nodes[i+1].y) / 2;
+    ctx.quadraticCurveTo(nodes[i].x, nodes[i].y, midX, midY);
   }
+  ctx.lineTo(nodes[nodes.length-1].x, nodes[nodes.length-1].y);
   ctx.stroke();
 
-  // 通路の描画（幅を反映）
+  // 通路の描画（壁の上に黒い線を重ねて通路を作る）
+  ctx.strokeStyle = '#000';
+  ctx.lineWidth = 50; 
+  ctx.beginPath();
+  ctx.moveTo(nodes[0].x, nodes[0].y);
   for (let i = 0; i < nodes.length - 1; i++) {
-    const p0 = nodes[i], p1 = nodes[i+1];
-    ctx.strokeStyle = '#000';
-    ctx.lineWidth = (p0.w + p1.w) / 2;
-    ctx.beginPath();
-    ctx.moveTo(p0.x, p0.y);
-    ctx.quadraticCurveTo(p0.x, p0.y, (p0.x+p1.x)/2, (p0.y+p1.y)/2);
-    ctx.stroke();
+    const midX = (nodes[i].x + nodes[i+1].x) / 2;
+    const midY = (nodes[i].y + nodes[i+1].y) / 2;
+    ctx.quadraticCurveTo(nodes[i].x, nodes[i].y, midX, midY);
   }
+  ctx.lineTo(nodes[nodes.length-1].x, nodes[nodes.length-1].y);
+  ctx.stroke();
 
   // 軌跡
   ctx.strokeStyle = '#fff'; ctx.lineWidth = 3;
@@ -153,8 +152,8 @@ function draw() {
   ctx.stroke();
 
   // スタート・ゴール
-  ctx.fillStyle = '#0f0'; ctx.beginPath(); ctx.arc(nodes[0].x, nodes[0].y, 25, 0, Math.PI*2); ctx.fill();
-  ctx.fillStyle = '#f00'; ctx.beginPath(); ctx.arc(nodes[nodes.length-1].x, nodes[nodes.length-1].y, 25, 0, Math.PI*2); ctx.fill();
+  ctx.fillStyle = '#0f0'; ctx.beginPath(); ctx.arc(nodes[0].x, nodes[0].y, 20, 0, Math.PI*2); ctx.fill();
+  ctx.fillStyle = '#f00'; ctx.beginPath(); ctx.arc(nodes[nodes.length-1].x, nodes[nodes.length-1].y, 20, 0, Math.PI*2); ctx.fill();
 }
 
 canvas.addEventListener('touchmove', (e) => {
