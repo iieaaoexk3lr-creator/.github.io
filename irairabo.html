@@ -23,7 +23,7 @@
     .secondary-btn { flex: 1; height: 40px; background: #333; color: #fff; border-radius: 8px; border: none; font-size: 14px; }
     
     canvas { display: block; }
-    #overlay { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 50px; font-weight: 900; display: none; pointer-events: none; text-shadow: 0 0 10px #000, 0 0 20px #000;}
+    #overlay { position: absolute; top: 60%; left: 50%; transform: translate(-50%, -50%); font-size: 50px; font-weight: 900; display: none; pointer-events: none; text-shadow: 0 0 10px #000, 0 0 20px #000;}
   </style>
 </head>
 <body>
@@ -49,13 +49,14 @@
 
 <script>
 const canvas = document.getElementById('stage');
-const ctx = canvas.getContext('2d');
+const ctx = canvas.getContext('2d', { willReadFrequently: true });
 const colors = { easy: '#00ccff', normal: '#ffd700', hard: '#ff4444' };
 let stats = { easy: 0, normal: 0, hard: 0, total: 0 };
 let isPlaying = false;
 let difficulty = 'easy';
 let nodes = []; 
 let trace = [];
+let lastTouchPos = null;
 
 function loadStats() {
   const saved = localStorage.getItem('dokidoki_stats');
@@ -91,30 +92,58 @@ function resetStats() {
 }
 
 function init() {
-  canvas.width = window.innerWidth;
-  canvas.height = window.innerHeight;
+  resizeCanvas();
   loadStats();
   generateCourse();
 }
 
+function resizeCanvas() {
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+}
+
 function generateCourse() {
   const cfg = {
-    easy: { pts: 4, minW: 90, maxW: 110 },
-    normal: { pts: 6, minW: 70, maxW: 90 },
-    hard: { pts: 8, minW: 50, maxW: 80 }
+    easy: { pts: 4, minW: 80, maxW: 100 },
+    normal: { pts: 5, minW: 65, maxW: 85 },
+    hard: { pts: 6, minW: 50, maxW: 70 }
   }[difficulty];
 
   nodes = [];
   const w = canvas.width, h = canvas.height;
   
+  // UIの高さを取得して、その下からコースを開始する（余白+20px）
+  const uiElement = document.getElementById('ui');
+  const uiBottom = uiElement ? uiElement.getBoundingClientRect().bottom + 20 : 200;
+  
+  // コースが動く縦の有効領域
+  const playableHeight = h - uiBottom - 60; 
+
   for (let i = 0; i < cfg.pts; i++) {
-    const x = 50 + (w - 100) * (i / (cfg.pts - 1));
-    let y = (i === 0 || i === cfg.pts - 1) ? h/2 : (h * 0.2 + Math.random() * h * 0.6);
+    const x = 60 + (w - 120) * (i / (cfg.pts - 1));
+    // 始点と終点はPlayable領域の中央、中間ノードはUIにかぶらない範囲でランダム配置
+    let y = (i === 0 || i === cfg.pts - 1) 
+      ? uiBottom + playableHeight / 2 
+      : uiBottom + 30 + Math.random() * (playableHeight - 60);
+
     const width = cfg.minW + Math.random() * (cfg.maxW - cfg.minW);
     nodes.push({ x, y, w: width });
   }
   trace = [];
+  isPlaying = false;
+  lastTouchPos = null;
   draw();
+}
+
+function traceCoursePath() {
+  ctx.beginPath();
+  ctx.moveTo(nodes[0].x, nodes[0].y);
+  for (let i = 0; i < nodes.length - 1; i++) {
+    const p0 = nodes[i];
+    const p1 = nodes[i + 1];
+    const midX = (p0.x + p1.x) / 2;
+    ctx.bezierCurveTo(midX, p0.y, midX, p1.y, p1.x, p1.y);
+  }
 }
 
 function draw() {
@@ -122,48 +151,55 @@ function draw() {
   ctx.lineJoin = 'round';
   ctx.lineCap = 'round';
 
+  const avgWidth = nodes.reduce((sum, n) => sum + n.w, 0) / nodes.length;
   const themeColor = colors[difficulty];
 
-  // 壁の描画（難易度ごとの色）
+  // 1. 壁の描画
   ctx.strokeStyle = themeColor;
-  for (let i = 0; i < nodes.length - 1; i++) {
-    const p0 = nodes[i], p1 = nodes[i+1];
-    const avgW = (p0.w + p1.w) / 2;
-    ctx.lineWidth = avgW + 12; 
-    ctx.beginPath();
-    ctx.moveTo(p0.x, p0.y);
-    ctx.quadraticCurveTo(p0.x, p0.y, (p0.x + p1.x)/2, (p0.y + p1.y)/2);
-    ctx.stroke();
-  }
-
-  // 通路の描画
-  ctx.strokeStyle = '#000';
-  for (let i = 0; i < nodes.length - 1; i++) {
-    const p0 = nodes[i], p1 = nodes[i+1];
-    const avgW = (p0.w + p1.w) / 2;
-    ctx.lineWidth = avgW; 
-    ctx.beginPath();
-    ctx.moveTo(p0.x, p0.y);
-    ctx.quadraticCurveTo(p0.x, p0.y, (p0.x + p1.x)/2, (p0.y + p1.y)/2);
-    ctx.stroke();
-  }
-
-  // 軌跡
-  ctx.strokeStyle = '#fff'; ctx.lineWidth = 3;
-  ctx.beginPath();
-  trace.forEach((p, i) => i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y));
+  ctx.lineWidth = avgWidth + 16;
+  traceCoursePath();
   ctx.stroke();
 
-  // スタート・ゴール
+  // 2. 通路の描画
+  ctx.strokeStyle = '#000';
+  ctx.lineWidth = avgWidth;
+  traceCoursePath();
+  ctx.stroke();
+
+  // 3. 軌跡の描画
+  if (trace.length > 0) {
+    ctx.strokeStyle = '#fff';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    trace.forEach((p, i) => i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y));
+    ctx.stroke();
+  }
+
+  // 4. スタート・ゴール
   ctx.fillStyle = '#0f0'; ctx.beginPath(); ctx.arc(nodes[0].x, nodes[0].y, 25, 0, Math.PI*2); ctx.fill();
   ctx.fillStyle = '#f00'; ctx.beginPath(); ctx.arc(nodes[nodes.length-1].x, nodes[nodes.length-1].y, 25, 0, Math.PI*2); ctx.fill();
 }
+
+function checkCollision(x, y) {
+  const pixel = ctx.getImageData(Math.floor(x), Math.floor(y), 1, 1).data;
+  return (pixel[0] > 100 || pixel[1] > 100 || pixel[2] > 100);
+}
+
+canvas.addEventListener('touchstart', (e) => {
+  const touch = e.touches[0];
+  lastTouchPos = { x: touch.clientX, y: touch.clientY };
+});
 
 canvas.addEventListener('touchmove', (e) => {
   const x = e.touches[0].clientX, y = e.touches[0].clientY;
   const distStart = Math.hypot(x - nodes[0].x, y - nodes[0].y);
   
-  if (distStart < 30 && !isPlaying) { isPlaying = true; trace = []; showMsg('START!', '#fff'); }
+  if (distStart < 30 && !isPlaying) { 
+    isPlaying = true; 
+    trace = []; 
+    showMsg('START!', '#fff'); 
+    lastTouchPos = { x, y };
+  }
   if (!isPlaying) return;
 
   if (Math.hypot(x - nodes[nodes.length-1].x, y - nodes[nodes.length-1].y) < 25) {
@@ -178,17 +214,36 @@ canvas.addEventListener('touchmove', (e) => {
   }
 
   if (distStart > 30) {
-    const pixel = ctx.getImageData(x, y, 1, 1).data;
-    if (pixel[0] > 100) {
-      isPlaying = false; 
-      showMsg('ビリビリ！', '#ff3366'); 
-      if (navigator.vibrate) navigator.vibrate(200);
-      setTimeout(generateCourse, 1000); 
-      return;
+    const prev = lastTouchPos || { x, y };
+    const dist = Math.hypot(x - prev.x, y - prev.y);
+    const steps = Math.max(1, Math.ceil(dist / 3));
+
+    for (let i = 1; i <= steps; i++) {
+      const checkX = prev.x + (x - prev.x) * (i / steps);
+      const checkY = prev.y + (y - prev.y) * (i / steps);
+
+      if (checkCollision(checkX, checkY)) {
+        isPlaying = false; 
+        showMsg('ビリビリ！', '#ff3366'); 
+        if (navigator.vibrate) navigator.vibrate(200);
+        setTimeout(generateCourse, 1000); 
+        return;
+      }
     }
     trace.push({x, y});
   }
+
+  lastTouchPos = { x, y };
   draw();
+});
+
+canvas.addEventListener('touchend', () => {
+  lastTouchPos = null;
+});
+
+window.addEventListener('resize', () => {
+  resizeCanvas();
+  generateCourse();
 });
 
 function showMsg(t, c) {
