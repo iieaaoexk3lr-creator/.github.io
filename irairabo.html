@@ -91,19 +91,18 @@ function init() {
 }
 
 function generateCourse() {
+  // 幅を広めに調整
   const cfg = {
-    easy: { pts: 4, minW: 60, maxW: 80 },
-    normal: { pts: 6, minW: 40, maxW: 60 },
-    hard: { pts: 8, minW: 20, maxW: 50 }
+    easy: { pts: 4, minW: 80, maxW: 100 },
+    normal: { pts: 6, minW: 60, maxW: 80 },
+    hard: { pts: 8, minW: 40, maxW: 70 }
   }[difficulty];
 
   nodes = [];
   const w = canvas.width, h = canvas.height;
   
-  // スタートからゴールまで滑らかに繋がるように点を配置
   for (let i = 0; i < cfg.pts; i++) {
     const x = 50 + (w - 100) * (i / (cfg.pts - 1));
-    // 最初の点と最後の点は画面中央の高さ、それ以外はランダムに上下
     let y = (i === 0 || i === cfg.pts - 1) ? h/2 : (h * 0.2 + Math.random() * h * 0.6);
     const width = cfg.minW + Math.random() * (cfg.maxW - cfg.minW);
     nodes.push({ x, y, w: width });
@@ -114,36 +113,32 @@ function generateCourse() {
 
 function draw() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
-  
-  // 壁の描画（一筆書きでつなぐ）
-  ctx.strokeStyle = '#ff3366';
-  ctx.lineWidth = 100; // 壁の厚み
   ctx.lineJoin = 'round';
   ctx.lineCap = 'round';
-  
-  ctx.beginPath();
-  ctx.moveTo(nodes[0].x, nodes[0].y);
-  for (let i = 0; i < nodes.length - 1; i++) {
-    // 中間点を制御点として滑らかな曲線を描く
-    const midX = (nodes[i].x + nodes[i+1].x) / 2;
-    const midY = (nodes[i].y + nodes[i+1].y) / 2;
-    ctx.quadraticCurveTo(nodes[i].x, nodes[i].y, midX, midY);
-  }
-  ctx.lineTo(nodes[nodes.length-1].x, nodes[nodes.length-1].y);
-  ctx.stroke();
 
-  // 通路の描画（壁の上に黒い線を重ねて通路を作る）
-  ctx.strokeStyle = '#000';
-  ctx.lineWidth = 50; 
-  ctx.beginPath();
-  ctx.moveTo(nodes[0].x, nodes[0].y);
+  // 壁を描画（各区間ごとに太さを変える）
+  ctx.strokeStyle = '#ff3366';
   for (let i = 0; i < nodes.length - 1; i++) {
-    const midX = (nodes[i].x + nodes[i+1].x) / 2;
-    const midY = (nodes[i].y + nodes[i+1].y) / 2;
-    ctx.quadraticCurveTo(nodes[i].x, nodes[i].y, midX, midY);
+    const p0 = nodes[i], p1 = nodes[i+1];
+    const avgW = (p0.w + p1.w) / 2;
+    ctx.lineWidth = avgW + 10; // 道幅 + 余裕
+    ctx.beginPath();
+    ctx.moveTo(p0.x, p0.y);
+    ctx.quadraticCurveTo(p0.x, p0.y, (p0.x + p1.x)/2, (p0.y + p1.y)/2);
+    ctx.stroke();
   }
-  ctx.lineTo(nodes[nodes.length-1].x, nodes[nodes.length-1].y);
-  ctx.stroke();
+
+  // 通路を描画
+  ctx.strokeStyle = '#000';
+  for (let i = 0; i < nodes.length - 1; i++) {
+    const p0 = nodes[i], p1 = nodes[i+1];
+    const avgW = (p0.w + p1.w) / 2;
+    ctx.lineWidth = avgW; 
+    ctx.beginPath();
+    ctx.moveTo(p0.x, p0.y);
+    ctx.quadraticCurveTo(p0.x, p0.y, (p0.x + p1.x)/2, (p0.y + p1.y)/2);
+    ctx.stroke();
+  }
 
   // 軌跡
   ctx.strokeStyle = '#fff'; ctx.lineWidth = 3;
@@ -152,8 +147,8 @@ function draw() {
   ctx.stroke();
 
   // スタート・ゴール
-  ctx.fillStyle = '#0f0'; ctx.beginPath(); ctx.arc(nodes[0].x, nodes[0].y, 20, 0, Math.PI*2); ctx.fill();
-  ctx.fillStyle = '#f00'; ctx.beginPath(); ctx.arc(nodes[nodes.length-1].x, nodes[nodes.length-1].y, 20, 0, Math.PI*2); ctx.fill();
+  ctx.fillStyle = '#0f0'; ctx.beginPath(); ctx.arc(nodes[0].x, nodes[0].y, 25, 0, Math.PI*2); ctx.fill();
+  ctx.fillStyle = '#f00'; ctx.beginPath(); ctx.arc(nodes[nodes.length-1].x, nodes[nodes.length-1].y, 25, 0, Math.PI*2); ctx.fill();
 }
 
 canvas.addEventListener('touchmove', (e) => {
@@ -176,6 +171,7 @@ canvas.addEventListener('touchmove', (e) => {
 
   if (distStart > 30) {
     const pixel = ctx.getImageData(x, y, 1, 1).data;
+    // 判定を少し甘くする（真っ黒でなければアウト、ではなく壁の色判定を強化）
     if (pixel[0] > 100) {
       isPlaying = false; 
       showMsg('ビリビリ！', '#ff3366'); 
