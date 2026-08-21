@@ -6,13 +6,22 @@
   <title>ドキドキ棒</title>
   <style>
     body, html { margin: 0; padding: 0; width: 100%; height: 100%; background: #000; color: #fff; font-family: sans-serif; overflow: hidden; touch-action: none; }
-    #ui { position: absolute; top: 10px; left: 10px; z-index: 10; display: flex; flex-direction: column; gap: 5px; }
-    .stats-box { background: rgba(0,0,0,0.7); padding: 8px; border-radius: 8px; border: 1px solid #444; font-size: 14px; }
-    .title-text { color: #ff0077; font-weight: bold; font-size: 20px; margin-bottom: 5px; }
-    .score-row { display: flex; gap: 10px; }
-    .controls { display: flex; gap: 5px; margin-top: 5px; flex-wrap: wrap; }
-    .btn { background: #333; color: white; border: 1px solid #666; padding: 5px 10px; border-radius: 4px; cursor: pointer; font-size: 12px; }
-    .btn.active { background: #ff0077; border-color: #cc0066; }
+    #ui { position: absolute; top: 10px; left: 10px; z-index: 10; display: flex; flex-direction: column; gap: 10px; width: calc(100% - 20px); }
+    
+    .stats-box { background: rgba(0,0,0,0.8); padding: 15px; border-radius: 12px; border: 1px solid #444; font-size: 16px; }
+    .title-text { color: #fff; font-weight: bold; font-size: 22px; margin-bottom: 5px; }
+    
+    .controls { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+    .btn { height: 50px; font-size: 16px; font-weight: bold; border-radius: 8px; border: none; cursor: pointer; color: #fff; opacity: 0.5; transition: opacity 0.2s; }
+    .btn.active { opacity: 1; border: 3px solid #fff; }
+    
+    #btn-easy { background: #00ccff; }
+    #btn-normal { background: #ffd700; color: #000; }
+    #btn-hard { background: #ff4444; }
+    
+    .extra-btns { display: flex; gap: 10px; margin-top: 5px; }
+    .secondary-btn { flex: 1; height: 40px; background: #333; color: #fff; border-radius: 8px; border: none; font-size: 14px; }
+    
     canvas { display: block; }
     #overlay { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 50px; font-weight: 900; display: none; pointer-events: none; text-shadow: 0 0 10px #000, 0 0 20px #000;}
   </style>
@@ -22,19 +31,16 @@
 <div id="ui">
   <div class="stats-box">
     <div class="title-text">ドキドキ棒</div>
-    <div class="score-row">
-      <div>E: <span id="count-easy">0</span></div>
-      <div>N: <span id="count-normal">0</span></div>
-      <div>H: <span id="count-hard">0</span></div>
-    </div>
-    <div style="font-size: 18px; margin-top: 5px;">総合点: <span id="total-score" style="color:#00ffcc; font-weight:bold;">0</span></div>
+    <div>総合点: <span id="total-score" style="color:#00ffcc; font-weight:bold; font-size: 20px;">0</span> (E:<span id="count-easy">0</span> N:<span id="count-normal">0</span> H:<span id="count-hard">0</span>)</div>
   </div>
   <div class="controls">
     <button class="btn active" id="btn-easy" onclick="setDiff('easy')">Easy</button>
     <button class="btn" id="btn-normal" onclick="setDiff('normal')">Normal</button>
     <button class="btn" id="btn-hard" onclick="setDiff('hard')">Hard</button>
-    <button class="btn" style="background:#444;" onclick="if(!isPlaying) generateCourse()">コース変更</button>
-    <button class="btn" style="background:#880000;" onclick="resetStats()">リセット</button>
+  </div>
+  <div class="extra-btns">
+    <button class="secondary-btn" onclick="if(!isPlaying) generateCourse()">コース変更</button>
+    <button class="secondary-btn" onclick="resetStats()" style="background:#800;">リセット</button>
   </div>
 </div>
 
@@ -44,6 +50,7 @@
 <script>
 const canvas = document.getElementById('stage');
 const ctx = canvas.getContext('2d');
+const colors = { easy: '#00ccff', normal: '#ffd700', hard: '#ff4444' };
 let stats = { easy: 0, normal: 0, hard: 0, total: 0 };
 let isPlaying = false;
 let difficulty = 'easy';
@@ -91,11 +98,10 @@ function init() {
 }
 
 function generateCourse() {
-  // 幅を広めに調整
   const cfg = {
-    easy: { pts: 4, minW: 80, maxW: 100 },
-    normal: { pts: 6, minW: 60, maxW: 80 },
-    hard: { pts: 8, minW: 40, maxW: 70 }
+    easy: { pts: 4, minW: 90, maxW: 110 },
+    normal: { pts: 6, minW: 70, maxW: 90 },
+    hard: { pts: 8, minW: 50, maxW: 80 }
   }[difficulty];
 
   nodes = [];
@@ -116,19 +122,21 @@ function draw() {
   ctx.lineJoin = 'round';
   ctx.lineCap = 'round';
 
-  // 壁を描画（各区間ごとに太さを変える）
-  ctx.strokeStyle = '#ff3366';
+  const themeColor = colors[difficulty];
+
+  // 壁の描画（難易度ごとの色）
+  ctx.strokeStyle = themeColor;
   for (let i = 0; i < nodes.length - 1; i++) {
     const p0 = nodes[i], p1 = nodes[i+1];
     const avgW = (p0.w + p1.w) / 2;
-    ctx.lineWidth = avgW + 10; // 道幅 + 余裕
+    ctx.lineWidth = avgW + 12; 
     ctx.beginPath();
     ctx.moveTo(p0.x, p0.y);
     ctx.quadraticCurveTo(p0.x, p0.y, (p0.x + p1.x)/2, (p0.y + p1.y)/2);
     ctx.stroke();
   }
 
-  // 通路を描画
+  // 通路の描画
   ctx.strokeStyle = '#000';
   for (let i = 0; i < nodes.length - 1; i++) {
     const p0 = nodes[i], p1 = nodes[i+1];
@@ -171,7 +179,6 @@ canvas.addEventListener('touchmove', (e) => {
 
   if (distStart > 30) {
     const pixel = ctx.getImageData(x, y, 1, 1).data;
-    // 判定を少し甘くする（真っ黒でなければアウト、ではなく壁の色判定を強化）
     if (pixel[0] > 100) {
       isPlaying = false; 
       showMsg('ビリビリ！', '#ff3366'); 
