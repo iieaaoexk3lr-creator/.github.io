@@ -13,12 +13,12 @@
     .title-text { color: #ff0077; font-weight: bold; font-size: 20px; margin-bottom: 5px; }
     .score-row { display: flex; gap: 10px; }
     
-    .controls { display: flex; gap: 5px; margin-top: 5px; }
+    .controls { display: flex; gap: 5px; margin-top: 5px; flex-wrap: wrap; }
     .btn { background: #333; color: white; border: 1px solid #666; padding: 5px 10px; border-radius: 4px; cursor: pointer; font-size: 12px; }
     .btn.active { background: #ff0077; border-color: #cc0066; }
     
     canvas { display: block; }
-    #overlay { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 40px; font-weight: bold; display: none; pointer-events: none; text-shadow: 2px 2px 5px #000;}
+    #overlay { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 50px; font-weight: 900; display: none; pointer-events: none; text-shadow: 0 0 10px #000, 0 0 20px #000;}
   </style>
 </head>
 <body>
@@ -37,6 +37,7 @@
     <button class="btn active" id="btn-easy" onclick="setDiff('easy')">Easy</button>
     <button class="btn" id="btn-normal" onclick="setDiff('normal')">Normal</button>
     <button class="btn" id="btn-hard" onclick="setDiff('hard')">Hard</button>
+    <button class="btn" style="background:#444;" onclick="if(!isPlaying) generateCourse()">コース変更</button>
     <button class="btn" style="background:#880000;" onclick="resetStats()">リセット</button>
   </div>
 </div>
@@ -53,7 +54,6 @@ let difficulty = 'easy';
 let path = [], trace = [];
 const pathWidth = 40;
 
-// データ読み込み
 function loadStats() {
   const saved = localStorage.getItem('dokidoki_stats');
   if (saved) stats = JSON.parse(saved);
@@ -125,24 +125,37 @@ function draw() {
 canvas.addEventListener('touchmove', (e) => {
   const x = e.touches[0].clientX, y = e.touches[0].clientY;
   const distStart = Math.hypot(x - path[0].x, y - path[0].y);
-  if (distStart < 30) { isPlaying = true; trace = []; }
+  
+  // スタート地点に触れた瞬間
+  if (distStart < 30 && !isPlaying) { 
+    isPlaying = true; 
+    trace = []; 
+    showMsg('START!', '#fff');
+  }
+  
   if (!isPlaying) return;
 
+  // ゴール判定
   if (Math.hypot(x - path[path.length-1].x, y - path[path.length-1].y) < 20) {
     isPlaying = false;
     const points = { easy: 1, normal: 2, hard: 3 };
     stats[difficulty]++;
     stats.total += points[difficulty];
     saveStats();
-    showMsg('CLEAR! +' + points[difficulty], '#0f0'); setTimeout(generateCourse, 1000); return;
+    showMsg('GOAL!', '#0f0'); 
+    setTimeout(generateCourse, 1000); 
+    return;
   }
 
+  // 壁判定
   if (distStart > 30) {
     const pixel = ctx.getImageData(x, y, 1, 1).data;
     if (pixel[0] > 100) {
-      isPlaying = false; showMsg('ビリビリ！', '#ff3366'); 
+      isPlaying = false; 
+      showMsg('ビリビリ！', '#ff3366'); 
       if (navigator.vibrate) navigator.vibrate(200);
-      setTimeout(generateCourse, 1000); return;
+      setTimeout(generateCourse, 1000); 
+      return;
     }
     trace.push({x, y});
   }
@@ -152,7 +165,8 @@ canvas.addEventListener('touchmove', (e) => {
 function showMsg(t, c) {
   const o = document.getElementById('overlay');
   o.innerText = t; o.style.color = c; o.style.display = 'block';
-  setTimeout(() => o.style.display = 'none', 800);
+  // 表示時間を調整（短めに）
+  setTimeout(() => o.style.display = 'none', 600);
 }
 
 window.onload = init;
