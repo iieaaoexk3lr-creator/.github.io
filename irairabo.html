@@ -6,17 +6,13 @@
   <title>ドキドキ棒</title>
   <style>
     body, html { margin: 0; padding: 0; width: 100%; height: 100%; background: #000; color: #fff; font-family: sans-serif; overflow: hidden; touch-action: none; }
-    
     #ui { position: absolute; top: 10px; left: 10px; z-index: 10; display: flex; flex-direction: column; gap: 5px; }
-    
     .stats-box { background: rgba(0,0,0,0.7); padding: 8px; border-radius: 8px; border: 1px solid #444; font-size: 14px; }
     .title-text { color: #ff0077; font-weight: bold; font-size: 20px; margin-bottom: 5px; }
     .score-row { display: flex; gap: 10px; }
-    
     .controls { display: flex; gap: 5px; margin-top: 5px; flex-wrap: wrap; }
     .btn { background: #333; color: white; border: 1px solid #666; padding: 5px 10px; border-radius: 4px; cursor: pointer; font-size: 12px; }
     .btn.active { background: #ff0077; border-color: #cc0066; }
-    
     canvas { display: block; }
     #overlay { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 50px; font-weight: 900; display: none; pointer-events: none; text-shadow: 0 0 10px #000, 0 0 20px #000;}
   </style>
@@ -51,8 +47,8 @@ const ctx = canvas.getContext('2d');
 let stats = { easy: 0, normal: 0, hard: 0, total: 0 };
 let isPlaying = false;
 let difficulty = 'easy';
-let path = [], trace = [];
-const pathWidth = 40;
+let nodes = []; // コースの制御点
+let trace = [];
 
 function loadStats() {
   const saved = localStorage.getItem('dokidoki_stats');
@@ -80,7 +76,7 @@ function setDiff(d) {
 }
 
 function resetStats() {
-  if (confirm("記録をすべてリセットしますか？")) {
+  if (confirm("リセットしますか？")) {
     stats = { easy: 0, normal: 0, hard: 0, total: 0 };
     saveStats();
     generateCourse();
@@ -94,17 +90,25 @@ function init() {
   generateCourse();
 }
 
+// 難易度ごとの設定（点の数と幅）
 function generateCourse() {
-  path = [];
+  const cfg = {
+    easy: { pts: 4, minW: 70, maxW: 90 },
+    normal: { pts: 6, minW: 50, maxW: 70 },
+    hard: { pts: 9, minW: 30, maxW: 60 }
+  }[difficulty];
+
+  nodes = [];
   const w = canvas.width, h = canvas.height;
-  const startX = 60, endX = w - 60;
   
-  if (difficulty === 'easy') {
-    path = [{x: startX, y: h/2}, {x: w/2, y: h/4}, {x: endX, y: h/2}];
-  } else if (difficulty === 'normal') {
-    path = [{x: startX, y: h/2}, {x: w*0.3, y: h/4}, {x: w*0.6, y: h*0.75}, {x: endX, y: h/2}];
-  } else {
-    path = [{x: startX, y: h/2}, {x: w*0.3, y: h/6}, {x: w*0.5, y: h*0.8}, {x: w*0.7, y: h/6}, {x: endX, y: h/2}];
+  // 点を生成
+  for (let i = 0; i < cfg.pts; i++) {
+    const x = 80 + (w - 160) * (i / (cfg.pts - 1));
+    // 最初の点と最後の点は真ん中に固定
+    let y = (i === 0 || i === cfg.pts - 1) ? h/2 : (h * 0.2 + Math.random() * h * 0.6);
+    // ランダムな幅
+    const width = cfg.minW + Math.random() * (cfg.maxW - cfg.minW);
+    nodes.push({ x, y, w: width });
   }
   trace = [];
   draw();
@@ -112,31 +116,55 @@ function generateCourse() {
 
 function draw() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
-  ctx.strokeStyle = '#ff3366'; ctx.lineWidth = pathWidth + 10; ctx.lineCap = 'round';
-  ctx.beginPath(); path.forEach((p, i) => i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y)); ctx.stroke();
-  ctx.strokeStyle = '#000'; ctx.lineWidth = pathWidth;
-  ctx.beginPath(); path.forEach((p, i) => i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y)); ctx.stroke();
+  
+  // 曲線を描画する（quadraticCurveToを使用）
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+
+  // 壁の描画
+  ctx.strokeStyle = '#ff3366'; 
+  ctx.lineWidth = 100; // 壁の厚み
+  
+  ctx.beginPath();
+  ctx.moveTo(nodes[0].x, nodes[0].y);
+  for (let i = 0; i < nodes.length - 1; i++) {
+    const p0 = nodes[i], p1 = nodes[i+1];
+    const midX = (p0.x + p1.x) / 2;
+    const midY = (p0.y + p1.y) / 2;
+    ctx.quadraticCurveTo(p0.x, p0.y, midX, midY);
+  }
+  ctx.stroke();
+
+  // 通路の描画（幅を反映）
+  for (let i = 0; i < nodes.length - 1; i++) {
+    const p0 = nodes[i], p1 = nodes[i+1];
+    ctx.strokeStyle = '#000';
+    ctx.lineWidth = (p0.w + p1.w) / 2;
+    ctx.beginPath();
+    ctx.moveTo(p0.x, p0.y);
+    ctx.quadraticCurveTo(p0.x, p0.y, (p0.x+p1.x)/2, (p0.y+p1.y)/2);
+    ctx.stroke();
+  }
+
+  // 軌跡
   ctx.strokeStyle = '#fff'; ctx.lineWidth = 3;
-  ctx.beginPath(); trace.forEach((p, i) => i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y)); ctx.stroke();
-  ctx.fillStyle = '#0f0'; ctx.beginPath(); ctx.arc(path[0].x, path[0].y, 20, 0, Math.PI*2); ctx.fill();
-  ctx.fillStyle = '#f00'; ctx.beginPath(); ctx.arc(path[path.length-1].x, path[path.length-1].y, 20, 0, Math.PI*2); ctx.fill();
+  ctx.beginPath();
+  trace.forEach((p, i) => i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y));
+  ctx.stroke();
+
+  // スタート・ゴール
+  ctx.fillStyle = '#0f0'; ctx.beginPath(); ctx.arc(nodes[0].x, nodes[0].y, 25, 0, Math.PI*2); ctx.fill();
+  ctx.fillStyle = '#f00'; ctx.beginPath(); ctx.arc(nodes[nodes.length-1].x, nodes[nodes.length-1].y, 25, 0, Math.PI*2); ctx.fill();
 }
 
 canvas.addEventListener('touchmove', (e) => {
   const x = e.touches[0].clientX, y = e.touches[0].clientY;
-  const distStart = Math.hypot(x - path[0].x, y - path[0].y);
+  const distStart = Math.hypot(x - nodes[0].x, y - nodes[0].y);
   
-  // スタート地点に触れた瞬間
-  if (distStart < 30 && !isPlaying) { 
-    isPlaying = true; 
-    trace = []; 
-    showMsg('START!', '#fff');
-  }
-  
+  if (distStart < 30 && !isPlaying) { isPlaying = true; trace = []; showMsg('START!', '#fff'); }
   if (!isPlaying) return;
 
-  // ゴール判定
-  if (Math.hypot(x - path[path.length-1].x, y - path[path.length-1].y) < 20) {
+  if (Math.hypot(x - nodes[nodes.length-1].x, y - nodes[nodes.length-1].y) < 25) {
     isPlaying = false;
     const points = { easy: 1, normal: 2, hard: 3 };
     stats[difficulty]++;
@@ -147,7 +175,6 @@ canvas.addEventListener('touchmove', (e) => {
     return;
   }
 
-  // 壁判定
   if (distStart > 30) {
     const pixel = ctx.getImageData(x, y, 1, 1).data;
     if (pixel[0] > 100) {
@@ -165,7 +192,6 @@ canvas.addEventListener('touchmove', (e) => {
 function showMsg(t, c) {
   const o = document.getElementById('overlay');
   o.innerText = t; o.style.color = c; o.style.display = 'block';
-  // 表示時間を調整（短めに）
   setTimeout(() => o.style.display = 'none', 600);
 }
 
