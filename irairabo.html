@@ -122,7 +122,7 @@ function generateCourse() {
   const startY = zoneY[startZone];
 
   if (difficulty === 'easy') {
-    // Easy: 3点 (左=上中下ランダム、中間=上中下ランダム、ゴール=上中下ランダム)
+    // Easy: 3点
     const courseWidth = 90;
     const midZone = zones[Math.floor(Math.random() * 3)];
     const goalZone = zones[Math.floor(Math.random() * 3)];
@@ -132,24 +132,21 @@ function generateCourse() {
     nodes.push({ x: w - 70, y: zoneY[goalZone], w: courseWidth });
 
   } else {
-    // Normal / Hard: グリッド上をしっかり巡回するコース生成
-    // Normal: 3列×3行 (最大9点), Hard: 4列×4行 (最大16点)
+    // Normal / Hard: 複雑なグリッド巡回コース
     const gridCols = difficulty === 'normal' ? 3 : 4; 
-    const gridRows = 4; // 上・中・下をさらに細かく4段階に拡張
-    const courseWidth = difficulty === 'normal' ? 60 : 40;
+    const gridRows = 4; 
+    const courseWidth = difficulty === 'normal' ? 55 : 38;
 
     const gridPoints = [];
     for (let r = 0; r < gridRows; r++) {
       gridPoints[r] = [];
       for (let c = 0; c < gridCols; c++) {
         const x = 70 + (w - 140) * (c / (gridCols - 1));
-        // 4行分のY座標を均等配置
         const y = uiBottom + playableHeight * (0.15 + r * (0.7 / (gridRows - 1)));
         gridPoints[r][c] = { x, y, w: courseWidth };
       }
     }
 
-    // スタート行を対応するグリッド行に合わせる
     let currentR = startZone === 'top' ? 0 : (startZone === 'middle' ? 1 : 2);
     if (currentR >= gridRows) currentR = gridRows - 1;
     let currentC = 0;
@@ -158,15 +155,17 @@ function generateCourse() {
     const pathCoords = [{ r: currentR, c: currentC }];
     visited[currentR][currentC] = true;
 
-    // ゴール（右端列）に到達するまで、上下左右にしっかり迷路状に探索させる
-    while (currentC < gridCols - 1) {
+    // 上下左右にしっかり蛇行・Uターンさせながら右端（ゴール）を目指す
+    let steps = 0;
+    while (currentC < gridCols - 1 && steps < 30) {
+      steps++;
       const neighbors = [];
       
-      // 移動候補（右・上・下）
       const dirs = [
         { r: currentR, c: currentC + 1 }, // 右
         { r: currentR - 1, c: currentC }, // 上
-        { r: currentR + 1, c: currentC }  // 下
+        { r: currentR + 1, c: currentC }, // 下
+        { r: currentR, c: currentC - 1 }  // 左（Uターン用）
       ];
 
       for (let d of dirs) {
@@ -176,10 +175,9 @@ function generateCourse() {
       }
 
       if (neighbors.length === 0) {
-        // 行き止まりになったら無理やり右へ進む
+        // 動けなくなったら右へ進む
         currentC++;
       } else {
-        // 未訪問のマスからランダムに選択
         const next = neighbors[Math.floor(Math.random() * neighbors.length)];
         currentR = next.r;
         currentC = next.c;
@@ -188,10 +186,9 @@ function generateCourse() {
       pathCoords.push({ r: currentR, c: currentC });
     }
 
-    // グリッドの通過点からノードを構築
     nodes = pathCoords.map(p => gridPoints[p.r][p.c]);
 
-    // 指定された点数範囲（Normal: 7〜9, Hard: 12〜16）に満たない場合は中間をさらに分割して増やす
+    // 目標の点数（Normal: 7〜9, Hard: 12〜16）に達するように角を増やして調整
     const targetMin = difficulty === 'normal' ? 7 : 12;
     const targetMax = difficulty === 'normal' ? 9 : 16;
     const targetCount = Math.floor(Math.random() * (targetMax - targetMin + 1)) + targetMin;
@@ -253,9 +250,16 @@ function draw() {
     ctx.stroke();
   }
 
-  // 4. スタート・ゴール
-  ctx.fillStyle = '#0f0'; ctx.beginPath(); ctx.arc(nodes[0].x, nodes[0].y, 25, 0, Math.PI*2); ctx.fill();
-  ctx.fillStyle = '#f00'; ctx.beginPath(); ctx.arc(nodes[nodes.length-1].x, nodes[nodes.length-1].y, 25, 0, Math.PI*2); ctx.fill();
+  // 4. スタート（S）とゴール（G）の描画
+  const start = nodes[0];
+  const goal = nodes[nodes.length - 1];
+
+  ctx.fillStyle = '#0f0'; ctx.beginPath(); ctx.arc(start.x, start.y, 25, 0, Math.PI*2); ctx.fill();
+  ctx.fillStyle = '#f00'; ctx.beginPath(); ctx.arc(goal.x, goal.y, 25, 0, Math.PI*2); ctx.fill();
+
+  ctx.fillStyle = '#000'; ctx.font = 'bold 20px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText('S', start.x, start.y);
+  ctx.fillText('G', goal.x, goal.y);
 }
 
 function distToSegmentSq(p, p1, p2) {
