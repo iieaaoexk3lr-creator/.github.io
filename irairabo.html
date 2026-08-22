@@ -49,7 +49,7 @@
 
 <script>
 const canvas = document.getElementById('stage');
-const ctx = canvas.getContext('2d', { willReadFrequently: true });
+const ctx = canvas.getContext('2d');
 const colors = { easy: '#00ccff', normal: '#ffd700', hard: '#ff4444' };
 let stats = { easy: 0, normal: 0, hard: 0, total: 0 };
 let isPlaying = false;
@@ -103,32 +103,63 @@ function resizeCanvas() {
 }
 
 function generateCourse() {
-  const cfg = {
-    easy: { pts: 4, minW: 80, maxW: 100 },
-    normal: { pts: 5, minW: 65, maxW: 85 },
-    hard: { pts: 6, minW: 50, maxW: 70 }
-  }[difficulty];
-
   nodes = [];
   const w = canvas.width, h = canvas.height;
   
-  // UIの高さを取得して、その下からコースを開始する（余白+20px）
   const uiElement = document.getElementById('ui');
   const uiBottom = uiElement ? uiElement.getBoundingClientRect().bottom + 20 : 200;
-  
-  // コースが動く縦の有効領域
   const playableHeight = h - uiBottom - 60; 
 
-  for (let i = 0; i < cfg.pts; i++) {
-    const x = 60 + (w - 120) * (i / (cfg.pts - 1));
-    // 始点と終点はPlayable領域の中央、中間ノードはUIにかぶらない範囲でランダム配置
-    let y = (i === 0 || i === cfg.pts - 1) 
-      ? uiBottom + playableHeight / 2 
-      : uiBottom + 30 + Math.random() * (playableHeight - 60);
+  // 指定された位置から上・中・下のY座標を取得するヘルパー
+  const getZoneY = (zone) => {
+    if (zone === 'top') return uiBottom + playableHeight * 0.2;
+    if (zone === 'middle') return uiBottom + playableHeight * 0.5;
+    return uiBottom + playableHeight * 0.8; // bottom
+  };
 
-    const width = cfg.minW + Math.random() * (cfg.maxW - cfg.minW);
-    nodes.push({ x, y, w: width });
+  const zones = ['top', 'middle', 'bottom'];
+
+  if (difficulty === 'easy') {
+    // Easy: 3点 (左=真ん中、中間=上中下ランダム、ゴール=上中下ランダム)
+    const width = 90;
+    
+    // 1点目 (スタート)
+    nodes.push({ x: 60, y: getZoneY('middle'), w: width });
+    
+    // 2点目 (中間)
+    const midZone = zones[Math.floor(Math.random() * 3)];
+    nodes.push({ x: w / 2, y: getZoneY(midZone), w: width });
+    
+    // 3点目 (ゴール)
+    const goalZone = zones[Math.floor(Math.random() * 3)];
+    nodes.push({ x: w - 60, y: getZoneY(goalZone), w: width });
+
+  } else {
+    // Normal: 7〜9点, Hard: 12〜16点
+    const ptsCount = difficulty === 'normal' 
+      ? Math.floor(Math.random() * 3) + 7 
+      : Math.floor(Math.random() * 5) + 12;
+
+    const width = difficulty === 'normal' ? 70 : 50;
+
+    for (let i = 0; i < ptsCount; i++) {
+      const x = 60 + (w - 120) * (i / (ptsCount - 1));
+      let y;
+
+      if (i === 0) {
+        y = getZoneY('middle'); // スタートは中央
+      } else {
+        // 上中下のエリアからランダム選択し、さらに少し揺らぎを持たせる
+        const zone = zones[Math.floor(Math.random() * 3)];
+        const baseY = getZoneY(zone);
+        const jitter = (Math.random() - 0.5) * (playableHeight * 0.15);
+        y = Math.max(uiBottom + 20, Math.min(h - 40, baseY + jitter));
+      }
+
+      nodes.push({ x, y, w: width });
+    }
   }
+
   trace = [];
   isPlaying = false;
   lastTouchPos = null;
@@ -180,9 +211,43 @@ function draw() {
   ctx.fillStyle = '#f00'; ctx.beginPath(); ctx.arc(nodes[nodes.length-1].x, nodes[nodes.length-1].y, 25, 0, Math.PI*2); ctx.fill();
 }
 
-function checkCollision(x, y) {
-  const pixel = ctx.getImageData(Math.floor(x), Math.floor(y), 1, 1).data;
-  return (pixel[0] > 100 || pixel[1] > 100 || pixel[2] > 100);
+function getBezierPoint(p0, p1, t) {
+  const midX = (p0.x + p1.x) / 2;
+  const cp1 = { x: midX, y: p0.y };
+  const cp2 = { x: midX, y: p1.y };
+  const u = 1 - t;
+  const tt = t * t;
+  const uu = u * u;
+  const uuu = uu * u;
+  const ttt = tt * t;
+
+  const x = uuu * p0.x + 3 * uu * t * cp1.x + 3 * u * tt * cp2.x + ttt * p1.x;
+  const y = uuu * p0.y + 3 * uu * t * cp1.y + 3 * u * tt * cp2.y + ttt * p1.y;
+  return { x, y };
+}
+
+function isInsideCourse(x, y) {
+  let minDistanceSq = Infinity;
+  let currentWidth = 80;
+
+  for (let i = 0; i < nodes.length - 1; i++) {
+    const p0 = nodes[i];
+    const p1 = nodes[i + 1];
+
+    for (let j = 0; j <= 20; j++) {
+      const t = j / 20;
+      const pt = getBezierPoint(p0, p1, t);
+      const distSq = (x - pt.x) ** 2 + (y - pt.y) ** 2;
+
+      if (distSq < minDistanceSq) {
+        minDistanceSq = distSq;
+        currentWidth = (p0.w + p1.w) / 2;
+      }
+    }
+  }
+
+  const safeRadius = (currentWidth / 2) * 0.8;
+  return minDistanceSq <= safeRadius ** 2;
 }
 
 canvas.addEventListener('touchstart', (e) => {
@@ -222,7 +287,7 @@ canvas.addEventListener('touchmove', (e) => {
       const checkX = prev.x + (x - prev.x) * (i / steps);
       const checkY = prev.y + (y - prev.y) * (i / steps);
 
-      if (checkCollision(checkX, checkY)) {
+      if (!isInsideCourse(checkX, checkY)) {
         isPlaying = false; 
         showMsg('ビリビリ！', '#ff3366'); 
         if (navigator.vibrate) navigator.vibrate(200);
