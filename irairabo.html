@@ -107,56 +107,112 @@ function generateCourse() {
   const w = canvas.width, h = canvas.height;
   
   const uiElement = document.getElementById('ui');
-  const uiBottom = uiElement ? uiElement.getBoundingClientRect().bottom + 20 : 200;
-  const playableHeight = h - uiBottom - 60; 
+  const uiBottom = uiElement ? uiElement.getBoundingClientRect().bottom + 30 : 220;
+  const playableHeight = h - uiBottom - 80;
 
-  // 指定された位置から上・中・下のY座標を取得するヘルパー
-  const getZoneY = (zone) => {
-    if (zone === 'top') return uiBottom + playableHeight * 0.2;
-    if (zone === 'middle') return uiBottom + playableHeight * 0.5;
-    return uiBottom + playableHeight * 0.8; // bottom
+  // 上・中・下の基準Y座標
+  const zoneY = {
+    top: uiBottom + playableHeight * 0.15,
+    middle: uiBottom + playableHeight * 0.5,
+    bottom: uiBottom + playableHeight * 0.85
   };
-
   const zones = ['top', 'middle', 'bottom'];
 
+  // スタート地点（1点目）：全難易度共通で「上中下」からランダム選定
+  const startZone = zones[Math.floor(Math.random() * 3)];
+  const startY = zoneY[startZone];
+
   if (difficulty === 'easy') {
-    // Easy: 3点 (左=真ん中、中間=上中下ランダム、ゴール=上中下ランダム)
-    const width = 90;
-    
-    // 1点目 (スタート)
-    nodes.push({ x: 60, y: getZoneY('middle'), w: width });
-    
-    // 2点目 (中間)
+    // Easy: 3点 (左=上中下ランダム、中間=上中下ランダム、ゴール=上中下ランダム)
+    const courseWidth = 90;
     const midZone = zones[Math.floor(Math.random() * 3)];
-    nodes.push({ x: w / 2, y: getZoneY(midZone), w: width });
-    
-    // 3点目 (ゴール)
     const goalZone = zones[Math.floor(Math.random() * 3)];
-    nodes.push({ x: w - 60, y: getZoneY(goalZone), w: width });
+
+    nodes.push({ x: 70, y: startY, w: courseWidth });
+    nodes.push({ x: w / 2, y: zoneY[midZone], w: courseWidth });
+    nodes.push({ x: w - 70, y: zoneY[goalZone], w: courseWidth });
 
   } else {
-    // Normal: 7〜9点, Hard: 12〜16点
-    const ptsCount = difficulty === 'normal' 
-      ? Math.floor(Math.random() * 3) + 7 
-      : Math.floor(Math.random() * 5) + 12;
+    // Normal / Hard: グリッド生成＆一筆書きルート選択
+    const gridCols = difficulty === 'normal' ? 3 : 4; 
+    const gridRows = 3; // 上・中・下
+    const courseWidth = difficulty === 'normal' ? 65 : 45;
 
-    const width = difficulty === 'normal' ? 70 : 50;
+    // 格子点の座標テーブルを作成
+    const gridPoints = [];
+    for (let r = 0; r < gridRows; r++) {
+      gridPoints[r] = [];
+      const rZone = zones[r];
+      for (let c = 0; c < gridCols; c++) {
+        const x = 70 + (w - 140) * (c / (gridCols - 1));
+        const y = zoneY[rZone];
+        gridPoints[r][c] = { x, y, w: courseWidth };
+      }
+    }
 
-    for (let i = 0; i < ptsCount; i++) {
-      const x = 60 + (w - 120) * (i / (ptsCount - 1));
-      let y;
+    // スタート行のインデックス設定
+    let currentR = zones.indexOf(startZone);
+    let currentC = 0;
 
-      if (i === 0) {
-        y = getZoneY('middle'); // スタートは中央
-      } else {
-        // 上中下のエリアからランダム選択し、さらに少し揺らぎを持たせる
-        const zone = zones[Math.floor(Math.random() * 3)];
-        const baseY = getZoneY(zone);
-        const jitter = (Math.random() - 0.5) * (playableHeight * 0.15);
-        y = Math.max(uiBottom + 20, Math.min(h - 40, baseY + jitter));
+    const path = [{ r: currentR, c: currentC }];
+    const visited = new Array(gridRows).fill(null).map(() => new Array(gridCols).fill(false));
+    visited[currentR][currentC] = true;
+
+    // ゴール（右端列）に達するまでランダムウォーク
+    while (currentC < gridCols - 1) {
+      const neighbors = [];
+      
+      // 右
+      if (currentC + 1 < gridCols && !visited[currentR][currentC + 1]) {
+        neighbors.push({ r: currentR, c: currentC + 1 });
+      }
+      // 上
+      if (currentR - 1 >= 0 && !visited[currentR - 1][currentC]) {
+        neighbors.push({ r: currentR - 1, c: currentC });
+      }
+      // 下
+      if (currentR + 1 < gridRows && !visited[currentR + 1][currentC]) {
+        neighbors.push({ r: currentR + 1, c: currentC });
       }
 
-      nodes.push({ x, y, w: width });
+      if (neighbors.length === 0) {
+        // 行き止まりになったら右へ強制移動
+        currentC++;
+        visited[currentR][currentC] = true;
+        path.push({ r: currentR, c: currentC });
+      } else {
+        // 右方向を優先的に選ばせる重み付け
+        const next = neighbors[Math.floor(Math.random() * neighbors.length)];
+        currentR = next.r;
+        currentC = next.c;
+        visited[currentR][currentC] = true;
+        path.push({ r: currentR, c: currentC });
+      }
+    }
+
+    // 目標の点数範囲（Normal: 7〜9点, Hard: 12〜16点）に合わせてポイントを構築
+    // 足りない場合はランダムにグリッド間の中間点（直角曲がり点）を生成
+    nodes = path.map(p => gridPoints[p.r][p.c]);
+
+    const targetMin = difficulty === 'normal' ? 7 : 12;
+    const targetMax = difficulty === 'normal' ? 9 : 16;
+    const targetCount = Math.floor(Math.random() * (targetMax - targetMin + 1)) + targetMin;
+
+    // ノード数が目標に達するまで、直線上の曲がり角を補間して増やす
+    let attempts = 0;
+    while (nodes.length < targetCount && attempts < 50) {
+      attempts++;
+      const idx = Math.floor(Math.random() * (nodes.length - 1));
+      const p1 = nodes[idx];
+      const p2 = nodes[idx + 1];
+
+      // 隣接ノード間にL字の屈折点を1つ追加
+      if (p1.x !== p2.x && p1.y !== p2.y) {
+        const midPoint = (Math.random() > 0.5) 
+          ? { x: p2.x, y: p1.y, w: courseWidth } 
+          : { x: p1.x, y: p2.y, w: courseWidth };
+        nodes.splice(idx + 1, 0, midPoint);
+      }
     }
   }
 
@@ -172,8 +228,8 @@ function traceCoursePath() {
   for (let i = 0; i < nodes.length - 1; i++) {
     const p0 = nodes[i];
     const p1 = nodes[i + 1];
-    const midX = (p0.x + p1.x) / 2;
-    ctx.bezierCurveTo(midX, p0.y, midX, p1.y, p1.x, p1.y);
+    // 直角や屈折を表現するため直線で接続
+    ctx.lineTo(p1.x, p1.y);
   }
 }
 
@@ -187,7 +243,7 @@ function draw() {
 
   // 1. 壁の描画
   ctx.strokeStyle = themeColor;
-  ctx.lineWidth = avgWidth + 16;
+  ctx.lineWidth = avgWidth + 18;
   traceCoursePath();
   ctx.stroke();
 
@@ -211,42 +267,33 @@ function draw() {
   ctx.fillStyle = '#f00'; ctx.beginPath(); ctx.arc(nodes[nodes.length-1].x, nodes[nodes.length-1].y, 25, 0, Math.PI*2); ctx.fill();
 }
 
-function getBezierPoint(p0, p1, t) {
-  const midX = (p0.x + p1.x) / 2;
-  const cp1 = { x: midX, y: p0.y };
-  const cp2 = { x: midX, y: p1.y };
-  const u = 1 - t;
-  const tt = t * t;
-  const uu = u * u;
-  const uuu = uu * u;
-  const ttt = tt * t;
-
-  const x = uuu * p0.x + 3 * uu * t * cp1.x + 3 * u * tt * cp2.x + ttt * p1.x;
-  const y = uuu * p0.y + 3 * uu * t * cp1.y + 3 * u * tt * cp2.y + ttt * p1.y;
-  return { x, y };
+// 点(px, py)と線分(p1-p2)の最短距離の二乗を計算
+function distToSegmentSq(p, p1, p2) {
+  const l2 = (p2.x - p1.x) ** 2 + (p2.y - p1.y) ** 2;
+  if (l2 === 0) return (p.x - p1.x) ** 2 + (p.y - p1.y) ** 2;
+  let t = ((p.x - p1.x) * (p2.x - p1.x) + (p.y - p1.y) * (p2.y - p1.y)) / l2;
+  t = Math.max(0, Math.min(1, t));
+  return (p.x - (p1.x + t * (p2.x - p1.x))) ** 2 + (p.y - (p1.y + t * (p2.y - p1.y))) ** 2;
 }
 
+// 精密な幾何学距離判定（壁のない場所での誤作動を排除）
 function isInsideCourse(x, y) {
   let minDistanceSq = Infinity;
-  let currentWidth = 80;
+  let currentWidth = 60;
 
   for (let i = 0; i < nodes.length - 1; i++) {
-    const p0 = nodes[i];
-    const p1 = nodes[i + 1];
+    const p1 = nodes[i];
+    const p2 = nodes[i + 1];
+    const dSq = distToSegmentSq({ x, y }, p1, p2);
 
-    for (let j = 0; j <= 20; j++) {
-      const t = j / 20;
-      const pt = getBezierPoint(p0, p1, t);
-      const distSq = (x - pt.x) ** 2 + (y - pt.y) ** 2;
-
-      if (distSq < minDistanceSq) {
-        minDistanceSq = distSq;
-        currentWidth = (p0.w + p1.w) / 2;
-      }
+    if (dSq < minDistanceSq) {
+      minDistanceSq = dSq;
+      currentWidth = (p1.w + p2.w) / 2;
     }
   }
 
-  const safeRadius = (currentWidth / 2) * 0.8;
+  // 通路の幅（安全余裕度0.85倍）の中にいるか判定
+  const safeRadius = (currentWidth / 2) * 0.85;
   return minDistanceSq <= safeRadius ** 2;
 }
 
@@ -267,6 +314,7 @@ canvas.addEventListener('touchmove', (e) => {
   }
   if (!isPlaying) return;
 
+  // ゴール判定
   if (Math.hypot(x - nodes[nodes.length-1].x, y - nodes[nodes.length-1].y) < 25) {
     isPlaying = false;
     const points = { easy: 1, normal: 2, hard: 3 };
