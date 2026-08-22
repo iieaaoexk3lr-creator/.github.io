@@ -50,13 +50,16 @@
 <script>
 const canvas = document.getElementById('stage');
 const ctx = canvas.getContext('2d');
-const colors = { easy: '#00ccff', normal: '#ffd700', hard: '#ff4444' };
 let stats = { easy: 0, normal: 0, hard: 0, total: 0 };
 let isPlaying = false;
 let difficulty = 'easy';
 let nodes = []; 
 let trace = [];
 let lastTouchPos = null;
+
+// 幅の定義（最狭＝旧Hard幅40px、最広＝Easy幅90px）
+const MIN_WIDTH = 42; 
+const MAX_WIDTH = 90;
 
 function loadStats() {
   const saved = localStorage.getItem('dokidoki_stats');
@@ -102,6 +105,11 @@ function resizeCanvas() {
   canvas.height = window.innerHeight;
 }
 
+// ノードごとにランダムな幅（MIN_WIDTH〜MAX_WIDTH）を生成する関数
+function getRandomWidth() {
+  return MIN_WIDTH + Math.random() * (MAX_WIDTH - MIN_WIDTH);
+}
+
 function generateCourse() {
   nodes = [];
   const w = canvas.width, h = canvas.height;
@@ -110,100 +118,56 @@ function generateCourse() {
   const uiBottom = uiElement ? uiElement.getBoundingClientRect().bottom + 30 : 220;
   const playableHeight = h - uiBottom - 80;
 
-  const zoneY = {
-    top: uiBottom + playableHeight * 0.15,
-    middle: uiBottom + playableHeight * 0.5,
-    bottom: uiBottom + playableHeight * 0.85
-  };
-  const zones = ['top', 'middle', 'bottom'];
-
-  // スタート地点（1点目）：全難易度共通で「上中下」からランダム選定
-  const startZone = zones[Math.floor(Math.random() * 3)];
-  const startY = zoneY[startZone];
-
   if (difficulty === 'easy') {
-    // Easy: 3点
-    const courseWidth = 90;
-    const midZone = zones[Math.floor(Math.random() * 3)];
-    const goalZone = zones[Math.floor(Math.random() * 3)];
+    // Easy: 3点（幅はやや太めベースにランダム変化）
+    const y1 = uiBottom + playableHeight * (0.2 + Math.random() * 0.6);
+    const y2 = uiBottom + playableHeight * (0.2 + Math.random() * 0.6);
+    const y3 = uiBottom + playableHeight * (0.2 + Math.random() * 0.6);
 
-    nodes.push({ x: 70, y: startY, w: courseWidth });
-    nodes.push({ x: w / 2, y: zoneY[midZone], w: courseWidth });
-    nodes.push({ x: w - 70, y: zoneY[goalZone], w: courseWidth });
+    nodes.push({ x: 70, y: y1, w: Math.max(65, getRandomWidth()) });
+    nodes.push({ x: w / 2, y: y2, w: Math.max(65, getRandomWidth()) });
+    nodes.push({ x: w - 70, y: y3, w: Math.max(65, getRandomWidth()) });
 
   } else {
-    // Normal / Hard: 複雑なグリッド巡回コース
-    const gridCols = difficulty === 'normal' ? 3 : 4; 
-    const gridRows = 4; 
-    const courseWidth = difficulty === 'normal' ? 55 : 38;
+    // Normal: 7〜9点 / Hard: 12〜16点
+    const targetCount = difficulty === 'normal' ? 
+      Math.floor(Math.random() * 3) + 7 : 
+      Math.floor(Math.random() * 5) + 12;
+    
+    const stepX = (w - 140) / (targetCount - 1);
+    const minY = uiBottom + playableHeight * 0.15;
+    const maxY = uiBottom + playableHeight * 0.85;
+    
+    let currentY = minY + Math.random() * (maxY - minY);
+    nodes.push({ x: 70, y: currentY, w: getRandomWidth() });
 
-    const gridPoints = [];
-    for (let r = 0; r < gridRows; r++) {
-      gridPoints[r] = [];
-      for (let c = 0; c < gridCols; c++) {
-        const x = 70 + (w - 140) * (c / (gridCols - 1));
-        const y = uiBottom + playableHeight * (0.15 + r * (0.7 / (gridRows - 1)));
-        gridPoints[r][c] = { x, y, w: courseWidth };
-      }
-    }
+    let goingUp = Math.random() < 0.5;
 
-    let currentR = startZone === 'top' ? 0 : (startZone === 'middle' ? 1 : 2);
-    if (currentR >= gridRows) currentR = gridRows - 1;
-    let currentC = 0;
-
-    const visited = new Array(gridRows).fill(null).map(() => new Array(gridCols).fill(false));
-    const pathCoords = [{ r: currentR, c: currentC }];
-    visited[currentR][currentC] = true;
-
-    // 上下左右にしっかり蛇行・Uターンさせながら右端（ゴール）を目指す
-    let steps = 0;
-    while (currentC < gridCols - 1 && steps < 30) {
-      steps++;
-      const neighbors = [];
+    for (let i = 1; i < targetCount - 1; i++) {
+      const x = 70 + stepX * i;
+      const span = (maxY - minY) / 2;
+      const targetY = goingUp ? (minY + Math.random() * span) : (maxY - Math.random() * span);
       
-      const dirs = [
-        { r: currentR, c: currentC + 1 }, // 右
-        { r: currentR - 1, c: currentC }, // 上
-        { r: currentR + 1, c: currentC }, // 下
-        { r: currentR, c: currentC - 1 }  // 左（Uターン用）
-      ];
-
-      for (let d of dirs) {
-        if (d.r >= 0 && d.r < gridRows && d.c >= 0 && d.c < gridCols && !visited[d.r][d.c]) {
-          neighbors.push(d);
-        }
-      }
-
-      if (neighbors.length === 0) {
-        // 動けなくなったら右へ進む
-        currentC++;
-      } else {
-        const next = neighbors[Math.floor(Math.random() * neighbors.length)];
-        currentR = next.r;
-        currentC = next.c;
-      }
-      visited[currentR][currentC] = true;
-      pathCoords.push({ r: currentR, c: currentC });
+      nodes.push({ x: x, y: targetY, w: getRandomWidth() });
+      goingUp = !goingUp;
     }
 
-    nodes = pathCoords.map(p => gridPoints[p.r][p.c]);
+    const finalY = minY + Math.random() * (maxY - minY);
+    nodes.push({ x: w - 70, y: finalY, w: getRandomWidth() });
 
-    // 目標の点数（Normal: 7〜9, Hard: 12〜16）に達するように角を増やして調整
-    const targetMin = difficulty === 'normal' ? 7 : 12;
-    const targetMax = difficulty === 'normal' ? 9 : 16;
-    const targetCount = Math.floor(Math.random() * (targetMax - targetMin + 1)) + targetMin;
-
-    let safety = 0;
-    while (nodes.length < targetCount && safety < 50) {
-      safety++;
-      const idx = Math.floor(Math.random() * (nodes.length - 1));
-      const p1 = nodes[idx];
-      const p2 = nodes[idx + 1];
-      if (p1.x !== p2.x && p1.y !== p2.y) {
-        const midPoint = { x: p2.x, y: p1.y, w: courseWidth };
-        nodes.splice(idx + 1, 0, midPoint);
+    // 縦横のクランク（角）を追加し、幅も滑らかに引き継ぐ
+    const refinedNodes = [];
+    for (let i = 0; i < nodes.length; i++) {
+      refinedNodes.push(nodes[i]);
+      if (i < nodes.length - 1) {
+        const p1 = nodes[i];
+        const p2 = nodes[i + 1];
+        // 中間クランクの幅は前後の平均
+        const midW = (p1.w + p2.w) / 2;
+        refinedNodes.push({ x: p2.x, y: p1.y, w: midW });
       }
     }
+    nodes = refinedNodes;
   }
 
   trace = [];
@@ -212,13 +176,32 @@ function generateCourse() {
   draw();
 }
 
-function traceCoursePath() {
-  ctx.beginPath();
-  ctx.moveTo(nodes[0].x, nodes[0].y);
-  for (let i = 0; i < nodes.length - 1; i++) {
-    const p1 = nodes[i + 1];
-    ctx.lineTo(p1.x, p1.y);
+// 金属（メタリック）グラデーションの生成
+function createMetalGradient(diff) {
+  const grad = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
+  if (diff === 'easy') {
+    // サイバーメタリックブルー
+    grad.addColorStop(0.0, '#005580');
+    grad.addColorStop(0.3, '#00ccff');
+    grad.addColorStop(0.5, '#ffffff');
+    grad.addColorStop(0.7, '#00ccff');
+    grad.addColorStop(1.0, '#003355');
+  } else if (diff === 'normal') {
+    // ゴールドメタリック
+    grad.addColorStop(0.0, '#8a6d3b');
+    grad.addColorStop(0.25, '#ffd700');
+    grad.addColorStop(0.5, '#ffffff');
+    grad.addColorStop(0.75, '#ffd700');
+    grad.addColorStop(1.0, '#5e481b');
+  } else {
+    // メタリックレッド（銅・メタル）
+    grad.addColorStop(0.0, '#660000');
+    grad.addColorStop(0.25, '#ff4444');
+    grad.addColorStop(0.5, '#ffffff');
+    grad.addColorStop(0.75, '#ff2222');
+    grad.addColorStop(1.0, '#440000');
   }
+  return grad;
 }
 
 function draw() {
@@ -226,36 +209,54 @@ function draw() {
   ctx.lineJoin = 'round';
   ctx.lineCap = 'round';
 
-  const avgWidth = nodes.reduce((sum, n) => sum + n.w, 0) / nodes.length;
-  const themeColor = colors[difficulty];
+  const metalStyle = createMetalGradient(difficulty);
 
-  // 1. 壁の描画
-  ctx.strokeStyle = themeColor;
-  ctx.lineWidth = avgWidth + 18;
-  traceCoursePath();
-  ctx.stroke();
+  // 1. 金属フレーム（枠線）の描画：セグメントごとに動的な太さで描く
+  for (let i = 0; i < nodes.length - 1; i++) {
+    const p1 = nodes[i];
+    const p2 = nodes[i + 1];
+    const segmentWidth = (p1.w + p2.w) / 2;
 
-  // 2. 通路の描画
-  ctx.strokeStyle = '#000';
-  ctx.lineWidth = avgWidth;
-  traceCoursePath();
-  ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(p1.x, p1.y);
+    ctx.lineTo(p2.x, p2.y);
+
+    // 外枠（金属部分）
+    ctx.strokeStyle = metalStyle;
+    ctx.lineWidth = segmentWidth + 18;
+    ctx.stroke();
+  }
+
+  // 2. 黒い通路の描画（重ねて穴をあける）
+  for (let i = 0; i < nodes.length - 1; i++) {
+    const p1 = nodes[i];
+    const p2 = nodes[i + 1];
+    const segmentWidth = (p1.w + p2.w) / 2;
+
+    ctx.beginPath();
+    ctx.moveTo(p1.x, p1.y);
+    ctx.lineTo(p2.x, p2.y);
+
+    ctx.strokeStyle = '#000';
+    ctx.lineWidth = segmentWidth;
+    ctx.stroke();
+  }
 
   // 3. 軌跡の描画
   if (trace.length > 0) {
     ctx.strokeStyle = '#fff';
     ctx.lineWidth = 3;
     ctx.beginPath();
-    trace.forEach((p, i) => i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y));
+    trace.forEach((p, idx) => idx === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y));
     ctx.stroke();
   }
 
-  // 4. スタート（S）とゴール（G）の描画
+  // 4. スタート（S）とゴール（G）
   const start = nodes[0];
   const goal = nodes[nodes.length - 1];
 
-  ctx.fillStyle = '#0f0'; ctx.beginPath(); ctx.arc(start.x, start.y, 25, 0, Math.PI*2); ctx.fill();
-  ctx.fillStyle = '#f00'; ctx.beginPath(); ctx.arc(goal.x, goal.y, 25, 0, Math.PI*2); ctx.fill();
+  ctx.fillStyle = '#0f0'; ctx.beginPath(); ctx.arc(start.x, start.y, 24, 0, Math.PI*2); ctx.fill();
+  ctx.fillStyle = '#f00'; ctx.beginPath(); ctx.arc(goal.x, goal.y, 24, 0, Math.PI*2); ctx.fill();
 
   ctx.fillStyle = '#000'; ctx.font = 'bold 20px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   ctx.fillText('S', start.x, start.y);
@@ -264,28 +265,32 @@ function draw() {
 
 function distToSegmentSq(p, p1, p2) {
   const l2 = (p2.x - p1.x) ** 2 + (p2.y - p1.y) ** 2;
-  if (l2 === 0) return (p.x - p1.x) ** 2 + (p.y - p1.y) ** 2;
+  if (l2 === 0) return { dSq: (p.x - p1.x) ** 2 + (p.y - p1.y) ** 2, t: 0 };
   let t = ((p.x - p1.x) * (p2.x - p1.x) + (p.y - p1.y) * (p2.y - p1.y)) / l2;
   t = Math.max(0, Math.min(1, t));
-  return (p.x - (p1.x + t * (p2.x - p1.x))) ** 2 + (p.y - (p1.y + t * (p2.y - p1.y))) ** 2;
+  const dSq = (p.x - (p1.x + t * (p2.x - p1.x))) ** 2 + (p.y - (p1.y + t * (p2.y - p1.y))) ** 2;
+  return { dSq, t };
 }
 
+// 変動するコース幅に対応した精密当たり判定
 function isInsideCourse(x, y) {
   let minDistanceSq = Infinity;
-  let currentWidth = 60;
+  let currentWidthAtPos = MIN_WIDTH;
 
   for (let i = 0; i < nodes.length - 1; i++) {
     const p1 = nodes[i];
     const p2 = nodes[i + 1];
-    const dSq = distToSegmentSq({ x, y }, p1, p2);
+    const { dSq, t } = distToSegmentSq({ x, y }, p1, p2);
 
     if (dSq < minDistanceSq) {
       minDistanceSq = dSq;
-      currentWidth = (p1.w + p2.w) / 2;
+      // 線分上の位置 t に合わせて幅を補間計算
+      currentWidthAtPos = p1.w + t * (p2.w - p1.w);
     }
   }
 
-  const safeRadius = (currentWidth / 2) * 0.85;
+  // 安全マージン（85%）
+  const safeRadius = (currentWidthAtPos / 2) * 0.85;
   return minDistanceSq <= safeRadius ** 2;
 }
 
