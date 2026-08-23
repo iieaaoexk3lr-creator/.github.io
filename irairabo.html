@@ -73,8 +73,8 @@ let currentOddWidthOffset = 0;
 let widthExpanding = false; 
 
 // 難易度別の基本サイズ制限
-const MIN_WIDTH = 42; 
-const MAX_WIDTH = 85;
+const MIN_WIDTH = 40; 
+const MAX_WIDTH = 80;
 
 function loadStats() {
   const saved = localStorage.getItem('dokidoki_stats');
@@ -198,7 +198,7 @@ function generateCourse() {
     nodes = slicedCoords.map(p => ({
       x: 70 + (w - 140) * (p.c / (cols - 1)),
       y: uiBottom + playableHeight * (0.15 + (0.7 / (rows - 1)) * p.r),
-      w: Math.max(65, getRandomWidth(MIN_WIDTH, MAX_WIDTH))
+      w: Math.max(65, getRandomWidth(MIN_WIDTH + 10, MAX_WIDTH))
     }));
 
   } else if (difficulty === 'normal') {
@@ -210,7 +210,7 @@ function generateCourse() {
     nodes = slicedCoords.map(p => ({
       x: 70 + (w - 140) * (p.c / (cols - 1)),
       y: uiBottom + playableHeight * (0.15 + (0.7 / (rows - 1)) * p.r),
-      w: getRandomWidth(MIN_WIDTH, MAX_WIDTH)
+      w: getRandomWidth(MIN_WIDTH, MAX_WIDTH - 20)
     }));
 
   } else {
@@ -218,11 +218,11 @@ function generateCourse() {
     const cols = 4, rows = 5;
     const pathCoords = generateHamiltonianPath(cols, rows);
 
-    // Hardは初期幅を細め（32〜48pt）に設定して壁との一体化を防ぐ
+    // Hardは初期幅を細め（30〜50pt）に設定して壁との一体化を防ぐ
     nodes = pathCoords.map(p => ({
       x: 70 + (w - 140) * (p.c / (cols - 1)),
       y: uiBottom + playableHeight * (0.15 + (0.7 / (rows - 1)) * p.r),
-      w: getRandomWidth(32, 48)
+      w: getRandomWidth(30, 50)
     }));
 
     // 壁の配置（太さが変化しない偶数インデックスの区間に2箇所設置）
@@ -234,10 +234,10 @@ function generateCourse() {
     evenIndices.sort(() => Math.random() - 0.5);
     wallSegments = evenIndices.slice(0, 2);
 
-    // 壁は1秒ごとに開閉
+    // 壁は1.1秒ごとに開閉
     wallTimer = setInterval(() => {
       isWallClosed = !isWallClosed;
-    }, 1000);
+    }, 1100);
 
     // 奇数番目ノードの太さ変動（0.5秒ごとに1pt変動）
     widthChangeTimer = setInterval(() => {
