@@ -57,7 +57,6 @@ let nodes = [];
 let trace = [];
 let lastTouchPos = null;
 
-// 幅の定義（最狭＝旧Hard幅40px、最広＝Easy幅90px）
 const MIN_WIDTH = 42; 
 const MAX_WIDTH = 90;
 
@@ -105,9 +104,64 @@ function resizeCanvas() {
   canvas.height = window.innerHeight;
 }
 
-// ノードごとにランダムな幅（MIN_WIDTH〜MAX_WIDTH）を生成する関数
 function getRandomWidth() {
   return MIN_WIDTH + Math.random() * (MAX_WIDTH - MIN_WIDTH);
+}
+
+// 全格子点を巡回するハミルトンパス（一筆書き）を深さ優先探索で生成
+function generateHamiltonianPath(cols, rows) {
+  const visited = new Array(rows).fill(null).map(() => new Array(cols).fill(false));
+  const path = [];
+  const totalPoints = cols * rows;
+
+  // ランダムなスタート行（左端の列）
+  const startR = Math.floor(Math.random() * rows);
+  
+  function dfs(r, c) {
+    visited[r][c] = true;
+    path.push({ r, c });
+
+    if (path.length === totalPoints) return true;
+
+    // シャッフルした隣接方向（上下左右）
+    const dirs = [
+      { r: r - 1, c: c },
+      { r: r + 1, c: c },
+      { r: r, c: c - 1 },
+      { r: r, c: c + 1 }
+    ].sort(() => Math.random() - 0.5);
+
+    for (let d of dirs) {
+      if (d.r >= 0 && d.r < rows && d.c >= 0 && d.c < cols && !visited[d.r][d.c]) {
+        if (dfs(d.r, d.c)) return true;
+      }
+    }
+
+    visited[r][c] = false;
+    path.pop();
+    return false;
+  }
+
+  // 成功するまで再試行
+  let attempts = 0;
+  while (attempts < 100) {
+    attempts++;
+    for (let r = 0; r < rows; r++) visited[r].fill(false);
+    path.length = 0;
+    const initialR = Math.floor(Math.random() * rows);
+    if (dfs(initialR, 0)) return path;
+  }
+
+  // 万が一見つからなければフォールバック（蛇行巡回）
+  path.length = 0;
+  for (let c = 0; c < cols; c++) {
+    if (c % 2 === 0) {
+      for (let r = 0; r < rows; r++) path.push({ r, c });
+    } else {
+      for (let r = rows - 1; r >= 0; r--) path.push({ r, c });
+    }
+  }
+  return path;
 }
 
 function generateCourse() {
@@ -119,55 +173,41 @@ function generateCourse() {
   const playableHeight = h - uiBottom - 80;
 
   if (difficulty === 'easy') {
-    // Easy: 3点（幅はやや太めベースにランダム変化）
-    const y1 = uiBottom + playableHeight * (0.2 + Math.random() * 0.6);
-    const y2 = uiBottom + playableHeight * (0.2 + Math.random() * 0.6);
-    const y3 = uiBottom + playableHeight * (0.2 + Math.random() * 0.6);
+    // Easy: 左から右へ3列。直前の点と同じ高さは選ばない。
+    const rows = 3; // 上・中・下
+    const yList = [
+      uiBottom + playableHeight * 0.15,
+      uiBottom + playableHeight * 0.5,
+      uiBottom + playableHeight * 0.85
+    ];
+    const xList = [70, w / 2, w - 70];
 
-    nodes.push({ x: 70, y: y1, w: Math.max(65, getRandomWidth()) });
-    nodes.push({ x: w / 2, y: y2, w: Math.max(65, getRandomWidth()) });
-    nodes.push({ x: w - 70, y: y3, w: Math.max(65, getRandomWidth()) });
+    let lastRow = Math.floor(Math.random() * rows);
+    nodes.push({ x: xList[0], y: yList[lastRow], w: Math.max(65, getRandomWidth()) });
+
+    for (let c = 1; c < 3; c++) {
+      let nextRow;
+      do {
+        nextRow = Math.floor(Math.random() * rows);
+      } while (nextRow === lastRow); // 直前と同じ高さは避ける
+
+      nodes.push({ x: xList[c], y: yList[nextRow], w: Math.max(65, getRandomWidth()) });
+      lastRow = nextRow;
+    }
 
   } else {
-    // Normal: 7〜9点 / Hard: 12〜16点
-    const targetCount = difficulty === 'normal' ? 
-      Math.floor(Math.random() * 3) + 7 : 
-      Math.floor(Math.random() * 5) + 12;
-    
-    const stepX = (w - 140) / (targetCount - 1);
-    const minY = uiBottom + playableHeight * 0.15;
-    const maxY = uiBottom + playableHeight * 0.85;
-    
-    let currentY = minY + Math.random() * (maxY - minY);
-    nodes.push({ x: 70, y: currentY, w: getRandomWidth() });
+    // Normal: 4×3, Hard: 4×4 の格子上の全点を巡回（一筆書き）
+    const cols = 4;
+    const rows = difficulty === 'normal' ? 3 : 4;
 
-    let goingUp = Math.random() < 0.5;
+    const pathCoords = generateHamiltonianPath(cols, rows);
 
-    for (let i = 1; i < targetCount - 1; i++) {
-      const x = 70 + stepX * i;
-      const span = (maxY - minY) / 2;
-      const targetY = goingUp ? (minY + Math.random() * span) : (maxY - Math.random() * span);
-      
-      nodes.push({ x: x, y: targetY, w: getRandomWidth() });
-      goingUp = !goingUp;
-    }
-
-    const finalY = minY + Math.random() * (maxY - minY);
-    nodes.push({ x: w - 70, y: finalY, w: getRandomWidth() });
-
-    // 縦横のクランク（角）を追加し、幅も滑らかに引き継ぐ
-    const refinedNodes = [];
-    for (let i = 0; i < nodes.length; i++) {
-      refinedNodes.push(nodes[i]);
-      if (i < nodes.length - 1) {
-        const p1 = nodes[i];
-        const p2 = nodes[i + 1];
-        // 中間クランクの幅は前後の平均
-        const midW = (p1.w + p2.w) / 2;
-        refinedNodes.push({ x: p2.x, y: p1.y, w: midW });
-      }
-    }
-    nodes = refinedNodes;
+    // 格子点のピクセル座標計算
+    nodes = pathCoords.map(p => {
+      const x = 70 + (w - 140) * (p.c / (cols - 1));
+      const y = uiBottom + playableHeight * (0.15 + (0.7 / (rows - 1)) * p.r);
+      return { x, y, w: getRandomWidth() };
+    });
   }
 
   trace = [];
@@ -176,32 +216,53 @@ function generateCourse() {
   draw();
 }
 
-// 金属（メタリック）グラデーションの生成
-function createMetalGradient(diff) {
-  const grad = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
+// 線分ごとの立体的なパイプ風（金属）グラデーション生成
+function drawPipeSegment(p1, p2, width, diff) {
+  const dx = p2.x - p1.x;
+  const dy = p2.y - p1.y;
+  const len = Math.hypot(dx, dy);
+  if (len === 0) return;
+
+  // 線分に対して垂直なベクトルを求める（パイプの太さ方向にグラデーションをかけるため）
+  const nx = -dy / len;
+  const ny = dx / len;
+
+  const halfW = width / 2 + 9; // 外枠の半幅
+
+  // 線分と直交する方向にグラデーションを作成
+  const grad = ctx.createLinearGradient(
+    (p1.x + p2.x) / 2 - nx * halfW,
+    (p1.y + p2.y) / 2 - ny * halfW,
+    (p1.x + p2.x) / 2 + nx * halfW,
+    (p1.y + p2.y) / 2 + ny * halfW
+  );
+
   if (diff === 'easy') {
-    // サイバーメタリックブルー
-    grad.addColorStop(0.0, '#005580');
-    grad.addColorStop(0.3, '#00ccff');
-    grad.addColorStop(0.5, '#ffffff');
-    grad.addColorStop(0.7, '#00ccff');
-    grad.addColorStop(1.0, '#003355');
+    grad.addColorStop(0.0, '#003355');
+    grad.addColorStop(0.3, '#00aacc');
+    grad.addColorStop(0.5, '#ffffff'); // 金属のハイライト（光沢）
+    grad.addColorStop(0.7, '#00aacc');
+    grad.addColorStop(1.0, '#002233');
   } else if (diff === 'normal') {
-    // ゴールドメタリック
-    grad.addColorStop(0.0, '#8a6d3b');
-    grad.addColorStop(0.25, '#ffd700');
-    grad.addColorStop(0.5, '#ffffff');
-    grad.addColorStop(0.75, '#ffd700');
-    grad.addColorStop(1.0, '#5e481b');
+    grad.addColorStop(0.0, '#4a3500');
+    grad.addColorStop(0.3, '#d4af37');
+    grad.addColorStop(0.5, '#ffffff'); // 金色のハイライト
+    grad.addColorStop(0.7, '#d4af37');
+    grad.addColorStop(1.0, '#332400');
   } else {
-    // メタリックレッド（銅・メタル）
-    grad.addColorStop(0.0, '#660000');
-    grad.addColorStop(0.25, '#ff4444');
-    grad.addColorStop(0.5, '#ffffff');
-    grad.addColorStop(0.75, '#ff2222');
-    grad.addColorStop(1.0, '#440000');
+    grad.addColorStop(0.0, '#440000');
+    grad.addColorStop(0.3, '#cc2222');
+    grad.addColorStop(0.5, '#ffffff'); // 銅・赤金属のハイライト
+    grad.addColorStop(0.7, '#cc2222');
+    grad.addColorStop(1.0, '#220000');
   }
-  return grad;
+
+  ctx.strokeStyle = grad;
+  ctx.lineWidth = width + 18;
+  ctx.beginPath();
+  ctx.moveTo(p1.x, p1.y);
+  ctx.lineTo(p2.x, p2.y);
+  ctx.stroke();
 }
 
 function draw() {
@@ -209,25 +270,15 @@ function draw() {
   ctx.lineJoin = 'round';
   ctx.lineCap = 'round';
 
-  const metalStyle = createMetalGradient(difficulty);
-
-  // 1. 金属フレーム（枠線）の描画：セグメントごとに動的な太さで描く
+  // 1. 金属パイプ枠線の描画（各線分に立体グラデーション）
   for (let i = 0; i < nodes.length - 1; i++) {
     const p1 = nodes[i];
     const p2 = nodes[i + 1];
     const segmentWidth = (p1.w + p2.w) / 2;
-
-    ctx.beginPath();
-    ctx.moveTo(p1.x, p1.y);
-    ctx.lineTo(p2.x, p2.y);
-
-    // 外枠（金属部分）
-    ctx.strokeStyle = metalStyle;
-    ctx.lineWidth = segmentWidth + 18;
-    ctx.stroke();
+    drawPipeSegment(p1, p2, segmentWidth, difficulty);
   }
 
-  // 2. 黒い通路の描画（重ねて穴をあける）
+  // 2. 黒いくり抜き通路の描画
   for (let i = 0; i < nodes.length - 1; i++) {
     const p1 = nodes[i];
     const p2 = nodes[i + 1];
@@ -236,7 +287,6 @@ function draw() {
     ctx.beginPath();
     ctx.moveTo(p1.x, p1.y);
     ctx.lineTo(p2.x, p2.y);
-
     ctx.strokeStyle = '#000';
     ctx.lineWidth = segmentWidth;
     ctx.stroke();
@@ -272,7 +322,6 @@ function distToSegmentSq(p, p1, p2) {
   return { dSq, t };
 }
 
-// 変動するコース幅に対応した精密当たり判定
 function isInsideCourse(x, y) {
   let minDistanceSq = Infinity;
   let currentWidthAtPos = MIN_WIDTH;
@@ -284,12 +333,10 @@ function isInsideCourse(x, y) {
 
     if (dSq < minDistanceSq) {
       minDistanceSq = dSq;
-      // 線分上の位置 t に合わせて幅を補間計算
       currentWidthAtPos = p1.w + t * (p2.w - p1.w);
     }
   }
 
-  // 安全マージン（85%）
   const safeRadius = (currentWidthAtPos / 2) * 0.85;
   return minDistanceSq <= safeRadius ** 2;
 }
