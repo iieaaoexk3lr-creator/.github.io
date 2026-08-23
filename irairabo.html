@@ -382,9 +382,9 @@ function draw() {
   if (trace.length > 0) {
     ctx.save();
     ctx.strokeStyle = '#ffffff';
-    ctx.lineWidth = 3;
+    ctx.lineWidth = 1;
     ctx.shadowColor = '#ffffff';
-    ctx.shadowBlur = 6;
+    ctx.shadowBlur = 3;
     ctx.beginPath();
     trace.forEach((p, idx) => idx === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y));
     ctx.stroke();
