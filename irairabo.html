@@ -62,10 +62,15 @@ let nodes = [];
 let trace = [];
 let lastTouchPos = null;
 
-// 壁（シャッター）ギミック用変数
+// 壁（シャッター）用
 let wallTimer = null;
 let isWallClosed = false;
 let wallSegments = [];
+
+// Hard限定：幅の伸縮（1秒に1pt変動）用
+let widthChangeTimer = null;
+let currentWidthOffset = 0; // 太さのオフセット
+let widthExpanding = false; // true: 太くなる, false: 細くなる
 
 const MIN_WIDTH = 42; 
 const MAX_WIDTH = 90;
@@ -120,6 +125,7 @@ function getRandomWidth() {
   return MIN_WIDTH + Math.random() * (MAX_WIDTH - MIN_WIDTH);
 }
 
+// 格子点の巡回パス（一筆書き）を生成
 function generateHamiltonianPath(cols, rows) {
   const visited = new Array(rows).fill(null).map(() => new Array(cols).fill(false));
   const path = [];
@@ -168,9 +174,13 @@ function generateHamiltonianPath(cols, rows) {
 
 function generateCourse() {
   if (wallTimer) clearInterval(wallTimer);
+  if (widthChangeTimer) clearInterval(widthChangeTimer);
+
   wallSegments = [];
   isWallClosed = false;
   isCleared = false;
+  currentWidthOffset = 0;
+  widthExpanding = false;
   hideOverlay();
 
   nodes = [];
@@ -179,22 +189,38 @@ function generateCourse() {
   const uiBottom = uiElement ? uiElement.getBoundingClientRect().bottom + 30 : 220;
   const playableHeight = h - uiBottom - 80;
 
-  if (difficulty === 'easy') {
-    const rows = 3;
-    const yList = [uiBottom + playableHeight * 0.15, uiBottom + playableHeight * 0.5, uiBottom + playableHeight * 0.85];
-    const xList = [70, w / 2, w - 70];
-    let lastRow = Math.floor(Math.random() * rows);
-    nodes.push({ x: xList[0], y: yList[lastRow], w: Math.max(65, getRandomWidth()) });
+  let cols = 3, rows = 3;
 
-    for (let c = 1; c < 3; c++) {
-      let nextRow;
-      do { nextRow = Math.floor(Math.random() * rows); } while (nextRow === lastRow);
-      nodes.push({ x: xList[c], y: yList[nextRow], w: Math.max(65, getRandomWidth()) });
-      lastRow = nextRow;
-    }
+  if (difficulty === 'easy') {
+    // Easy: 7〜9点（3×3などの正方形に近いグリッド）
+    cols = 3; rows = 3;
+    const pathCoords = generateHamiltonianPath(cols, rows);
+    // ランダムで7〜9点分を採用
+    const count = Math.floor(Math.random() * 3) + 7; 
+    const slicedCoords = pathCoords.slice(0, count);
+
+    nodes = slicedCoords.map(p => ({
+      x: 70 + (w - 140) * (p.c / (cols - 1)),
+      y: uiBottom + playableHeight * (0.15 + (0.7 / (rows - 1)) * p.r),
+      w: Math.max(65, getRandomWidth())
+    }));
+
+  } else if (difficulty === 'normal') {
+    // Normal: 12〜16点（4×4 グリッド）
+    cols = 4; rows = 4;
+    const pathCoords = generateHamiltonianPath(cols, rows);
+    const count = Math.floor(Math.random() * 5) + 12; 
+    const slicedCoords = pathCoords.slice(0, count);
+
+    nodes = slicedCoords.map(p => ({
+      x: 70 + (w - 140) * (p.c / (cols - 1)),
+      y: uiBottom + playableHeight * (0.15 + (0.7 / (rows - 1)) * p.r),
+      w: getRandomWidth()
+    }));
+
   } else {
-    const cols = 4;
-    const rows = difficulty === 'normal' ? 3 : 4;
+    // Hard: 縦5×横4 の計20点全巡回
+    cols = 4; rows = 5;
     const pathCoords = generateHamiltonianPath(cols, rows);
 
     nodes = pathCoords.map(p => ({
@@ -203,8 +229,8 @@ function generateCourse() {
       w: getRandomWidth()
     }));
 
-    // Hardのみ1秒毎に開閉する壁ギミックを配置
-    if (difficulty === 'hard' && nodes.length > 5) {
+    // Hard限定ギミック1：1秒ごとの壁開閉
+    if (nodes.length > 5) {
       const idx1 = Math.floor(Math.random() * (nodes.length - 4)) + 2;
       wallSegments.push(idx1);
       
@@ -212,11 +238,32 @@ function generateCourse() {
         isWallClosed = !isWallClosed;
       }, 1000);
     }
+
+    // Hard限定ギミック2：1秒ごとに1ptずつコースが細くなり、最狭で元に戻る
+    widthChangeTimer = setInterval(() => {
+      if (widthExpanding) {
+        currentWidthOffset += 1;
+        if (currentWidthOffset >= 0) {
+          currentWidthOffset = 0;
+          widthExpanding = false; // 最広に達したら細くする方向へ
+        }
+      } else {
+        currentWidthOffset -= 1;
+        if (currentWidthOffset <= -18) { // 最狭制限（最大-18ptまで縮小）
+          widthExpanding = true; // 最狭に達したら太くする方向へ
+        }
+      }
+    }, 1000);
   }
 
   trace = [];
   isPlaying = false;
   lastTouchPos = null;
+}
+
+// 動的幅の補正値を適用したノード情報を取得
+function getAdjustedWidth(baseW) {
+  return Math.max(MIN_WIDTH - 10, baseW + currentWidthOffset);
 }
 
 function drawPipeSegment(p1, p2, width, diff) {
@@ -252,8 +299,10 @@ function drawPipeSegment(p1, p2, width, diff) {
   ctx.beginPath(); ctx.moveTo(p1.x, p1.y); ctx.lineTo(p2.x, p2.y); ctx.stroke();
 }
 
-// 壁（シャッター）描画
+// 重厚なハッチング赤黒壁（シャッター）の描画
 function drawWall(p1, p2, width) {
+  if (!isWallClosed) return; // 通れる時は何も描画しない（完全透明）
+
   const mx = (p1.x + p2.x) / 2;
   const my = (p1.y + p2.y) / 2;
   const dx = p2.x - p1.x;
@@ -261,33 +310,37 @@ function drawWall(p1, p2, width) {
   const len = Math.hypot(dx, dy);
   if (len === 0) return;
 
+  const ux = dx / len;
+  const uy = dy / len;
   const nx = -dy / len;
   const ny = dx / len;
 
   ctx.save();
-  if (isWallClosed) {
-    // 閉鎖時：赤く点滅する警告バリケード
-    ctx.strokeStyle = '#ff0055';
-    ctx.lineWidth = 12;
-    ctx.beginPath();
-    ctx.moveTo(mx - nx * (width / 2), my - ny * (width / 2));
-    ctx.lineTo(mx + nx * (width / 2), my + ny * (width / 2));
-    ctx.stroke();
+  ctx.translate(mx, my);
+  ctx.rotate(Math.atan2(dy, dx));
 
-    ctx.fillStyle = '#ff3300';
+  const wallThickness = 20; // 壁の厚み
+  const halfW = width / 2;
+
+  // 壁の背景（赤）
+  ctx.fillStyle = '#cc0000';
+  ctx.fillRect(-wallThickness / 2, -halfW, wallThickness, width);
+
+  // ハッチング（黒の斜線パターン）
+  ctx.strokeStyle = '#000000';
+  ctx.lineWidth = 4;
+  for (let i = -halfW; i <= halfW; i += 8) {
     ctx.beginPath();
-    ctx.arc(mx, my, 8, 0, Math.PI * 2);
-    ctx.fill();
-  } else {
-    // 解放時：通り抜け可能なインジケーター（点線）
-    ctx.strokeStyle = 'rgba(0, 255, 150, 0.4)';
-    ctx.lineWidth = 6;
-    ctx.setLineDash([4, 4]);
-    ctx.beginPath();
-    ctx.moveTo(mx - nx * (width / 2), my - ny * (width / 2));
-    ctx.lineTo(mx + nx * (width / 2), my + ny * (width / 2));
+    ctx.moveTo(-wallThickness / 2, i);
+    ctx.lineTo(wallThickness / 2, i + 8);
     ctx.stroke();
   }
+
+  // 枠線（枠を強調）
+  ctx.strokeStyle = '#ff3333';
+  ctx.lineWidth = 3;
+  ctx.strokeRect(-wallThickness / 2, -halfW, wallThickness, width);
+
   ctx.restore();
 }
 
@@ -298,16 +351,20 @@ function draw() {
 
   // 1. パイプ枠線
   for (let i = 0; i < nodes.length - 1; i++) {
-    drawPipeSegment(nodes[i], nodes[i + 1], (nodes[i].w + nodes[i + 1].w) / 2, difficulty);
+    const w1 = getAdjustedWidth(nodes[i].w);
+    const w2 = getAdjustedWidth(nodes[i + 1].w);
+    drawPipeSegment(nodes[i], nodes[i + 1], (w1 + w2) / 2, difficulty);
   }
 
   // 2. 黒の穴あけ
   for (let i = 0; i < nodes.length - 1; i++) {
+    const w1 = getAdjustedWidth(nodes[i].w);
+    const w2 = getAdjustedWidth(nodes[i + 1].w);
     ctx.beginPath();
     ctx.moveTo(nodes[i].x, nodes[i].y);
     ctx.lineTo(nodes[i + 1].x, nodes[i + 1].y);
     ctx.strokeStyle = '#000';
-    ctx.lineWidth = (nodes[i].w + nodes[i + 1].w) / 2;
+    ctx.lineWidth = (w1 + w2) / 2;
     ctx.stroke();
   }
 
@@ -315,7 +372,9 @@ function draw() {
   if (difficulty === 'hard') {
     wallSegments.forEach(idx => {
       if (idx < nodes.length - 1) {
-        drawWall(nodes[idx], nodes[idx + 1], (nodes[idx].w + nodes[idx + 1].w) / 2);
+        const w1 = getAdjustedWidth(nodes[idx].w);
+        const w2 = getAdjustedWidth(nodes[idx + 1].w);
+        drawWall(nodes[idx], nodes[idx + 1], (w1 + w2) / 2);
       }
     });
   }
@@ -359,19 +418,22 @@ function isInsideCourse(x, y) {
     const p2 = nodes[i + 1];
     const { dSq, t } = distToSegmentSq({ x, y }, p1, p2);
 
-    // 壁（閉鎖中）への接触判定
+    const w1 = getAdjustedWidth(p1.w);
+    const w2 = getAdjustedWidth(p2.w);
+    const segW = w1 + t * (w2 - w1);
+
+    // 赤い壁が出現している時の衝突判定
     if (difficulty === 'hard' && isWallClosed && wallSegments.includes(i)) {
       if (t >= 0.35 && t <= 0.65) {
-        const segW = (p1.w + p2.w) / 2;
         if (dSq <= (segW / 2) ** 2) {
-          return false; // 壁に衝突！
+          return false; // 赤い壁に激突
         }
       }
     }
 
     if (dSq < minDistanceSq) {
       minDistanceSq = dSq;
-      currentWidthAtPos = p1.w + t * (p2.w - p1.w);
+      currentWidthAtPos = segW;
     }
   }
 
@@ -385,7 +447,6 @@ function gameLoop() {
 }
 
 function handleTouchStart(e) {
-  // クリア表示中に画面をタップしたらメッセージを消して次へ
   if (isCleared) {
     generateCourse();
     return;
@@ -428,7 +489,7 @@ function handleTouchMove(e) {
     return;
   }
 
-  // 移動・失敗判定
+  // 移動・判定
   if (distStart > 30) {
     const prev = lastTouchPos || { x, y };
     const dist = Math.hypot(x - prev.x, y - prev.y);
@@ -456,7 +517,6 @@ canvas.addEventListener('touchstart', handleTouchStart);
 canvas.addEventListener('touchmove', handleTouchMove);
 canvas.addEventListener('touchend', () => { lastTouchPos = null; });
 
-// マウス操作（PC動作確認用）
 canvas.addEventListener('mousedown', handleTouchStart);
 canvas.addEventListener('mousemove', (e) => {
   if (e.buttons === 1) handleTouchMove(e);
