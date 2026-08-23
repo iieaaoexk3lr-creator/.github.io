@@ -57,6 +57,11 @@ let nodes = [];
 let trace = [];
 let lastTouchPos = null;
 
+// 回転ギミック管理用
+let rotateTimer = null;
+let rotateAngle = 0; // 0, 90, 180, 270 度
+let rotateNodeIndex = -1;
+
 const MIN_WIDTH = 42; 
 const MAX_WIDTH = 90;
 
@@ -97,6 +102,7 @@ function init() {
   resizeCanvas();
   loadStats();
   generateCourse();
+  gameLoop();
 }
 
 function resizeCanvas() {
@@ -108,22 +114,16 @@ function getRandomWidth() {
   return MIN_WIDTH + Math.random() * (MAX_WIDTH - MIN_WIDTH);
 }
 
-// 全格子点を巡回するハミルトンパス（一筆書き）を深さ優先探索で生成
 function generateHamiltonianPath(cols, rows) {
   const visited = new Array(rows).fill(null).map(() => new Array(cols).fill(false));
   const path = [];
   const totalPoints = cols * rows;
 
-  // ランダムなスタート行（左端の列）
-  const startR = Math.floor(Math.random() * rows);
-  
   function dfs(r, c) {
     visited[r][c] = true;
     path.push({ r, c });
-
     if (path.length === totalPoints) return true;
 
-    // シャッフルした隣接方向（上下左右）
     const dirs = [
       { r: r - 1, c: c },
       { r: r + 1, c: c },
@@ -136,23 +136,19 @@ function generateHamiltonianPath(cols, rows) {
         if (dfs(d.r, d.c)) return true;
       }
     }
-
     visited[r][c] = false;
     path.pop();
     return false;
   }
 
-  // 成功するまで再試行
   let attempts = 0;
   while (attempts < 100) {
     attempts++;
     for (let r = 0; r < rows; r++) visited[r].fill(false);
     path.length = 0;
-    const initialR = Math.floor(Math.random() * rows);
-    if (dfs(initialR, 0)) return path;
+    if (dfs(Math.floor(Math.random() * rows), 0)) return path;
   }
 
-  // 万が一見つからなければフォールバック（蛇行巡回）
   path.length = 0;
   for (let c = 0; c < cols; c++) {
     if (c % 2 === 0) {
@@ -165,71 +161,82 @@ function generateHamiltonianPath(cols, rows) {
 }
 
 function generateCourse() {
+  if (rotateTimer) clearInterval(rotateTimer);
+  rotateNodeIndex = -1;
+  rotateAngle = 0;
+
   nodes = [];
   const w = canvas.width, h = canvas.height;
-  
   const uiElement = document.getElementById('ui');
   const uiBottom = uiElement ? uiElement.getBoundingClientRect().bottom + 30 : 220;
   const playableHeight = h - uiBottom - 80;
 
   if (difficulty === 'easy') {
-    // Easy: 左から右へ3列。直前の点と同じ高さは選ばない。
-    const rows = 3; // 上・中・下
-    const yList = [
-      uiBottom + playableHeight * 0.15,
-      uiBottom + playableHeight * 0.5,
-      uiBottom + playableHeight * 0.85
-    ];
+    const rows = 3;
+    const yList = [uiBottom + playableHeight * 0.15, uiBottom + playableHeight * 0.5, uiBottom + playableHeight * 0.85];
     const xList = [70, w / 2, w - 70];
-
     let lastRow = Math.floor(Math.random() * rows);
     nodes.push({ x: xList[0], y: yList[lastRow], w: Math.max(65, getRandomWidth()) });
 
     for (let c = 1; c < 3; c++) {
       let nextRow;
-      do {
-        nextRow = Math.floor(Math.random() * rows);
-      } while (nextRow === lastRow); // 直前と同じ高さは避ける
-
+      do { nextRow = Math.floor(Math.random() * rows); } while (nextRow === lastRow);
       nodes.push({ x: xList[c], y: yList[nextRow], w: Math.max(65, getRandomWidth()) });
       lastRow = nextRow;
     }
-
   } else {
-    // Normal: 4×3, Hard: 4×4 の格子上の全点を巡回（一筆書き）
     const cols = 4;
     const rows = difficulty === 'normal' ? 3 : 4;
-
     const pathCoords = generateHamiltonianPath(cols, rows);
 
-    // 格子点のピクセル座標計算
-    nodes = pathCoords.map(p => {
-      const x = 70 + (w - 140) * (p.c / (cols - 1));
-      const y = uiBottom + playableHeight * (0.15 + (0.7 / (rows - 1)) * p.r);
-      return { x, y, w: getRandomWidth() };
-    });
+    nodes = pathCoords.map(p => ({
+      x: 70 + (w - 140) * (p.c / (cols - 1)),
+      y: uiBottom + playableHeight * (0.15 + (0.7 / (rows - 1)) * p.r),
+      w: getRandomWidth()
+    }));
+
+    // Hardのみランダムで1箇所回転ギミックを設定（スタート・ゴール付近を除く）
+    if (difficulty === 'hard' && nodes.length > 4) {
+      rotateNodeIndex = Math.floor(Math.random() * (nodes.length - 3)) + 1;
+      rotateTimer = setInterval(() => {
+        rotateAngle = (rotateAngle + 90) % 360;
+      }, 1000);
+    }
   }
 
   trace = [];
   isPlaying = false;
   lastTouchPos = null;
-  draw();
 }
 
-// 線分ごとの立体的なパイプ風（金属）グラデーション生成
-function drawPipeSegment(p1, p2, width, diff) {
+// 回転対象ノードの座標を計算
+function getEffectiveNodes() {
+  if (rotateNodeIndex === -1) return nodes;
+
+  const currentNodes = JSON.parse(JSON.stringify(nodes));
+  const center = currentNodes[rotateNodeIndex];
+  const target = currentNodes[rotateNodeIndex + 1];
+
+  const rad = (rotateAngle * Math.PI) / 180;
+  const dx = nodes[rotateNodeIndex + 1].x - nodes[rotateNodeIndex].x;
+  const dy = nodes[rotateNodeIndex + 1].y - nodes[rotateNodeIndex].y;
+
+  target.x = center.x + dx * Math.cos(rad) - dy * Math.sin(rad);
+  target.y = center.y + dx * Math.sin(rad) + dy * Math.cos(rad);
+
+  return currentNodes;
+}
+
+function drawPipeSegment(p1, p2, width, diff, isRotating) {
   const dx = p2.x - p1.x;
   const dy = p2.y - p1.y;
   const len = Math.hypot(dx, dy);
   if (len === 0) return;
 
-  // 線分に対して垂直なベクトルを求める（パイプの太さ方向にグラデーションをかけるため）
   const nx = -dy / len;
   const ny = dx / len;
+  const halfW = width / 2 + 9;
 
-  const halfW = width / 2 + 9; // 外枠の半幅
-
-  // 線分と直交する方向にグラデーションを作成
   const grad = ctx.createLinearGradient(
     (p1.x + p2.x) / 2 - nx * halfW,
     (p1.y + p2.y) / 2 - ny * halfW,
@@ -238,31 +245,25 @@ function drawPipeSegment(p1, p2, width, diff) {
   );
 
   if (diff === 'easy') {
-    grad.addColorStop(0.0, '#003355');
-    grad.addColorStop(0.3, '#00aacc');
-    grad.addColorStop(0.5, '#ffffff'); // 金属のハイライト（光沢）
-    grad.addColorStop(0.7, '#00aacc');
-    grad.addColorStop(1.0, '#002233');
+    grad.addColorStop(0.0, '#003355'); grad.addColorStop(0.3, '#00aacc');
+    grad.addColorStop(0.5, '#ffffff'); grad.addColorStop(0.7, '#00aacc'); grad.addColorStop(1.0, '#002233');
   } else if (diff === 'normal') {
-    grad.addColorStop(0.0, '#4a3500');
-    grad.addColorStop(0.3, '#d4af37');
-    grad.addColorStop(0.5, '#ffffff'); // 金色のハイライト
-    grad.addColorStop(0.7, '#d4af37');
-    grad.addColorStop(1.0, '#332400');
+    grad.addColorStop(0.0, '#4a3500'); grad.addColorStop(0.3, '#d4af37');
+    grad.addColorStop(0.5, '#ffffff'); grad.addColorStop(0.7, '#d4af37'); grad.addColorStop(1.0, '#332400');
   } else {
-    grad.addColorStop(0.0, '#440000');
-    grad.addColorStop(0.3, '#cc2222');
-    grad.addColorStop(0.5, '#ffffff'); // 銅・赤金属のハイライト
-    grad.addColorStop(0.7, '#cc2222');
-    grad.addColorStop(1.0, '#220000');
+    // 回転パーツは黄色系ハイライトで強調
+    if (isRotating) {
+      grad.addColorStop(0.0, '#663300'); grad.addColorStop(0.3, '#ffaa00');
+      grad.addColorStop(0.5, '#ffffff'); grad.addColorStop(0.7, '#ffaa00'); grad.addColorStop(1.0, '#442200');
+    } else {
+      grad.addColorStop(0.0, '#440000'); grad.addColorStop(0.3, '#cc2222');
+      grad.addColorStop(0.5, '#ffffff'); grad.addColorStop(0.7, '#cc2222'); grad.addColorStop(1.0, '#220000');
+    }
   }
 
   ctx.strokeStyle = grad;
   ctx.lineWidth = width + 18;
-  ctx.beginPath();
-  ctx.moveTo(p1.x, p1.y);
-  ctx.lineTo(p2.x, p2.y);
-  ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(p1.x, p1.y); ctx.lineTo(p2.x, p2.y); ctx.stroke();
 }
 
 function draw() {
@@ -270,29 +271,25 @@ function draw() {
   ctx.lineJoin = 'round';
   ctx.lineCap = 'round';
 
-  // 1. 金属パイプ枠線の描画（各線分に立体グラデーション）
-  for (let i = 0; i < nodes.length - 1; i++) {
-    const p1 = nodes[i];
-    const p2 = nodes[i + 1];
-    const segmentWidth = (p1.w + p2.w) / 2;
-    drawPipeSegment(p1, p2, segmentWidth, difficulty);
+  const effNodes = getEffectiveNodes();
+
+  // 1. パイプ枠線
+  for (let i = 0; i < effNodes.length - 1; i++) {
+    const isRotating = (i === rotateNodeIndex);
+    drawPipeSegment(effNodes[i], effNodes[i + 1], (effNodes[i].w + effNodes[i + 1].w) / 2, difficulty, isRotating);
   }
 
-  // 2. 黒いくり抜き通路の描画
-  for (let i = 0; i < nodes.length - 1; i++) {
-    const p1 = nodes[i];
-    const p2 = nodes[i + 1];
-    const segmentWidth = (p1.w + p2.w) / 2;
-
+  // 2. 黒の穴あけ
+  for (let i = 0; i < effNodes.length - 1; i++) {
     ctx.beginPath();
-    ctx.moveTo(p1.x, p1.y);
-    ctx.lineTo(p2.x, p2.y);
+    ctx.moveTo(effNodes[i].x, effNodes[i].y);
+    ctx.lineTo(effNodes[i + 1].x, effNodes[i + 1].y);
     ctx.strokeStyle = '#000';
-    ctx.lineWidth = segmentWidth;
+    ctx.lineWidth = (effNodes[i].w + effNodes[i + 1].w) / 2;
     ctx.stroke();
   }
 
-  // 3. 軌跡の描画
+  // 3. 軌跡
   if (trace.length > 0) {
     ctx.strokeStyle = '#fff';
     ctx.lineWidth = 3;
@@ -301,9 +298,9 @@ function draw() {
     ctx.stroke();
   }
 
-  // 4. スタート（S）とゴール（G）
-  const start = nodes[0];
-  const goal = nodes[nodes.length - 1];
+  // 4. S/Gマーク
+  const start = effNodes[0];
+  const goal = effNodes[effNodes.length - 1];
 
   ctx.fillStyle = '#0f0'; ctx.beginPath(); ctx.arc(start.x, start.y, 24, 0, Math.PI*2); ctx.fill();
   ctx.fillStyle = '#f00'; ctx.beginPath(); ctx.arc(goal.x, goal.y, 24, 0, Math.PI*2); ctx.fill();
@@ -325,10 +322,11 @@ function distToSegmentSq(p, p1, p2) {
 function isInsideCourse(x, y) {
   let minDistanceSq = Infinity;
   let currentWidthAtPos = MIN_WIDTH;
+  const effNodes = getEffectiveNodes();
 
-  for (let i = 0; i < nodes.length - 1; i++) {
-    const p1 = nodes[i];
-    const p2 = nodes[i + 1];
+  for (let i = 0; i < effNodes.length - 1; i++) {
+    const p1 = effNodes[i];
+    const p2 = effNodes[i + 1];
     const { dSq, t } = distToSegmentSq({ x, y }, p1, p2);
 
     if (dSq < minDistanceSq) {
@@ -341,6 +339,11 @@ function isInsideCourse(x, y) {
   return minDistanceSq <= safeRadius ** 2;
 }
 
+function gameLoop() {
+  draw();
+  requestAnimationFrame(gameLoop);
+}
+
 canvas.addEventListener('touchstart', (e) => {
   const touch = e.touches[0];
   lastTouchPos = { x: touch.clientX, y: touch.clientY };
@@ -348,17 +351,18 @@ canvas.addEventListener('touchstart', (e) => {
 
 canvas.addEventListener('touchmove', (e) => {
   const x = e.touches[0].clientX, y = e.touches[0].clientY;
-  const distStart = Math.hypot(x - nodes[0].x, y - nodes[0].y);
+  const effNodes = getEffectiveNodes();
+  const start = effNodes[0];
+  const goal = effNodes[effNodes.length - 1];
+
+  const distStart = Math.hypot(x - start.x, y - start.y);
   
   if (distStart < 30 && !isPlaying) { 
-    isPlaying = true; 
-    trace = []; 
-    showMsg('START!', '#fff'); 
-    lastTouchPos = { x, y };
+    isPlaying = true; trace = []; showMsg('START!', '#fff'); lastTouchPos = { x, y };
   }
   if (!isPlaying) return;
 
-  if (Math.hypot(x - nodes[nodes.length-1].x, y - nodes[nodes.length-1].y) < 25) {
+  if (Math.hypot(x - goal.x, y - goal.y) < 25) {
     isPlaying = false;
     const points = { easy: 1, normal: 2, hard: 3 };
     stats[difficulty]++;
@@ -390,17 +394,10 @@ canvas.addEventListener('touchmove', (e) => {
   }
 
   lastTouchPos = { x, y };
-  draw();
 });
 
-canvas.addEventListener('touchend', () => {
-  lastTouchPos = null;
-});
-
-window.addEventListener('resize', () => {
-  resizeCanvas();
-  generateCourse();
-});
+canvas.addEventListener('touchend', () => { lastTouchPos = null; });
+window.addEventListener('resize', () => { resizeCanvas(); generateCourse(); });
 
 function showMsg(t, c) {
   const o = document.getElementById('overlay');
