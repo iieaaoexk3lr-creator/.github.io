@@ -5,22 +5,22 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
   <title>ドキドキ棒</title>
   <style>
-    body, html { margin: 0; padding: 0; width: 100%; height: 100%; background: #000; color: #fff; font-family: sans-serif; overflow: hidden; touch-action: none; }
+    body, html { margin: 0; padding: 0; width: 100%; height: 100%; background: #050508; color: #fff; font-family: sans-serif; overflow: hidden; touch-action: none; }
     #ui { position: absolute; top: 10px; left: 10px; z-index: 10; display: flex; flex-direction: column; gap: 10px; width: calc(100% - 20px); }
     
-    .stats-box { background: rgba(0,0,0,0.8); padding: 15px; border-radius: 12px; border: 1px solid #444; font-size: 16px; }
-    .title-text { color: #fff; font-weight: bold; font-size: 22px; margin-bottom: 5px; }
+    .stats-box { background: rgba(10, 15, 25, 0.85); padding: 15px; border-radius: 12px; border: 1px solid #334466; font-size: 16px; backdrop-filter: blur(5px); }
+    .title-text { color: #fff; font-weight: bold; font-size: 22px; margin-bottom: 5px; letter-spacing: 1px; }
     
     .controls { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
     .btn { height: 50px; font-size: 16px; font-weight: bold; border-radius: 8px; border: none; cursor: pointer; color: #fff; opacity: 0.5; transition: opacity 0.2s; }
-    .btn.active { opacity: 1; border: 3px solid #fff; }
+    .btn.active { opacity: 1; border: 2px solid #fff; box-shadow: 0 0 10px rgba(255,255,255,0.5); }
     
     #btn-easy { background: #00ccff; }
     #btn-normal { background: #ffd700; color: #000; }
     #btn-hard { background: #ff4444; }
     
     .extra-btns { display: flex; gap: 10px; margin-top: 5px; }
-    .secondary-btn { flex: 1; height: 40px; background: #333; color: #fff; border-radius: 8px; border: none; font-size: 14px; }
+    .secondary-btn { flex: 1; height: 40px; background: #1a2233; color: #fff; border-radius: 8px; border: 1px solid #445577; font-size: 14px; }
     
     canvas { display: block; }
     #overlay { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 42px; font-weight: 900; display: none; text-align: center; width: 100%; pointer-events: none; text-shadow: 0 0 10px #000, 0 0 20px #000; z-index: 20; }
@@ -41,7 +41,7 @@
   </div>
   <div class="extra-btns">
     <button class="secondary-btn" onclick="if(!isPlaying && !isCleared) generateCourse()">コース変更</button>
-    <button class="secondary-btn" onclick="resetStats()" style="background:#800;">リセット</button>
+    <button class="secondary-btn" onclick="resetStats()" style="background:#551111; border-color:#aa3333;">リセット</button>
   </div>
 </div>
 
@@ -72,7 +72,6 @@ let widthChangeTimer = null;
 let currentOddWidthOffset = 0; 
 let widthExpanding = false; 
 
-// 難易度別の基本サイズ制限
 const MIN_WIDTH = 40; 
 const MAX_WIDTH = 80;
 
@@ -192,19 +191,19 @@ function generateCourse() {
   if (difficulty === 'easy') {
     const cols = 3, rows = 3;
     const pathCoords = generateHamiltonianPath(cols, rows);
-    const count = Math.floor(Math.random() * 3) + 7; // 7〜9点
+    const count = Math.floor(Math.random() * 3) + 7;
     const slicedCoords = pathCoords.slice(0, count);
 
     nodes = slicedCoords.map(p => ({
       x: 70 + (w - 140) * (p.c / (cols - 1)),
       y: uiBottom + playableHeight * (0.15 + (0.7 / (rows - 1)) * p.r),
-      w: Math.max(65, getRandomWidth(MIN_WIDTH + 10, MAX_WIDTH))
+      w: Math.max(65, getRandomWidth(MIN_WIDTH + 15 , MAX_WIDTH))
     }));
 
   } else if (difficulty === 'normal') {
     const cols = 4, rows = 4;
     const pathCoords = generateHamiltonianPath(cols, rows);
-    const count = Math.floor(Math.random() * 5) + 12; // 12〜16点
+    const count = Math.floor(Math.random() * 5) + 12;
     const slicedCoords = pathCoords.slice(0, count);
 
     nodes = slicedCoords.map(p => ({
@@ -218,39 +217,31 @@ function generateCourse() {
     const cols = 4, rows = 5;
     const pathCoords = generateHamiltonianPath(cols, rows);
 
-    // Hardは初期幅を細め（30〜50pt）に設定して壁との一体化を防ぐ
     nodes = pathCoords.map(p => ({
       x: 70 + (w - 140) * (p.c / (cols - 1)),
       y: uiBottom + playableHeight * (0.15 + (0.7 / (rows - 1)) * p.r),
-      w: getRandomWidth(30, 50)
+      w: getRandomWidth(28, 45)
     }));
 
-    // 壁の配置（太さが変化しない偶数インデックスの区間に2箇所設置）
+    // 太さが固定（偶数インデックス）の区間に2箇所壁をセット
     const evenIndices = [];
     for (let i = 2; i < nodes.length - 2; i += 2) {
       evenIndices.push(i);
     }
-    // ランダムに2箇所選出
     evenIndices.sort(() => Math.random() - 0.5);
     wallSegments = evenIndices.slice(0, 2);
 
-    // 壁は1.1秒ごとに開閉
     wallTimer = setInterval(() => {
       isWallClosed = !isWallClosed;
-    }, 1100);
+    }, 1000);
 
-    // 奇数番目ノードの太さ変動（0.5秒ごとに1pt変動）
     widthChangeTimer = setInterval(() => {
       if (widthExpanding) {
         currentOddWidthOffset += 1;
-        if (currentOddWidthOffset >= 6) {
-          widthExpanding = false; // 上限に達したら縮小へ
-        }
+        if (currentOddWidthOffset >= 6) widthExpanding = false;
       } else {
         currentOddWidthOffset -= 1;
-        if (currentOddWidthOffset <= -12) {
-          widthExpanding = true; // 下限に達したら拡大へ
-        }
+        if (currentOddWidthOffset <= -10) widthExpanding = true;
       }
     }, 500);
   }
@@ -260,135 +251,121 @@ function generateCourse() {
   lastTouchPos = null;
 }
 
-// ノード毎の実効幅計算（奇数点のみ動的変化）
 function getNodeWidth(index) {
   const baseW = nodes[index].w;
   if (difficulty === 'hard' && index % 2 !== 0) {
-    return Math.max(20, baseW + currentOddWidthOffset);
+    return Math.max(18, baseW + currentOddWidthOffset);
   }
   return baseW;
 }
 
-function drawPipeSegment(p1, p2, w1, w2, diff) {
-  const dx = p2.x - p1.x;
-  const dy = p2.y - p1.y;
-  const len = Math.hypot(dx, dy);
-  if (len === 0) return;
-
-  const nx = -dy / len;
-  const ny = dx / len;
-  const avgW = (w1 + w2) / 2;
-  const halfW = avgW / 2 + 8;
-
-  const grad = ctx.createLinearGradient(
-    (p1.x + p2.x) / 2 - nx * halfW,
-    (p1.y + p2.y) / 2 - ny * halfW,
-    (p1.x + p2.x) / 2 + nx * halfW,
-    (p1.y + p2.y) / 2 + ny * halfW
-  );
-
-  if (diff === 'easy') {
-    grad.addColorStop(0.0, '#003355'); grad.addColorStop(0.3, '#00aacc');
-    grad.addColorStop(0.5, '#ffffff'); grad.addColorStop(0.7, '#00aacc'); grad.addColorStop(1.0, '#002233');
-  } else if (diff === 'normal') {
-    grad.addColorStop(0.0, '#4a3500'); grad.addColorStop(0.3, '#d4af37');
-    grad.addColorStop(0.5, '#ffffff'); grad.addColorStop(0.7, '#d4af37'); grad.addColorStop(1.0, '#332400');
-  } else {
-    grad.addColorStop(0.0, '#440000'); grad.addColorStop(0.3, '#cc2222');
-    grad.addColorStop(0.5, '#ffffff'); grad.addColorStop(0.7, '#cc2222'); grad.addColorStop(1.0, '#220000');
-  }
-
-  // テーパー状の外枠描画
-  ctx.save();
-  ctx.strokeStyle = grad;
-  ctx.lineWidth = avgW + 16;
-  ctx.beginPath(); ctx.moveTo(p1.x, p1.y); ctx.lineTo(p2.x, p2.y); ctx.stroke();
-  ctx.restore();
-}
-
-// 物理的なハッチング危険壁の描画
+// レーザーバリア風の壁描画（頂点白・シャープなデザイン）
 function drawWall(p1, p2, width) {
-  if (!isWallClosed) return; // 通れる時は完全に何も表示しない
+  if (!isWallClosed) return;
 
   const mx = (p1.x + p2.x) / 2;
   const my = (p1.y + p2.y) / 2;
   const dx = p2.x - p1.x;
   const dy = p2.y - p1.y;
-  const len = Math.hypot(dx, dy);
-  if (len === 0) return;
 
   ctx.save();
   ctx.translate(mx, my);
   ctx.rotate(Math.atan2(dy, dx));
 
-  const wallThickness = 16;
+  const wallThickness = 12;
   const halfW = width / 2;
 
-  // 赤背景
-  ctx.fillStyle = '#cc0000';
+  // 赤色のネオン発光背景
+  ctx.shadowColor = '#ff0044';
+  ctx.shadowBlur = 12;
+  ctx.fillStyle = '#ff0044';
   ctx.fillRect(-wallThickness / 2, -halfW, wallThickness, width);
 
-  // 黒のハッチングパターン
-  ctx.strokeStyle = '#000000';
-  ctx.lineWidth = 4;
-  for (let i = -halfW; i <= halfW; i += 8) {
-    ctx.beginPath();
-    ctx.moveTo(-wallThickness / 2, i);
-    ctx.lineTo(wallThickness / 2, i + 8);
-    ctx.stroke();
-  }
+  // 白いシャープな両端ライン
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(-wallThickness / 2, -halfW - 2, wallThickness, 4);
+  ctx.fillRect(-wallThickness / 2, halfW - 2, wallThickness, 4);
 
-  // 外枠強調
-  ctx.strokeStyle = '#ff3333';
-  ctx.lineWidth = 2;
-  ctx.strokeRect(-wallThickness / 2, -halfW, wallThickness, width);
+  // 中央の白コア線
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(-2, -halfW + 4, 4, width - 8);
 
   ctx.restore();
 }
 
 function draw() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
-  ctx.lineJoin = 'round';
-  ctx.lineCap = 'round';
 
-  // 1. メタリックパイプ外枠の描画
-  for (let i = 0; i < nodes.length - 1; i++) {
-    const w1 = getNodeWidth(i);
-    const w2 = getNodeWidth(i + 1);
-    drawPipeSegment(nodes[i], nodes[i + 1], w1, w2, difficulty);
+  // 難易度に応じた壁・エッジの色設定
+  let themeColor = '#00ccff';
+  if (difficulty === 'normal') themeColor = '#ffd700';
+  if (difficulty === 'hard') themeColor = '#ff4444';
+
+  // --- ポリゴン領域の輪郭線（頂点白・シャープエッジ）計算 ---
+  const leftPoints = [];
+  const rightPoints = [];
+
+  for (let i = 0; i < nodes.length; i++) {
+    const p = nodes[i];
+    const w = getNodeWidth(i);
+    let nx = 0, ny = 0;
+
+    if (i === 0) {
+      const dx = nodes[1].x - p.x, dy = nodes[1].y - p.y;
+      const len = Math.hypot(dx, dy);
+      nx = -dy / len; ny = dx / len;
+    } else if (i === nodes.length - 1) {
+      const dx = p.x - nodes[i - 1].x, dy = p.y - nodes[i - 1].y;
+      const len = Math.hypot(dx, dy);
+      nx = -dy / len; ny = dx / len;
+    } else {
+      // 隣接する2セグメントの法線平均でシャープに接続
+      const dx1 = p.x - nodes[i - 1].x, dy1 = p.y - nodes[i - 1].y;
+      const len1 = Math.hypot(dx1, dy1);
+      const nx1 = -dy1 / len1, ny1 = dx1 / len1;
+
+      const dx2 = nodes[i + 1].x - p.x, dy2 = nodes[i + 1].y - p.y;
+      const len2 = Math.hypot(dx2, dy2);
+      const nx2 = -dy2 / len2, ny2 = dx2 / len2;
+
+      nx = (nx1 + nx2) / 2;
+      ny = (ny1 + ny2) / 2;
+      const nlen = Math.hypot(nx, ny);
+      if (nlen > 0) { nx /= nlen; ny /= nlen; }
+    }
+
+    leftPoints.push({ x: p.x + nx * (w / 2), y: p.y + ny * (w / 2) });
+    rightPoints.push({ x: p.x - nx * (w / 2), y: p.y - ny * (w / 2) });
   }
 
-  // 2. 内側のくり抜き（黒色）- テーパー接続でスムーズな可変幅を表現
-  for (let i = 0; i < nodes.length - 1; i++) {
-    const w1 = getNodeWidth(i);
-    const w2 = getNodeWidth(i + 1);
-    
-    const p1 = nodes[i];
-    const p2 = nodes[i + 1];
-    const dx = p2.x - p1.x;
-    const dy = p2.y - p1.y;
-    const len = Math.hypot(dx, dy);
-    if (len === 0) continue;
+  // 1. コース全体の黒くり抜き（内側）
+  ctx.beginPath();
+  ctx.moveTo(leftPoints[0].x, leftPoints[0].y);
+  for (let i = 1; i < leftPoints.length; i++) ctx.lineTo(leftPoints[i].x, leftPoints[i].y);
+  for (let i = rightPoints.length - 1; i >= 0; i--) ctx.lineTo(rightPoints[i].x, rightPoints[i].y);
+  ctx.closePath();
+  ctx.fillStyle = '#0a0d14';
+  ctx.fill();
 
-    const nx = -dy / len;
-    const ny = dx / len;
+  // 2. 発光シャープエッジ（白い輪郭線 + テーマカラー影）
+  ctx.save();
+  ctx.strokeStyle = '#ffffff';
+  ctx.lineWidth = 3;
+  ctx.shadowColor = themeColor;
+  ctx.shadowBlur = 8;
 
-    // ポリゴンで内側を綺麗にくり抜いて関節部分の離脱を防ぐ
-    ctx.fillStyle = '#000000';
-    ctx.beginPath();
-    ctx.moveTo(p1.x - nx * (w1 / 2), p1.y - ny * (w1 / 2));
-    ctx.lineTo(p2.x - nx * (w2 / 2), p2.y - ny * (w2 / 2));
-    ctx.lineTo(p2.x + nx * (w2 / 2), p2.y + ny * (w2 / 2));
-    ctx.lineTo(p1.x + nx * (w1 / 2), p1.y + ny * (w1 / 2));
-    ctx.closePath();
-    ctx.fill();
+  // 左エッジ
+  ctx.beginPath();
+  ctx.moveTo(leftPoints[0].x, leftPoints[0].y);
+  for (let i = 1; i < leftPoints.length; i++) ctx.lineTo(leftPoints[i].x, leftPoints[i].y);
+  ctx.stroke();
 
-    // 関節部分の円形カバー
-    ctx.beginPath();
-    ctx.arc(p1.x, p1.y, w1 / 2, 0, Math.PI * 2);
-    ctx.arc(p2.x, p2.y, w2 / 2, 0, Math.PI * 2);
-    ctx.fill();
-  }
+  // 右エッジ
+  ctx.beginPath();
+  ctx.moveTo(rightPoints[0].x, rightPoints[0].y);
+  for (let i = 1; i < rightPoints.length; i++) ctx.lineTo(rightPoints[i].x, rightPoints[i].y);
+  ctx.stroke();
+  ctx.restore();
 
   // 3. シャッター壁の描画（Hard限定）
   if (difficulty === 'hard') {
@@ -403,21 +380,32 @@ function draw() {
 
   // 4. トレース軌跡
   if (trace.length > 0) {
-    ctx.strokeStyle = '#fff';
+    ctx.save();
+    ctx.strokeStyle = '#ffffff';
     ctx.lineWidth = 3;
+    ctx.shadowColor = '#ffffff';
+    ctx.shadowBlur = 6;
     ctx.beginPath();
     trace.forEach((p, idx) => idx === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y));
     ctx.stroke();
+    ctx.restore();
   }
 
   // 5. スタート/ゴール点
   const start = nodes[0];
   const goal = nodes[nodes.length - 1];
 
-  ctx.fillStyle = '#0f0'; ctx.beginPath(); ctx.arc(start.x, start.y, 22, 0, Math.PI*2); ctx.fill();
-  ctx.fillStyle = '#f00'; ctx.beginPath(); ctx.arc(goal.x, goal.y, 22, 0, Math.PI*2); ctx.fill();
+  ctx.save();
+  ctx.shadowBlur = 10;
+  
+  ctx.fillStyle = '#00ffcc'; ctx.shadowColor = '#00ffcc';
+  ctx.beginPath(); ctx.arc(start.x, start.y, 20, 0, Math.PI*2); ctx.fill();
+  
+  ctx.fillStyle = '#ff0055'; ctx.shadowColor = '#ff0055';
+  ctx.beginPath(); ctx.arc(goal.x, goal.y, 20, 0, Math.PI*2); ctx.fill();
+  ctx.restore();
 
-  ctx.fillStyle = '#000'; ctx.font = 'bold 20px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillStyle = '#000'; ctx.font = '900 18px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   ctx.fillText('S', start.x, start.y);
   ctx.fillText('G', goal.x, goal.y);
 }
@@ -444,11 +432,10 @@ function isInsideCourse(x, y) {
     const w2 = getNodeWidth(i + 1);
     const segW = w1 + t * (w2 - w1);
 
-    // 壁出現中の判定
     if (difficulty === 'hard' && isWallClosed && wallSegments.includes(i)) {
       if (t >= 0.35 && t <= 0.65) {
         if (dSq <= (segW / 2) ** 2) {
-          return false; // 赤い壁への衝突判定
+          return false;
         }
       }
     }
@@ -496,7 +483,6 @@ function handleTouchMove(e) {
   }
   if (!isPlaying) return;
 
-  // ゴール処理
   if (Math.hypot(x - goal.x, y - goal.y) < 25) {
     isPlaying = false;
     isCleared = true;
@@ -511,7 +497,6 @@ function handleTouchMove(e) {
     return;
   }
 
-  // 衝突検知
   if (distStart > 30) {
     const prev = lastTouchPos || { x, y };
     const dist = Math.hypot(x - prev.x, y - prev.y);
