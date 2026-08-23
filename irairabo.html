@@ -220,7 +220,7 @@ function generateCourse() {
     nodes = pathCoords.map(p => ({
       x: 70 + (w - 140) * (p.c / (cols - 1)),
       y: uiBottom + playableHeight * (0.15 + (0.7 / (rows - 1)) * p.r),
-      w: getRandomWidth(35, 50)
+      w: getRandomWidth(35, 60)
     }));
 
     // 太さが固定（偶数インデックス）の区間に2箇所壁をセット
