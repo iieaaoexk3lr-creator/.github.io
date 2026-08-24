@@ -9,7 +9,14 @@
     #ui { position: absolute; top: 10px; left: 10px; z-index: 10; display: flex; flex-direction: column; gap: 10px; width: calc(100% - 20px); }
     
     .stats-box { background: rgba(10, 15, 25, 0.85); padding: 15px; border-radius: 12px; border: 1px solid #334466; font-size: 16px; backdrop-filter: blur(5px); }
-    .title-text { color: #fff; font-weight: bold; font-size: 22px; margin-bottom: 5px; letter-spacing: 1px; }
+    
+    /* タイトル行をフレキシブルにして右側にタイムを表示 */
+    .title-row { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 5px; }
+    .title-text { color: #fff; font-weight: bold; font-size: 22px; letter-spacing: 1px; }
+    .timer-display { font-family: monospace; font-size: 22px; font-weight: bold; color: #ffcc00; text-shadow: 0 0 8px rgba(255, 204, 0, 0.6); }
+    
+    .sub-info-row { display: flex; justify-content: space-between; align-items: center; }
+    .best-display { font-size: 15px; color: #00ffcc; font-weight: bold; }
     
     .controls { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
     .btn { height: 50px; font-size: 16px; font-weight: bold; border-radius: 8px; border: none; cursor: pointer; color: #fff; opacity: 0.5; transition: opacity 0.2s; }
@@ -31,8 +38,14 @@
 
 <div id="ui">
   <div class="stats-box">
-    <div class="title-text">ドキドキ棒</div>
-    <div>総合点: <span id="total-score" style="color:#00ffcc; font-weight:bold; font-size: 20px;">0</span> (E:<span id="count-easy">0</span> N:<span id="count-normal">0</span> H:<span id="count-hard">0</span>)</div>
+    <div class="title-row">
+      <div class="title-text">ドキドキ棒</div>
+      <div class="timer-display" id="current-time">0.00s</div>
+    </div>
+    <div class="sub-info-row">
+      <div>総合点: <span id="total-score" style="color:#00ffcc; font-weight:bold; font-size: 18px;">0</span> (E:<span id="count-easy">0</span> N:<span id="count-normal">0</span> H:<span id="count-hard">0</span>)</div>
+      <div class="best-display">Best: <span id="best-time">--.--</span>s</div>
+    </div>
   </div>
   <div class="controls">
     <button class="btn active" id="btn-easy" onclick="setDiff('easy')">Easy</button>
@@ -54,13 +67,20 @@
 <script>
 const canvas = document.getElementById('stage');
 const ctx = canvas.getContext('2d');
+
 let stats = { easy: 0, normal: 0, hard: 0, total: 0 };
+let bestTimes = { easy: null, normal: null, hard: null };
+
 let isPlaying = false;
 let isCleared = false;
 let difficulty = 'easy';
 let nodes = []; 
 let trace = [];
 let lastTouchPos = null;
+
+// タイム計測用
+let startTime = 0;
+let elapsedTime = 0;
 
 // 1秒ごとの壁開閉ギミック用
 let wallTimer = null;
@@ -72,12 +92,16 @@ let widthChangeTimer = null;
 let currentOddWidthOffset = 0; 
 let widthExpanding = false; 
 
-const MIN_WIDTH = 40; 
-const MAX_WIDTH = 80;
+const MIN_WIDTH = 42; 
+const MAX_WIDTH = 85;
 
 function loadStats() {
-  const saved = localStorage.getItem('dokidoki_stats');
-  if (saved) stats = JSON.parse(saved);
+  const savedStats = localStorage.getItem('dokidoki_stats');
+  if (savedStats) stats = JSON.parse(savedStats);
+
+  const savedBests = localStorage.getItem('dokidoki_bests');
+  if (savedBests) bestTimes = JSON.parse(savedBests);
+
   updateDisplay();
 }
 
@@ -86,10 +110,14 @@ function updateDisplay() {
   document.getElementById('count-normal').innerText = stats.normal;
   document.getElementById('count-hard').innerText = stats.hard;
   document.getElementById('total-score').innerText = stats.total;
+
+  const best = bestTimes[difficulty];
+  document.getElementById('best-time').innerText = best ? best.toFixed(2) : '--.--';
 }
 
 function saveStats() {
   localStorage.setItem('dokidoki_stats', JSON.stringify(stats));
+  localStorage.setItem('dokidoki_bests', JSON.stringify(bestTimes));
   updateDisplay();
 }
 
@@ -98,12 +126,14 @@ function setDiff(d) {
   difficulty = d;
   document.querySelectorAll('.btn').forEach(b => b.classList.remove('active'));
   document.getElementById('btn-' + d).classList.add('active');
+  updateDisplay();
   generateCourse();
 }
 
 function resetStats() {
-  if (confirm("記録をリセットしますか？")) {
+  if (confirm("スコアとベストタイムの記録をリセットしますか？")) {
     stats = { easy: 0, normal: 0, hard: 0, total: 0 };
+    bestTimes = { easy: null, normal: null, hard: null };
     saveStats();
     generateCourse();
   }
@@ -180,6 +210,8 @@ function generateCourse() {
   isCleared = false;
   currentOddWidthOffset = 0;
   widthExpanding = false;
+  elapsedTime = 0;
+  document.getElementById('current-time').innerText = "0.00s";
   hideOverlay();
 
   nodes = [];
@@ -197,7 +229,7 @@ function generateCourse() {
     nodes = slicedCoords.map(p => ({
       x: 70 + (w - 140) * (p.c / (cols - 1)),
       y: uiBottom + playableHeight * (0.15 + (0.7 / (rows - 1)) * p.r),
-      w: Math.max(65, getRandomWidth(MIN_WIDTH + 30 , MAX_WIDTH))
+      w: Math.max(65, getRandomWidth(MIN_WIDTH, MAX_WIDTH))
     }));
 
   } else if (difficulty === 'normal') {
@@ -209,21 +241,20 @@ function generateCourse() {
     nodes = slicedCoords.map(p => ({
       x: 70 + (w - 140) * (p.c / (cols - 1)),
       y: uiBottom + playableHeight * (0.15 + (0.7 / (rows - 1)) * p.r),
-      w: getRandomWidth(MIN_WIDTH + 10, MAX_WIDTH - 10)
+      w: getRandomWidth(MIN_WIDTH, MAX_WIDTH)
     }));
 
   } else {
-    // Hard: 5×4 = 20点
+    // Hard
     const cols = 4, rows = 5;
     const pathCoords = generateHamiltonianPath(cols, rows);
 
     nodes = pathCoords.map(p => ({
       x: 70 + (w - 140) * (p.c / (cols - 1)),
       y: uiBottom + playableHeight * (0.15 + (0.7 / (rows - 1)) * p.r),
-      w: getRandomWidth(35, 60)
+      w: getRandomWidth(30, 42)
     }));
 
-    // 太さが固定（偶数インデックス）の区間に2箇所壁をセット
     const evenIndices = [];
     for (let i = 2; i < nodes.length - 2; i += 2) {
       evenIndices.push(i);
@@ -259,7 +290,6 @@ function getNodeWidth(index) {
   return baseW;
 }
 
-// レーザーバリア風の壁描画（頂点白・シャープなデザイン）
 function drawWall(p1, p2, width) {
   if (!isWallClosed) return;
 
@@ -275,18 +305,15 @@ function drawWall(p1, p2, width) {
   const wallThickness = 12;
   const halfW = width / 2;
 
-  // 赤色のネオン発光背景
   ctx.shadowColor = '#ff0044';
   ctx.shadowBlur = 12;
   ctx.fillStyle = '#ff0044';
   ctx.fillRect(-wallThickness / 2, -halfW, wallThickness, width);
 
-  // 白いシャープな両端ライン
   ctx.fillStyle = '#ffffff';
   ctx.fillRect(-wallThickness / 2, -halfW - 2, wallThickness, 4);
   ctx.fillRect(-wallThickness / 2, halfW - 2, wallThickness, 4);
 
-  // 中央の白コア線
   ctx.fillStyle = '#ffffff';
   ctx.fillRect(-2, -halfW + 4, 4, width - 8);
 
@@ -296,12 +323,10 @@ function drawWall(p1, p2, width) {
 function draw() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-  // 難易度に応じた壁・エッジの色設定
   let themeColor = '#00ccff';
   if (difficulty === 'normal') themeColor = '#ffd700';
   if (difficulty === 'hard') themeColor = '#ff4444';
 
-  // --- ポリゴン領域の輪郭線（頂点白・シャープエッジ）計算 ---
   const leftPoints = [];
   const rightPoints = [];
 
@@ -319,7 +344,6 @@ function draw() {
       const len = Math.hypot(dx, dy);
       nx = -dy / len; ny = dx / len;
     } else {
-      // 隣接する2セグメントの法線平均でシャープに接続
       const dx1 = p.x - nodes[i - 1].x, dy1 = p.y - nodes[i - 1].y;
       const len1 = Math.hypot(dx1, dy1);
       const nx1 = -dy1 / len1, ny1 = dx1 / len1;
@@ -338,7 +362,7 @@ function draw() {
     rightPoints.push({ x: p.x - nx * (w / 2), y: p.y - ny * (w / 2) });
   }
 
-  // 1. コース全体の黒くり抜き（内側）
+  // 黒くり抜き
   ctx.beginPath();
   ctx.moveTo(leftPoints[0].x, leftPoints[0].y);
   for (let i = 1; i < leftPoints.length; i++) ctx.lineTo(leftPoints[i].x, leftPoints[i].y);
@@ -347,27 +371,25 @@ function draw() {
   ctx.fillStyle = '#0a0d14';
   ctx.fill();
 
-  // 2. 発光シャープエッジ（白い輪郭線 + テーマカラー影）
+  // 発光シャープエッジ
   ctx.save();
   ctx.strokeStyle = '#ffffff';
   ctx.lineWidth = 3;
   ctx.shadowColor = themeColor;
   ctx.shadowBlur = 8;
 
-  // 左エッジ
   ctx.beginPath();
   ctx.moveTo(leftPoints[0].x, leftPoints[0].y);
   for (let i = 1; i < leftPoints.length; i++) ctx.lineTo(leftPoints[i].x, leftPoints[i].y);
   ctx.stroke();
 
-  // 右エッジ
   ctx.beginPath();
   ctx.moveTo(rightPoints[0].x, rightPoints[0].y);
   for (let i = 1; i < rightPoints.length; i++) ctx.lineTo(rightPoints[i].x, rightPoints[i].y);
   ctx.stroke();
   ctx.restore();
 
-  // 3. シャッター壁の描画（Hard限定）
+  // 壁描画
   if (difficulty === 'hard') {
     wallSegments.forEach(idx => {
       if (idx < nodes.length - 1) {
@@ -378,20 +400,20 @@ function draw() {
     });
   }
 
-  // 4. トレース軌跡
+  // トレース軌跡
   if (trace.length > 0) {
     ctx.save();
     ctx.strokeStyle = '#ffffff';
-    ctx.lineWidth = 1;
+    ctx.lineWidth = 3;
     ctx.shadowColor = '#ffffff';
-    ctx.shadowBlur = 3;
+    ctx.shadowBlur = 6;
     ctx.beginPath();
     trace.forEach((p, idx) => idx === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y));
     ctx.stroke();
     ctx.restore();
   }
 
-  // 5. スタート/ゴール点
+  // S/Gノード
   const start = nodes[0];
   const goal = nodes[nodes.length - 1];
 
@@ -451,6 +473,11 @@ function isInsideCourse(x, y) {
 }
 
 function gameLoop() {
+  if (isPlaying) {
+    elapsedTime = (performance.now() - startTime) / 1000;
+    document.getElementById('current-time').innerText = elapsedTime.toFixed(2) + 's';
+  }
+
   draw();
   requestAnimationFrame(gameLoop);
 }
@@ -477,23 +504,41 @@ function handleTouchMove(e) {
   
   if (distStart < 30 && !isPlaying) { 
     isPlaying = true; 
+    startTime = performance.now();
     trace = []; 
     showMsg('START!', '', '#fff'); 
     lastTouchPos = { x, y };
   }
   if (!isPlaying) return;
 
+  // クリア処理
   if (Math.hypot(x - goal.x, y - goal.y) < 25) {
     isPlaying = false;
     isCleared = true;
 
+    const finalTime = (performance.now() - startTime) / 1000;
+    document.getElementById('current-time').innerText = finalTime.toFixed(2) + 's';
+
     const points = { easy: 1, normal: 2, hard: 3 };
     stats[difficulty]++;
     stats.total += points[difficulty];
+
+    // ベストタイム判定
+    const currentBest = bestTimes[difficulty];
+    let isNewRecord = false;
+    if (!currentBest || finalTime < currentBest) {
+      bestTimes[difficulty] = finalTime;
+      isNewRecord = true;
+    }
+
     saveStats();
 
     const diffTitle = difficulty.toUpperCase();
-    showMsg(`${diffTitle} CLEAR!`, '画面をタップして次のコースへ', '#00ffcc');
+    const subText = isNewRecord 
+      ? `新記録! ${finalTime.toFixed(2)}s (タップで次へ)` 
+      : `タイム: ${finalTime.toFixed(2)}s (タップで次へ)`;
+
+    showMsg(`${diffTitle} CLEAR!`, subText, '#00ffcc');
     return;
   }
 
