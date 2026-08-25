@@ -62,12 +62,9 @@
 <div id="team-modal">
   <div class="modal-content">
     <div class="modal-title">チーム同期設定</div>
-    <!-- 1. チーム名入力欄 -->
     <input type="text" id="team-name-input" class="modal-input" placeholder="チーム名を入力" value="Team-A">
     <div class="modal-btn-group">
-      <!-- 2. 同期開始ボタン -->
       <button class="modal-btn btn-sync-start" onclick="startSync()">同期開始</button>
-      <!-- 3. 同期解除ボタン -->
       <button class="modal-btn btn-sync-stop" onclick="stopSync()">同期解除</button>
     </div>
     <button class="modal-btn btn-modal-close" onclick="closeTeamModal()">キャンセル</button>
@@ -133,17 +130,15 @@ firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 
 let currentTeam = localStorage.getItem('iraira_team_name') || 'Team-A';
-let isSyncEnabled = false; // 初期状態は非同期
+let isSyncEnabled = false;
 let teamRef = null;
 
 const canvas = document.getElementById('stage');
 const ctx = canvas.getContext('2d');
 
-// 個人成績データ
 let personalStats = { easy: 0, normal: 0, hard: 0, total: 0 };
 let personalBestTimes = { easy: null, normal: null, hard: null };
 
-// チーム成績データ
 let teamStats = { easy: 0, normal: 0, hard: 0, total: 0 };
 let teamBestTimes = { easy: null, normal: null, hard: null };
 
@@ -151,6 +146,7 @@ let isPlaying = false;
 let isCleared = false;
 let difficulty = 'easy';
 let nodes = []; 
+let rawGridPath = []; 
 let trace = [];
 let remoteTrace = []; 
 let lastTouchPos = null;
@@ -190,7 +186,13 @@ function cancelPress() {
 }
 
 function handleCourseBtnClick() {
-  if (!isPlaying && !isCleared) generateCourse();
+  if (!isPlaying && !isCleared) {
+    if (isSyncEnabled) {
+      generateAndPublishCourse();
+    } else {
+      generateLocalCourse();
+    }
+  }
 }
 
 function showTeamModal() {
@@ -202,7 +204,6 @@ function closeTeamModal() {
   document.getElementById('team-modal').style.display = 'none';
 }
 
-// --- 同期開始 ---
 function startSync() {
   const input = document.getElementById('team-name-input').value.trim();
   if (!input) return;
@@ -211,7 +212,6 @@ function startSync() {
   localStorage.setItem('iraira_team_name', currentTeam);
   isSyncEnabled = true;
 
-  // チーム表示ON
   const teamBadge = document.getElementById('team-display');
   teamBadge.innerText = currentTeam;
   teamBadge.style.display = 'inline-block';
@@ -221,7 +221,6 @@ function startSync() {
   closeTeamModal();
 }
 
-// --- 同期解除 ---
 function stopSync() {
   isSyncEnabled = false;
   if (teamRef) {
@@ -230,12 +229,12 @@ function stopSync() {
   }
   remoteTrace = [];
 
-  // チーム表示OFF
   const teamBadge = document.getElementById('team-display');
   teamBadge.style.display = 'none';
   document.getElementById('score-label').innerText = '総合点';
 
   updateDisplay();
+  generateLocalCourse();
   closeTeamModal();
 }
 
@@ -245,7 +244,6 @@ function setupFirebaseSync() {
 
   teamRef = db.ref(`iraira/teams/${currentTeam}`);
 
-  // 1. チームスコア・難易度データの受信
   teamRef.child('stats').on('value', snapshot => {
     if (!isSyncEnabled) return;
     const data = snapshot.val();
@@ -256,27 +254,43 @@ function setupFirebaseSync() {
         difficulty = data.difficulty;
         document.querySelectorAll('.btn').forEach(b => b.classList.remove('active'));
         document.getElementById('btn-' + difficulty).classList.add('active');
-        generateCourse();
       }
       updateDisplay();
     }
   });
 
-  // 2. リアルタイム移動線の受信
+  teamRef.child('course').on('value', snapshot => {
+    if (!isSyncEnabled) return;
+    const data = snapshot.val();
+    if (data) {
+      rawGridPath = data.path || [];
+      wallSegments = data.walls || [];
+      if (data.difficulty) difficulty = data.difficulty;
+      rebuildNodesFromGridPath();
+    } else {
+      generateAndPublishCourse();
+    }
+  });
+
   teamRef.child('trace').on('value', snapshot => {
     if (!isSyncEnabled) return;
     remoteTrace = snapshot.val() || [];
   });
 
-  // 3. 他端末のクリアイベント受信
   teamRef.child('gameStatus').on('value', snapshot => {
     if (!isSyncEnabled) return;
     const status = snapshot.val();
-    if (status && status.event === 'clear' && !isPlaying) {
+    if (!status) return;
+
+    if (status.event === 'clear' && !isPlaying) {
       isCleared = true;
       setCheerMessage('clear');
       const diffTitle = difficulty.toUpperCase();
       showMsg(`${diffTitle} CLEAR!`, `タイム: ${status.time.toFixed(2)}s (チームメンバーがクリアしました)`, '#00ffcc');
+    } else if (status.event === 'fail' && !isPlaying) {
+      showMsg('ビリビリ！', 'チームメンバーが感電しました！', '#ff3366');
+      if (navigator.vibrate) navigator.vibrate(200);
+      setTimeout(hideOverlay, 1000);
     }
   });
 }
@@ -301,12 +315,31 @@ function sendClearEventToFirebase(clearTime) {
   }
 }
 
+function sendFailEventToFirebase() {
+  if (isSyncEnabled && teamRef) {
+    teamRef.child('gameStatus').set({
+      event: 'fail',
+      timestamp: Date.now()
+    });
+  }
+}
+
 function syncTraceToFirebase(traceData) {
-  if (isSyncEnabled && teamRef && isPlaying) {
-    const normalizedTrace = traceData.slice(-30).map(p => ({
-      rx: Number((p.x / canvas.width).toFixed(4)),
-      ry: Number((p.y / canvas.height).toFixed(4))
-    }));
+  if (isSyncEnabled && teamRef && isPlaying && nodes.length > 0) {
+    const start = nodes[0];
+    const goal = nodes[nodes.length - 1];
+    const dx = goal.x - start.x;
+    const dy = goal.y - start.y;
+    const distSq = dx * dx + dy * dy || 1;
+
+    const normalizedTrace = traceData.slice(-30).map(p => {
+      const px = p.x - start.x;
+      const py = p.y - start.y;
+      return {
+        u: Number(((px * dx + py * dy) / distSq).toFixed(4)),
+        v: Number(((px * dy - py * dx) / distSq).toFixed(4))
+      };
+    });
     teamRef.child('trace').set(normalizedTrace);
   }
 }
@@ -369,8 +402,12 @@ function setDiff(d) {
   document.querySelectorAll('.btn').forEach(b => b.classList.remove('active'));
   document.getElementById('btn-' + d).classList.add('active');
   updateDisplay();
-  generateCourse();
-  if (isSyncEnabled) syncStatsToFirebase();
+
+  if (isSyncEnabled) {
+    generateAndPublishCourse();
+  } else {
+    generateLocalCourse();
+  }
 }
 
 function resetStats() {
@@ -384,14 +421,18 @@ function resetStats() {
       personalBestTimes = { easy: null, normal: null, hard: null };
     }
     saveStats();
-    generateCourse();
+    if (isSyncEnabled) {
+      generateAndPublishCourse();
+    } else {
+      generateLocalCourse();
+    }
   }
 }
 
 function init() {
   resizeCanvas();
   loadStats();
-  generateCourse();
+  generateLocalCourse();
   generateQRCode();
   gameLoop();
 }
@@ -399,6 +440,9 @@ function init() {
 function resizeCanvas() {
   canvas.width = window.innerWidth;
   canvas.height = window.innerHeight;
+  if (rawGridPath.length > 0) {
+    rebuildNodesFromGridPath();
+  }
 }
 
 function generateHamiltonianPath(cols, rows) {
@@ -445,11 +489,74 @@ function generateHamiltonianPath(cols, rows) {
   return path;
 }
 
-function generateCourse() {
+function generateAndPublishCourse() {
+  let cols, rows, count, walls = [];
+  if (difficulty === 'easy') {
+    cols = 4; rows = 3;
+    count = Math.floor(Math.random() * 3) + 7;
+  } else if (difficulty === 'normal') {
+    cols = 5; rows = 4;
+    count = Math.floor(Math.random() * 5) + 12;
+  } else {
+    cols = 6; rows = 5;
+    count = 30;
+  }
+
+  const fullPath = generateHamiltonianPath(cols, rows);
+  const path = fullPath.slice(0, Math.min(count, fullPath.length)).map(p => ({
+    r: p.r, c: p.c,
+    wFactor: Math.random()
+  }));
+
+  if (difficulty === 'hard') {
+    const evenIndices = [];
+    for (let i = 2; i < path.length - 2; i += 2) evenIndices.push(i);
+    evenIndices.sort(() => Math.random() - 0.5);
+    walls = evenIndices.slice(0, Math.min(4, evenIndices.length));
+  }
+
+  if (teamRef) {
+    teamRef.child('course').set({
+      cols, rows, path, walls, difficulty
+    });
+  }
+}
+
+function generateLocalCourse() {
+  let cols, rows, count;
+  if (difficulty === 'easy') {
+    cols = 4; rows = 3;
+    count = Math.floor(Math.random() * 3) + 7;
+  } else if (difficulty === 'normal') {
+    cols = 5; rows = 4;
+    count = Math.floor(Math.random() * 5) + 12;
+  } else {
+    cols = 6; rows = 5;
+    count = 30;
+  }
+
+  const fullPath = generateHamiltonianPath(cols, rows);
+  rawGridPath = fullPath.slice(0, Math.min(count, fullPath.length)).map(p => ({
+    r: p.r, c: p.c,
+    wFactor: Math.random()
+  }));
+
+  if (difficulty === 'hard') {
+    const evenIndices = [];
+    for (let i = 2; i < rawGridPath.length - 2; i += 2) evenIndices.push(i);
+    evenIndices.sort(() => Math.random() - 0.5);
+    wallSegments = evenIndices.slice(0, Math.min(4, evenIndices.length));
+  } else {
+    wallSegments = [];
+  }
+
+  rebuildNodesFromGridPath();
+}
+
+function rebuildNodesFromGridPath() {
   if (wallTimer) clearInterval(wallTimer);
   if (widthChangeTimer) clearInterval(widthChangeTimer);
 
-  wallSegments = [];
   isWallClosed = false;
   isCleared = false;
   currentOddWidthOffset = 0;
@@ -458,120 +565,72 @@ function generateCourse() {
   document.getElementById('current-time').innerText = "0.00s";
   setCheerMessage('start');
   hideOverlay();
-  clearRemoteTrace();
 
-  nodes = [];
   const w = canvas.width, h = canvas.height;
   const isDesktop = w > 768;
 
+  // --- UIとの被りを防ぐための余白調整 ---
+  let paddingLeft, paddingRight, paddingTop, paddingBottom;
+
   if (isDesktop) {
-    const paddingLeft = 410;  
-    const paddingRight = 60;
-    const paddingTop = 60;    
-    const paddingBottom = 100; 
-    
-    const playableWidth = w - paddingLeft - paddingRight;
-    const playableHeight = h - paddingTop - paddingBottom;
-
-    if (difficulty === 'easy') {
-      const cols = 4, rows = 3;
-      const pathCoords = generateHamiltonianPath(cols, rows);
-      const count = Math.floor(Math.random() * 3) + 7;
-      nodes = pathCoords.slice(0, count).map(p => ({
-        x: paddingLeft + playableWidth * (p.c / (cols - 1)),
-        y: paddingTop + playableHeight * (p.r / (rows - 1)),
-        w: Math.max(60, MIN_WIDTH + Math.random() * 25)
-      }));
-    } else if (difficulty === 'normal') {
-      const cols = 5, rows = 4;
-      const pathCoords = generateHamiltonianPath(cols, rows);
-      const count = Math.floor(Math.random() * 5) + 12;
-      nodes = pathCoords.slice(0, count).map(p => ({
-        x: paddingLeft + playableWidth * (p.c / (cols - 1)),
-        y: paddingTop + playableHeight * (p.r / (rows - 1)),
-        w: MIN_WIDTH + Math.random() * (MAX_WIDTH - MIN_WIDTH)
-      }));
-    } else {
-      const cols = 6, rows = 5;
-      const pathCoords = generateHamiltonianPath(cols, rows);
-      nodes = pathCoords.map(p => ({
-        x: paddingLeft + playableWidth * (p.c / (cols - 1)),
-        y: paddingTop + playableHeight * (p.r / (rows - 1)),
-        w: 32 + Math.random() * 8
-      }));
-
-      const evenIndices = [];
-      for (let i = 2; i < nodes.length - 2; i += 2) evenIndices.push(i);
-      evenIndices.sort(() => Math.random() - 0.5);
-      wallSegments = evenIndices.slice(0, Math.min(4, evenIndices.length));
-
-      wallTimer = setInterval(() => { isWallClosed = !isWallClosed; }, 1000);
-      widthChangeTimer = setInterval(() => {
-        if (widthExpanding) {
-          currentOddWidthOffset += 1;
-          if (currentOddWidthOffset >= 5) widthExpanding = false;
-        } else {
-          currentOddWidthOffset -= 1;
-          if (currentOddWidthOffset <= -8) widthExpanding = true;
-        }
-      }, 500);
-    }
+    // PC版: 左側のUIボックス（最大幅380px + 余白）を考慮してコース領域を右寄りに配置
+    paddingLeft = 440; 
+    paddingRight = 80;
+    paddingTop = 60;
+    paddingBottom = 80;
   } else {
-    const baseWidth = 360;   
-    const baseHeight = 490;  
-    
-    const scale = Math.min(1, (w - 30) / baseWidth, (h - 240) / baseHeight);
-    const offsetX = (w - baseWidth * scale) / 2;
-    const offsetY = 185; 
+    // スマホ版: 上部UIの高さ分を空けつつ左右に余白を確保
+    paddingLeft = 40;
+    paddingRight = 40;
+    paddingTop = 180; 
+    paddingBottom = 80;
+  }
 
-    if (difficulty === 'easy') {
-      const cols = 3, rows = 3;
-      const pathCoords = generateHamiltonianPath(cols, rows);
-      const count = Math.floor(Math.random() * 3) + 7;
-      nodes = pathCoords.slice(0, count).map(p => ({
-        x: offsetX + (baseWidth * 0.15 + (baseWidth * 0.7) * (p.c / (cols - 1))) * scale,
-        y: offsetY + (baseHeight * 0.05 + (baseHeight * 0.9) * (p.r / (rows - 1))) * scale,
-        w: Math.max(50, (MIN_WIDTH + Math.random() * 25)) * scale
-      }));
-    } else if (difficulty === 'normal') {
-      const cols = 4, rows = 4;
-      const pathCoords = generateHamiltonianPath(cols, rows);
-      const count = Math.floor(Math.random() * 5) + 12;
-      nodes = pathCoords.slice(0, count).map(p => ({
-        x: offsetX + (baseWidth * 0.1 + (baseWidth * 0.8) * (p.c / (cols - 1))) * scale,
-        y: offsetY + (baseHeight * 0.05 + (baseHeight * 0.9) * (p.r / (rows - 1))) * scale,
-        w: (MIN_WIDTH + Math.random() * (MAX_WIDTH - MIN_WIDTH)) * scale
-      }));
-    } else {
-      const cols = 4, rows = 5;
-      const pathCoords = generateHamiltonianPath(cols, rows);
-      nodes = pathCoords.map(p => ({
-        x: offsetX + (baseWidth * 0.1 + (baseWidth * 0.8) * (p.c / (cols - 1))) * scale,
-        y: offsetY + (baseHeight * 0.02 + (baseHeight * 0.96) * (p.r / (rows - 1))) * scale,
-        w: (32 + Math.random() * 8) * scale
-      }));
+  const playableWidth = Math.max(100, w - paddingLeft - paddingRight);
+  const playableHeight = Math.max(100, h - paddingTop - paddingBottom);
 
-      const evenIndices = [];
-      for (let i = 2; i < nodes.length - 2; i += 2) evenIndices.push(i);
-      evenIndices.sort(() => Math.random() - 0.5);
-      wallSegments = evenIndices.slice(0, Math.min(4, evenIndices.length));
+  let maxC = 1, maxR = 1;
+  rawGridPath.forEach(p => {
+    if (p.c > maxC) maxC = p.c;
+    if (p.r > maxR) maxR = p.r;
+  });
 
-      wallTimer = setInterval(() => { isWallClosed = !isWallClosed; }, 1000);
-      widthChangeTimer = setInterval(() => {
-        if (widthExpanding) {
-          currentOddWidthOffset += 1;
-          if (currentOddWidthOffset >= 5) widthExpanding = false;
-        } else {
-          currentOddWidthOffset -= 1;
-          if (currentOddWidthOffset <= -8) widthExpanding = true;
-        }
-      }, 500);
-    }
+  nodes = rawGridPath.map(p => {
+    let baseW = MIN_WIDTH + p.wFactor * (MAX_WIDTH - MIN_WIDTH);
+    if (difficulty === 'easy') baseW = Math.max(60, MIN_WIDTH + p.wFactor * 25);
+    if (difficulty === 'hard') baseW = 32 + p.wFactor * 8;
+
+    return {
+      x: paddingLeft + playableWidth * (p.c / maxC),
+      y: paddingTop + playableHeight * (p.r / maxR),
+      w: baseW
+    };
+  });
+
+  if (difficulty === 'hard') {
+    wallTimer = setInterval(() => { isWallClosed = !isWallClosed; }, 1000);
+    widthChangeTimer = setInterval(() => {
+      if (widthExpanding) {
+        currentOddWidthOffset += 1;
+        if (currentOddWidthOffset >= 5) widthExpanding = false;
+      } else {
+        currentOddWidthOffset -= 1;
+        if (currentOddWidthOffset <= -8) widthExpanding = true;
+      }
+    }, 500);
   }
 
   trace = [];
   isPlaying = false;
   lastTouchPos = null;
+}
+
+function generateCourse() {
+  if (isSyncEnabled) {
+    generateAndPublishCourse();
+  } else {
+    generateLocalCourse();
+  }
 }
 
 function setCheerMessage(type, progress = 0) {
@@ -597,6 +656,7 @@ function setCheerMessage(type, progress = 0) {
 }
 
 function getNodeWidth(index) {
+  if (!nodes[index]) return MIN_WIDTH;
   const baseW = nodes[index].w;
   if (difficulty === 'hard' && index % 2 !== 0) {
     return Math.max(16, baseW + currentOddWidthOffset);
@@ -635,11 +695,19 @@ function drawWall(p1, p2, width) {
 }
 
 function drawMetalRodTrace(pointsData, isRemote = false) {
-  if (!pointsData || pointsData.length === 0) return;
+  if (!pointsData || pointsData.length === 0 || nodes.length === 0) return;
+
+  const start = nodes[0];
+  const goal = nodes[nodes.length - 1];
+  const dx = goal.x - start.x;
+  const dy = goal.y - start.y;
 
   const convertedPoints = pointsData.map(p => {
-    if (p.rx !== undefined && p.ry !== undefined) {
-      return { x: p.rx * canvas.width, y: p.ry * canvas.height };
+    if (p.u !== undefined && p.v !== undefined) {
+      return {
+        x: start.x + p.u * dx - p.v * dy,
+        y: start.y + p.u * dy + p.v * dx
+      };
     }
     return p;
   });
@@ -702,6 +770,7 @@ function drawMetalRodTrace(pointsData, isRemote = false) {
 
 function draw() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
+  if (nodes.length === 0) return;
 
   let themeColor = '#00ccff';
   if (difficulty === 'normal') themeColor = '#ffd700';
@@ -717,19 +786,19 @@ function draw() {
 
     if (i === 0) {
       const dx = nodes[1].x - p.x, dy = nodes[1].y - p.y;
-      const len = Math.hypot(dx, dy);
+      const len = Math.hypot(dx, dy) || 1;
       nx = -dy / len; ny = dx / len;
     } else if (i === nodes.length - 1) {
       const dx = p.x - nodes[i - 1].x, dy = p.y - nodes[i - 1].y;
-      const len = Math.hypot(dx, dy);
+      const len = Math.hypot(dx, dy) || 1;
       nx = -dy / len; ny = dx / len;
     } else {
       const dx1 = p.x - nodes[i - 1].x, dy1 = p.y - nodes[i - 1].y;
-      const len1 = Math.hypot(dx1, dy1);
+      const len1 = Math.hypot(dx1, dy1) || 1;
       const nx1 = -dy1 / len1, ny1 = dx1 / len1;
 
       const dx2 = nodes[i + 1].x - p.x, dy2 = nodes[i + 1].y - p.y;
-      const len2 = Math.hypot(dx2, dy2);
+      const len2 = Math.hypot(dx2, dy2) || 1;
       const nx2 = -dy2 / len2, ny2 = dx2 / len2;
 
       nx = (nx1 + nx2) / 2;
@@ -864,7 +933,7 @@ function handleTouchStart(e) {
 }
 
 function handleTouchMove(e) {
-  if (isCleared) return;
+  if (isCleared || nodes.length === 0) return;
 
   const touch = e.touches ? e.touches[0] : e;
   const x = touch.clientX, y = touch.clientY;
@@ -935,6 +1004,7 @@ function handleTouchMove(e) {
 
       if (!isInsideCourse(checkX, checkY)) {
         isPlaying = false; 
+        sendFailEventToFirebase();
         clearRemoteTrace();
         showMsg('ビリビリ！', '', '#ff3366'); 
         if (navigator.vibrate) navigator.vibrate(200);
@@ -959,7 +1029,7 @@ canvas.addEventListener('mousemove', (e) => {
 });
 canvas.addEventListener('mouseup', () => { lastTouchPos = null; });
 
-window.addEventListener('resize', () => { resizeCanvas(); generateCourse(); });
+window.addEventListener('resize', () => { resizeCanvas(); });
 
 function showMsg(main, sub, c) {
   const o = document.getElementById('overlay');
