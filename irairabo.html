@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-  <title>ドキドキ棒</title>
+  <title>ドキドキ棒 - リアルタイムチーム同期版</title>
   <style>
     body, html { margin: 0; padding: 0; width: 100%; height: 100%; background: #050508; color: #fff; font-family: sans-serif; overflow: hidden; touch-action: none; }
     #ui { position: absolute; top: 10px; left: 10px; z-index: 10; display: flex; flex-direction: column; gap: 6px; width: calc(100% - 20px); max-width: 400px; box-sizing: border-box; }
@@ -12,6 +12,7 @@
     
     .title-row { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 2px; }
     .title-text { color: #fff; font-weight: bold; font-size: 18px; letter-spacing: 1px; }
+    .team-badge { font-size: 12px; color: #00ffcc; background: rgba(0, 255, 204, 0.15); padding: 2px 6px; border-radius: 4px; border: 1px solid #00ffcc; }
     .timer-display { font-family: monospace; font-size: 18px; font-weight: bold; color: #ffcc00; text-shadow: 0 0 8px rgba(255, 204, 0, 0.6); }
     
     .sub-info-row { display: flex; justify-content: space-between; align-items: center; }
@@ -26,14 +27,18 @@
     #btn-hard { background: #ff4444; }
     
     .extra-btns { display: flex; gap: 6px; }
-    .secondary-btn { flex: 1; height: 32px; background: #1a2233; color: #fff; border-radius: 8px; border: 1px solid #445577; font-size: 12px; cursor: pointer; }
+    .secondary-btn { flex: 1; height: 32px; background: #1a2233; color: #fff; border-radius: 8px; border: 1px solid #445577; font-size: 12px; cursor: pointer; user-select: none; }
 
-    /* 下部フッターエリア */
+    /* モーダル表示 */
+    #team-modal { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 100; display: none; justify-content: center; align-items: center; }
+    .modal-content { background: #111827; padding: 24px; border-radius: 12px; border: 1px solid #3b82f6; width: 80%; max-width: 320px; text-align: center; box-shadow: 0 0 20px rgba(59, 130, 246, 0.4); }
+    .modal-title { font-size: 18px; font-weight: bold; margin-bottom: 12px; color: #60a5fa; }
+    .modal-input { width: 100%; padding: 10px; margin-bottom: 16px; border-radius: 6px; border: 1px solid #4b5563; background: #1f2937; color: #fff; box-sizing: border-box; text-align: center; font-size: 16px; }
+    .modal-btn { width: 100%; padding: 10px; background: #2563eb; color: #fff; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 15px; }
+
     #footer-area { position: absolute; bottom: 8px; left: 10px; width: calc(100% - 20px); display: flex; justify-content: space-between; align-items: flex-end; z-index: 10; pointer-events: none; }
-    
     .cheer-box { background: rgba(15, 23, 42, 0.9); border: 1px solid #3b82f6; border-radius: 10px; padding: 8px 12px; font-size: 12px; color: #93c5fd; max-width: 55%; box-shadow: 0 4px 12px rgba(0,0,0,0.5); backdrop-filter: blur(4px); }
     .cheer-title { font-size: 9px; color: #60a5fa; margin-bottom: 2px; font-weight: bold; }
-    
     .qr-box { background: rgba(255, 255, 255, 0.95); padding: 4px; border-radius: 6px; box-shadow: 0 4px 12px rgba(0,0,0,0.5); display: flex; flex-direction: column; align-items: center; pointer-events: auto; }
     .qr-box svg { display: block; width: 48px; height: 48px; }
 
@@ -42,13 +47,25 @@
     .sub-msg { font-size: 16px; font-weight: normal; color: #ccc; margin-top: 10px; }
   </style>
   <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
+  
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 </head>
 <body>
+
+<div id="team-modal">
+  <div class="modal-content">
+    <div class="modal-title">チーム同期設定</div>
+    <input type="text" id="team-name-input" class="modal-input" placeholder="チーム名を入力" value="Team-A">
+    <button class="modal-btn" onclick="saveTeamName()">同期開始</button>
+  </div>
+</div>
 
 <div id="ui">
   <div class="stats-box">
     <div class="title-row">
-      <div class="title-text">ドキドキ棒</div>
+      <div class="title-text">ドキドキ棒 <span class="team-badge" id="team-display">Team-A</span></div>
       <div class="timer-display" id="current-time">0.00s</div>
     </div>
     <div class="sub-info-row">
@@ -62,7 +79,7 @@
     <button class="btn" id="btn-hard" onclick="setDiff('hard')">Hard</button>
   </div>
   <div class="extra-btns">
-    <button class="secondary-btn" onclick="if(!isPlaying && !isCleared) generateCourse()">コース変更</button>
+    <button class="secondary-btn" id="btn-change-course" onclick="handleCourseBtnClick()">コース変更</button>
     <button class="secondary-btn" onclick="resetStats()" style="background:#551111; border-color:#aa3333;">リセット</button>
   </div>
 </div>
@@ -84,6 +101,24 @@
 <canvas id="stage"></canvas>
 
 <script>
+// --- Firebase 設定 ---
+const firebaseConfig = {
+  apiKey: "AIzaSyC4DQhH_swesAD98Xyjg8d1lcWEkkrHrgw",
+  authDomain: "gamehistory-m84.firebaseapp.com",
+  databaseURL: "https://gamehistory-m84-default-rtdb.firebaseio.com",
+  projectId: "gamehistory-m84",
+  storageBucket: "gamehistory-m84.firebasestorage.app",
+  messagingSenderId: "475761727837",
+  appId: "1:475761727837:web:06d07e1ab4120a7ccaf0b4",
+  measurementId: "G-3636W6LC4F"
+};
+
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+
+let currentTeam = localStorage.getItem('iraira_team_name') || 'Team-A';
+let teamRef = null;
+
 const canvas = document.getElementById('stage');
 const ctx = canvas.getContext('2d');
 
@@ -95,6 +130,7 @@ let isCleared = false;
 let difficulty = 'easy';
 let nodes = []; 
 let trace = [];
+let remoteTrace = []; // 同期用データ
 let lastTouchPos = null;
 
 let startTime = 0;
@@ -111,16 +147,117 @@ let widthExpanding = false;
 const MIN_WIDTH = 40; 
 const MAX_WIDTH = 80;
 
+// --- 隠しコマンド（コース変更ボタン2秒長押し） ---
+let longPressTimer = null;
+let isLongPress = false;
+const changeBtn = document.getElementById('btn-change-course');
+
+changeBtn.addEventListener('mousedown', startPress);
+changeBtn.addEventListener('touchstart', startPress);
+changeBtn.addEventListener('mouseup', cancelPress);
+changeBtn.addEventListener('mouseleave', cancelPress);
+changeBtn.addEventListener('touchend', cancelPress);
+
+function startPress(e) {
+  isLongPress = false;
+  longPressTimer = setTimeout(() => {
+    isLongPress = true;
+    showTeamModal();
+  }, 2000);
+}
+
+function cancelPress() {
+  if (longPressTimer) clearTimeout(longPressTimer);
+}
+
+function handleCourseBtnClick() {
+  if (isLongPress) return;
+  if (!isPlaying && !isCleared) generateCourse();
+}
+
+function showTeamModal() {
+  document.getElementById('team-name-input').value = currentTeam;
+  document.getElementById('team-modal').style.display = 'flex';
+}
+
+function saveTeamName() {
+  const input = document.getElementById('team-name-input').value.trim();
+  if (input) {
+    currentTeam = input;
+    localStorage.setItem('iraira_team_name', currentTeam);
+    document.getElementById('team-display').innerText = currentTeam;
+    document.getElementById('team-modal').style.display = 'none';
+    setupFirebaseSync();
+  }
+}
+
+// --- Firebase リッスン＆同期機能 ---
+function setupFirebaseSync() {
+  if (teamRef) teamRef.off();
+  
+  // 「iraira」プレフィックス付きパスの設定
+  teamRef = db.ref(`iraira/teams/${currentTeam}`);
+
+  document.getElementById('team-display').innerText = currentTeam;
+
+  // 1. スコア・難易度データの受信
+  teamRef.child('stats').on('value', snapshot => {
+    const data = snapshot.val();
+    if (data) {
+      stats = data.stats || stats;
+      bestTimes = data.bestTimes || bestTimes;
+      if (data.difficulty && data.difficulty !== difficulty) {
+        difficulty = data.difficulty;
+        document.querySelectorAll('.btn').forEach(b => b.classList.remove('active'));
+        document.getElementById('btn-' + difficulty).classList.add('active');
+        generateCourse();
+      }
+      updateDisplay();
+    }
+  });
+
+  // 2. リアルタイム移動線の受信（他端末の操作を描画）
+  teamRef.child('trace').on('value', snapshot => {
+    const data = snapshot.val();
+    if (data) {
+      remoteTrace = data;
+    } else {
+      remoteTrace = [];
+    }
+  });
+}
+
+function syncStatsToFirebase() {
+  if (teamRef) {
+    teamRef.child('stats').set({
+      stats: stats,
+      bestTimes: bestTimes,
+      difficulty: difficulty
+    });
+  }
+}
+
+function syncTraceToFirebase(traceData) {
+  if (teamRef && isPlaying) {
+    // データ量を軽量化してリアルタイム送信
+    const simpleTrace = traceData.slice(-30).map(p => ({ x: Math.round(p.x), y: Math.round(p.y) }));
+    teamRef.child('trace').set(simpleTrace);
+  }
+}
+
+function clearRemoteTrace() {
+  if (teamRef) teamRef.child('trace').remove();
+}
+
 function generateQRCode() {
   try {
     const typeNumber = 4;
-    const errorCorrectionLevel = 'L';
-    const qr = qrcode(typeNumber, errorCorrectionLevel);
+    const qr = qrcode(typeNumber, 'L');
     qr.addData(window.location.href);
     qr.make();
     document.getElementById('qrcode-container').innerHTML = qr.createSvgTag({cellSize: 2, margin: 0});
   } catch (e) {
-    document.getElementById('qrcode-container').innerText = 'QR生成失敗';
+    document.getElementById('qrcode-container').innerText = 'QR';
   }
 }
 
@@ -148,6 +285,7 @@ function saveStats() {
   localStorage.setItem('dokidoki_stats', JSON.stringify(stats));
   localStorage.setItem('dokidoki_bests', JSON.stringify(bestTimes));
   updateDisplay();
+  syncStatsToFirebase();
 }
 
 function setDiff(d) {
@@ -157,6 +295,7 @@ function setDiff(d) {
   document.getElementById('btn-' + d).classList.add('active');
   updateDisplay();
   generateCourse();
+  syncStatsToFirebase();
 }
 
 function resetStats() {
@@ -171,6 +310,7 @@ function resetStats() {
 function init() {
   resizeCanvas();
   loadStats();
+  setupFirebaseSync();
   generateCourse();
   generateQRCode();
   gameLoop();
@@ -192,10 +332,8 @@ function generateHamiltonianPath(cols, rows) {
     if (path.length === totalPoints) return true;
 
     const dirs = [
-      { r: r - 1, c: c },
-      { r: r + 1, c: c },
-      { r: r, c: c - 1 },
-      { r: r, c: c + 1 }
+      { r: r - 1, c: c }, { r: r + 1, c: c },
+      { r: r, c: c - 1 }, { r: r, c: c + 1 }
     ].sort(() => Math.random() - 0.5);
 
     for (let d of dirs) {
@@ -240,13 +378,13 @@ function generateCourse() {
   document.getElementById('current-time').innerText = "0.00s";
   setCheerMessage('start');
   hideOverlay();
+  clearRemoteTrace();
 
   nodes = [];
   const w = canvas.width, h = canvas.height;
-  const isDesktop = w > 768; // PCとスマホの判定基準
+  const isDesktop = w > 768;
 
   if (isDesktop) {
-    // --- パソコン（PC）モード：画面いっぱいにダイナミックに大きく配置 ---
     const uiBottom = 40;
     const footerTop = h - 90;
     const paddingLeft = 420;
@@ -273,7 +411,6 @@ function generateCourse() {
         w: MIN_WIDTH + Math.random() * (MAX_WIDTH - MIN_WIDTH)
       }));
     } else {
-      // Hard
       const cols = 6, rows = 5;
       const pathCoords = generateHamiltonianPath(cols, rows);
       nodes = pathCoords.map(p => ({
@@ -298,15 +435,13 @@ function generateCourse() {
         }
       }, 500);
     }
-
   } else {
-    // --- スマホモード：端末によらず「常に一定の大きさ」を保持 ＋ 安全策 ---
     const baseWidth = 360;   
     const baseHeight = 490;  
     
     const scale = Math.min(1, (w - 30) / baseWidth, (h - 220) / baseHeight);
     const offsetX = (w - baseWidth * scale) / 2;
-    const offsetY = 165; // UIと被らないよう十分に確保した上部マージン
+    const offsetY = 165; 
 
     if (difficulty === 'easy') {
       const cols = 3, rows = 3;
@@ -327,7 +462,6 @@ function generateCourse() {
         w: (MIN_WIDTH + Math.random() * (MAX_WIDTH - MIN_WIDTH)) * scale
       }));
     } else {
-      // Hard
       const cols = 4, rows = 5;
       const pathCoords = generateHamiltonianPath(cols, rows);
       nodes = pathCoords.map(p => ({
@@ -419,6 +553,71 @@ function drawWall(p1, p2, width) {
   ctx.restore();
 }
 
+// --- 本物の金属棒・残像軌跡・スパーク演出の描画 ---
+function drawMetalRodTrace(pointsData, isRemote = false) {
+  if (!pointsData || pointsData.length === 0) return;
+
+  ctx.save();
+
+  // 1. 通った後のネオン光線軌跡（残光）
+  ctx.beginPath();
+  ctx.moveTo(pointsData[0].x, pointsData[0].y);
+  for (let i = 1; i < pointsData.length; i++) {
+    ctx.lineTo(pointsData[i].x, pointsData[i].y);
+  }
+  ctx.lineWidth = 6;
+  ctx.strokeStyle = isRemote ? 'rgba(0, 255, 204, 0.8)' : 'rgba(255, 255, 255, 0.9)';
+  ctx.shadowColor = isRemote ? '#00ffcc' : '#00e5ff';
+  ctx.shadowBlur = 12;
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  ctx.stroke();
+
+  // 2. 金属棒のヘッド（操作先端）の描画
+  const currentHead = pointsData[pointsData.length - 1];
+
+  // 影と立体感の演出
+  ctx.shadowColor = '#000';
+  ctx.shadowBlur = 8;
+  ctx.shadowOffsetY = 4;
+
+  // 金属の質感を表現するグラデーション
+  const grad = ctx.createRadialGradient(currentHead.x - 3, currentHead.y - 3, 2, currentHead.x, currentHead.y, 14);
+  grad.addColorStop(0, '#ffffff');
+  grad.addColorStop(0.3, '#d1d5db');
+  grad.addColorStop(0.7, '#4b5563');
+  grad.addColorStop(1, '#111827');
+
+  ctx.beginPath();
+  ctx.arc(currentHead.x, currentHead.y, 12, 0, Math.PI * 2);
+  ctx.fillStyle = grad;
+  ctx.fill();
+  ctx.strokeStyle = isRemote ? '#00ffcc' : '#e5e7eb';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
+  // 3. 通過中に飛び散る火花（スパーク）
+  if (Math.random() < 0.6) {
+    for (let i = 0; i < 3; i++) {
+      const angle = Math.random() * Math.PI * 2;
+      const speed = 8 + Math.random() * 12;
+      const sx = currentHead.x + Math.cos(angle) * speed;
+      const sy = currentHead.y + Math.sin(angle) * speed;
+
+      ctx.beginPath();
+      ctx.moveTo(currentHead.x, currentHead.y);
+      ctx.lineTo(sx, sy);
+      ctx.strokeStyle = '#ffcc00';
+      ctx.lineWidth = 1.5;
+      ctx.shadowColor = '#ffaa00';
+      ctx.shadowBlur = 6;
+      ctx.stroke();
+    }
+  }
+
+  ctx.restore();
+}
+
 function draw() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
@@ -496,16 +695,14 @@ function draw() {
     });
   }
 
+  // 自端末の軌跡描画
   if (trace.length > 0) {
-    ctx.save();
-    ctx.strokeStyle = '#ffffff';
-    ctx.lineWidth = 3;
-    ctx.shadowColor = '#ffffff';
-    ctx.shadowBlur = 6;
-    ctx.beginPath();
-    trace.forEach((p, idx) => idx === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y));
-    ctx.stroke();
-    ctx.restore();
+    drawMetalRodTrace(trace, false);
+  }
+
+  // 他端末（同期中）の軌跡描画
+  if (remoteTrace.length > 0 && !isPlaying) {
+    drawMetalRodTrace(remoteTrace, true);
   }
 
   const start = nodes[0];
@@ -624,6 +821,7 @@ function handleTouchMove(e) {
     }
 
     saveStats();
+    clearRemoteTrace();
     setCheerMessage('clear');
 
     const diffTitle = difficulty.toUpperCase();
@@ -651,6 +849,7 @@ function handleTouchMove(e) {
 
       if (!isInsideCourse(checkX, checkY)) {
         isPlaying = false; 
+        clearRemoteTrace();
         showMsg('ビリビリ！', '', '#ff3366'); 
         if (navigator.vibrate) navigator.vibrate(200);
         setTimeout(generateCourse, 1000); 
@@ -658,6 +857,7 @@ function handleTouchMove(e) {
       }
     }
     trace.push({x, y});
+    syncTraceToFirebase(trace);
   }
 
   lastTouchPos = { x, y };
