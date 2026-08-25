@@ -28,7 +28,7 @@
     .extra-btns { display: flex; gap: 8px; }
     .secondary-btn { flex: 1; height: 35px; background: #1a2233; color: #fff; border-radius: 8px; border: 1px solid #445577; font-size: 13px; cursor: pointer; }
 
-    /* 下部フッターエリア（左：応援コメント / 右：QRコード） */
+    /* 下部フッターエリア */
     #footer-area { position: absolute; bottom: 10px; left: 10px; width: calc(100% - 20px); display: flex; justify-content: space-between; align-items: flex-end; z-index: 10; pointer-events: none; }
     
     .cheer-box { background: rgba(15, 23, 42, 0.9); border: 1px solid #3b82f6; border-radius: 10px; padding: 8px 12px; font-size: 13px; color: #93c5fd; max-width: 50%; box-shadow: 0 4px 12px rgba(0,0,0,0.5); backdrop-filter: blur(4px); }
@@ -75,7 +75,7 @@
   </div>
   <div class="qr-box">
     <div id="qrcode-container"></div>
-    <div class="qr-label">スマホで遊ぶ</div>
+    <div class="qr-label">スマホでは常時一定</div>
   </div>
 </div>
 
@@ -245,77 +245,116 @@ function generateCourse() {
 
   nodes = [];
   const w = canvas.width, h = canvas.height;
-  const isDesktop = w > 768; // 画面幅による判定
-  
-  // 画面全体を広々と使用するように領域計算を動的化
-  const uiElement = document.getElementById('ui');
-  const uiBottom = isDesktop ? 40 : (uiElement ? uiElement.getBoundingClientRect().bottom + 10 : 180);
-  const footerTop = h - 90;
-  
-  // PCの場合はUIの右側のスペースもフル活用
-  const paddingLeft = isDesktop ? 420 : 40;
-  const paddingRight = 40;
-  const playableWidth = w - paddingLeft - paddingRight;
-  const playableHeight = footerTop - uiBottom;
+  const isDesktop = w > 768; // PCとスマホの判定基準
 
-  if (difficulty === 'easy') {
-    const cols = isDesktop ? 4 : 3;
-    const rows = 3;
-    const pathCoords = generateHamiltonianPath(cols, rows);
-    const count = Math.floor(Math.random() * 3) + 7;
-    const slicedCoords = pathCoords.slice(0, count);
+  if (isDesktop) {
+    // --- パソコン（PC）モード：画面いっぱいにダイナミックに大きく配置 ---
+    const uiBottom = 40;
+    const footerTop = h - 90;
+    const paddingLeft = 420;
+    const paddingRight = 40;
+    const playableWidth = w - paddingLeft - paddingRight;
+    const playableHeight = footerTop - uiBottom;
 
-    nodes = slicedCoords.map(p => ({
-      x: paddingLeft + playableWidth * (p.c / (cols - 1)),
-      y: uiBottom + playableHeight * (0.1 + (0.8 / (rows - 1)) * p.r),
-      w: Math.max(60, MIN_WIDTH + Math.random() * 25)
-    }));
+    if (difficulty === 'easy') {
+      const cols = 4, rows = 3;
+      const pathCoords = generateHamiltonianPath(cols, rows);
+      const count = Math.floor(Math.random() * 3) + 7;
+      nodes = pathCoords.slice(0, count).map(p => ({
+        x: paddingLeft + playableWidth * (p.c / (cols - 1)),
+        y: uiBottom + playableHeight * (0.1 + (0.8 / (rows - 1)) * p.r),
+        w: Math.max(60, MIN_WIDTH + Math.random() * 25)
+      }));
+    } else if (difficulty === 'normal') {
+      const cols = 5, rows = 4;
+      const pathCoords = generateHamiltonianPath(cols, rows);
+      const count = Math.floor(Math.random() * 5) + 12;
+      nodes = pathCoords.slice(0, count).map(p => ({
+        x: paddingLeft + playableWidth * (p.c / (cols - 1)),
+        y: uiBottom + playableHeight * (0.1 + (0.8 / (rows - 1)) * p.r),
+        w: MIN_WIDTH + Math.random() * (MAX_WIDTH - MIN_WIDTH)
+      }));
+    } else {
+      // Hard
+      const cols = 6, rows = 5;
+      const pathCoords = generateHamiltonianPath(cols, rows);
+      nodes = pathCoords.map(p => ({
+        x: paddingLeft + playableWidth * (p.c / (cols - 1)),
+        y: uiBottom + playableHeight * (0.08 + (0.84 / (rows - 1)) * p.r),
+        w: 32 + Math.random() * 8
+      }));
 
-  } else if (difficulty === 'normal') {
-    const cols = isDesktop ? 5 : 4;
-    const rows = 4;
-    const pathCoords = generateHamiltonianPath(cols, rows);
-    const count = Math.floor(Math.random() * 5) + 12;
-    const slicedCoords = pathCoords.slice(0, count);
+      const evenIndices = [];
+      for (let i = 2; i < nodes.length - 2; i += 2) evenIndices.push(i);
+      evenIndices.sort(() => Math.random() - 0.5);
+      wallSegments = evenIndices.slice(0, Math.min(4, evenIndices.length));
 
-    nodes = slicedCoords.map(p => ({
-      x: paddingLeft + playableWidth * (p.c / (cols - 1)),
-      y: uiBottom + playableHeight * (0.1 + (0.8 / (rows - 1)) * p.r),
-      w: MIN_WIDTH + Math.random() * (MAX_WIDTH - MIN_WIDTH)
-    }));
+      wallTimer = setInterval(() => { isWallClosed = !isWallClosed; }, 1000);
+      widthChangeTimer = setInterval(() => {
+        if (widthExpanding) {
+          currentOddWidthOffset += 1;
+          if (currentOddWidthOffset >= 5) widthExpanding = false;
+        } else {
+          currentOddWidthOffset -= 1;
+          if (currentOddWidthOffset <= -8) widthExpanding = true;
+        }
+      }, 500);
+    }
 
   } else {
-    // Hard
-    const cols = isDesktop ? 6 : 4;
-    const rows = 5;
-    const pathCoords = generateHamiltonianPath(cols, rows);
+    // --- スマホモード：端末によらず「常に一定の大きさ」を保持 ＋ 極小画面用のはみ出し安全策 ---
+    const baseWidth = 360;   // 基準となる仮想幅
+    const baseHeight = 540;  // 基準となる仮想高さ
+    
+    // 画面が基準より小さすぎる場合ははみ出さないよう全体を自動縮小（安全策）
+    const scale = Math.min(1, (w - 30) / baseWidth, (h - 200) / baseHeight);
+    const offsetX = (w - baseWidth * scale) / 2;
+    const offsetY = 140; // UIを避ける上部マージン
 
-    nodes = pathCoords.map(p => ({
-      x: paddingLeft + playableWidth * (p.c / (cols - 1)),
-      y: uiBottom + playableHeight * (0.08 + (0.84 / (rows - 1)) * p.r),
-      w: 32 + Math.random() * 8
-    }));
+    if (difficulty === 'easy') {
+      const cols = 3, rows = 3;
+      const pathCoords = generateHamiltonianPath(cols, rows);
+      const count = Math.floor(Math.random() * 3) + 7;
+      nodes = pathCoords.slice(0, count).map(p => ({
+        x: offsetX + (baseWidth * 0.15 + (baseWidth * 0.7) * (p.c / (cols - 1))) * scale,
+        y: offsetY + (baseHeight * 0.1 + (baseHeight * 0.8) * (p.r / (rows - 1))) * scale,
+        w: Math.max(50, (MIN_WIDTH + Math.random() * 25)) * scale
+      }));
+    } else if (difficulty === 'normal') {
+      const cols = 4, rows = 4;
+      const pathCoords = generateHamiltonianPath(cols, rows);
+      const count = Math.floor(Math.random() * 5) + 12;
+      nodes = pathCoords.slice(0, count).map(p => ({
+        x: offsetX + (baseWidth * 0.1 + (baseWidth * 0.8) * (p.c / (cols - 1))) * scale,
+        y: offsetY + (baseHeight * 0.1 + (baseHeight * 0.8) * (p.r / (rows - 1))) * scale,
+        w: (MIN_WIDTH + Math.random() * (MAX_WIDTH - MIN_WIDTH)) * scale
+      }));
+    } else {
+      // Hard
+      const cols = 4, rows = 5;
+      const pathCoords = generateHamiltonianPath(cols, rows);
+      nodes = pathCoords.map(p => ({
+        x: offsetX + (baseWidth * 0.1 + (baseWidth * 0.8) * (p.c / (cols - 1))) * scale,
+        y: offsetY + (baseHeight * 0.05 + (baseHeight * 0.9) * (p.r / (rows - 1))) * scale,
+        w: (32 + Math.random() * 8) * scale
+      }));
 
-    const evenIndices = [];
-    for (let i = 2; i < nodes.length - 2; i += 2) {
-      evenIndices.push(i);
+      const evenIndices = [];
+      for (let i = 2; i < nodes.length - 2; i += 2) evenIndices.push(i);
+      evenIndices.sort(() => Math.random() - 0.5);
+      wallSegments = evenIndices.slice(0, Math.min(4, evenIndices.length));
+
+      wallTimer = setInterval(() => { isWallClosed = !isWallClosed; }, 1000);
+      widthChangeTimer = setInterval(() => {
+        if (widthExpanding) {
+          currentOddWidthOffset += 1;
+          if (currentOddWidthOffset >= 5) widthExpanding = false;
+        } else {
+          currentOddWidthOffset -= 1;
+          if (currentOddWidthOffset <= -8) widthExpanding = true;
+        }
+      }, 500);
     }
-    evenIndices.sort(() => Math.random() - 0.5);
-    wallSegments = evenIndices.slice(0, Math.min(4, evenIndices.length));
-
-    wallTimer = setInterval(() => {
-      isWallClosed = !isWallClosed;
-    }, 1000);
-
-    widthChangeTimer = setInterval(() => {
-      if (widthExpanding) {
-        currentOddWidthOffset += 1;
-        if (currentOddWidthOffset >= 5) widthExpanding = false;
-      } else {
-        currentOddWidthOffset -= 1;
-        if (currentOddWidthOffset <= -8) widthExpanding = true;
-      }
-    }, 500);
   }
 
   trace = [];
