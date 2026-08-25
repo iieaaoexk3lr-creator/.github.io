@@ -6,37 +6,36 @@
   <title>ドキドキ棒</title>
   <style>
     body, html { margin: 0; padding: 0; width: 100%; height: 100%; background: #050508; color: #fff; font-family: sans-serif; overflow: hidden; touch-action: none; }
-    #ui { position: absolute; top: 10px; left: 10px; z-index: 10; display: flex; flex-direction: column; gap: 8px; width: calc(100% - 20px); max-width: 400px; box-sizing: border-box; }
+    #ui { position: absolute; top: 10px; left: 10px; z-index: 10; display: flex; flex-direction: column; gap: 6px; width: calc(100% - 20px); max-width: 400px; box-sizing: border-box; }
     
-    .stats-box { background: rgba(10, 15, 25, 0.85); padding: 12px 15px; border-radius: 12px; border: 1px solid #334466; font-size: 15px; backdrop-filter: blur(5px); }
+    .stats-box { background: rgba(10, 15, 25, 0.85); padding: 10px 12px; border-radius: 12px; border: 1px solid #334466; font-size: 14px; backdrop-filter: blur(5px); }
     
-    .title-row { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 4px; }
-    .title-text { color: #fff; font-weight: bold; font-size: 20px; letter-spacing: 1px; }
-    .timer-display { font-family: monospace; font-size: 20px; font-weight: bold; color: #ffcc00; text-shadow: 0 0 8px rgba(255, 204, 0, 0.6); }
+    .title-row { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 2px; }
+    .title-text { color: #fff; font-weight: bold; font-size: 18px; letter-spacing: 1px; }
+    .timer-display { font-family: monospace; font-size: 18px; font-weight: bold; color: #ffcc00; text-shadow: 0 0 8px rgba(255, 204, 0, 0.6); }
     
     .sub-info-row { display: flex; justify-content: space-between; align-items: center; }
-    .best-display { font-size: 14px; color: #00ffcc; font-weight: bold; }
+    .best-display { font-size: 13px; color: #00ffcc; font-weight: bold; }
     
-    .controls { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
-    .btn { height: 42px; font-size: 15px; font-weight: bold; border-radius: 8px; border: none; cursor: pointer; color: #fff; opacity: 0.5; transition: opacity 0.2s; }
+    .controls { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+    .btn { height: 38px; font-size: 14px; font-weight: bold; border-radius: 8px; border: none; cursor: pointer; color: #fff; opacity: 0.5; transition: opacity 0.2s; }
     .btn.active { opacity: 1; border: 2px solid #fff; box-shadow: 0 0 10px rgba(255,255,255,0.5); }
     
     #btn-easy { background: #00ccff; }
     #btn-normal { background: #ffd700; color: #000; }
     #btn-hard { background: #ff4444; }
     
-    .extra-btns { display: flex; gap: 8px; }
-    .secondary-btn { flex: 1; height: 35px; background: #1a2233; color: #fff; border-radius: 8px; border: 1px solid #445577; font-size: 13px; cursor: pointer; }
+    .extra-btns { display: flex; gap: 6px; }
+    .secondary-btn { flex: 1; height: 32px; background: #1a2233; color: #fff; border-radius: 8px; border: 1px solid #445577; font-size: 12px; cursor: pointer; }
 
     /* 下部フッターエリア */
-    #footer-area { position: absolute; bottom: 10px; left: 10px; width: calc(100% - 20px); display: flex; justify-content: space-between; align-items: flex-end; z-index: 10; pointer-events: none; }
+    #footer-area { position: absolute; bottom: 8px; left: 10px; width: calc(100% - 20px); display: flex; justify-content: space-between; align-items: flex-end; z-index: 10; pointer-events: none; }
     
-    .cheer-box { background: rgba(15, 23, 42, 0.9); border: 1px solid #3b82f6; border-radius: 10px; padding: 8px 12px; font-size: 13px; color: #93c5fd; max-width: 50%; box-shadow: 0 4px 12px rgba(0,0,0,0.5); backdrop-filter: blur(4px); }
-    .cheer-title { font-size: 10px; color: #60a5fa; margin-bottom: 2px; font-weight: bold; }
+    .cheer-box { background: rgba(15, 23, 42, 0.9); border: 1px solid #3b82f6; border-radius: 10px; padding: 8px 12px; font-size: 12px; color: #93c5fd; max-width: 55%; box-shadow: 0 4px 12px rgba(0,0,0,0.5); backdrop-filter: blur(4px); }
+    .cheer-title { font-size: 9px; color: #60a5fa; margin-bottom: 2px; font-weight: bold; }
     
-    .qr-box { background: rgba(255, 255, 255, 0.95); padding: 6px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.5); display: flex; flex-direction: column; align-items: center; pointer-events: auto; }
-    .qr-box svg { display: block; width: 64px; height: 64px; }
-    .qr-label { font-size: 9px; color: #111; margin-top: 3px; font-weight: bold; }
+    .qr-box { background: rgba(255, 255, 255, 0.95); padding: 4px; border-radius: 6px; box-shadow: 0 4px 12px rgba(0,0,0,0.5); display: flex; flex-direction: column; align-items: center; pointer-events: auto; }
+    .qr-box svg { display: block; width: 48px; height: 48px; }
 
     canvas { display: block; }
     #overlay { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 38px; font-weight: 900; display: none; text-align: center; width: 100%; pointer-events: none; text-shadow: 0 0 10px #000, 0 0 20px #000; z-index: 20; }
@@ -53,7 +52,7 @@
       <div class="timer-display" id="current-time">0.00s</div>
     </div>
     <div class="sub-info-row">
-      <div>総合点: <span id="total-score" style="color:#00ffcc; font-weight:bold; font-size: 17px;">0</span> (E:<span id="count-easy">0</span> N:<span id="count-normal">0</span> H:<span id="count-hard">0</span>)</div>
+      <div>総合点: <span id="total-score" style="color:#00ffcc; font-weight:bold; font-size: 16px;">0</span> (E:<span id="count-easy">0</span> N:<span id="count-normal">0</span> H:<span id="count-hard">0</span>)</div>
       <div class="best-display">Best: <span id="best-time">--.--</span>s</div>
     </div>
   </div>
@@ -75,7 +74,6 @@
   </div>
   <div class="qr-box">
     <div id="qrcode-container"></div>
-    <div class="qr-label">スマホでは常時一定</div>
   </div>
 </div>
 
@@ -302,14 +300,13 @@ function generateCourse() {
     }
 
   } else {
-    // --- スマホモード：端末によらず「常に一定の大きさ」を保持 ＋ 極小画面用のはみ出し安全策 ---
-    const baseWidth = 360;   // 基準となる仮想幅
-    const baseHeight = 540;  // 基準となる仮想高さ
+    // --- スマホモード：端末によらず「常に一定の大きさ」を保持 ＋ 安全策 ---
+    const baseWidth = 360;   
+    const baseHeight = 490;  
     
-    // 画面が基準より小さすぎる場合ははみ出さないよう全体を自動縮小（安全策）
-    const scale = Math.min(1, (w - 30) / baseWidth, (h - 200) / baseHeight);
+    const scale = Math.min(1, (w - 30) / baseWidth, (h - 220) / baseHeight);
     const offsetX = (w - baseWidth * scale) / 2;
-    const offsetY = 140; // UIを避ける上部マージン
+    const offsetY = 165; // UIと被らないよう十分に確保した上部マージン
 
     if (difficulty === 'easy') {
       const cols = 3, rows = 3;
@@ -317,7 +314,7 @@ function generateCourse() {
       const count = Math.floor(Math.random() * 3) + 7;
       nodes = pathCoords.slice(0, count).map(p => ({
         x: offsetX + (baseWidth * 0.15 + (baseWidth * 0.7) * (p.c / (cols - 1))) * scale,
-        y: offsetY + (baseHeight * 0.1 + (baseHeight * 0.8) * (p.r / (rows - 1))) * scale,
+        y: offsetY + (baseHeight * 0.05 + (baseHeight * 0.9) * (p.r / (rows - 1))) * scale,
         w: Math.max(50, (MIN_WIDTH + Math.random() * 25)) * scale
       }));
     } else if (difficulty === 'normal') {
@@ -326,7 +323,7 @@ function generateCourse() {
       const count = Math.floor(Math.random() * 5) + 12;
       nodes = pathCoords.slice(0, count).map(p => ({
         x: offsetX + (baseWidth * 0.1 + (baseWidth * 0.8) * (p.c / (cols - 1))) * scale,
-        y: offsetY + (baseHeight * 0.1 + (baseHeight * 0.8) * (p.r / (rows - 1))) * scale,
+        y: offsetY + (baseHeight * 0.05 + (baseHeight * 0.9) * (p.r / (rows - 1))) * scale,
         w: (MIN_WIDTH + Math.random() * (MAX_WIDTH - MIN_WIDTH)) * scale
       }));
     } else {
@@ -335,7 +332,7 @@ function generateCourse() {
       const pathCoords = generateHamiltonianPath(cols, rows);
       nodes = pathCoords.map(p => ({
         x: offsetX + (baseWidth * 0.1 + (baseWidth * 0.8) * (p.c / (cols - 1))) * scale,
-        y: offsetY + (baseHeight * 0.05 + (baseHeight * 0.9) * (p.r / (rows - 1))) * scale,
+        y: offsetY + (baseHeight * 0.02 + (baseHeight * 0.96) * (p.r / (rows - 1))) * scale,
         w: (32 + Math.random() * 8) * scale
       }));
 
