@@ -150,6 +150,7 @@ let rawGridPath = [];
 let trace = [];
 let remoteTrace = []; 
 let lastTouchPos = null;
+let releasePos = null; // 指/マウスを離した座標の記録用
 
 let startTime = 0;
 let elapsedTime = 0;
@@ -324,20 +325,44 @@ function sendFailEventToFirebase() {
   }
 }
 
+// ノード基準の相対座標変換によるFirebase同期
 function syncTraceToFirebase(traceData) {
-  if (isSyncEnabled && teamRef && isPlaying && nodes.length > 0) {
-    const start = nodes[0];
-    const goal = nodes[nodes.length - 1];
-    const dx = goal.x - start.x;
-    const dy = goal.y - start.y;
-    const distSq = dx * dx + dy * dy || 1;
-
+  if (isSyncEnabled && teamRef && isPlaying && nodes.length > 1) {
     const normalizedTrace = traceData.slice(-30).map(p => {
-      const px = p.x - start.x;
-      const py = p.y - start.y;
+      let minDistSq = Infinity;
+      let bestSegIndex = 0;
+      let bestT = 0;
+      let bestOffset = 0;
+
+      for (let i = 0; i < nodes.length - 1; i++) {
+        const p1 = nodes[i];
+        const p2 = nodes[i + 1];
+        const l2 = (p2.x - p1.x) ** 2 + (p2.y - p1.y) ** 2 || 1;
+        let t = ((p.x - p1.x) * (p2.x - p1.x) + (p.y - p1.y) * (p2.y - p1.y)) / l2;
+        t = Math.max(0, Math.min(1, t));
+
+        const projX = p1.x + t * (p2.x - p1.x);
+        const projY = p1.y + t * (p2.y - p1.y);
+        const dSq = (p.x - projX) ** 2 + (p.y - projY) ** 2;
+
+        if (dSq < minDistSq) {
+          minDistSq = dSq;
+          bestSegIndex = i;
+          bestT = t;
+          
+          const dx = p2.x - p1.x;
+          const dy = p2.y - p1.y;
+          const len = Math.hypot(dx, dy) || 1;
+          const nx = -dy / len;
+          const ny = dx / len;
+          bestOffset = (p.x - projX) * nx + (p.y - projY) * ny;
+        }
+      }
+
       return {
-        u: Number(((px * dx + py * dy) / distSq).toFixed(4)),
-        v: Number(((px * dy - py * dx) / distSq).toFixed(4))
+        idx: bestSegIndex,
+        t: Number(bestT.toFixed(4)),
+        off: Number(bestOffset.toFixed(2))
       };
     });
     teamRef.child('trace').set(normalizedTrace);
@@ -569,17 +594,14 @@ function rebuildNodesFromGridPath() {
   const w = canvas.width, h = canvas.height;
   const isDesktop = w > 768;
 
-  // --- UIとの被りを防ぐための余白調整 ---
   let paddingLeft, paddingRight, paddingTop, paddingBottom;
 
   if (isDesktop) {
-    // PC版: 左側のUIボックス（最大幅380px + 余白）を考慮してコース領域を右寄りに配置
     paddingLeft = 440; 
     paddingRight = 80;
     paddingTop = 60;
     paddingBottom = 80;
   } else {
-    // スマホ版: 上部UIの高さ分を空けつつ左右に余白を確保
     paddingLeft = 40;
     paddingRight = 40;
     paddingTop = 180; 
@@ -623,6 +645,7 @@ function rebuildNodesFromGridPath() {
   trace = [];
   isPlaying = false;
   lastTouchPos = null;
+  releasePos = null;
 }
 
 function generateCourse() {
@@ -695,18 +718,25 @@ function drawWall(p1, p2, width) {
 }
 
 function drawMetalRodTrace(pointsData, isRemote = false) {
-  if (!pointsData || pointsData.length === 0 || nodes.length === 0) return;
-
-  const start = nodes[0];
-  const goal = nodes[nodes.length - 1];
-  const dx = goal.x - start.x;
-  const dy = goal.y - start.y;
+  if (!pointsData || pointsData.length === 0 || nodes.length < 2) return;
 
   const convertedPoints = pointsData.map(p => {
-    if (p.u !== undefined && p.v !== undefined) {
+    if (p.idx !== undefined && p.t !== undefined) {
+      const idx = Math.min(p.idx, nodes.length - 2);
+      const p1 = nodes[idx];
+      const p2 = nodes[idx + 1];
+      const projX = p1.x + p.t * (p2.x - p1.x);
+      const projY = p1.y + p.t * (p2.y - p1.y);
+
+      const dx = p2.x - p1.x;
+      const dy = p2.y - p1.y;
+      const len = Math.hypot(dx, dy) || 1;
+      const nx = -dy / len;
+      const ny = dx / len;
+
       return {
-        x: start.x + p.u * dx - p.v * dy,
-        y: start.y + p.u * dy + p.v * dx
+        x: projX + nx * (p.off || 0),
+        y: projY + ny * (p.off || 0)
       };
     }
     return p;
@@ -714,15 +744,16 @@ function drawMetalRodTrace(pointsData, isRemote = false) {
 
   ctx.save();
 
+  // 移動線の設定: 太さ1px、発光エフェクト（shadowBlur）2px
   ctx.beginPath();
   ctx.moveTo(convertedPoints[0].x, convertedPoints[0].y);
   for (let i = 1; i < convertedPoints.length; i++) {
     ctx.lineTo(convertedPoints[i].x, convertedPoints[i].y);
   }
-  ctx.lineWidth = 6;
-  ctx.strokeStyle = isRemote ? 'rgba(0, 255, 204, 0.8)' : 'rgba(255, 255, 255, 0.9)';
+  ctx.lineWidth = 1;
+  ctx.strokeStyle = isRemote ? 'rgba(0, 255, 204, 0.9)' : 'rgba(255, 255, 255, 0.95)';
   ctx.shadowColor = isRemote ? '#00ffcc' : '#00e5ff';
-  ctx.shadowBlur = 12;
+  ctx.shadowBlur = 2;
   ctx.lineCap = 'round';
   ctx.lineJoin = 'round';
   ctx.stroke();
@@ -730,27 +761,29 @@ function drawMetalRodTrace(pointsData, isRemote = false) {
   const currentHead = convertedPoints[convertedPoints.length - 1];
 
   ctx.shadowColor = '#000';
-  ctx.shadowBlur = 8;
-  ctx.shadowOffsetY = 4;
+  ctx.shadowBlur = 6;
+  ctx.shadowOffsetY = 2;
 
-  const grad = ctx.createRadialGradient(currentHead.x - 3, currentHead.y - 3, 2, currentHead.x, currentHead.y, 14);
+  // 棒（球体）のサイズ: 半径 8px （2周り小さく調整）
+  const rodRadius = 8;
+  const grad = ctx.createRadialGradient(currentHead.x - 2, currentHead.y - 2, 1, currentHead.x, currentHead.y, rodRadius);
   grad.addColorStop(0, '#ffffff');
   grad.addColorStop(0.3, '#d1d5db');
   grad.addColorStop(0.7, '#4b5563');
   grad.addColorStop(1, '#111827');
 
   ctx.beginPath();
-  ctx.arc(currentHead.x, currentHead.y, 12, 0, Math.PI * 2);
+  ctx.arc(currentHead.x, currentHead.y, rodRadius, 0, Math.PI * 2);
   ctx.fillStyle = grad;
   ctx.fill();
   ctx.strokeStyle = isRemote ? '#00ffcc' : '#e5e7eb';
-  ctx.lineWidth = 2;
+  ctx.lineWidth = 1.5;
   ctx.stroke();
 
   if (Math.random() < 0.6) {
     for (let i = 0; i < 3; i++) {
       const angle = Math.random() * Math.PI * 2;
-      const speed = 8 + Math.random() * 12;
+      const speed = 6 + Math.random() * 8;
       const sx = currentHead.x + Math.cos(angle) * speed;
       const sy = currentHead.y + Math.sin(angle) * speed;
 
@@ -758,9 +791,9 @@ function drawMetalRodTrace(pointsData, isRemote = false) {
       ctx.moveTo(currentHead.x, currentHead.y);
       ctx.lineTo(sx, sy);
       ctx.strokeStyle = '#ffcc00';
-      ctx.lineWidth = 1.5;
+      ctx.lineWidth = 1;
       ctx.shadowColor = '#ffaa00';
-      ctx.shadowBlur = 6;
+      ctx.shadowBlur = 4;
       ctx.stroke();
     }
   }
@@ -922,6 +955,15 @@ function gameLoop() {
   requestAnimationFrame(gameLoop);
 }
 
+function triggerFail() {
+  isPlaying = false;
+  sendFailEventToFirebase();
+  clearRemoteTrace();
+  showMsg('ビリビリ！', '', '#ff3366');
+  if (navigator.vibrate) navigator.vibrate(200);
+  setTimeout(generateCourse, 1000);
+}
+
 function handleTouchStart(e) {
   if (isCleared) {
     generateCourse();
@@ -929,7 +971,19 @@ function handleTouchStart(e) {
   }
 
   const touch = e.touches ? e.touches[0] : e;
-  lastTouchPos = { x: touch.clientX, y: touch.clientY };
+  const x = touch.clientX;
+  const y = touch.clientY;
+
+  // プレイ中に再押下された場合、15px離脱によるワープチェック
+  if (isPlaying && releasePos) {
+    const distFromRelease = Math.hypot(x - releasePos.x, y - releasePos.y);
+    if (distFromRelease > 15) {
+      triggerFail();
+      return;
+    }
+  }
+
+  lastTouchPos = { x, y };
 }
 
 function handleTouchMove(e) {
@@ -948,6 +1002,7 @@ function handleTouchMove(e) {
     trace = []; 
     showMsg('START!', '', '#fff'); 
     lastTouchPos = { x, y };
+    releasePos = null;
   }
   if (!isPlaying) return;
 
@@ -1003,12 +1058,7 @@ function handleTouchMove(e) {
       const checkY = prev.y + (y - prev.y) * (i / steps);
 
       if (!isInsideCourse(checkX, checkY)) {
-        isPlaying = false; 
-        sendFailEventToFirebase();
-        clearRemoteTrace();
-        showMsg('ビリビリ！', '', '#ff3366'); 
-        if (navigator.vibrate) navigator.vibrate(200);
-        setTimeout(generateCourse, 1000); 
+        triggerFail();
         return;
       }
     }
@@ -1019,15 +1069,22 @@ function handleTouchMove(e) {
   lastTouchPos = { x, y };
 }
 
+function handleTouchEnd() {
+  if (isPlaying && lastTouchPos) {
+    releasePos = { ...lastTouchPos };
+  }
+  lastTouchPos = null;
+}
+
 canvas.addEventListener('touchstart', handleTouchStart);
 canvas.addEventListener('touchmove', handleTouchMove);
-canvas.addEventListener('touchend', () => { lastTouchPos = null; });
+canvas.addEventListener('touchend', handleTouchEnd);
 
 canvas.addEventListener('mousedown', handleTouchStart);
 canvas.addEventListener('mousemove', (e) => {
   if (e.buttons === 1) handleTouchMove(e);
 });
-canvas.addEventListener('mouseup', () => { lastTouchPos = null; });
+canvas.addEventListener('mouseup', handleTouchEnd);
 
 window.addEventListener('resize', () => { resizeCanvas(); });
 
