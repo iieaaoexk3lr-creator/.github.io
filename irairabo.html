@@ -41,7 +41,7 @@
     .btn-modal-close { background: #4b5563; margin-top: 8px; width: 100%; }
 
     #footer-area { position: absolute; bottom: 8px; left: 10px; width: calc(100% - 20px); display: flex; justify-content: space-between; align-items: flex-end; z-index: 10; pointer-events: none; }
-    .cheer-box { background: rgba(15, 23, 42, 0.9); border: 1px solid #3b82f6; border-radius: 10px; padding: 8px 12px; font-size: 12px; color: #93c5fd; max-width: 55%; box-shadow: 0 4px 12px rgba(0,0,0,0.5); backdrop-filter: blur(4px); }
+    .cheer-box { background: rgba(15, 23, 42, 0.9); border: 1px solid #3b82f6; border-radius: 10px; padding: 8px 12px; font-size: 12px; color: #93c5fd; max-width: 55%; box-shadow: 0 4px 12px rgba(0,0,0,0.5); backdrop-filter: blur(4px); pointer-events: auto; cursor: pointer; user-select: none; }
     .cheer-title { font-size: 9px; color: #60a5fa; margin-bottom: 2px; font-weight: bold; }
     .qr-box { background: rgba(255, 255, 255, 0.95); padding: 4px; border-radius: 6px; box-shadow: 0 4px 12px rgba(0,0,0,0.5); display: flex; flex-direction: column; align-items: center; pointer-events: auto; }
     .qr-box svg { display: block; width: 48px; height: 48px; }
@@ -169,21 +169,18 @@ let widthExpanding = false;
 const MIN_WIDTH = 40; 
 const MAX_WIDTH = 80;
 
-// --- コース変更ボタン長押し処理 (2秒) ---
+// --- 実況・応援エリア長押し処理 (2秒) ---
 let longPressTimer = null;
-let isLongPress = false;
-const changeBtn = document.getElementById('btn-change-course');
+const cheerBox = document.getElementById('cheer-box');
 
-changeBtn.addEventListener('mousedown', startPress);
-changeBtn.addEventListener('touchstart', startPress);
-changeBtn.addEventListener('mouseup', cancelPress);
-changeBtn.addEventListener('mouseleave', cancelPress);
-changeBtn.addEventListener('touchend', cancelPress);
+cheerBox.addEventListener('mousedown', startPress);
+cheerBox.addEventListener('touchstart', startPress);
+cheerBox.addEventListener('mouseup', cancelPress);
+cheerBox.addEventListener('mouseleave', cancelPress);
+cheerBox.addEventListener('touchend', cancelPress);
 
 function startPress(e) {
-  isLongPress = false;
   longPressTimer = setTimeout(() => {
-    isLongPress = true;
     showTeamModal();
   }, 2000);
 }
@@ -193,7 +190,6 @@ function cancelPress() {
 }
 
 function handleCourseBtnClick() {
-  if (isLongPress) return;
   if (!isPlaying && !isCleared) generateCourse();
 }
 
