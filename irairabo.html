@@ -61,7 +61,15 @@
 <!-- 長押しモーダル -->
 <div id="team-modal">
   <div class="modal-content">
-    <div class="modal-title">チーム同期設定</div>
+    <div class="modal-title">チーム・判定設定</div>
+    
+    <!-- 判定モード切り替えボタン -->
+    <div style="margin-bottom: 12px;">
+      <button class="modal-btn" id="btn-hitbox-mode" onclick="cycleHitboxMode()" style="background: #10b981; width: 100%;">
+        判定: 棒判定 (リアル)
+      </button>
+    </div>
+
     <input type="text" id="team-name-input" class="modal-input" placeholder="チーム名を入力" value="Team-A">
     <div class="modal-btn-group">
       <button class="modal-btn btn-sync-start" onclick="startSync()">同期開始</button>
@@ -150,7 +158,10 @@ let rawGridPath = [];
 let trace = [];
 let remoteTrace = []; 
 let lastTouchPos = null;
-let releasePos = null; // 指/マウスを離した座標の記録用
+let releasePos = null;
+
+// 当たり判定モード ('rod': 棒判定, 'point': 点判定, 'none': 無敵)
+let hitboxMode = 'rod';
 
 let startTime = 0;
 let elapsedTime = 0;
@@ -165,6 +176,25 @@ let widthExpanding = false;
 
 const MIN_WIDTH = 40; 
 const MAX_WIDTH = 80;
+const ROD_RADIUS = 8; // 棒の半径 (8px)
+
+// --- 当たり判定モード切り替え ---
+function cycleHitboxMode() {
+  const btn = document.getElementById('btn-hitbox-mode');
+  if (hitboxMode === 'rod') {
+    hitboxMode = 'point';
+    btn.innerText = "判定: 点判定 (旧)";
+    btn.style.background = "#3b82f6"; // 青色
+  } else if (hitboxMode === 'point') {
+    hitboxMode = 'none';
+    btn.innerText = "判定: 無敵 (OFF)";
+    btn.style.background = "#f59e0b"; // オレンジ色
+  } else {
+    hitboxMode = 'rod';
+    btn.innerText = "判定: 棒判定 (リアル)";
+    btn.style.background = "#10b981"; // 緑色
+  }
+}
 
 // --- 実況・応援エリア長押し処理 (2秒) ---
 let longPressTimer = null;
@@ -325,7 +355,6 @@ function sendFailEventToFirebase() {
   }
 }
 
-// ノード基準の相対座標変換によるFirebase同期
 function syncTraceToFirebase(traceData) {
   if (isSyncEnabled && teamRef && isPlaying && nodes.length > 1) {
     const normalizedTrace = traceData.slice(-30).map(p => {
@@ -620,7 +649,7 @@ function rebuildNodesFromGridPath() {
   nodes = rawGridPath.map(p => {
     let baseW = MIN_WIDTH + p.wFactor * (MAX_WIDTH - MIN_WIDTH);
     if (difficulty === 'easy') baseW = Math.max(60, MIN_WIDTH + p.wFactor * 25);
-    if (difficulty === 'hard') baseW = 32 + p.wFactor * 8;
+    if (difficulty === 'hard') baseW = 34 + p.wFactor * 8; 
 
     return {
       x: paddingLeft + playableWidth * (p.c / maxC),
@@ -682,7 +711,7 @@ function getNodeWidth(index) {
   if (!nodes[index]) return MIN_WIDTH;
   const baseW = nodes[index].w;
   if (difficulty === 'hard' && index % 2 !== 0) {
-    return Math.max(16, baseW + currentOddWidthOffset);
+    return Math.max(18, baseW + currentOddWidthOffset);
   }
   return baseW;
 }
@@ -744,7 +773,6 @@ function drawMetalRodTrace(pointsData, isRemote = false) {
 
   ctx.save();
 
-  // 移動線の設定: 太さ1px、発光エフェクト（shadowBlur）2px
   ctx.beginPath();
   ctx.moveTo(convertedPoints[0].x, convertedPoints[0].y);
   for (let i = 1; i < convertedPoints.length; i++) {
@@ -760,20 +788,37 @@ function drawMetalRodTrace(pointsData, isRemote = false) {
 
   const currentHead = convertedPoints[convertedPoints.length - 1];
 
+  // 無敵モード（'none'）のときは黄色のリング演出
+  if (hitboxMode === 'none' && !isRemote) {
+    ctx.beginPath();
+    ctx.arc(currentHead.x, currentHead.y, ROD_RADIUS + 4, 0, Math.PI * 2);
+    ctx.strokeStyle = '#f59e0b';
+    ctx.lineWidth = 2;
+    ctx.shadowColor = '#fbbf24';
+    ctx.shadowBlur = 8;
+    ctx.stroke();
+  }
+
+  // 点判定モード（'point'）のときは中心点を強調表示
+  if (hitboxMode === 'point' && !isRemote) {
+    ctx.beginPath();
+    ctx.arc(currentHead.x, currentHead.y, 2, 0, Math.PI * 2);
+    ctx.fillStyle = '#ff0055';
+    ctx.fill();
+  }
+
   ctx.shadowColor = '#000';
   ctx.shadowBlur = 6;
   ctx.shadowOffsetY = 2;
 
-  // 棒（球体）のサイズ: 半径 8px （2周り小さく調整）
-  const rodRadius = 8;
-  const grad = ctx.createRadialGradient(currentHead.x - 2, currentHead.y - 2, 1, currentHead.x, currentHead.y, rodRadius);
+  const grad = ctx.createRadialGradient(currentHead.x - 2, currentHead.y - 2, 1, currentHead.x, currentHead.y, ROD_RADIUS);
   grad.addColorStop(0, '#ffffff');
   grad.addColorStop(0.3, '#d1d5db');
   grad.addColorStop(0.7, '#4b5563');
   grad.addColorStop(1, '#111827');
 
   ctx.beginPath();
-  ctx.arc(currentHead.x, currentHead.y, rodRadius, 0, Math.PI * 2);
+  ctx.arc(currentHead.x, currentHead.y, ROD_RADIUS, 0, Math.PI * 2);
   ctx.fillStyle = grad;
   ctx.fill();
   ctx.strokeStyle = isRemote ? '#00ffcc' : '#e5e7eb';
@@ -915,6 +960,9 @@ function distToSegmentSq(p, p1, p2) {
 }
 
 function isInsideCourse(x, y) {
+  // 無敵モードの時は壁判定をパス
+  if (hitboxMode === 'none') return true;
+
   let minDistanceSq = Infinity;
   let currentWidthAtPos = MIN_WIDTH;
 
@@ -941,7 +989,16 @@ function isInsideCourse(x, y) {
     }
   }
 
-  const safeRadius = (currentWidthAtPos / 2) * 0.82;
+  // モード別判定計算
+  let safeRadius;
+  if (hitboxMode === 'rod') {
+    // 棒判定 (リアル): コース半幅から「棒の半径 (8px)」を引いた範囲内に中心があるか
+    safeRadius = Math.max(2, (currentWidthAtPos / 2) - ROD_RADIUS);
+  } else {
+    // 点判定 (旧): コース半幅（わずかなマージン考慮）内に中心があるか
+    safeRadius = (currentWidthAtPos / 2) * 0.85;
+  }
+
   return minDistanceSq <= safeRadius ** 2;
 }
 
@@ -974,7 +1031,6 @@ function handleTouchStart(e) {
   const x = touch.clientX;
   const y = touch.clientY;
 
-  // プレイ中に再押下された場合、15px離脱によるワープチェック
   if (isPlaying && releasePos) {
     const distFromRelease = Math.hypot(x - releasePos.x, y - releasePos.y);
     if (distFromRelease > 15) {
