@@ -6,33 +6,43 @@
   <title>ドキドキ棒</title>
   <style>
     body, html { margin: 0; padding: 0; width: 100%; height: 100%; background: #050508; color: #fff; font-family: sans-serif; overflow: hidden; touch-action: none; }
-    #ui { position: absolute; top: 10px; left: 10px; z-index: 10; display: flex; flex-direction: column; gap: 10px; width: calc(100% - 20px); }
+    #ui { position: absolute; top: 10px; left: 10px; z-index: 10; display: flex; flex-direction: column; gap: 8px; width: calc(100% - 20px); max-width: 400px; box-sizing: border-box; }
     
-    .stats-box { background: rgba(10, 15, 25, 0.85); padding: 15px; border-radius: 12px; border: 1px solid #334466; font-size: 16px; backdrop-filter: blur(5px); }
+    .stats-box { background: rgba(10, 15, 25, 0.85); padding: 12px 15px; border-radius: 12px; border: 1px solid #334466; font-size: 15px; backdrop-filter: blur(5px); }
     
-    /* タイトル行をフレキシブルにして右側にタイムを表示 */
-    .title-row { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 5px; }
-    .title-text { color: #fff; font-weight: bold; font-size: 22px; letter-spacing: 1px; }
-    .timer-display { font-family: monospace; font-size: 22px; font-weight: bold; color: #ffcc00; text-shadow: 0 0 8px rgba(255, 204, 0, 0.6); }
+    .title-row { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 4px; }
+    .title-text { color: #fff; font-weight: bold; font-size: 20px; letter-spacing: 1px; }
+    .timer-display { font-family: monospace; font-size: 20px; font-weight: bold; color: #ffcc00; text-shadow: 0 0 8px rgba(255, 204, 0, 0.6); }
     
     .sub-info-row { display: flex; justify-content: space-between; align-items: center; }
-    .best-display { font-size: 15px; color: #00ffcc; font-weight: bold; }
+    .best-display { font-size: 14px; color: #00ffcc; font-weight: bold; }
     
-    .controls { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
-    .btn { height: 50px; font-size: 16px; font-weight: bold; border-radius: 8px; border: none; cursor: pointer; color: #fff; opacity: 0.5; transition: opacity 0.2s; }
+    .controls { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+    .btn { height: 42px; font-size: 15px; font-weight: bold; border-radius: 8px; border: none; cursor: pointer; color: #fff; opacity: 0.5; transition: opacity 0.2s; }
     .btn.active { opacity: 1; border: 2px solid #fff; box-shadow: 0 0 10px rgba(255,255,255,0.5); }
     
     #btn-easy { background: #00ccff; }
     #btn-normal { background: #ffd700; color: #000; }
     #btn-hard { background: #ff4444; }
     
-    .extra-btns { display: flex; gap: 10px; margin-top: 5px; }
-    .secondary-btn { flex: 1; height: 40px; background: #1a2233; color: #fff; border-radius: 8px; border: 1px solid #445577; font-size: 14px; }
+    .extra-btns { display: flex; gap: 8px; }
+    .secondary-btn { flex: 1; height: 35px; background: #1a2233; color: #fff; border-radius: 8px; border: 1px solid #445577; font-size: 13px; cursor: pointer; }
+
+    /* 下部フッターエリア（左：応援コメント / 右：QRコード） */
+    #footer-area { position: absolute; bottom: 10px; left: 10px; width: calc(100% - 20px); display: flex; justify-content: space-between; align-items: flex-end; z-index: 10; pointer-events: none; }
     
+    .cheer-box { background: rgba(15, 23, 42, 0.9); border: 1px solid #3b82f6; border-radius: 10px; padding: 8px 12px; font-size: 13px; color: #93c5fd; max-width: 50%; box-shadow: 0 4px 12px rgba(0,0,0,0.5); backdrop-filter: blur(4px); }
+    .cheer-title { font-size: 10px; color: #60a5fa; margin-bottom: 2px; font-weight: bold; }
+    
+    .qr-box { background: rgba(255, 255, 255, 0.95); padding: 6px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.5); display: flex; flex-direction: column; align-items: center; pointer-events: auto; }
+    .qr-box svg { display: block; width: 64px; height: 64px; }
+    .qr-label { font-size: 9px; color: #111; margin-top: 3px; font-weight: bold; }
+
     canvas { display: block; }
-    #overlay { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 42px; font-weight: 900; display: none; text-align: center; width: 100%; pointer-events: none; text-shadow: 0 0 10px #000, 0 0 20px #000; z-index: 20; }
-    .sub-msg { font-size: 18px; font-weight: normal; color: #ccc; margin-top: 15px; }
+    #overlay { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 38px; font-weight: 900; display: none; text-align: center; width: 100%; pointer-events: none; text-shadow: 0 0 10px #000, 0 0 20px #000; z-index: 20; }
+    .sub-msg { font-size: 16px; font-weight: normal; color: #ccc; margin-top: 10px; }
   </style>
+  <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
 </head>
 <body>
 
@@ -43,7 +53,7 @@
       <div class="timer-display" id="current-time">0.00s</div>
     </div>
     <div class="sub-info-row">
-      <div>総合点: <span id="total-score" style="color:#00ffcc; font-weight:bold; font-size: 18px;">0</span> (E:<span id="count-easy">0</span> N:<span id="count-normal">0</span> H:<span id="count-hard">0</span>)</div>
+      <div>総合点: <span id="total-score" style="color:#00ffcc; font-weight:bold; font-size: 17px;">0</span> (E:<span id="count-easy">0</span> N:<span id="count-normal">0</span> H:<span id="count-hard">0</span>)</div>
       <div class="best-display">Best: <span id="best-time">--.--</span>s</div>
     </div>
   </div>
@@ -55,6 +65,17 @@
   <div class="extra-btns">
     <button class="secondary-btn" onclick="if(!isPlaying && !isCleared) generateCourse()">コース変更</button>
     <button class="secondary-btn" onclick="resetStats()" style="background:#551111; border-color:#aa3333;">リセット</button>
+  </div>
+</div>
+
+<div id="footer-area">
+  <div class="cheer-box" id="cheer-box">
+    <div class="cheer-title">実況・応援</div>
+    <span id="cheer-text">スタート地点をタッチして挑戦開始！</span>
+  </div>
+  <div class="qr-box">
+    <div id="qrcode-container"></div>
+    <div class="qr-label">スマホで遊ぶ</div>
   </div>
 </div>
 
@@ -78,22 +99,32 @@ let nodes = [];
 let trace = [];
 let lastTouchPos = null;
 
-// タイム計測用
 let startTime = 0;
 let elapsedTime = 0;
 
-// 1秒ごとの壁開閉ギミック用
 let wallTimer = null;
 let isWallClosed = false;
 let wallSegments = [];
 
-// 0.5秒ごとの奇数点伸縮ギミック用
 let widthChangeTimer = null;
 let currentOddWidthOffset = 0; 
 let widthExpanding = false; 
 
-const MIN_WIDTH = 42; 
-const MAX_WIDTH = 85;
+const MIN_WIDTH = 40; 
+const MAX_WIDTH = 80;
+
+function generateQRCode() {
+  try {
+    const typeNumber = 4;
+    const errorCorrectionLevel = 'L';
+    const qr = qrcode(typeNumber, errorCorrectionLevel);
+    qr.addData(window.location.href);
+    qr.make();
+    document.getElementById('qrcode-container').innerHTML = qr.createSvgTag({cellSize: 2, margin: 0});
+  } catch (e) {
+    document.getElementById('qrcode-container').innerText = 'QR生成失敗';
+  }
+}
 
 function loadStats() {
   const savedStats = localStorage.getItem('dokidoki_stats');
@@ -143,16 +174,13 @@ function init() {
   resizeCanvas();
   loadStats();
   generateCourse();
+  generateQRCode();
   gameLoop();
 }
 
 function resizeCanvas() {
   canvas.width = window.innerWidth;
   canvas.height = window.innerHeight;
-}
-
-function getRandomWidth(min, max) {
-  return min + Math.random() * (max - min);
 }
 
 function generateHamiltonianPath(cols, rows) {
@@ -212,47 +240,60 @@ function generateCourse() {
   widthExpanding = false;
   elapsedTime = 0;
   document.getElementById('current-time').innerText = "0.00s";
+  setCheerMessage('start');
   hideOverlay();
 
   nodes = [];
   const w = canvas.width, h = canvas.height;
+  const isDesktop = w > 768; // 画面幅による判定
+  
+  // 画面全体を広々と使用するように領域計算を動的化
   const uiElement = document.getElementById('ui');
-  const uiBottom = uiElement ? uiElement.getBoundingClientRect().bottom + 30 : 220;
-  const playableHeight = h - uiBottom - 80;
+  const uiBottom = isDesktop ? 40 : (uiElement ? uiElement.getBoundingClientRect().bottom + 10 : 180);
+  const footerTop = h - 90;
+  
+  // PCの場合はUIの右側のスペースもフル活用
+  const paddingLeft = isDesktop ? 420 : 40;
+  const paddingRight = 40;
+  const playableWidth = w - paddingLeft - paddingRight;
+  const playableHeight = footerTop - uiBottom;
 
   if (difficulty === 'easy') {
-    const cols = 3, rows = 3;
+    const cols = isDesktop ? 4 : 3;
+    const rows = 3;
     const pathCoords = generateHamiltonianPath(cols, rows);
     const count = Math.floor(Math.random() * 3) + 7;
     const slicedCoords = pathCoords.slice(0, count);
 
     nodes = slicedCoords.map(p => ({
-      x: 70 + (w - 140) * (p.c / (cols - 1)),
-      y: uiBottom + playableHeight * (0.15 + (0.7 / (rows - 1)) * p.r),
-      w: Math.max(65, getRandomWidth(MIN_WIDTH, MAX_WIDTH))
+      x: paddingLeft + playableWidth * (p.c / (cols - 1)),
+      y: uiBottom + playableHeight * (0.1 + (0.8 / (rows - 1)) * p.r),
+      w: Math.max(60, MIN_WIDTH + Math.random() * 25)
     }));
 
   } else if (difficulty === 'normal') {
-    const cols = 4, rows = 4;
+    const cols = isDesktop ? 5 : 4;
+    const rows = 4;
     const pathCoords = generateHamiltonianPath(cols, rows);
     const count = Math.floor(Math.random() * 5) + 12;
     const slicedCoords = pathCoords.slice(0, count);
 
     nodes = slicedCoords.map(p => ({
-      x: 70 + (w - 140) * (p.c / (cols - 1)),
-      y: uiBottom + playableHeight * (0.15 + (0.7 / (rows - 1)) * p.r),
-      w: getRandomWidth(MIN_WIDTH, MAX_WIDTH)
+      x: paddingLeft + playableWidth * (p.c / (cols - 1)),
+      y: uiBottom + playableHeight * (0.1 + (0.8 / (rows - 1)) * p.r),
+      w: MIN_WIDTH + Math.random() * (MAX_WIDTH - MIN_WIDTH)
     }));
 
   } else {
     // Hard
-    const cols = 4, rows = 5;
+    const cols = isDesktop ? 6 : 4;
+    const rows = 5;
     const pathCoords = generateHamiltonianPath(cols, rows);
 
     nodes = pathCoords.map(p => ({
-      x: 70 + (w - 140) * (p.c / (cols - 1)),
-      y: uiBottom + playableHeight * (0.15 + (0.7 / (rows - 1)) * p.r),
-      w: getRandomWidth(30, 42)
+      x: paddingLeft + playableWidth * (p.c / (cols - 1)),
+      y: uiBottom + playableHeight * (0.08 + (0.84 / (rows - 1)) * p.r),
+      w: 32 + Math.random() * 8
     }));
 
     const evenIndices = [];
@@ -260,7 +301,7 @@ function generateCourse() {
       evenIndices.push(i);
     }
     evenIndices.sort(() => Math.random() - 0.5);
-    wallSegments = evenIndices.slice(0, 2);
+    wallSegments = evenIndices.slice(0, Math.min(4, evenIndices.length));
 
     wallTimer = setInterval(() => {
       isWallClosed = !isWallClosed;
@@ -269,10 +310,10 @@ function generateCourse() {
     widthChangeTimer = setInterval(() => {
       if (widthExpanding) {
         currentOddWidthOffset += 1;
-        if (currentOddWidthOffset >= 6) widthExpanding = false;
+        if (currentOddWidthOffset >= 5) widthExpanding = false;
       } else {
         currentOddWidthOffset -= 1;
-        if (currentOddWidthOffset <= -10) widthExpanding = true;
+        if (currentOddWidthOffset <= -8) widthExpanding = true;
       }
     }, 500);
   }
@@ -282,10 +323,32 @@ function generateCourse() {
   lastTouchPos = null;
 }
 
+function setCheerMessage(type, progress = 0) {
+  const cheerEl = document.getElementById('cheer-text');
+  const msgs = {
+    start: ["Sをタッチしてスタート！", "深呼吸して狙いを定めろ！", "落ち着いていこう！"],
+    early: ["いい滑り出しだ！", "焦らず慎重に...", "まだ序盤、気を引き締めて！"],
+    mid: ["中盤だ、ブレるなよ！", "リズムよく進め！", "ナイスキープ！"],
+    late: ["ゴールはすぐそこだ！", "手が震えてないか？", "あと少し、慎重に！！"],
+    clear: ["見事なクリア！お見事！", "完璧な指さばき！", "素晴らしい集中力！"]
+  };
+
+  let list = msgs.start;
+  if (type === 'progress') {
+    if (progress < 0.3) list = msgs.early;
+    else if (progress < 0.7) list = msgs.mid;
+    else list = msgs.late;
+  } else if (type === 'clear') {
+    list = msgs.clear;
+  }
+
+  cheerEl.innerText = list[Math.floor(Math.random() * list.length)];
+}
+
 function getNodeWidth(index) {
   const baseW = nodes[index].w;
   if (difficulty === 'hard' && index % 2 !== 0) {
-    return Math.max(18, baseW + currentOddWidthOffset);
+    return Math.max(16, baseW + currentOddWidthOffset);
   }
   return baseW;
 }
@@ -306,7 +369,7 @@ function drawWall(p1, p2, width) {
   const halfW = width / 2;
 
   ctx.shadowColor = '#ff0044';
-  ctx.shadowBlur = 12;
+  ctx.shadowBlur = 10;
   ctx.fillStyle = '#ff0044';
   ctx.fillRect(-wallThickness / 2, -halfW, wallThickness, width);
 
@@ -362,7 +425,6 @@ function draw() {
     rightPoints.push({ x: p.x - nx * (w / 2), y: p.y - ny * (w / 2) });
   }
 
-  // 黒くり抜き
   ctx.beginPath();
   ctx.moveTo(leftPoints[0].x, leftPoints[0].y);
   for (let i = 1; i < leftPoints.length; i++) ctx.lineTo(leftPoints[i].x, leftPoints[i].y);
@@ -371,7 +433,6 @@ function draw() {
   ctx.fillStyle = '#0a0d14';
   ctx.fill();
 
-  // 発光シャープエッジ
   ctx.save();
   ctx.strokeStyle = '#ffffff';
   ctx.lineWidth = 3;
@@ -389,7 +450,6 @@ function draw() {
   ctx.stroke();
   ctx.restore();
 
-  // 壁描画
   if (difficulty === 'hard') {
     wallSegments.forEach(idx => {
       if (idx < nodes.length - 1) {
@@ -400,7 +460,6 @@ function draw() {
     });
   }
 
-  // トレース軌跡
   if (trace.length > 0) {
     ctx.save();
     ctx.strokeStyle = '#ffffff';
@@ -413,7 +472,6 @@ function draw() {
     ctx.restore();
   }
 
-  // S/Gノード
   const start = nodes[0];
   const goal = nodes[nodes.length - 1];
 
@@ -421,13 +479,13 @@ function draw() {
   ctx.shadowBlur = 10;
   
   ctx.fillStyle = '#00ffcc'; ctx.shadowColor = '#00ffcc';
-  ctx.beginPath(); ctx.arc(start.x, start.y, 20, 0, Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.arc(start.x, start.y, 18, 0, Math.PI*2); ctx.fill();
   
   ctx.fillStyle = '#ff0055'; ctx.shadowColor = '#ff0055';
-  ctx.beginPath(); ctx.arc(goal.x, goal.y, 20, 0, Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.arc(goal.x, goal.y, 18, 0, Math.PI*2); ctx.fill();
   ctx.restore();
 
-  ctx.fillStyle = '#000'; ctx.font = '900 18px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillStyle = '#000'; ctx.font = '900 16px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   ctx.fillText('S', start.x, start.y);
   ctx.fillText('G', goal.x, goal.y);
 }
@@ -468,7 +526,7 @@ function isInsideCourse(x, y) {
     }
   }
 
-  const safeRadius = (currentWidthAtPos / 2) * 0.85;
+  const safeRadius = (currentWidthAtPos / 2) * 0.82;
   return minDistanceSq <= safeRadius ** 2;
 }
 
@@ -511,7 +569,6 @@ function handleTouchMove(e) {
   }
   if (!isPlaying) return;
 
-  // クリア処理
   if (Math.hypot(x - goal.x, y - goal.y) < 25) {
     isPlaying = false;
     isCleared = true;
@@ -523,7 +580,6 @@ function handleTouchMove(e) {
     stats[difficulty]++;
     stats.total += points[difficulty];
 
-    // ベストタイム判定
     const currentBest = bestTimes[difficulty];
     let isNewRecord = false;
     if (!currentBest || finalTime < currentBest) {
@@ -532,11 +588,12 @@ function handleTouchMove(e) {
     }
 
     saveStats();
+    setCheerMessage('clear');
 
     const diffTitle = difficulty.toUpperCase();
     const subText = isNewRecord 
-      ? `新記録! ${finalTime.toFixed(2)}s (タップで次へ)` 
-      : `タイム: ${finalTime.toFixed(2)}s (タップで次へ)`;
+      ? `新記録! ${finalTime.toFixed(2)}s (クリック/タップで次へ)` 
+      : `タイム: ${finalTime.toFixed(2)}s (クリック/タップで次へ)`;
 
     showMsg(`${diffTitle} CLEAR!`, subText, '#00ffcc');
     return;
@@ -546,6 +603,11 @@ function handleTouchMove(e) {
     const prev = lastTouchPos || { x, y };
     const dist = Math.hypot(x - prev.x, y - prev.y);
     const steps = Math.max(1, Math.ceil(dist / 3));
+
+    const progress = Math.min(1, Math.max(0, trace.length / (nodes.length * 15)));
+    if (Math.random() < 0.02) {
+      setCheerMessage('progress', progress);
+    }
 
     for (let i = 1; i <= steps; i++) {
       const checkX = prev.x + (x - prev.x) * (i / steps);
