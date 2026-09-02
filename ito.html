@@ -101,14 +101,25 @@
       max-height: 80vh; overflow-y: auto;
     }
 
+    /* キャプチャ対象のメイン表示ボード */
+    .result-board {
+      background: var(--panel-bg);
+      border-radius: 16px;
+      padding: 20px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+      border: 2px dashed var(--primary-color);
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
     .theme-box {
       text-align: center;
       background: #fff8ec;
-      padding: 14px;
+      padding: 12px;
       border-radius: 12px;
-      border: 2px dashed var(--primary-color);
     }
-    .theme-text { font-size: 1.5rem; font-weight: bold; color: var(--primary-color); margin: 8px 0; }
+    .theme-text { font-size: 1.6rem; font-weight: bold; color: var(--primary-color); margin: 4px 0; }
 
     .my-card-box {
       background: #f8f9fa;
@@ -141,15 +152,7 @@
       display: flex;
       flex-direction: column;
       gap: 8px;
-      margin-top: 12px;
-      padding: 8px;
-      border-radius: 12px;
-    }
-
-    .answer-list.clear-highlight {
-      background: #fff9db;
-      border: 2px solid var(--primary-color);
-      box-shadow: 0 0 15px rgba(255, 159, 67, 0.4);
+      min-height: 40px;
     }
 
     .answer-card {
@@ -226,7 +229,6 @@
 <div class="container">
   <h1>ito</h1>
 
-  <!-- 入室ロビー -->
   <div id="lobby-panel" class="card">
     <h2 style="margin-top:0;">ルームに参加 / 作成</h2>
     <div style="display: flex; flex-direction: column; gap: 12px;">
@@ -236,7 +238,6 @@
     </div>
   </div>
 
-  <!-- メインゲームエリア -->
   <div id="game-panel" style="display: none;" class="container">
     
     <div class="card">
@@ -251,32 +252,31 @@
       </div>
     </div>
 
-    <div id="capture-area" style="display:flex; flex-direction:column; gap:16px;">
-      
-      <div class="card theme-box">
+    <div id="capture-area" class="result-board">
+      <div class="theme-box">
         <div style="font-size: 0.8rem; color: var(--text-sub);">現在のお題</div>
         <div id="disp-theme" class="theme-text">未設定</div>
-        <div style="display: flex; gap: 8px; justify-content: center;">
-          <button class="btn btn-gray btn-sm" onclick="pickRandomTheme()">ランダムお題</button>
-          <button class="btn btn-gray btn-sm" onclick="toggleModal('theme-modal', true)">直接入力</button>
-        </div>
       </div>
 
-      <div class="card">
-        <div style="display: flex; justify-content: space-between; align-items: center;">
-          <div style="font-weight: bold;">💬 答えの投稿・並べ替え</div>
-          <button class="btn btn-gray btn-sm" onclick="saveAsImage()">📸 画像で保存</button>
+      <div>
+        <div style="font-size: 0.85rem; color: var(--text-sub); margin-bottom: 8px; text-align: center;">
+          順位（タップして2つ選択で位置入れ替え）
         </div>
-        <div style="font-size: 0.8rem; color: var(--text-sub); margin: 4px 0 8px 0;">タップして2つの答えを選ぶと入れ替えられます。公開された数字は右側に表示されます。</div>
-        
-        <div style="display: flex; gap: 8px;">
-          <input type="text" id="input-answer" style="flex:1;" placeholder="例: 寿司、うまい棒 など">
-          <button class="btn btn-sm" onclick="postAnswer()">投稿</button>
-        </div>
-
         <div id="disp-answers" class="answer-list"></div>
       </div>
+    </div>
 
+    <div class="card" style="display: flex; flex-direction: column; gap: 12px;">
+      <div style="display: flex; gap: 8px; justify-content: center;">
+        <button class="btn btn-gray btn-sm" onclick="pickRandomTheme()">🎲 ランダムお題</button>
+        <button class="btn btn-gray btn-sm" onclick="toggleModal('theme-modal', true)">✏️ お題の直接入力</button>
+        <button class="btn btn-gray btn-sm" onclick="saveAsImage()">📸 画像で保存</button>
+      </div>
+
+      <div style="display: flex; gap: 8px;">
+        <input type="text" id="input-answer" style="flex:1;" placeholder="答えを入力 (例: 寿司、うまい棒)">
+        <button class="btn" onclick="postAnswer()">投稿</button>
+      </div>
     </div>
 
     <div class="card my-card-box">
@@ -383,8 +383,6 @@
     if (!rawRoomName || !myName) return alert("部屋名と名前を入力してください");
 
     myId = "p_" + Math.random().toString(36).substring(2, 9);
-    
-    //itoの直下にroomsを配置してデータ管理
     currentRoomRef = db.ref('ito/rooms/' + rawRoomName);
 
     currentRoomRef.once('value').then((snapshot) => {
@@ -472,11 +470,6 @@
 
       const answersDiv = document.getElementById('disp-answers');
       answersDiv.innerHTML = '';
-      if (data.isClearHighlighted) {
-        answersDiv.classList.add('clear-highlight');
-      } else {
-        answersDiv.classList.remove('clear-highlight');
-      }
 
       const answersList = data.answers || [];
       const usedNameCounts = {};
@@ -557,7 +550,7 @@
 
   function saveAsImage() {
     const target = document.getElementById('capture-area');
-    html2canvas(target, { backgroundColor: '#f4f6f9', scale: 2 }).then(canvas => {
+    html2canvas(target, { backgroundColor: '#ffffff', scale: 2 }).then(canvas => {
       const link = document.createElement('a');
       link.download = `ito_result_${rawRoomName}.png`;
       link.href = canvas.toDataURL();
