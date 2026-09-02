@@ -135,6 +135,84 @@
       color: #fff;
     }
 
+    /* 答え投稿リストのスタイル */
+    .answer-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-top: 12px;
+      padding: 8px;
+      border-radius: 8px;
+    }
+
+    /* 全開時のハイライト */
+    .answer-list.clear-highlight {
+      background: linear-gradient(135deg, #ffeaa7, #fdcb6e);
+      border: 3px solid #ff7675;
+      box-shadow: 0 0 20px rgba(253, 203, 110, 0.8);
+      animation: pulse 1.5s infinite alternate;
+    }
+    @keyframes pulse {
+      0% { box-shadow: 0 0 10px rgba(253, 203, 110, 0.5); }
+      100% { box-shadow: 0 0 25px rgba(255, 234, 167, 1); }
+    }
+
+    .answer-card {
+      background: #2f3542;
+      border: 2px solid transparent;
+      padding: 10px 14px;
+      border-radius: 8px;
+      cursor: pointer;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      user-select: none;
+      transition: border-color 0.2s, background-color 0.2s;
+    }
+    .clear-highlight .answer-card {
+      background: #2d3436;
+      color: #fff;
+    }
+    .answer-card.selected {
+      border-color: var(--accent-yellow);
+      background: #3e4558;
+    }
+    .answer-left {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .answer-rank {
+      font-weight: bold;
+      color: var(--accent-yellow);
+      font-size: 0.9rem;
+      min-width: 24px;
+    }
+    .answer-text {
+      font-size: 1.1rem;
+      font-weight: bold;
+    }
+    .answer-right {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .answer-author {
+      font-size: 0.85rem;
+      color: var(--text-sub);
+    }
+    .clear-highlight .answer-author {
+      color: #ffeaa7;
+    }
+    .answer-num {
+      background: var(--accent-yellow);
+      color: #000;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-weight: bold;
+      font-size: 1rem;
+    }
+
     .player-row {
       display: flex;
       justify-content: space-between;
@@ -151,16 +229,15 @@
     }
   </style>
 
-  <!-- Firebase Compatibility SDKs -->
   <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 </head>
 <body>
 
 <div class="container">
   <h1>🕷️ ito (イト)</h1>
 
-  <!-- 入室ロビー -->
   <div id="lobby-panel" class="card">
     <h2>ルームに参加 / 作成</h2>
     <div style="display: flex; flex-direction: column; gap: 12px;">
@@ -170,29 +247,20 @@
     </div>
   </div>
 
-  <!-- メインゲームエリア -->
   <div id="game-panel" style="display: none;" class="container">
     
-    <!-- ヘッダー・ステータス -->
     <div class="card">
       <div class="header-bar">
         <div>
           <div>部屋: <b id="disp-room">--</b></div>
-          <div style="font-size: 0.85rem; color: var(--text-sub);">クリア回数: <b id="disp-clears" style="color:var(--accent-green)">0</b> 次のカード枚数: <b id="disp-stage">1</b>枚</div>
+          <div style="font-size: 0.85rem; color: var(--text-sub);">
+            🏆 累計クリア数: <b id="disp-clears" style="color:var(--accent-green)">0</b> | 次の枚数: <b id="disp-stage">1</b>枚
+          </div>
         </div>
         <button class="btn btn-secondary btn-sm" onclick="toggleModal('rule-modal', true)">📖 ルールを見る</button>
       </div>
-
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 12px;">
-        <div style="font-size: 1.2rem;">ライフ: <span id="disp-lives" style="color: var(--accent-red);">❤️❤️❤️</span></div>
-        <div>
-          <button class="btn btn-sm btn-secondary" onclick="adjustLife(-1)">-1</button>
-          <button class="btn btn-sm btn-secondary" onclick="adjustLife(1)">+1</button>
-        </div>
-      </div>
     </div>
 
-    <!-- お題セクション -->
     <div class="card theme-box">
       <div style="font-size: 0.8rem; color: var(--text-sub);">現在のお題</div>
       <div id="disp-theme" class="theme-text">未設定</div>
@@ -202,13 +270,26 @@
       </div>
     </div>
 
-    <!-- 手札（自分専用） -->
     <div class="card my-card-box">
       <div style="font-size: 0.85rem; color: var(--text-sub);">あなたの手札（他の人には見えません）</div>
       <div id="disp-my-hand" style="display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin-top: 8px;"></div>
     </div>
 
-    <!-- 場（公開されたカード） -->
+    <div class="card" id="capture-area">
+      <div style="display: flex; justify-content: space-between; align-items: center;">
+        <div style="font-weight: bold;">💬 答えの投稿・並べ替え</div>
+        <button class="btn btn-secondary btn-sm" onclick="saveAsImage()">📸 画像で保存</button>
+      </div>
+      <div style="font-size: 0.8rem; color: var(--text-sub); margin: 4px 0 8px 0;">タップして2つの答えを選ぶと入れ替えられます。公開された数字は右側に表示されます。</div>
+      
+      <div style="display: flex; gap: 8px;">
+        <input type="text" id="input-answer" style="flex:1;" placeholder="例: 寿司、うまい棒 など">
+        <button class="btn btn-sm" onclick="postAnswer()">投稿</button>
+      </div>
+
+      <div id="disp-answers" class="answer-list"></div>
+    </div>
+
     <div class="card">
       <div style="display: flex; justify-content: space-between; align-items: center;">
         <span style="font-weight: bold;">場に出たカード</span>
@@ -220,39 +301,19 @@
       <div id="disp-field" class="field-cards"></div>
     </div>
 
-    <!-- メモ欄（各自 ＆ 共有） -->
-    <div class="card">
-      <!-- 1. 各自の個人メモ -->
-      <div style="margin-bottom: 16px;">
-        <div style="font-size: 0.85rem; color: var(--text-sub); margin-bottom: 4px;">🔒 自分用メモ（他の人には非公開・自動保存）</div>
-        <textarea id="my-memo" rows="2" style="width:100%; resize:vertical;" placeholder="例: 自分の考えや整理用メモ..." oninput="saveMemo()"></textarea>
-      </div>
-
-      <!-- 2. 全員の共有メモ（更新ボタンで同期） -->
-      <div style="border-top: 1px dashed rgba(255,255,255,0.1); padding-top: 12px;">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
-          <span style="font-size: 0.85rem; color: var(--accent-yellow); font-weight: bold;">🌐 全員共有メモ</span>
-          <button class="btn btn-sm btn-secondary" onclick="shareMemo()">更新して共有する</button>
-        </div>
-        <textarea id="shared-memo" rows="3" style="width:100%; resize:vertical;" placeholder="全員に共有したいメモを入力して『更新して共有する』を押してください"></textarea>
-      </div>
-    </div>
-
-    <!-- 参加者＆ホスト操作 -->
     <div class="card">
       <div style="font-weight: bold; margin-bottom: 8px;">参加者一覧</div>
       <div id="disp-players"></div>
 
       <div style="margin-top: 16px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 12px; display: flex; gap: 8px; flex-wrap: wrap;">
         <button class="btn btn-green" onclick="dealCards()">🎲 カードを配る (新ラウンド)</button>
-        <button class="btn btn-danger btn-sm" onclick="resetGame()">リセット</button>
+        <button class="btn btn-danger btn-sm" onclick="resetGame()">完全リセット</button>
       </div>
     </div>
 
   </div>
 </div>
 
-<!-- モーダル: ルール説明 -->
 <div id="rule-modal" class="modal" style="display: none;">
   <div class="modal-content">
     <h3>📖 ito 基本ルール</h3>
@@ -260,14 +321,13 @@
     <p><b>テーマの決定:</b> お題（テーマ）を1つ決めます。</p>
     <p><b>言葉で表現:</b> 自分の数字がそのお題においてどのくらいの大きさか、言葉で例えて表現します。（例：「1に近いなら地味なもの、100に近いなら派手なもの」など）</p>
     <p><b>カードを出す:</b> 順番は決まっておらず、小さいと思う人（または降順なら大きいと思う人）から自由に、話し合いながら場に出していきます。</p>
-    <p><b>クリア条件:</b> 全員のカードをルールに沿って順番に出せたらステージクリアです。順番を間違えて出すと判定でミスになりライフが減ります。</p>
+    <p><b>クリア条件:</b> 全員のカードをルールに沿って順番に出せたらステージクリアです。</p>
     <div style="text-align: right; margin-top: 16px;">
       <button class="btn btn-secondary" onclick="toggleModal('rule-modal', false)">閉じる</button>
     </div>
   </div>
 </div>
 
-<!-- モーダル: お題直接入力 -->
 <div id="theme-modal" class="modal" style="display: none;">
   <div class="modal-content">
     <h3>お題を直接入力</h3>
@@ -322,6 +382,7 @@
   let myId = "";
   let myName = "";
   let currentRoomRef = null;
+  let selectedAnswerIndex = null;
 
   function joinRoom() {
     const rawRoom = document.getElementById('input-room').value.trim();
@@ -333,32 +394,26 @@
     myId = "p_" + Math.random().toString(36).substring(2, 9);
     currentRoomRef = db.ref('rooms/' + roomName);
 
-    // ルームの初期化または参加
     currentRoomRef.once('value').then((snapshot) => {
       if (!snapshot.exists()) {
         currentRoomRef.set({
-          lives: 3,
           stage: 1,
           clears: 0,
           theme: "未設定",
           orderRule: "asc",
           field: [],
-          sharedMemo: ""
+          answers: [],
+          isClearHighlighted: false,
+          hasErrorOccurred: false
         });
       }
 
-      // プレイヤー登録
       currentRoomRef.child('players/' + myId).set({
         name: myName,
         hand: []
       });
 
-      // 退出時に自動削除
       currentRoomRef.child('players/' + myId).onDisconnect().remove();
-
-      // ローカルストレージから自分用メモ復元
-      const savedMemo = localStorage.getItem('ito_memo_' + roomName);
-      if (savedMemo) document.getElementById('my-memo').value = savedMemo;
 
       listenRoom();
       document.getElementById('lobby-panel').style.display = 'none';
@@ -372,18 +427,10 @@
       const data = snapshot.val();
       if (!data) return;
 
-      // 各ステータス描画
-      document.getElementById('disp-lives').innerText = '❤️'.repeat(Math.max(0, data.lives));
       document.getElementById('disp-stage').innerText = data.stage || 1;
       document.getElementById('disp-clears').innerText = data.clears || 0;
       document.getElementById('disp-theme').innerText = data.theme || "未設定";
 
-      // 共有メモの受信更新
-      if (data.sharedMemo !== undefined) {
-        document.getElementById('shared-memo').value = data.sharedMemo;
-      }
-
-      // ルール（昇順・降順）ラジオ更新
       const order = data.orderRule || 'asc';
       document.querySelector(`input[name="order-rule"][value="${order}"]`).checked = true;
 
@@ -402,6 +449,15 @@
         });
       }
 
+      // 場のカードマップ（名前 -> 出された数字のリスト）作成
+      const fieldMap = {};
+      if (data.field) {
+        Object.values(data.field).forEach(item => {
+          if (!fieldMap[item.name]) fieldMap[item.name] = [];
+          fieldMap[item.name].push(item.value);
+        });
+      }
+
       // 場のカード描画
       const fieldDiv = document.getElementById('disp-field');
       fieldDiv.innerHTML = '';
@@ -413,6 +469,45 @@
           fieldDiv.appendChild(card);
         });
       }
+
+      // 答えリスト描画
+      const answersDiv = document.getElementById('disp-answers');
+      answersDiv.innerHTML = '';
+      if (data.isClearHighlighted) {
+        answersDiv.classList.add('clear-highlight');
+      } else {
+        answersDiv.classList.remove('clear-highlight');
+      }
+
+      const answersList = data.answers || [];
+      const usedNameCounts = {};
+
+      answersList.forEach((item, index) => {
+        const card = document.createElement('div');
+        card.className = `answer-card ${selectedAnswerIndex === index ? 'selected' : ''}`;
+
+        let numDisp = '';
+        if (fieldMap[item.name]) {
+          const count = usedNameCounts[item.name] || 0;
+          if (fieldMap[item.name][count] !== undefined) {
+            numDisp = `<span class="answer-num">${fieldMap[item.name][count]}</span>`;
+            usedNameCounts[item.name] = count + 1;
+          }
+        }
+
+        card.innerHTML = `
+          <div class="answer-left">
+            <span class="answer-rank">${index + 1}位</span>
+            <span class="answer-text">${item.text}</span>
+          </div>
+          <div class="answer-right">
+            <span class="answer-author">${item.name}</span>
+            ${numDisp}
+          </div>
+        `;
+        card.onclick = () => handleAnswerClick(index, answersList);
+        answersDiv.appendChild(card);
+      });
 
       // 参加者一覧描画
       const playersDiv = document.getElementById('disp-players');
@@ -429,21 +524,53 @@
     });
   }
 
-  // 自分用メモ（ローカルストレージに個別保存）
-  function saveMemo() {
-    const text = document.getElementById('my-memo').value;
-    if (roomName) localStorage.setItem('ito_memo_' + roomName, text);
-  }
+  // 答えの投稿
+  function postAnswer() {
+    const input = document.getElementById('input-answer');
+    const text = input.value.trim();
+    if (!text) return;
 
-  // 共有メモ（更新ボタンでFirebaseに送信して全員に共有）
-  function shareMemo() {
-    const text = document.getElementById('shared-memo').value;
-    currentRoomRef.child('sharedMemo').set(text).then(() => {
-      alert("共有メモを更新しました！");
+    currentRoomRef.once('value', (snapshot) => {
+      const data = snapshot.val();
+      const currentAnswers = data.answers || [];
+      currentAnswers.push({ name: myName, text: text });
+
+      currentRoomRef.child('answers').set(currentAnswers).then(() => {
+        input.value = "";
+      });
     });
   }
 
-  // カードを配る
+  // 答えの入れ替え (クリック入れ替え)
+  function handleAnswerClick(index, currentAnswers) {
+    if (selectedAnswerIndex === null) {
+      selectedAnswerIndex = index;
+    } else if (selectedAnswerIndex === index) {
+      selectedAnswerIndex = null;
+    } else {
+      const temp = currentAnswers[selectedAnswerIndex];
+      currentAnswers[selectedAnswerIndex] = currentAnswers[index];
+      currentAnswers[index] = temp;
+
+      selectedAnswerIndex = null;
+      currentRoomRef.child('answers').set(currentAnswers);
+      return;
+    }
+    listenRoom();
+  }
+
+  // 画像で保存機能 (html2canvas)
+  function saveAsImage() {
+    const target = document.getElementById('capture-area');
+    html2canvas(target, { backgroundColor: '#252538' }).then(canvas => {
+      const link = document.createElement('a');
+      link.download = `ito_result_${roomName}.png`;
+      link.href = canvas.toDataURL();
+      link.click();
+    });
+  }
+
+  // カードを配る (フラグ初期化)
   function dealCards() {
     currentRoomRef.once('value', (snapshot) => {
       const data = snapshot.val();
@@ -465,6 +592,8 @@
       });
 
       currentRoomRef.child('field').remove();
+      currentRoomRef.child('isClearHighlighted').set(false);
+      currentRoomRef.child('hasErrorOccurred').set(false);
     });
   }
 
@@ -479,12 +608,14 @@
       
       let isError = false;
 
+      // 直前までのカードと比較
       if (fieldArray.length > 0) {
         const lastCard = fieldArray[fieldArray.length - 1].value;
         if (order === 'asc' && val < lastCard) isError = true;
         if (order === 'desc' && val > lastCard) isError = true;
       }
 
+      // 他のプレイヤーの手札と比較
       if (!isError && data.players) {
         Object.values(data.players).forEach(p => {
           if (p.hand) {
@@ -496,17 +627,18 @@
         });
       }
 
+      // 手札から削除して場に追加
       const myHand = data.players[myId].hand.filter(h => h !== val);
       currentRoomRef.child(`players/${myId}/hand`).set(myHand);
       currentRoomRef.child('field').push({ name: myName, value: val, error: isError });
 
+      // ミス発生フラグの更新と警告メッセージ（処理はそのまま継続）
       if (isError) {
-        const newLives = Math.max(0, data.lives - 1);
-        currentRoomRef.child('lives').set(newLives);
-        alert(`❌ 判定ミス！順番が違います。(ライフ -1)`);
-      } else {
-        setTimeout(checkClear, 300);
+        currentRoomRef.child('hasErrorOccurred').set(true);
+        alert(`❌ 判定ミス！順番が違いますが、ゲームを継続します。`);
       }
+
+      setTimeout(checkClear, 300);
     });
   }
 
@@ -520,10 +652,16 @@
         });
       }
 
+      // 全員のカードが出し切られた場合
       if (totalCardsLeft === 0) {
-        alert("🎉 全員のカードを順番通りに出し切りました！ステージクリア！");
-        currentRoomRef.child('clears').set((data.clears || 0) + 1);
-        currentRoomRef.child('stage').set((data.stage || 1) + 1);
+        if (data.hasErrorOccurred) {
+          alert("⚠️ 全員のカードが出し切られました！（途中で順番ミスがありました）");
+        } else {
+          alert("🎉 全員のカードを完全な順番通りに出し切りました！ステージクリア！");
+          currentRoomRef.child('clears').set((data.clears || 0) + 1);
+          currentRoomRef.child('stage').set((data.stage || 1) + 1);
+        }
+        currentRoomRef.child('isClearHighlighted').set(true);
       }
     });
   }
@@ -542,22 +680,30 @@
     }
   }
 
-  function adjustLife(amount) {
-    currentRoomRef.child('lives').transaction(current => Math.max(0, (current || 0) + amount));
-  }
-
   function setOrderRule(rule) {
     currentRoomRef.child('orderRule').set(rule);
   }
 
+  // 完全リセット
   function resetGame() {
-    if (confirm("ライフやステージ、場をリセットしますか？")) {
+    if (confirm("カード、お題、場、投稿された答えを全て初期状態にリセットしますか？")) {
       currentRoomRef.update({
-        lives: 3,
         stage: 1,
         clears: 0,
+        theme: "未設定",
         field: [],
-        sharedMemo: ""
+        answers: [],
+        isClearHighlighted: false,
+        hasErrorOccurred: false
+      });
+
+      currentRoomRef.child('players').once('value', (snapshot) => {
+        const players = snapshot.val();
+        if (players) {
+          Object.keys(players).forEach(pId => {
+            currentRoomRef.child(`players/${pId}/hand`).remove();
+          });
+        }
       });
     }
   }
