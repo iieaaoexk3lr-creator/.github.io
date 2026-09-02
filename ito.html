@@ -137,7 +137,6 @@
       background: var(--accent-red);
     }
 
-    /* 答え投稿リストのスタイル */
     .answer-list {
       display: flex;
       flex-direction: column;
@@ -147,7 +146,6 @@
       border-radius: 12px;
     }
 
-    /* クリア時・全員公開時のハイライト */
     .answer-list.clear-highlight {
       background: #fff9db;
       border: 2px solid var(--primary-color);
@@ -228,6 +226,7 @@
 <div class="container">
   <h1>ito</h1>
 
+  <!-- 入室ロビー -->
   <div id="lobby-panel" class="card">
     <h2 style="margin-top:0;">ルームに参加 / 作成</h2>
     <div style="display: flex; flex-direction: column; gap: 12px;">
@@ -237,6 +236,7 @@
     </div>
   </div>
 
+  <!-- メインゲームエリア -->
   <div id="game-panel" style="display: none;" class="container">
     
     <div class="card">
@@ -334,7 +334,6 @@
 </div>
 
 <script>
-  // Firebase Configuration
   const firebaseConfig = {
     apiKey: "AIzaSyC4DQhH_swesAD98Xyjg8d1lcWEkkrHrgw",
     authDomain: "gamehistory-m84.firebaseapp.com",
@@ -371,21 +370,22 @@
     "夜食に食べたいもの", "パーキングエリアで食べたいもの", "祭りに出店してほしい屋台", "駄菓子の定番", "一生食べ続けられるもの"
   ];
 
-  let roomName = "";
+  let rawRoomName = "";
   let myId = "";
   let myName = "";
   let currentRoomRef = null;
   let selectedAnswerIndex = null;
 
   function joinRoom() {
-    const rawRoom = document.getElementById('input-room').value.trim();
+    rawRoomName = document.getElementById('input-room').value.trim();
     myName = document.getElementById('input-name').value.trim();
 
-    if (!rawRoom || !myName) return alert("部屋名と名前を入力してください");
+    if (!rawRoomName || !myName) return alert("部屋名と名前を入力してください");
 
-    roomName = "ito-" + rawRoom;
     myId = "p_" + Math.random().toString(36).substring(2, 9);
-    currentRoomRef = db.ref('rooms/' + roomName);
+    
+    //itoの直下にroomsを配置してデータ管理
+    currentRoomRef = db.ref('ito/rooms/' + rawRoomName);
 
     currentRoomRef.once('value').then((snapshot) => {
       if (!snapshot.exists()) {
@@ -403,7 +403,8 @@
 
       currentRoomRef.child('players/' + myId).set({
         name: myName,
-        hand: []
+        hand: [],
+        lastActive: Date.now()
       });
 
       currentRoomRef.child('players/' + myId).onDisconnect().remove();
@@ -411,7 +412,7 @@
       listenRoom();
       document.getElementById('lobby-panel').style.display = 'none';
       document.getElementById('game-panel').style.display = 'flex';
-      document.getElementById('disp-room').innerText = rawRoom;
+      document.getElementById('disp-room').innerText = rawRoomName;
     });
   }
 
@@ -420,6 +421,15 @@
       const data = snapshot.val();
       if (!data) return;
 
+      if (data.players && !data.players[myId] && myName) {
+        currentRoomRef.child('players/' + myId).set({
+          name: myName,
+          hand: [],
+          lastActive: Date.now()
+        });
+        currentRoomRef.child('players/' + myId).onDisconnect().remove();
+      }
+
       document.getElementById('disp-stage').innerText = data.stage || 1;
       document.getElementById('disp-clears').innerText = data.clears || 0;
       document.getElementById('disp-theme').innerText = data.theme || "未設定";
@@ -427,7 +437,6 @@
       const order = data.orderRule || 'asc';
       document.querySelector(`input[name="order-rule"][value="${order}"]`).checked = true;
 
-      // 手札の更新
       const myData = data.players ? data.players[myId] : null;
       const myHandDiv = document.getElementById('disp-my-hand');
       myHandDiv.innerHTML = '';
@@ -442,7 +451,6 @@
         });
       }
 
-      // 場のカードマップ
       const fieldMap = {};
       if (data.field) {
         Object.values(data.field).forEach(item => {
@@ -451,7 +459,6 @@
         });
       }
 
-      // 場のカード描画
       const fieldDiv = document.getElementById('disp-field');
       fieldDiv.innerHTML = '';
       if (data.field) {
@@ -463,7 +470,6 @@
         });
       }
 
-      // 答えリスト描画
       const answersDiv = document.getElementById('disp-answers');
       answersDiv.innerHTML = '';
       if (data.isClearHighlighted) {
@@ -502,7 +508,6 @@
         answersDiv.appendChild(card);
       });
 
-      // 参加者一覧描画
       const playersDiv = document.getElementById('disp-players');
       playersDiv.innerHTML = '';
       if (data.players) {
@@ -550,18 +555,16 @@
     listenRoom();
   }
 
-  // お題＋答えリストをまとめてキャプチャ
   function saveAsImage() {
     const target = document.getElementById('capture-area');
     html2canvas(target, { backgroundColor: '#f4f6f9', scale: 2 }).then(canvas => {
       const link = document.createElement('a');
-      link.download = `ito_result_${roomName}.png`;
+      link.download = `ito_result_${rawRoomName}.png`;
       link.href = canvas.toDataURL();
       link.click();
     });
   }
 
-  // 「カードを配る」: 確認ダイアログを追加し誤作動を防止
   function dealCards() {
     if (!confirm("新しいラウンドを開始しますか？\n（手札、場に出たカード、投稿された答えがリセットされます）")) {
       return;
@@ -586,7 +589,6 @@
         currentRoomRef.child(`players/${pId}/hand`).set(hand);
       });
 
-      // 新しいラウンドに向けてクリア
       currentRoomRef.child('field').remove();
       currentRoomRef.child('answers').remove();
       currentRoomRef.child('isClearHighlighted').set(false);
@@ -676,7 +678,7 @@
   }
 
   function resetGame() {
-    if (confirm("カード、お題、場、投稿された答えを全て初期状態にリセットしますか？")) {
+    if (confirm("カード、お題、場、投稿された答えをリセットし、離脱したプレイヤーを整理しますか？")) {
       currentRoomRef.update({
         stage: 1,
         clears: 0,
@@ -691,7 +693,11 @@
         const players = snapshot.val();
         if (players) {
           Object.keys(players).forEach(pId => {
-            currentRoomRef.child(`players/${pId}/hand`).remove();
+            if (pId === myId) {
+              currentRoomRef.child(`players/${pId}/hand`).remove();
+            } else {
+              currentRoomRef.child(`players/${pId}`).remove();
+            }
           });
         }
       });
