@@ -219,7 +219,6 @@
     }
   </style>
 
-  <!-- Firebase & HTML2Canvas SDKs -->
   <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
@@ -229,7 +228,6 @@
 <div class="container">
   <h1>ito</h1>
 
-  <!-- 入室ロビー -->
   <div id="lobby-panel" class="card">
     <h2 style="margin-top:0;">ルームに参加 / 作成</h2>
     <div style="display: flex; flex-direction: column; gap: 12px;">
@@ -239,10 +237,8 @@
     </div>
   </div>
 
-  <!-- メインゲームエリア -->
   <div id="game-panel" style="display: none;" class="container">
     
-    <!-- ヘッダー・ステータス -->
     <div class="card">
       <div class="header-bar">
         <div>
@@ -255,10 +251,8 @@
       </div>
     </div>
 
-    <!-- 画像キャプチャ対象エリア（お題 ＋ 答え一覧） -->
     <div id="capture-area" style="display:flex; flex-direction:column; gap:16px;">
       
-      <!-- お題セクション -->
       <div class="card theme-box">
         <div style="font-size: 0.8rem; color: var(--text-sub);">現在のお題</div>
         <div id="disp-theme" class="theme-text">未設定</div>
@@ -268,7 +262,6 @@
         </div>
       </div>
 
-      <!-- 答え投稿＆並べ替えボード -->
       <div class="card">
         <div style="display: flex; justify-content: space-between; align-items: center;">
           <div style="font-weight: bold;">💬 答えの投稿・並べ替え</div>
@@ -286,13 +279,11 @@
 
     </div>
 
-    <!-- 手札（自分専用） -->
     <div class="card my-card-box">
       <div style="font-size: 0.85rem; color: var(--text-sub);">あなたの手札（他の人には見えません）</div>
       <div id="disp-my-hand" style="display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin-top: 8px;"></div>
     </div>
 
-    <!-- 場（公開されたカード） -->
     <div class="card">
       <div style="display: flex; justify-content: space-between; align-items: center;">
         <span style="font-weight: bold;">場に出たカード</span>
@@ -304,7 +295,6 @@
       <div id="disp-field" class="field-cards"></div>
     </div>
 
-    <!-- 参加者＆ホスト操作 -->
     <div class="card">
       <div style="font-weight: bold; margin-bottom: 8px;">参加者一覧</div>
       <div id="disp-players"></div>
@@ -318,7 +308,6 @@
   </div>
 </div>
 
-<!-- モーダル: ルール説明 -->
 <div id="rule-modal" class="modal" style="display: none;">
   <div class="modal-content">
     <h3>📖 ito 基本ルール</h3>
@@ -333,7 +322,6 @@
   </div>
 </div>
 
-<!-- モーダル: お題直接入力 -->
 <div id="theme-modal" class="modal" style="display: none;">
   <div class="modal-content">
     <h3>お題を直接入力</h3>
@@ -366,7 +354,7 @@
     "ゾンビ世界で生き残れそうな武器", "カッコいい言葉", "なりたい職業", "うれしいプレゼント", "やってみたいアクティビティ",
     "居酒屋の人気メニュー", "お弁当に入っていたらうれしいおかず", "遊園地の人気アトラクション", "行きたい旅行先", "言われて嬉しい言葉",
     "コンビニでつい買ってしまうもの", "世界で評価されそうな日本の文化", "タイムマシンで行きたい時代", "超能力で持ちたい能力", "映画の登場人物になれるなら",
-    "理想の泳ぐ場所", "人生で大切なもの", "怖いもの", "美味しい調味料", "部屋にあると嬉しい家電",
+    "理想のプロポーズの場所", "人生で大切なもの", "怖いもの", "美味しい調味料", "部屋にあると嬉しい家電",
     "もらって困るプレゼント", "住んでみたい場所", "カッコいい苗字", "強そうな漢字", "観たい映画のジャンル",
     "好きなおにぎりの具", "学校で楽しかった行事", "ファミレスの人気メニュー", "喫茶店の人気メニュー", "理想の休日",
     "モテる特技", "テンションが上がる瞬間", "絶叫マシンの怖さ", "痛いケガ", "恥ずかしい瞬間",
@@ -573,8 +561,12 @@
     });
   }
 
-  // 「カードを配る」: 手札・場・投稿された答えをリセットして新ラウンド開始
+  // 「カードを配る」: 確認ダイアログを追加し誤作動を防止
   function dealCards() {
+    if (!confirm("新しいラウンドを開始しますか？\n（手札、場に出たカード、投稿された答えがリセットされます）")) {
+      return;
+    }
+
     currentRoomRef.once('value', (snapshot) => {
       const data = snapshot.val();
       if (!data || !data.players) return alert("プレイヤーがいません");
