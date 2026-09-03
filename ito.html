@@ -101,7 +101,6 @@
       max-height: 80vh; overflow-y: auto;
     }
 
-    /* キャプチャ対象のメイン表示ボード */
     .result-board {
       background: var(--panel-bg);
       border-radius: 16px;
@@ -218,6 +217,26 @@
       align-items: center;
       font-size: 0.9rem;
     }
+
+    /* お題選択リスト用スタイル */
+    .theme-select-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-top: 12px;
+    }
+    .theme-select-item {
+      background: #f1f2f6;
+      padding: 10px 14px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: bold;
+      transition: background 0.2s;
+    }
+    .theme-select-item:hover {
+      background: #ffeaa7;
+      color: var(--primary-color);
+    }
   </style>
 
   <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
@@ -267,9 +286,10 @@
     </div>
 
     <div class="card" style="display: flex; flex-direction: column; gap: 12px;">
-      <div style="display: flex; gap: 8px; justify-content: center;">
-        <button class="btn btn-gray btn-sm" onclick="pickRandomTheme()">🎲 ランダムお題</button>
-        <button class="btn btn-gray btn-sm" onclick="toggleModal('theme-modal', true)">✏️ お題の直接入力</button>
+      <div style="display: flex; gap: 6px; justify-content: center; flex-wrap: wrap;">
+        <button class="btn btn-gray btn-sm" onclick="pickRandomTheme()">🎲 ランダム</button>
+        <button class="btn btn-gray btn-sm" onclick="openThemeListModal()">📋 お題を選択</button>
+        <button class="btn btn-gray btn-sm" onclick="toggleModal('theme-modal', true)">✏️ 直接入力</button>
         <button class="btn btn-gray btn-sm" onclick="saveAsImage()">📸 画像で保存</button>
       </div>
 
@@ -330,6 +350,16 @@
       <button class="btn btn-gray" onclick="toggleModal('theme-modal', false)">キャンセル</button>
       <button class="btn" onclick="submitCustomTheme()">決定</button>
     </div>
+  </div>
+</div>
+
+<div id="theme-list-modal" class="modal" style="display: none;">
+  <div class="modal-content">
+    <div style="display: flex; justify-content: space-between; align-items: center;">
+      <h3 style="margin: 0;">お題一覧から選択</h3>
+      <button class="btn btn-gray btn-sm" onclick="toggleModal('theme-list-modal', false)">✕</button>
+    </div>
+    <div id="theme-select-container" class="theme-select-list"></div>
   </div>
 </div>
 
@@ -655,6 +685,24 @@
   function pickRandomTheme() {
     const theme = presetThemes[Math.floor(Math.random() * presetThemes.length)];
     currentRoomRef.child('theme').set(theme);
+  }
+
+  function openThemeListModal() {
+    const container = document.getElementById('theme-select-container');
+    container.innerHTML = '';
+
+    presetThemes.forEach(theme => {
+      const item = document.createElement('div');
+      item.className = 'theme-select-item';
+      item.innerText = theme;
+      item.onclick = () => {
+        currentRoomRef.child('theme').set(theme);
+        toggleModal('theme-list-modal', false);
+      };
+      container.appendChild(item);
+    });
+
+    toggleModal('theme-list-modal', true);
   }
 
   function submitCustomTheme() {
