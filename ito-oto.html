@@ -1,0 +1,821 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>oto (オト) - Web App</title>
+  <style>
+    :root {
+      --bg-color: #f0fdf4;
+      --panel-bg: #ffffff;
+      --primary-color: #10ac84;
+      --accent-red: #ff5252;
+      --accent-green: #1dd1a1;
+      --accent-yellow: #feca57;
+      --text-main: #2d3436;
+      --text-sub: #576574;
+      --border-color: #c8d6e5;
+    }
+
+    body {
+      font-family: 'Helvetica Neue', Arial, 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', Meiryo, sans-serif;
+      background-color: var(--bg-color);
+      color: var(--text-main);
+      margin: 0;
+      padding: 16px;
+      display: flex;
+      justify-content: center;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 600px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    h1 {
+      text-align: center;
+      margin: 8px 0;
+      font-size: 2.2rem;
+      letter-spacing: 2px;
+      color: var(--primary-color);
+      font-weight: 800;
+    }
+
+    .card {
+      background: var(--panel-bg);
+      border-radius: 16px;
+      padding: 18px;
+      box-shadow: 0 4px 12px rgba(16, 172, 132, 0.08);
+      border: 1px solid var(--border-color);
+    }
+
+    .header-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 2px solid var(--bg-color);
+      padding-bottom: 12px;
+    }
+
+    .btn {
+      background: var(--primary-color);
+      color: #fff;
+      border: none;
+      padding: 10px 16px;
+      border-radius: 10px;
+      font-weight: bold;
+      cursor: pointer;
+      transition: transform 0.1s, opacity 0.2s;
+    }
+    .btn:active { transform: scale(0.98); }
+    .btn:hover { opacity: 0.9; }
+    .btn-secondary { background: #ee5253; }
+    .btn-gray { background: #8395a7; }
+    .btn-green { background: var(--accent-green); color: #fff; }
+    .btn-sm { padding: 6px 12px; font-size: 0.85rem; }
+
+    input[type="text"] {
+      background: #f1f2f6;
+      border: 1px solid var(--border-color);
+      color: var(--text-main);
+      padding: 10px;
+      border-radius: 8px;
+      font-size: 1rem;
+      box-sizing: border-box;
+    }
+
+    .modal {
+      position: fixed;
+      top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0,0,0,0.5);
+      display: flex; justify-content: center; align-items: center;
+      z-index: 1000;
+    }
+    .modal-content {
+      background: var(--panel-bg);
+      width: 90%; max-width: 480px;
+      border-radius: 16px; padding: 20px;
+      max-height: 80vh; overflow-y: auto;
+    }
+
+    .result-board {
+      background: var(--panel-bg);
+      border-radius: 16px;
+      padding: 20px;
+      box-shadow: 0 4px 12px rgba(16, 172, 132, 0.1);
+      border: 2px dashed var(--primary-color);
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .theme-box {
+      text-align: center;
+      background: #e6f7f2;
+      padding: 12px;
+      border-radius: 12px;
+    }
+    .theme-text { font-size: 1.6rem; font-weight: bold; color: var(--primary-color); margin: 4px 0; }
+
+    .my-card-box {
+      background: #f8f9fa;
+      padding: 14px;
+      border-radius: 12px;
+      border: 1px dashed #ced6e0;
+      text-align: center;
+    }
+
+    .field-cards {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 8px;
+      min-height: 50px;
+    }
+    .played-card {
+      background: var(--accent-green);
+      color: #fff;
+      padding: 8px 14px;
+      border-radius: 8px;
+      font-weight: bold;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+    }
+    .played-card.error {
+      background: var(--accent-red);
+    }
+
+    .answer-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      min-height: 40px;
+    }
+
+    .answer-card {
+      background: #f1f2f6;
+      border: 2px solid transparent;
+      padding: 10px 14px;
+      border-radius: 10px;
+      cursor: pointer;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      user-select: none;
+      transition: all 0.2s;
+    }
+    .answer-card.selected {
+      border-color: var(--primary-color);
+      background: #d1f2eb;
+    }
+    .answer-left {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .answer-rank {
+      font-weight: bold;
+      color: var(--primary-color);
+      font-size: 1rem;
+      min-width: 28px;
+    }
+    .answer-text {
+      font-size: 1.1rem;
+      font-weight: bold;
+    }
+    .answer-right {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .answer-author {
+      font-size: 0.85rem;
+      color: var(--text-sub);
+    }
+    .answer-num {
+      background: var(--primary-color);
+      color: #fff;
+      padding: 2px 8px;
+      border-radius: 6px;
+      font-weight: bold;
+      font-size: 1rem;
+    }
+
+    .player-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 8px;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .rule-order-selector {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      font-size: 0.9rem;
+    }
+
+    .theme-select-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-top: 12px;
+    }
+    .theme-select-item {
+      background: #f1f2f6;
+      padding: 10px 14px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: bold;
+      transition: background 0.2s;
+    }
+    .theme-select-item:hover {
+      background: #d1f2eb;
+      color: var(--primary-color);
+    }
+  </style>
+
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+</head>
+<body>
+
+<div class="container">
+  <h1>🎵 oto 🎶</h1>
+
+  <!-- 入室ロビー -->
+  <div id="lobby-panel" class="card">
+    <h2 style="margin-top:0;">ルームに参加 / 作成</h2>
+    <div style="display: flex; flex-direction: column; gap: 12px;">
+      <input type="text" id="input-room" placeholder="部屋名 (例: oto123)">
+      <input type="text" id="input-name" placeholder="あなたのプレイヤー名">
+      <button class="btn" onclick="joinRoom()">入室する</button>
+    </div>
+  </div>
+
+  <!-- メインゲームエリア -->
+  <div id="game-panel" style="display: none;" class="container">
+    
+    <div class="card">
+      <div class="header-bar">
+        <div>
+          <div>部屋: <b id="disp-room">--</b></div>
+          <div style="font-size: 0.85rem; color: var(--text-sub);">
+            🏆 累計クリア数: <b id="disp-clears" style="color:var(--accent-green)">0</b> | 次の枚数: <b id="disp-stage">1</b>枚
+          </div>
+        </div>
+        <button class="btn btn-gray btn-sm" onclick="toggleModal('rule-modal', true)">📖 ルール</button>
+      </div>
+    </div>
+
+    <!-- お題・答えの一体型カード -->
+    <div id="capture-area" class="result-board">
+      <div class="theme-box">
+        <div style="font-size: 0.8rem; color: var(--text-sub);">現在のお題 🔊</div>
+        <div id="disp-theme" class="theme-text">未設定</div>
+      </div>
+
+      <div>
+        <div style="font-size: 0.85rem; color: var(--text-sub); margin-bottom: 8px; text-align: center;">
+          順位（タップして2つ選択で位置入れ替え）
+        </div>
+        <div id="disp-answers" class="answer-list"></div>
+      </div>
+    </div>
+
+    <!-- 操作パネル -->
+    <div class="card" style="display: flex; flex-direction: column; gap: 12px;">
+      <div style="display: flex; gap: 6px; justify-content: center; flex-wrap: wrap;">
+        <button class="btn btn-gray btn-sm" onclick="pickRandomTheme()">🎲 ランダム</button>
+        <button class="btn btn-gray btn-sm" onclick="openThemeListModal()">📋 お題を選択</button>
+        <button class="btn btn-gray btn-sm" onclick="toggleModal('theme-modal', true)">✏️ 直接入力</button>
+        <button class="btn btn-gray btn-sm" onclick="saveAsImage()">📸 画像で保存</button>
+      </div>
+
+      <div style="display: flex; gap: 8px;">
+        <input type="text" id="input-answer" style="flex:1;" placeholder="擬音/行動を入力 (例: ドカーン！ / 爆発)">
+        <button class="btn" onclick="postAnswer()">投稿</button>
+      </div>
+    </div>
+
+    <!-- 手札 -->
+    <div class="card my-card-box">
+      <div style="font-size: 0.85rem; color: var(--text-sub);">あなたの手札 🎵（自分だけに表示）</div>
+      <div id="disp-my-hand" style="display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin-top: 8px;"></div>
+    </div>
+
+    <!-- 場 -->
+    <div class="card">
+      <div style="display: flex; justify-content: space-between; align-items: center;">
+        <span style="font-weight: bold;">場に出たカード 🎶</span>
+        <div class="rule-order-selector">
+          <label><input type="radio" name="order-rule" value="asc" checked onchange="setOrderRule('asc')"> 昇順 (1→100)</label>
+          <label><input type="radio" name="order-rule" value="desc" onchange="setOrderRule('desc')"> 降順 (100→1)</label>
+        </div>
+      </div>
+      <div id="disp-field" class="field-cards"></div>
+    </div>
+
+    <!-- 参加者＆ホスト操作 -->
+    <div class="card">
+      <div style="font-weight: bold; margin-bottom: 8px;">参加者一覧</div>
+      <div id="disp-players"></div>
+
+      <div style="margin-top: 16px; border-top: 1px solid var(--border-color); padding-top: 12px; display: flex; gap: 8px; flex-wrap: wrap;">
+        <button class="btn btn-green" onclick="dealCards()">🎲 カードを配る (新ラウンド)</button>
+        <button class="btn btn-secondary btn-sm" onclick="resetGame()">完全リセット</button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ルールモーダル -->
+<div id="rule-modal" class="modal" style="display: none;">
+  <div class="modal-content">
+    <h3>📖 oto 基本ルール</h3>
+    <p><b>数字と音の連携:</b> 1から100までの数字カードが配られます。自分だけが確認できます。</p>
+    <p><b>テーマの選定:</b> 「お題」に対して、自分の数字の大きさを「擬音」または「その音が出る行動」で表現します。</p>
+    <p><b>2タイプのお題:</b>
+      <br>① <b>擬音指定:</b> 例：「ドカン」という音に当てはまる行動（1=デコピン、100=隕石衝突）
+      <br>② <b>動作指定:</b> 例：「爆発」の擬音（1=ぷしゅー、100=ドガガガーン！）
+    </p>
+    <p><b>カードの提出:</b> 話し合いながら、小さい順（または大きい順）に場に出します。</p>
+    <div style="text-align: right; margin-top: 16px;">
+      <button class="btn btn-gray" onclick="toggleModal('rule-modal', false)">閉じる</button>
+    </div>
+  </div>
+</div>
+
+<!-- お題直接入力モーダル -->
+<div id="theme-modal" class="modal" style="display: none;">
+  <div class="modal-content">
+    <h3>お題を直接入力</h3>
+    <input type="text" id="input-custom-theme" style="width: 100%; margin: 12px 0;" placeholder="オリジナルのお題や擬音を入力">
+    <div style="display: flex; justify-content: flex-end; gap: 8px;">
+      <button class="btn btn-gray" onclick="toggleModal('theme-modal', false)">キャンセル</button>
+      <button class="btn" onclick="submitCustomTheme()">決定</button>
+    </div>
+  </div>
+</div>
+
+<!-- お題一覧選択モーダル -->
+<div id="theme-list-modal" class="modal" style="display: none;">
+  <div class="modal-content">
+    <div style="display: flex; justify-content: space-between; align-items: center;">
+      <h3 style="margin: 0;">お題一覧から選択</h3>
+      <button class="btn btn-gray btn-sm" onclick="toggleModal('theme-list-modal', false)">✕</button>
+    </div>
+    <div id="theme-select-container" class="theme-select-list"></div>
+  </div>
+</div>
+
+<script>
+  const firebaseConfig = {
+    apiKey: "AIzaSyC4DQhH_swesAD98Xyjg8d1lcWEkkrHrgw",
+    authDomain: "gamehistory-m84.firebaseapp.com",
+    databaseURL: "https://gamehistory-m84-default-rtdb.firebaseio.com",
+    projectId: "gamehistory-m84",
+    storageBucket: "gamehistory-m84.firebasestorage.app",
+    messagingSenderId: "475761727837",
+    appId: "1:475761727837:web:06d07e1ab4120a7ccaf0b4",
+    measurementId: "G-3636W6LC4F"
+  };
+
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.database();
+
+  // タイプ1: 擬音から行動を当てる / タイプ2: 動作・現象を擬音で表現する
+  const presetThemes = [
+    // タイプ1: 擬音指定（行動を表現）
+    "🎵 「ドカン！」",
+    "🎵 「パーン！」",
+    "🎵 「ポチャ…」",
+    "🎵 「ザーザー」",
+    "🎵 「ガシャーン！」",
+    "🎵 「トントン」",
+    "🎵 「シュッ！」",
+    "🎵 「ドタバタ」",
+    "🎵 「キラキラ」",
+    "🎵 「バン！」",
+
+    // タイプ2: 動作・現象指定（擬音で表現）
+    "🔊 「爆発」の規模を擬音で",
+    "🔊 「拍手・歓声」の盛り上がりを擬音で",
+    "🔊 「野球の投球・打球」の勢いを擬音で",
+    "🔊 「車のスピード・走行音」を擬音で",
+    "🔊 「雨や嵐の激しさ」を擬音で",
+    "🔊 「足音」の重さや恐怖感を擬音で",
+    "🔊 「料理をしている音」の美味しさを擬音で",
+    "🔊 「物を食べる音」の豪快さを擬音で",
+    "🔊 「心臓の鼓動」の緊張感を擬音で",
+    "🔊 「パンチや攻撃がヒットした音」の威力を擬音で",
+    "🔊 「モンスターの咆哮」の強さを擬音で",
+    "🔊 「魔法の発動音」の凄さを擬音で",
+    "🔊 「失敗・ガッカリした瞬間」の音を擬音で",
+    "🔊 「歓喜・テンションが上がった音」を擬音で",
+    "🔊 「ドアの開閉音」の怖さを擬音で"
+  ];
+
+  let rawRoomName = "";
+  let myId = "";
+  let myName = "";
+  let currentRoomRef = null;
+  let selectedAnswerIndex = null;
+
+  function joinRoom() {
+    rawRoomName = document.getElementById('input-room').value.trim();
+    myName = document.getElementById('input-name').value.trim();
+
+    if (!rawRoomName || !myName) return alert("部屋名と名前を入力してください");
+
+    myId = "p_" + Math.random().toString(36).substring(2, 9);
+    // oto用にデータベースパスを変更
+    currentRoomRef = db.ref('oto/rooms/' + rawRoomName);
+
+    currentRoomRef.once('value').then((snapshot) => {
+      if (!snapshot.exists()) {
+        currentRoomRef.set({
+          stage: 1,
+          clears: 0,
+          theme: "未設定",
+          orderRule: "asc",
+          field: [],
+          answers: [],
+          isClearHighlighted: false,
+          hasErrorOccurred: false
+        });
+      }
+
+      currentRoomRef.child('players/' + myId).set({
+        name: myName,
+        hand: [],
+        lastActive: Date.now()
+      });
+
+      currentRoomRef.child('players/' + myId).onDisconnect().remove();
+
+      listenRoom();
+      document.getElementById('lobby-panel').style.display = 'none';
+      document.getElementById('game-panel').style.display = 'flex';
+      document.getElementById('disp-room').innerText = rawRoomName;
+    });
+  }
+
+  function listenRoom() {
+    currentRoomRef.on('value', (snapshot) => {
+      const data = snapshot.val();
+      if (!data) return;
+
+      if (data.players && !data.players[myId] && myName) {
+        currentRoomRef.child('players/' + myId).set({
+          name: myName,
+          hand: [],
+          lastActive: Date.now()
+        });
+        currentRoomRef.child('players/' + myId).onDisconnect().remove();
+      }
+
+      document.getElementById('disp-stage').innerText = data.stage || 1;
+      document.getElementById('disp-clears').innerText = data.clears || 0;
+      document.getElementById('disp-theme').innerText = data.theme || "未設定";
+
+      const order = data.orderRule || 'asc';
+      document.querySelector(`input[name="order-rule"][value="${order}"]`).checked = true;
+
+      const myData = data.players ? data.players[myId] : null;
+      const myHandDiv = document.getElementById('disp-my-hand');
+      myHandDiv.innerHTML = '';
+      if (myData && myData.hand) {
+        myData.hand.forEach(num => {
+          const btn = document.createElement('button');
+          btn.className = 'btn btn-green';
+          btn.style.fontSize = '1.1rem';
+          btn.innerText = `${num} (公開)`;
+          btn.onclick = () => playCard(num);
+          myHandDiv.appendChild(btn);
+        });
+      }
+
+      const fieldMap = {};
+      if (data.field) {
+        Object.values(data.field).forEach(item => {
+          if (!fieldMap[item.name]) fieldMap[item.name] = [];
+          fieldMap[item.name].push(item.value);
+        });
+      }
+
+      const fieldDiv = document.getElementById('disp-field');
+      fieldDiv.innerHTML = '';
+      if (data.field) {
+        Object.values(data.field).forEach(item => {
+          const card = document.createElement('div');
+          card.className = `played-card ${item.error ? 'error' : ''}`;
+          card.innerText = `${item.name}: ${item.value}`;
+          fieldDiv.appendChild(card);
+        });
+      }
+
+      const answersDiv = document.getElementById('disp-answers');
+      answersDiv.innerHTML = '';
+
+      const answersList = data.answers || [];
+      const usedNameCounts = {};
+
+      answersList.forEach((item, index) => {
+        const card = document.createElement('div');
+        card.className = `answer-card ${selectedAnswerIndex === index ? 'selected' : ''}`;
+
+        let numDisp = '';
+        if (fieldMap[item.name]) {
+          const count = usedNameCounts[item.name] || 0;
+          if (fieldMap[item.name][count] !== undefined) {
+            numDisp = `<span class="answer-num">${fieldMap[item.name][count]}</span>`;
+            usedNameCounts[item.name] = count + 1;
+          }
+        }
+
+        card.innerHTML = `
+          <div class="answer-left">
+            <span class="answer-rank">${index + 1}位</span>
+            <span class="answer-text">${item.text}</span>
+          </div>
+          <div class="answer-right">
+            <span class="answer-author">${item.name}</span>
+            ${numDisp}
+            <div style="display: flex; gap: 2px; margin-left: 6px;" onclick="event.stopPropagation();">
+              <button class="btn btn-gray btn-sm" style="padding: 2px 6px; font-size: 0.75rem;" onclick="moveAnswerToTop(${index})" title="一番上へ">TOP</button>
+              <button class="btn btn-gray btn-sm" style="padding: 2px 6px; font-size: 0.75rem;" onclick="moveAnswerToCenter(${index})" title="真ん中へ">MID</button>
+              <button class="btn btn-gray btn-sm" style="padding: 2px 6px; font-size: 0.75rem;" onclick="moveAnswerToBottom(${index})" title="一番下へ">BOT</button>
+            </div>
+          </div>
+        `;
+        card.onclick = () => handleAnswerClick(index, answersList);
+        answersDiv.appendChild(card);
+      });
+
+      const playersDiv = document.getElementById('disp-players');
+      playersDiv.innerHTML = '';
+      if (data.players) {
+        Object.values(data.players).forEach(p => {
+          const row = document.createElement('div');
+          row.className = 'player-row';
+          const count = p.hand ? p.hand.length : 0;
+          row.innerHTML = `<span><b>${p.name}</b></span><span style="color:var(--text-sub);">残り ${count} 枚</span>`;
+          playersDiv.appendChild(row);
+        });
+      }
+    });
+  }
+
+  function postAnswer() {
+    const input = document.getElementById('input-answer');
+    const text = input.value.trim();
+    if (!text) return;
+
+    currentRoomRef.once('value', (snapshot) => {
+      const data = snapshot.val();
+      const currentAnswers = data.answers || [];
+      const existingIndex = currentAnswers.findIndex(item => item.name === myName);
+
+      if (existingIndex !== -1) {
+        currentAnswers[existingIndex].text = text;
+      } else {
+        currentAnswers.push({ name: myName, text: text });
+      }
+
+      currentRoomRef.child('answers').set(currentAnswers).then(() => {
+        input.value = "";
+      });
+    });
+  }
+
+  function handleAnswerClick(index, currentAnswers) {
+    if (selectedAnswerIndex === null) {
+      selectedAnswerIndex = index;
+    } else if (selectedAnswerIndex === index) {
+      selectedAnswerIndex = null;
+    } else {
+      const temp = currentAnswers[selectedAnswerIndex];
+      currentAnswers[selectedAnswerIndex] = currentAnswers[index];
+      currentAnswers[index] = temp;
+
+      selectedAnswerIndex = null;
+      currentRoomRef.child('answers').set(currentAnswers);
+      return;
+    }
+    listenRoom();
+  }
+
+  function moveAnswerTo(fromIndex, toIndex) {
+    currentRoomRef.once('value', (snapshot) => {
+      const data = snapshot.val();
+      const currentAnswers = data.answers || [];
+      if (fromIndex < 0 || fromIndex >= currentAnswers.length) return;
+
+      const [movedItem] = currentAnswers.splice(fromIndex, 1);
+      currentAnswers.splice(toIndex, 0, movedItem);
+
+      selectedAnswerIndex = null;
+      currentRoomRef.child('answers').set(currentAnswers);
+    });
+  }
+
+  function moveAnswerToTop(index) {
+    moveAnswerTo(index, 0);
+  }
+
+  function moveAnswerToBottom(index) {
+    currentRoomRef.once('value', (snapshot) => {
+      const data = snapshot.val();
+      const currentAnswers = data.answers || [];
+      moveAnswerTo(index, currentAnswers.length - 1);
+    });
+  }
+
+  function moveAnswerToCenter(index) {
+    currentRoomRef.once('value', (snapshot) => {
+      const data = snapshot.val();
+      const currentAnswers = data.answers || [];
+      const centerIndex = Math.floor(currentAnswers.length / 2);
+      moveAnswerTo(index, centerIndex);
+    });
+  }
+
+  function saveAsImage() {
+    const target = document.getElementById('capture-area');
+    html2canvas(target, { backgroundColor: '#ffffff', scale: 2 }).then(canvas => {
+      const link = document.createElement('a');
+      link.download = `oto_result_${rawRoomName}.png`;
+      link.href = canvas.toDataURL();
+      link.click();
+    });
+  }
+
+  function dealCards() {
+    if (!confirm("新しいラウンドを開始しますか？\n（手札、場に出たカード、投稿された答えがリセットされます）")) {
+      return;
+    }
+
+    currentRoomRef.once('value', (snapshot) => {
+      const data = snapshot.val();
+      if (!data || !data.players) return alert("プレイヤーがいません");
+
+      const playersKeys = Object.keys(data.players);
+      const stage = data.stage || 1;
+
+      let deck = Array.from({length: 100}, (_, i) => i + 1);
+      deck.sort(() => Math.random() - 0.5);
+
+      playersKeys.forEach(pId => {
+        let hand = [];
+        for (let i = 0; i < stage; i++) {
+          hand.push(deck.pop());
+        }
+        hand.sort((a, b) => a - b);
+        currentRoomRef.child(`players/${pId}/hand`).set(hand);
+      });
+
+      currentRoomRef.child('field').remove();
+      currentRoomRef.child('answers').remove();
+      currentRoomRef.child('isClearHighlighted').set(false);
+      currentRoomRef.child('hasErrorOccurred').set(false);
+    });
+  }
+
+  function playCard(val) {
+    if (!confirm(`数字「${val}」を公開しますか？`)) return;
+
+    currentRoomRef.once('value', (snapshot) => {
+      const data = snapshot.val();
+      const order = data.orderRule || 'asc';
+      const fieldArray = data.field ? Object.values(data.field) : [];
+      
+      let isError = false;
+
+      if (fieldArray.length > 0) {
+        const lastCard = fieldArray[fieldArray.length - 1].value;
+        if (order === 'asc' && val < lastCard) isError = true;
+        if (order === 'desc' && val > lastCard) isError = true;
+      }
+
+      if (!isError && data.players) {
+        Object.values(data.players).forEach(p => {
+          if (p.hand) {
+            p.hand.forEach(hVal => {
+              if (order === 'asc' && hVal < val) isError = true;
+              if (order === 'desc' && hVal > val) isError = true;
+            });
+          }
+        });
+      }
+
+      const myHand = data.players[myId].hand.filter(h => h !== val);
+      currentRoomRef.child(`players/${myId}/hand`).set(myHand);
+      currentRoomRef.child('field').push({ name: myName, value: val, error: isError });
+
+      if (isError) {
+        currentRoomRef.child('hasErrorOccurred').set(true);
+        alert(`❌ 順番が違いますが、ゲームを継続します。`);
+      }
+
+      setTimeout(checkClear, 300);
+    });
+  }
+
+  function checkClear() {
+    currentRoomRef.once('value', (snapshot) => {
+      const data = snapshot.val();
+      let totalCardsLeft = 0;
+      if (data.players) {
+        Object.values(data.players).forEach(p => {
+          if (p.hand) totalCardsLeft += p.hand.length;
+        });
+      }
+
+      if (totalCardsLeft === 0) {
+        if (data.hasErrorOccurred) {
+          alert("⚠️ 全員のカードが出し切られました！（途中で順番ミスがありました）");
+        } else {
+          alert("🎉 全員のカードを完全な順番通りに出し切りました！ステージクリア！");
+          currentRoomRef.child('clears').set((data.clears || 0) + 1);
+          currentRoomRef.child('stage').set((data.stage || 1) + 1);
+        }
+        currentRoomRef.child('isClearHighlighted').set(true);
+      }
+    });
+  }
+
+  function pickRandomTheme() {
+    const theme = presetThemes[Math.floor(Math.random() * presetThemes.length)];
+    currentRoomRef.child('theme').set(theme);
+  }
+
+  function openThemeListModal() {
+    const container = document.getElementById('theme-select-container');
+    container.innerHTML = '';
+
+    presetThemes.forEach(theme => {
+      const item = document.createElement('div');
+      item.className = 'theme-select-item';
+      item.innerText = theme;
+      item.onclick = () => {
+        currentRoomRef.child('theme').set(theme);
+        toggleModal('theme-list-modal', false);
+      };
+      container.appendChild(item);
+    });
+
+    toggleModal('theme-list-modal', true);
+  }
+
+  function submitCustomTheme() {
+    const val = document.getElementById('input-custom-theme').value.trim();
+    if (val) {
+      currentRoomRef.child('theme').set(val);
+      document.getElementById('input-custom-theme').value = "";
+      toggleModal('theme-modal', false);
+    }
+  }
+
+  function setOrderRule(rule) {
+    currentRoomRef.child('orderRule').set(rule);
+  }
+
+  function resetGame() {
+    if (confirm("カード、お題、場、投稿された答えをリセットし、離脱したプレイヤーを整理しますか？")) {
+      currentRoomRef.update({
+        stage: 1,
+        clears: 0,
+        theme: "未設定",
+        field: [],
+        answers: [],
+        isClearHighlighted: false,
+        hasErrorOccurred: false
+      });
+
+      currentRoomRef.child('players').once('value', (snapshot) => {
+        const players = snapshot.val();
+        if (players) {
+          Object.keys(players).forEach(pId => {
+            if (pId === myId) {
+              currentRoomRef.child(`players/${pId}/hand`).remove();
+            } else {
+              currentRoomRef.child(`players/${pId}`).remove();
+            }
+          });
+        }
+      });
+    }
+  }
+
+  function toggleModal(id, show) {
+    document.getElementById(id).style.display = show ? 'flex' : 'none';
+  }
+</script>
+</body>
+</html>
