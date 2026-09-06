@@ -265,7 +265,7 @@
         <div>
           <div>部屋: <b id="disp-room">--</b></div>
           <div style="font-size: 0.85rem; color: var(--text-sub);">
-            🏆 累計クリア数: <b id="disp-clears" style="color:var(--accent-green)">0</b> | 次の枚数: <b id="disp-stage">1</b>枚
+            🏆 累計クリア数: <b id="disp-clears" style="color:var(--accent-green)">0</b>
           </div>
         </div>
         <button class="btn btn-gray btn-sm" onclick="toggleModal('rule-modal', true)">📖 ルール</button>
@@ -338,7 +338,7 @@
 <div id="rule-modal" class="modal" style="display: none;">
   <div class="modal-content">
     <h3>📖 oto 基本ルール</h3>
-    <p><b>数字と音の連携:</b> 1から100までの数字カードが配られます。自分だけが確認できます。</p>
+    <p><b>数字と音の連携:</b> 1から100までの数字カードが各自に1枚ずつ配られます。自分だけが確認できます。</p>
     <p><b>テーマの選定:</b> 「お題」に対して、自分の数字の大きさを「擬音」または「その音が出る行動」で表現します。</p>
     <p><b>2タイプのお題:</b>
       <br>① <b>擬音指定:</b> 例：「ドカン」という音に当てはまる行動（1=デコピン、100=隕石衝突）
@@ -389,21 +389,17 @@
   firebase.initializeApp(firebaseConfig);
   const db = firebase.database();
 
-  // タイプ1: 擬音から行動を当てる / タイプ2: 動作・現象を擬音で表現する
   const presetThemes = [
-    // タイプ1: 擬音指定（行動を表現）
-    "🎵 「ドカン！」",
-    "🎵 「パーン！」",
-    "🎵 「ポチャ…」",
-    "🎵 「ザーザー」",
-    "🎵 「ガシャーン！」",
-    "🎵 「トントン」",
-    "🎵 「シュッ！」",
-    "🎵 「ドタバタ」",
-    "🎵 「キラキラ」",
-    "🎵 「バン！」",
-
-    // タイプ2: 動作・現象指定（擬音で表現）
+    "🎵 「ドカン！」という音が鳴る行動",
+    "🎵 「パーン！」という音が鳴る現象",
+    "🎵 「ポチャ…」という音が鳴る状況",
+    "🎵 「ザーザー」という音のシチュエーション",
+    "🎵 「ガシャーン！」と音がする出来事",
+    "🎵 「トントン」と音がするシーン",
+    "🎵 「シュッ！」と音がしそうな動作",
+    "🎵 「ドタバタ」と音がしそうな場面",
+    "🎵 「キラキラ」と音がしそうな瞬間",
+    "🎵 「バン！」と音がする攻撃・衝撃",
     "🔊 「爆発」の規模を擬音で",
     "🔊 「拍手・歓声」の盛り上がりを擬音で",
     "🔊 「野球の投球・打球」の勢いを擬音で",
@@ -434,13 +430,11 @@
     if (!rawRoomName || !myName) return alert("部屋名と名前を入力してください");
 
     myId = "p_" + Math.random().toString(36).substring(2, 9);
-    // oto用にデータベースパスを変更
     currentRoomRef = db.ref('oto/rooms/' + rawRoomName);
 
     currentRoomRef.once('value').then((snapshot) => {
       if (!snapshot.exists()) {
         currentRoomRef.set({
-          stage: 1,
           clears: 0,
           theme: "未設定",
           orderRule: "asc",
@@ -480,7 +474,6 @@
         currentRoomRef.child('players/' + myId).onDisconnect().remove();
       }
 
-      document.getElementById('disp-stage').innerText = data.stage || 1;
       document.getElementById('disp-clears').innerText = data.clears || 0;
       document.getElementById('disp-theme').innerText = data.theme || "未設定";
 
@@ -666,17 +659,12 @@
       if (!data || !data.players) return alert("プレイヤーがいません");
 
       const playersKeys = Object.keys(data.players);
-      const stage = data.stage || 1;
 
       let deck = Array.from({length: 100}, (_, i) => i + 1);
       deck.sort(() => Math.random() - 0.5);
 
       playersKeys.forEach(pId => {
-        let hand = [];
-        for (let i = 0; i < stage; i++) {
-          hand.push(deck.pop());
-        }
-        hand.sort((a, b) => a - b);
+        let hand = [deck.pop()];
         currentRoomRef.child(`players/${pId}/hand`).set(hand);
       });
 
@@ -743,7 +731,6 @@
         } else {
           alert("🎉 全員のカードを完全な順番通りに出し切りました！ステージクリア！");
           currentRoomRef.child('clears').set((data.clears || 0) + 1);
-          currentRoomRef.child('stage').set((data.stage || 1) + 1);
         }
         currentRoomRef.child('isClearHighlighted').set(true);
       }
@@ -789,7 +776,6 @@
   function resetGame() {
     if (confirm("カード、お題、場、投稿された答えをリセットし、離脱したプレイヤーを整理しますか？")) {
       currentRoomRef.update({
-        stage: 1,
         clears: 0,
         theme: "未設定",
         field: [],
