@@ -465,14 +465,15 @@
   const presetThemes = [
     "暑そうなコスプレ",
     "便利そうな超能力",
-    "怖いオバケといえば",
+    "怖いもの",
+    "怖いオバケ",
     "着替えるのが大変そうな仮装",
     "普段着でも違和感ない仮装",
-    "一番ゾンビから生き残りそうな仮装",
+    "ゾンビから生き残りそうな仮装",
     "魔女の鍋に絶対入れたくない材料",
     "部屋に飾ると夜中に動き出しそうな骨董品",
     "遭遇しても意外と会話が弾みそうな妖怪",
-    "強いモンスターといえば？",
+    "強いモンスター",
     "ハロウィンが似合いそうな都市、地域",
     "家に出たら嫌なオバケの能力",
     "魔法使いになれたら真っ先に覚えたい魔法",
@@ -486,26 +487,27 @@
     "かぼちゃを使った美味しい料理",
     "夜の学校で聞こえたら嫌な音",
     "魔女の使い魔にしたい動物",
-    "一番カッコいい闇属性の技名",
+    "カッコいい闇属性の技名",
     "一度は着てみたい本格的な怪人の衣装",
     "夜道で後ろから聞こえたらダッシュで逃げる足音",
     "透明人間になったら最初にやってみたいこと",
     "ミイラ男の包帯を解いたら出てきてほしいもの",
     "満月の夜に狼男に変身した時にやりそうな失敗",
-    "一番不気味な声で鳴く生き物",
+    "不気味な声で鳴く生き物",
     "怪しい儀式で唱えそうな意味深な呪文",
     "悪霊退散に効きそうな食べ物",
     "魔法の薬を飲むと起きそうな副作用",
     "見かけるとテンションが上がるハロウィングッズ",
     "怖そうな怪談のタイトル",
-    "一番可愛いオバケ・妖精",
+    "可愛いオバケ・妖精",
     "深夜の墓場で見えそうなもの",
     "絶対に助からないフラグが立っている発言",
     "夜の遊園地で乗れる不気味なアトラクション",
     "ホラー映画のラストで生き残りそうなタイプ",
     "ハロウィンに似合いそうな曲",
+    "ハロウィンに似合いそうな曲を歌ってそうな歌手",
     "モンスターが人間に化けている時に出しそうなボロ",
-    "魔女が渡してきそうな毒〇〇といえば"
+    "魔女が渡してきそうな毒〇〇"
   ];
 
   let rawRoomName = "";
@@ -661,8 +663,18 @@
 
     currentRoomRef.once('value', (snapshot) => {
       const data = snapshot.val();
-      const currentAnswers = data.answers || [];
-      currentAnswers.push({ name: myName, text: text });
+      let currentAnswers = data.answers || [];
+
+      // すでに自分の投稿があるか検索
+      const existingIndex = currentAnswers.findIndex(item => item.name === myName);
+
+      if (existingIndex !== -1) {
+        // 存在する場合は上書き
+        currentAnswers[existingIndex].text = text;
+      } else {
+        // 存在しない場合は新規追加
+        currentAnswers.push({ name: myName, text: text });
+      }
 
       currentRoomRef.child('answers').set(currentAnswers).then(() => {
         input.value = "";
@@ -706,7 +718,7 @@
         const card = document.createElement('div');
         card.className = `answer-card ${selectedAnswerIndex === index ? 'selected' : ''}`;
 
-  let numDisp = '';
+        let numDisp = '';
         if (fieldMap[item.name]) {
           const count = usedNameCounts[item.name] || 0;
           if (fieldMap[item.name][count] !== undefined) {
