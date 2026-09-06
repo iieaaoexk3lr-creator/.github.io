@@ -218,7 +218,6 @@
       font-size: 0.9rem;
     }
 
-    /* お題選択リスト用スタイル */
     .theme-select-list {
       display: flex;
       flex-direction: column;
@@ -248,6 +247,7 @@
 <div class="container">
   <h1>ito</h1>
 
+  <!-- 入室ロビー -->
   <div id="lobby-panel" class="card">
     <h2 style="margin-top:0;">ルームに参加 / 作成</h2>
     <div style="display: flex; flex-direction: column; gap: 12px;">
@@ -257,6 +257,7 @@
     </div>
   </div>
 
+  <!-- メインゲームエリア -->
   <div id="game-panel" style="display: none;" class="container">
     
     <div class="card">
@@ -271,6 +272,7 @@
       </div>
     </div>
 
+    <!-- お題・答えの一体型カード (画像保存の対象) -->
     <div id="capture-area" class="result-board">
       <div class="theme-box">
         <div style="font-size: 0.8rem; color: var(--text-sub);">現在のお題</div>
@@ -285,6 +287,7 @@
       </div>
     </div>
 
+    <!-- 操作パネル (お題変更、投稿、保存など) -->
     <div class="card" style="display: flex; flex-direction: column; gap: 12px;">
       <div style="display: flex; gap: 6px; justify-content: center; flex-wrap: wrap;">
         <button class="btn btn-gray btn-sm" onclick="pickRandomTheme()">🎲 ランダム</button>
@@ -299,11 +302,13 @@
       </div>
     </div>
 
+    <!-- 手札（自分専用） -->
     <div class="card my-card-box">
       <div style="font-size: 0.85rem; color: var(--text-sub);">あなたの手札（他の人には見えません）</div>
       <div id="disp-my-hand" style="display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin-top: 8px;"></div>
     </div>
 
+    <!-- 場（公開されたカード） -->
     <div class="card">
       <div style="display: flex; justify-content: space-between; align-items: center;">
         <span style="font-weight: bold;">場に出たカード</span>
@@ -315,6 +320,7 @@
       <div id="disp-field" class="field-cards"></div>
     </div>
 
+    <!-- 参加者＆ホスト操作 -->
     <div class="card">
       <div style="font-weight: bold; margin-bottom: 8px;">参加者一覧</div>
       <div id="disp-players"></div>
@@ -328,6 +334,7 @@
   </div>
 </div>
 
+<!-- ルールモーダル -->
 <div id="rule-modal" class="modal" style="display: none;">
   <div class="modal-content">
     <h3>📖 ito 基本ルール</h3>
@@ -342,6 +349,7 @@
   </div>
 </div>
 
+<!-- お題直接入力モーダル -->
 <div id="theme-modal" class="modal" style="display: none;">
   <div class="modal-content">
     <h3>お題を直接入力</h3>
@@ -353,6 +361,7 @@
   </div>
 </div>
 
+<!-- お題一覧選択モーダル -->
 <div id="theme-list-modal" class="modal" style="display: none;">
   <div class="modal-content">
     <div style="display: flex; justify-content: space-between; align-items: center;">
@@ -396,7 +405,7 @@
     "テンションが下がる出来事", "やりたくない家事", "子供に人気のあるもの", "大人っぽい趣味", "贅沢だと思うこと",
     "男らしさの象徴", "女らしさの象徴", "怒ると怖そうなもの", "足が速そうな動物", "賢そうな動物",
     "一度は食べてみたい高級食材", "宇宙に行ったらやりたいこと", "ヒーローの必殺技", "悪役の魅力", "理想の睡眠時間",
-    "友達になりたい芸能人", "カラオケで盛り上がる曲", "学校の好きな教科", "嫌いな勉強", "朝食べたいもの",
+    "友達になりたい芸能人", "カラオケで盛り上がる曲", "学校の好きな教科", "嫌いな教科", "朝食べたいもの",
     "夜食に食べたいもの", "パーキングエリアで食べたいもの", "祭りに出店してほしい屋台", "駄菓子の定番", "一生食べ続けられるもの"
   ];
 
@@ -525,6 +534,11 @@
           <div class="answer-right">
             <span class="answer-author">${item.name}</span>
             ${numDisp}
+            <div style="display: flex; gap: 2px; margin-left: 6px;" onclick="event.stopPropagation();">
+              <button class="btn btn-gray btn-sm" style="padding: 2px 6px; font-size: 0.75rem;" onclick="moveAnswerToTop(${index})" title="一番上へ">TOP</button>
+              <button class="btn btn-gray btn-sm" style="padding: 2px 6px; font-size: 0.75rem;" onclick="moveAnswerToCenter(${index})" title="真ん中へ">MID</button>
+              <button class="btn btn-gray btn-sm" style="padding: 2px 6px; font-size: 0.75rem;" onclick="moveAnswerToBottom(${index})" title="一番下へ">BOT</button>
+            </div>
           </div>
         `;
         card.onclick = () => handleAnswerClick(index, answersList);
@@ -553,7 +567,13 @@
     currentRoomRef.once('value', (snapshot) => {
       const data = snapshot.val();
       const currentAnswers = data.answers || [];
-      currentAnswers.push({ name: myName, text: text });
+      const existingIndex = currentAnswers.findIndex(item => item.name === myName);
+
+      if (existingIndex !== -1) {
+        currentAnswers[existingIndex].text = text;
+      } else {
+        currentAnswers.push({ name: myName, text: text });
+      }
 
       currentRoomRef.child('answers').set(currentAnswers).then(() => {
         input.value = "";
@@ -576,6 +596,41 @@
       return;
     }
     listenRoom();
+  }
+
+  function moveAnswerTo(fromIndex, toIndex) {
+    currentRoomRef.once('value', (snapshot) => {
+      const data = snapshot.val();
+      const currentAnswers = data.answers || [];
+      if (fromIndex < 0 || fromIndex >= currentAnswers.length) return;
+
+      const [movedItem] = currentAnswers.splice(fromIndex, 1);
+      currentAnswers.splice(toIndex, 0, movedItem);
+
+      selectedAnswerIndex = null;
+      currentRoomRef.child('answers').set(currentAnswers);
+    });
+  }
+
+  function moveAnswerToTop(index) {
+    moveAnswerTo(index, 0);
+  }
+
+  function moveAnswerToBottom(index) {
+    currentRoomRef.once('value', (snapshot) => {
+      const data = snapshot.val();
+      const currentAnswers = data.answers || [];
+      moveAnswerTo(index, currentAnswers.length - 1);
+    });
+  }
+
+  function moveAnswerToCenter(index) {
+    currentRoomRef.once('value', (snapshot) => {
+      const data = snapshot.val();
+      const currentAnswers = data.answers || [];
+      const centerIndex = Math.floor(currentAnswers.length / 2);
+      moveAnswerTo(index, centerIndex);
+    });
   }
 
   function saveAsImage() {
