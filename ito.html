@@ -265,7 +265,7 @@
         <div>
           <div>部屋: <b id="disp-room">--</b></div>
           <div style="font-size: 0.85rem; color: var(--text-sub);">
-            🏆 累計クリア数: <b id="disp-clears" style="color:var(--accent-green)">0</b> | 次の枚数: <b id="disp-stage">1</b>枚
+            🏆 累計クリア数: <b id="disp-clears" style="color:var(--accent-green)">0</b>
           </div>
         </div>
         <button class="btn btn-gray btn-sm" onclick="toggleModal('rule-modal', true)">📖 ルール</button>
@@ -405,7 +405,7 @@
     "テンションが下がる出来事", "やりたくない家事", "子供に人気のあるもの", "大人っぽい趣味", "贅沢だと思うこと",
     "男らしさの象徴", "女らしさの象徴", "怒ると怖そうなもの", "足が速そうな動物", "賢そうな動物",
     "一度は食べてみたい高級食材", "宇宙に行ったらやりたいこと", "ヒーローの必殺技", "悪役の魅力", "理想の睡眠時間",
-    "友達になりたい芸能人", "カラオケで盛り上がる曲", "学校の好きな教科", "嫌いな教科", "朝食べたいもの",
+    "友達になりたい芸能人", "カラオケで盛り上がる曲", "学校の好きな教科", "嫌いな勉強", "朝食べたいもの",
     "夜食に食べたいもの", "パーキングエリアで食べたいもの", "祭りに出店してほしい屋台", "駄菓子の定番", "一生食べ続けられるもの"
   ];
 
@@ -427,7 +427,6 @@
     currentRoomRef.once('value').then((snapshot) => {
       if (!snapshot.exists()) {
         currentRoomRef.set({
-          stage: 1,
           clears: 0,
           theme: "未設定",
           orderRule: "asc",
@@ -467,7 +466,6 @@
         currentRoomRef.child('players/' + myId).onDisconnect().remove();
       }
 
-      document.getElementById('disp-stage').innerText = data.stage || 1;
       document.getElementById('disp-clears').innerText = data.clears || 0;
       document.getElementById('disp-theme').innerText = data.theme || "未設定";
 
@@ -653,17 +651,12 @@
       if (!data || !data.players) return alert("プレイヤーがいません");
 
       const playersKeys = Object.keys(data.players);
-      const stage = data.stage || 1;
 
       let deck = Array.from({length: 100}, (_, i) => i + 1);
       deck.sort(() => Math.random() - 0.5);
 
       playersKeys.forEach(pId => {
-        let hand = [];
-        for (let i = 0; i < stage; i++) {
-          hand.push(deck.pop());
-        }
-        hand.sort((a, b) => a - b);
+        let hand = [deck.pop()]; // 常に原則1枚配る
         currentRoomRef.child(`players/${pId}/hand`).set(hand);
       });
 
@@ -730,7 +723,6 @@
         } else {
           alert("🎉 全員のカードを完全な順番通りに出し切りました！ステージクリア！");
           currentRoomRef.child('clears').set((data.clears || 0) + 1);
-          currentRoomRef.child('stage').set((data.stage || 1) + 1);
         }
         currentRoomRef.child('isClearHighlighted').set(true);
       }
@@ -776,7 +768,6 @@
   function resetGame() {
     if (confirm("カード、お題、場、投稿された答えをリセットし、離脱したプレイヤーを整理しますか？")) {
       currentRoomRef.update({
-        stage: 1,
         clears: 0,
         theme: "未設定",
         field: [],
