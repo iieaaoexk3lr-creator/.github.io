@@ -119,6 +119,7 @@
       border-radius: 12px;
     }
     .theme-text { font-size: 1.6rem; font-weight: bold; color: var(--primary-color); margin: 4px 0; }
+    .host-badge { font-size: 0.8rem; background: #ffeaa7; color: #d35400; padding: 2px 8px; border-radius: 12px; font-weight: bold; margin-top: 4px; display: inline-block; }
 
     .my-card-box {
       background: #f8f9fa;
@@ -159,13 +160,13 @@
       border: 2px solid transparent;
       padding: 10px 14px;
       border-radius: 10px;
-      cursor: pointer;
       display: flex;
       justify-content: space-between;
       align-items: center;
       user-select: none;
       transition: all 0.2s;
     }
+    .answer-card.is-host { cursor: pointer; }
     .answer-card.selected {
       border-color: var(--primary-color);
       background: #ffeaa7;
@@ -268,7 +269,10 @@
             🏆 累計クリア数: <b id="disp-clears" style="color:var(--accent-green)">0</b>
           </div>
         </div>
-        <button class="btn btn-gray btn-sm" onclick="toggleModal('rule-modal', true)">📖 ルール</button>
+        <div style="display: flex; gap: 6px;">
+          <button class="btn btn-gray btn-sm" onclick="toggleModal('rule-modal', true)">📖 ルール</button>
+          <button class="btn btn-secondary btn-sm" onclick="leaveRoom()">🚪 退室</button>
+        </div>
       </div>
     </div>
 
@@ -277,11 +281,12 @@
       <div class="theme-box">
         <div style="font-size: 0.8rem; color: var(--text-sub);">現在のお題</div>
         <div id="disp-theme" class="theme-text">未設定</div>
+        <div id="disp-host-name" class="host-badge" style="display: none;">親: --</div>
       </div>
 
       <div>
-        <div style="font-size: 0.85rem; color: var(--text-sub); margin-bottom: 8px; text-align: center;">
-          順位（タップして2つ選択で位置入れ替え）
+        <div id="answer-hint-text" style="font-size: 0.85rem; color: var(--text-sub); margin-bottom: 8px; text-align: center;">
+          順位（親のみ移動可能）
         </div>
         <div id="disp-answers" class="answer-list"></div>
       </div>
@@ -339,9 +344,10 @@
   <div class="modal-content">
     <h3>📖 ito 基本ルール</h3>
     <p><b>数字の秘密:</b> 1から100までの数字カードが各自に配られます。自分だけが見て、数字をそのまま言ってはいけません。</p>
-    <p><b>テーマの決定:</b> お題（テーマ）を1つ決めます。</p>
+    <p><b>テーマの決定:</b> お題（テーマ）を1つ決めます。決めた人が「親」になります。</p>
     <p><b>言葉で表現:</b> 自分の数字がそのお題においてどのくらいの大きさか、言葉で例えて表現します。</p>
     <p><b>カードを出す:</b> 順番は決まっておらず、小さいと思う人（降順なら大きいと思う人）から自由に、話し合いながら場に出していきます。</p>
+    <p><b>並び替え:</b> 親権限を持っている人のみ、回答の順位を▲▼ボタンやタップで入れ替えられます。</p>
     <p><b>クリア条件:</b> 全員のカードをルールに沿って順番に出せたらステージクリアです。</p>
     <div style="text-align: right; margin-top: 16px;">
       <button class="btn btn-gray" onclick="toggleModal('rule-modal', false)">閉じる</button>
@@ -414,14 +420,34 @@
   let myName = "";
   let currentRoomRef = null;
   let selectedAnswerIndex = null;
+  let isCurrentHost = false;
 
-  function joinRoom() {
+  // 起動時の自動復元処理
+  window.addEventListener('DOMContentLoaded', () => {
+    const savedRoom = localStorage.getItem('ito_room');
+    const savedName = localStorage.getItem('ito_name');
+    const savedId = localStorage.getItem('ito_id');
+
+    if (savedRoom && savedName && savedId) {
+      document.getElementById('input-room').value = savedRoom;
+      document.getElementById('input-name').value = savedName;
+      joinRoom(savedId);
+    }
+  });
+
+  function joinRoom(existingId = null) {
     rawRoomName = document.getElementById('input-room').value.trim();
     myName = document.getElementById('input-name').value.trim();
 
     if (!rawRoomName || !myName) return alert("部屋名と名前を入力してください");
 
-    myId = "p_" + Math.random().toString(36).substring(2, 9);
+    myId = existingId || ("p_" + Math.random().toString(36).substring(2, 9));
+    
+    // LocalStorageへ保存
+    localStorage.setItem('ito_room', rawRoomName);
+    localStorage.setItem('ito_name', myName);
+    localStorage.setItem('ito_id', myId);
+
     currentRoomRef = db.ref('ito/rooms/' + rawRoomName);
 
     currentRoomRef.once('value').then((snapshot) => {
@@ -429,6 +455,8 @@
         currentRoomRef.set({
           clears: 0,
           theme: "未設定",
+          hostId: null,
+          hostName: null,
           orderRule: "asc",
           field: [],
           answers: [],
@@ -437,13 +465,10 @@
         });
       }
 
-      currentRoomRef.child('players/' + myId).set({
+      currentRoomRef.child('players/' + myId).update({
         name: myName,
-        hand: [],
         lastActive: Date.now()
       });
-
-      currentRoomRef.child('players/' + myId).onDisconnect().remove();
 
       listenRoom();
       document.getElementById('lobby-panel').style.display = 'none';
@@ -452,22 +477,54 @@
     });
   }
 
+  function leaveRoom() {
+    if (!confirm("本当に退室しますか？")) return;
+
+    if (currentRoomRef && myId) {
+      currentRoomRef.child('players/' + myId).remove();
+      currentRoomRef.off();
+    }
+
+    localStorage.removeItem('ito_room');
+    localStorage.removeItem('ito_name');
+    localStorage.removeItem('ito_id');
+
+    location.reload();
+  }
+
   function listenRoom() {
     currentRoomRef.on('value', (snapshot) => {
       const data = snapshot.val();
       if (!data) return;
 
       if (data.players && !data.players[myId] && myName) {
-        currentRoomRef.child('players/' + myId).set({
+        currentRoomRef.child('players/' + myId).update({
           name: myName,
-          hand: [],
           lastActive: Date.now()
         });
-        currentRoomRef.child('players/' + myId).onDisconnect().remove();
       }
+
+      isCurrentHost = (data.hostId === myId);
 
       document.getElementById('disp-clears').innerText = data.clears || 0;
       document.getElementById('disp-theme').innerText = data.theme || "未設定";
+
+      const hostBadge = document.getElementById('disp-host-name');
+      if (data.hostName) {
+        hostBadge.style.display = 'inline-block';
+        hostBadge.innerText = `親: ${data.hostName}${isCurrentHost ? ' (あなた)' : ''}`;
+      } else {
+        hostBadge.style.display = 'none';
+      }
+
+      const hintText = document.getElementById('answer-hint-text');
+      if (isCurrentHost) {
+        hintText.innerText = "順位（あなたは親です。▲▼移動やタップ選択で入れ替え可能）";
+        hintText.style.color = "var(--primary-color)";
+      } else {
+        hintText.innerText = "順位（親のみ移動操作が可能です）";
+        hintText.style.color = "var(--text-sub)";
+      }
 
       const order = data.orderRule || 'asc';
       document.querySelector(`input[name="order-rule"][value="${order}"]`).checked = true;
@@ -513,7 +570,7 @@
 
       answersList.forEach((item, index) => {
         const card = document.createElement('div');
-        card.className = `answer-card ${selectedAnswerIndex === index ? 'selected' : ''}`;
+        card.className = `answer-card ${selectedAnswerIndex === index ? 'selected' : ''} ${isCurrentHost ? 'is-host' : ''}`;
 
         let numDisp = '';
         if (fieldMap[item.name]) {
@@ -527,6 +584,16 @@
         const isFirst = index === 0;
         const isLast = index === answersList.length - 1;
 
+        let controlsHtml = '';
+        if (isCurrentHost) {
+          controlsHtml = `
+            <div style="display: flex; gap: 2px; margin-left: 6px;" onclick="event.stopPropagation();">
+              <button class="btn btn-gray btn-sm" style="padding: 2px 8px; font-size: 0.8rem;" onclick="moveAnswerStep(${index}, -1)" ${isFirst ? 'disabled style="opacity:0.3; cursor:default;"' : ''}>▲</button>
+              <button class="btn btn-gray btn-sm" style="padding: 2px 8px; font-size: 0.8rem;" onclick="moveAnswerStep(${index}, 1)" ${isLast ? 'disabled style="opacity:0.3; cursor:default;"' : ''}>▼</button>
+            </div>
+          `;
+        }
+
         card.innerHTML = `
           <div class="answer-left">
             <span class="answer-rank">${index + 1}位</span>
@@ -535,13 +602,13 @@
           <div class="answer-right">
             <span class="answer-author">${item.name}</span>
             ${numDisp}
-            <div style="display: flex; gap: 2px; margin-left: 6px;" onclick="event.stopPropagation();">
-              <button class="btn btn-gray btn-sm" style="padding: 2px 8px; font-size: 0.8rem;" onclick="moveAnswerStep(${index}, -1)" ${isFirst ? 'disabled style="opacity:0.3; cursor:default;"' : ''}>▲</button>
-              <button class="btn btn-gray btn-sm" style="padding: 2px 8px; font-size: 0.8rem;" onclick="moveAnswerStep(${index}, 1)" ${isLast ? 'disabled style="opacity:0.3; cursor:default;"' : ''}>▼</button>
-            </div>
+            ${controlsHtml}
           </div>
         `;
-        card.onclick = () => handleAnswerClick(index, answersList);
+
+        if (isCurrentHost) {
+          card.onclick = () => handleAnswerClick(index, answersList);
+        }
         answersDiv.appendChild(card);
       });
 
@@ -556,6 +623,14 @@
           playersDiv.appendChild(row);
         });
       }
+    });
+  }
+
+  function setHostAndTheme(themeText) {
+    currentRoomRef.update({
+      theme: themeText,
+      hostId: myId,
+      hostName: myName
     });
   }
 
@@ -582,6 +657,8 @@
   }
 
   function handleAnswerClick(index, currentAnswers) {
+    if (!isCurrentHost) return;
+
     if (selectedAnswerIndex === null) {
       selectedAnswerIndex = index;
     } else if (selectedAnswerIndex === index) {
@@ -599,6 +676,8 @@
   }
 
   function moveAnswerStep(index, direction) {
+    if (!isCurrentHost) return;
+
     currentRoomRef.once('value', (snapshot) => {
       const data = snapshot.val();
       const currentAnswers = data.answers || [];
@@ -608,7 +687,7 @@
 
       const temp = currentAnswers[index];
       currentAnswers[index] = currentAnswers[targetIndex];
-      currentAnswers[targetIndex]= temp;
+      currentAnswers[targetIndex] = temp;
 
       selectedAnswerIndex = null;
       currentRoomRef.child('answers').set(currentAnswers);
@@ -626,7 +705,7 @@
   }
 
   function dealCards() {
-    if (!confirm("新しいラウンドを開始しますか？\n（手札、場に出たカード、投稿された答えがリセットされます）")) {
+    if (!confirm("新しいラウンドを開始しますか？\n（親権限がリセットされ、手札・場・投稿がクリアされます）")) {
       return;
     }
 
@@ -634,18 +713,46 @@
       const data = snapshot.val();
       if (!data || !data.players) return alert("プレイヤーがいません");
 
-      const playersKeys = Object.keys(data.players);
+      const playerIds = Object.keys(data.players);
+      if (playerIds.length === 0) return alert("プレイヤーがいません");
 
-      let deck = Array.from({length: 100}, (_, i) => i + 1);
+      // シャッフル用プレイヤーリスト複製
+      let remainingPlayers = [...playerIds].sort(() => Math.random() - 0.5);
+      const usedNumbers = new Set();
+      const assignedHands = {};
+
+      // 1. 最小値（1〜10）担当の選出
+      const minPlayerId = remainingPlayers.pop();
+      const minNum = Math.floor(Math.random() * 10) + 1; // 1~10
+      assignedHands[minPlayerId] = [minNum];
+      usedNumbers.add(minNum);
+
+      // 2. 最大値（90〜100）担当の選出（プレイヤーが複数いる場合）
+      if (remainingPlayers.length > 0) {
+        const maxPlayerId = remainingPlayers.pop();
+        const maxNum = Math.floor(Math.random() * 11) + 90; // 90~100
+        assignedHands[maxPlayerId] = [maxNum];
+        usedNumbers.add(maxNum);
+      }
+
+      // 3. 残りカード（1〜100から使用済みを除外）のシャッフル
+      let deck = Array.from({length: 100}, (_, i) => i + 1).filter(n => !usedNumbers.has(n));
       deck.sort(() => Math.random() - 0.5);
 
-      playersKeys.forEach(pId => {
-        let hand = [deck.pop()];
-        currentRoomRef.child(`players/${pId}/hand`).set(hand);
+      // 4. 残りのメンバーへ完全ランダム配布
+      remainingPlayers.forEach(pId => {
+        assignedHands[pId] = [deck.pop()];
+      });
+
+      // Firebaseへ手札を反映
+      playerIds.forEach(pId => {
+        currentRoomRef.child(`players/${pId}/hand`).set(assignedHands[pId]);
       });
 
       currentRoomRef.child('field').remove();
       currentRoomRef.child('answers').remove();
+      currentRoomRef.child('hostId').remove();
+      currentRoomRef.child('hostName').remove();
       currentRoomRef.child('isClearHighlighted').set(false);
       currentRoomRef.child('hasErrorOccurred').set(false);
     });
@@ -715,7 +822,7 @@
 
   function pickRandomTheme() {
     const theme = presetThemes[Math.floor(Math.random() * presetThemes.length)];
-    currentRoomRef.child('theme').set(theme);
+    setHostAndTheme(theme);
   }
 
   function openThemeListModal() {
@@ -727,7 +834,7 @@
       item.className = 'theme-select-item';
       item.innerText = theme;
       item.onclick = () => {
-        currentRoomRef.child('theme').set(theme);
+        setHostAndTheme(theme);
         toggleModal('theme-list-modal', false);
       };
       container.appendChild(item);
@@ -739,7 +846,7 @@
   function submitCustomTheme() {
     const val = document.getElementById('input-custom-theme').value.trim();
     if (val) {
-      currentRoomRef.child('theme').set(val);
+      setHostAndTheme(val);
       document.getElementById('input-custom-theme').value = "";
       toggleModal('theme-modal', false);
     }
@@ -750,10 +857,12 @@
   }
 
   function resetGame() {
-    if (confirm("カード、お題、場、投稿された答えをリセットし、離脱したプレイヤーを整理しますか？")) {
+    if (confirm("カード、お題、親権限、場、投稿された答えを全てリセットしますか？")) {
       currentRoomRef.update({
         clears: 0,
         theme: "未設定",
+        hostId: null,
+        hostName: null,
         field: [],
         answers: [],
         isClearHighlighted: false,
@@ -764,11 +873,7 @@
         const players = snapshot.val();
         if (players) {
           Object.keys(players).forEach(pId => {
-            if (pId === myId) {
-              currentRoomRef.child(`players/${pId}/hand`).remove();
-            } else {
-              currentRoomRef.child(`players/${pId}`).remove();
-            }
+            currentRoomRef.child(`players/${pId}/hand`).remove();
           });
         }
       });
