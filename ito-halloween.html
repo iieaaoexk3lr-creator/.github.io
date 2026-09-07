@@ -183,20 +183,6 @@
       padding-bottom: 4px;
     }
 
-    .radio-group {
-      display: flex;
-      gap: 16px;
-      margin-bottom: 12px;
-      font-size: 0.9rem;
-    }
-
-    .radio-group label {
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      gap: 4px;
-    }
-
     .played-card {
       background: #3d246c;
       border: 1px solid var(--accent-orange);
@@ -350,7 +336,7 @@
         <li>1〜100の数字がランダムに配られます。</li>
         <li>お題に沿って、自分の数字の大きさを「言葉」で表現して投稿しましょう。</li>
         <li><span class="rule-warning">⚠️ 【重要】配られた数字そのものや、数字を直接連想させる表現を言ってはいけません！</span></li>
-        <li>全員の言葉が出揃ったら、数字が小さい順（または大きい順）になるよう話し合ってカードを出したり並び替えたりしましょう！</li>
+        <li>全員の言葉が出揃ったら、数字が小さい順になるよう話し合ってカードを出したり並び替えたりしましょう！</li>
       </ul>
     </div>
 
@@ -376,8 +362,18 @@
           <div>🔮 Stage: <b id="disp-stage">1</b> | ✨ Clear: <b id="disp-clears">0</b></div>
         </div>
 
-        <div class="rule-box" style="margin-bottom:12px;">
-          <span class="rule-warning">🚫 禁止事項：</span> 配られた数字（直接的な数字や序数など）を口にしたりテキストに入力してはいけません！
+        <!-- ルール説明表示トグルボタン -->
+        <button class="btn btn-gray" style="width:100%; margin-bottom:12px; font-size:0.85rem;" onclick="toggleInGameRule()">📜 ルール説明を表示 / 非表示</button>
+
+        <!-- 折りたたみ可能なルール説明 -->
+        <div id="ingame-rule-box" class="rule-box" style="display:none; margin-bottom:12px;">
+          <strong>📜 遊び方・ルール</strong>
+          <ul>
+            <li>1〜100の数字がランダムに配られます。</li>
+            <li>お題に沿って、自分の数字の大きさを「言葉」で表現して投稿しましょう。</li>
+            <li><span class="rule-warning">⚠️ 【重要】配られた数字そのものや、数字を直接連想させる表現を言ってはいけません！</span></li>
+            <li>全員の言葉が出揃ったら、数字が小さい順になるよう話し合ってカードを出したり並び替えたりしましょう！</li>
+          </ul>
         </div>
 
         <!-- お題エリア -->
@@ -387,18 +383,19 @@
         </div>
 
         <!-- お題操作ボタン -->
-        <div class="flex-wrap" style="margin-bottom: 12px;">
+        <div class="flex-wrap" style="margin-bottom: 16px;">
           <button class="btn btn-purple" onclick="pickRandomTheme()">🎲 ランダムお題</button>
           <button class="btn btn-gray" onclick="openThemeListModal()">📜 一覧から選ぶ</button>
           <button class="btn btn-gray" onclick="toggleModal('theme-modal', true)">✏️ 自由入力</button>
         </div>
 
-        <!-- ルール設定 -->
-        <div class="radio-group">
-          <span>⚖️ 並び順:</span>
-          <label><input type="radio" name="order-rule" value="asc" checked onclick="setOrderRule('asc')"> ⬆️ 昇順 (順加算)</label>
-          <label><input type="radio" name="order-rule" value="desc" onclick="setOrderRule('desc')"> ⬇️ 降順 (逆加算)</label>
+        <!-- 投稿・並び替えエリア (お題のすぐ下に配置) -->
+        <div class="section-title">💬 投稿された回答 (▲▼で順番入れ替え)</div>
+        <div class="flex-row" style="margin-bottom: 8px;">
+          <input type="text" id="input-answer" placeholder="回答を入力...（数字は秘密！）">
+          <button class="btn btn-orange" onclick="postAnswer()" style="white-space:nowrap;">🔮 送信</button>
         </div>
+        <div id="disp-answers" style="margin-bottom: 16px;"></div>
 
         <!-- 手札エリア -->
         <div class="section-title">🎴 自分の手札 (自分にだけ数字が見えています)</div>
@@ -407,14 +404,6 @@
         <!-- 場に出たカード -->
         <div class="section-title">🦇 場に出たカード</div>
         <div id="disp-field" class="flex-wrap" style="margin-bottom: 16px;"></div>
-
-        <!-- 投稿・並び替えエリア -->
-        <div class="section-title">💬 投稿された回答 (▲▼で順番入れ替え)</div>
-        <div class="flex-row" style="margin-bottom: 8px;">
-          <input type="text" id="input-answer" placeholder="回答を入力...（数字は秘密！）">
-          <button class="btn btn-orange" onclick="postAnswer()" style="white-space:nowrap;">🔮 送信</button>
-        </div>
-        <div id="disp-answers"></div>
       </div>
     </div>
 
@@ -542,7 +531,6 @@
           stage: 1,
           clears: 0,
           theme: "未設定",
-          orderRule: "asc",
           field: [],
           answers: [],
           isClearHighlighted: false,
@@ -582,10 +570,6 @@
       document.getElementById('disp-stage').innerText = data.stage || 1;
       document.getElementById('disp-clears').innerText = data.clears || 0;
       document.getElementById('disp-theme').innerText = data.theme || "未設定";
-
-      const order = data.orderRule || 'asc';
-      const radioBtn = document.querySelector(`input[name="order-rule"][value="${order}"]`);
-      if (radioBtn) radioBtn.checked = true;
 
       const myData = data.players ? data.players[myId] : null;
       const myHandDiv = document.getElementById('disp-my-hand');
@@ -709,12 +693,17 @@
     });
   }
 
+  function toggleInGameRule() {
+    const box = document.getElementById('ingame-rule-box');
+    box.style.display = (box.style.display === 'none') ? 'block' : 'none';
+  }
+
   function saveAsImage() {
     const target = document.getElementById('capture-area');
     html2canvas(target, { backgroundColor: '#0d0614', scale: 2 }).then(canvas => {
       const link = document.createElement('a');
       link.download = `halloito_result_${rawRoomName}.png`;
-　　　　link.href = canvas.toDataURL();
+      link.href = canvas.toDataURL();
       link.click();
     });
   }
@@ -751,23 +740,21 @@
 
     currentRoomRef.once('value', (snapshot) => {
       const data = snapshot.val();
-      const order = data.orderRule || 'asc';
       const fieldArray = data.field ? Object.values(data.field) : [];
       
       let isError = false;
 
+      // 昇順（小さい順）判定
       if (fieldArray.length > 0) {
         const lastCard = fieldArray[fieldArray.length - 1].value;
-        if (order === 'asc' && val < lastCard) isError = true;
-        if (order === 'desc' && val > lastCard) isError = true;
+        if (val < lastCard) isError = true;
       }
 
       if (!isError && data.players) {
         Object.values(data.players).forEach(p => {
           if (p.hand) {
             p.hand.forEach(hVal => {
-              if (order === 'asc' && hVal < val) isError = true;
-              if (order === 'desc' && hVal > val) isError = true;
+              if (hVal < val) isError = true;
             });
           }
         });
@@ -841,10 +828,6 @@
     }
   }
 
-  function setOrderRule(rule) {
-    currentRoomRef.child('orderRule').set(rule);
-  }
-
   function resetGame() {
     if (confirm("カード、お題、場、投稿された答えをリセットし、離脱したプレイヤーを整理しますか？")) {
       currentRoomRef.update({
@@ -878,4 +861,3 @@
 </script>
 </body>
 </html>
-                                                                       
