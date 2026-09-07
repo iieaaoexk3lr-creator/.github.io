@@ -21,10 +21,10 @@
       padding: 16px;
     }
     .container {
-      max-width: 800px;
+      max-width: 1000px;
       margin: 0 auto;
     }
-    h1, h2, h3 { color: var(--accent); }
+    h1, h2, h3 { color: var(--accent); margin-top: 0; }
     .card {
       background: var(--card-bg);
       padding: 16px;
@@ -33,13 +33,19 @@
       box-shadow: 0 4px 6px rgba(0,0,0,0.3);
     }
     .flex { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
-    input, select, button {
-      padding: 10px;
+    input, select, button, textarea {
+      padding: 8px 10px;
       border-radius: 4px;
       border: 1px solid #333;
       background: #2c2c2c;
       color: #fff;
       font-size: 14px;
+    }
+    textarea {
+      width: 100%;
+      box-sizing: border-box;
+      resize: vertical;
+      font-family: inherit;
     }
     button {
       background: var(--accent);
@@ -50,6 +56,7 @@
     }
     button:disabled { opacity: 0.5; cursor: not-allowed; }
     button.danger { background: var(--danger); color: #fff; }
+    button.secondary { background: #444; color: #fff; }
     .hidden { display: none !important; }
     table {
       width: 100%;
@@ -69,6 +76,7 @@
       display: flex;
       justify-content: center;
       align-items: center;
+      z-index: 100;
     }
     .modal-content {
       background: var(--card-bg);
@@ -81,18 +89,25 @@
     .badge {
       padding: 2px 6px;
       border-radius: 4px;
-      font-size: 12px;
+      font-size: 11px;
     }
     .badge-gm { background: #ffd700; color: #000; }
-    .badge-wolf { background: var(--danger); color: #fff; }
     .badge-citizen { background: var(--success); color: #000; }
-    .badge-solo { background: #ff9800; color: #000; }
+    .badge-confirmed { background: #4caf50; color: #fff; font-size: 10px; margin-left: 4px; }
+    .memo-input {
+      width: 100%;
+      box-sizing: border-box;
+      padding: 4px 6px;
+      font-size: 12px;
+      background: #121212;
+      border: 1px solid #444;
+    }
   </style>
 </head>
 <body>
 
 <div class="container">
-  <h1>人狼ゲーム 進行ツール</h1>
+  <h1>人狼ゲーム 進行＆メモツール</h1>
 
   <!-- 入室・作成画面 -->
   <div id="auth-screen" class="card">
@@ -112,8 +127,9 @@
         <h2>ルーム: <span id="display-room-id"></span></h2>
         <div>フェーズ: <strong id="display-phase" style="color:var(--accent);">待機中</strong> (日数: <span id="display-day">0</span>日目)</div>
       </div>
-      <div>
+      <div class="flex">
         <button id="card-desc-btn">❓ 役職一覧・説明</button>
+        <button id="leave-room-btn" class="danger">退室する</button>
       </div>
     </div>
 
@@ -131,7 +147,7 @@
         <span>【司会専用操作】</span>
         <button id="start-game-btn">ゲーム開始 (夜へ)</button>
         <button id="next-phase-btn">次のフェーズへ進む</button>
-        <button id="reset-game-btn" class="danger">リセット</button>
+        <button id="reset-game-btn" class="danger">全リセット</button>
       </div>
     </div>
 
@@ -140,7 +156,7 @@
       <h3>自分のステータス</h3>
       <p>名前: <strong id="my-name"></strong> | 状態: <span id="my-status">生存</span></p>
       <div class="flex">
-        <label for="role-select">役職選択:</label>
+        <label for="role-select">自分の役職:</label>
         <select id="role-select"></select>
         <label class="flex" style="margin-left: 16px;">
           <input type="checkbox" id="gm-mode-check"> 専任GMモード（プレイに参加せず全体進行のみ）
@@ -149,20 +165,30 @@
       <div id="my-role-info" style="margin-top: 8px; color: var(--success);"></div>
     </div>
 
-    <!-- プレイヤー一覧＆状況（専任GMまたはGM時のみ全体が見える） -->
+    <!-- 参加者一覧＆メモ（仮役職・CO・確定連動） -->
     <div class="card">
-      <h3>参加者一覧</h3>
+      <div class="flex" style="justify-content: space-between;">
+        <h3>参加者一覧 ＆ 考察メモ</h3>
+        <button id="clear-my-memo-btn" class="secondary" style="font-size: 12px;">自分のメモを全消去</button>
+      </div>
       <table>
         <thead>
           <tr>
-            <th>名前</th>
-            <th>状態</th>
-            <th>役職</th>
-            <th>操作 (司会用)</th>
+            <th style="width: 20%;">名前</th>
+            <th style="width: 12%;">状態</th>
+            <th style="width: 18%;">役職（本物）</th>
+            <th style="width: 25%;">仮役職 / COメモ</th>
+            <th style="width: 25%;">自由考察メモ</th>
           </tr>
         </thead>
         <tbody id="player-list-body"></tbody>
       </table>
+    </div>
+
+    <!-- 全体自由メモ -->
+    <div class="card">
+      <h3>全体フリーメモ（自分専用）</h3>
+      <textarea id="free-memo-text" rows="4" placeholder="盤面全体や過去ログの整理など..."></textarea>
     </div>
 
     <!-- 進行ログ -->
@@ -183,12 +209,11 @@
   </div>
 </div>
 
-<!-- Firebase SDK (Modular) -->
+<!-- Firebase SDK -->
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
-  import { getDatabase, ref, set, get, update, onValue, child } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-database.js";
+  import { getDatabase, ref, set, get, update, onValue, remove } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-database.js";
 
-  // Firebase Configuration
   const firebaseConfig = {
     apiKey: "AIzaSyC4DQhH_swesAD98Xyjg8d1lcWEkkrHrgw",
     authDomain: "gamehistory-m84.firebaseapp.com",
@@ -203,9 +228,7 @@
   const app = initializeApp(firebaseConfig);
   const db = getDatabase(app);
 
-  // 全役職リスト（全46枚・30種類）
   const ROLES_DATA = [
-    // 人狼チーム
     { name: "人狼", team: "人狼", count: 4, desc: "夜に人狼同士で話し合い、人間1人を襲撃する。" },
     { name: "人狼の子ども", team: "人狼", count: 1, desc: "追放されると、次の夜の人狼襲撃枠が+1される。" },
     { name: "裏切り者", team: "人狼", count: 2, desc: "市民としてカウント。人狼陣営の勝利を目指す。" },
@@ -213,7 +236,6 @@
     { name: "内通者", team: "人狼", count: 1, desc: "夜に人狼が誰かを特定・把握できる。" },
     { name: "裏切りの襲撃者", team: "人狼", count: 1, desc: "夜に人狼とは別に独自で1人襲撃できる。" },
     { name: "スパイ", team: "人狼", count: 1, desc: "夜に誰か1人の役職を占える（人狼陣営）。" },
-    // 市民チーム
     { name: "市民", team: "市民", count: 9, desc: "特別な能力は持たない一般的な市民。" },
     { name: "予言者", team: "市民", count: 2, desc: "夜に指定した1人が「人狼」か「人間」かを知る。" },
     { name: "ボディーガード", team: "市民", count: 2, desc: "夜に1人を護衛し、人狼の襲撃から守る。" },
@@ -228,24 +250,23 @@
     { name: "騎士団", team: "市民", count: 3, desc: "騎士団同士でお互いを認識できる。" },
     { name: "影武者", team: "市民", count: 1, desc: "王様が襲撃された際に代わりに身代わりになる。" },
     { name: "王様", team: "市民", count: 1, desc: "生き残っている限り重要な決定権を持つ。" },
-    // 単独
     { name: "妖狐", team: "単独", count: 1, desc: "襲撃で死なないが占われると死亡。生き残れば単独勝利。" },
     { name: "神様", team: "単独", count: 1, desc: "全知の能力を持つ。" },
     { name: "恋人", team: "単独", count: 2, desc: "2人で1対。片方が死ぬと後を追う。最後まで生存で勝利。" },
     { name: "一匹狼", team: "単独", count: 1, desc: "人狼が全滅した状態で最後まで生存すると単独勝利。" },
     { name: "アンドロイド", team: "単独", count: 1, desc: "コピー対象を選択し、その勝利条件に依存する。" },
     { name: "案山子", team: "単独", count: 3, desc: "追放されることで勝利する特殊役職。" },
-    // 双方
     { name: "呪われた者", team: "両陣営", count: 1, desc: "初期は市民。襲撃されると「人狼」に覚醒する。" }
   ];
 
-  // アプリケーション状態
   let roomId = "";
   let playerId = "";
   let playerName = "";
   let currentRoomData = null;
+  let localMemos = {};     // 自由メモ { pid: "内容" }
+  let localRoleMemos = {}; // 仮役職メモ { pid: "予言CO / 狼？" }
+  let freeMemoText = "";
 
-  // DOM要素
   const authScreen = document.getElementById("auth-screen");
   const gameScreen = document.getElementById("game-screen");
   const roomIdInput = document.getElementById("room-id-input");
@@ -256,13 +277,41 @@
   const gmModeCheck = document.getElementById("gm-mode-check");
   const mcControls = document.getElementById("mc-controls");
   const playerListBody = document.getElementById("player-list-body");
+  const freeMemoInput = document.getElementById("free-memo-text");
 
-  // ランダムID生成
   function generateId() {
     return Math.random().toString(36).substring(2, 9);
   }
 
-  // 初期化：役職ドロップダウンの作成
+  function getStorageKey(key) {
+    return `jinro_${roomId}_${playerId}_${key}`;
+  }
+
+  function loadLocalMemo() {
+    const savedPlayerMemos = localStorage.getItem(getStorageKey("playerMemos"));
+    const savedRoleMemos = localStorage.getItem(getStorageKey("roleMemos"));
+    localMemos = savedPlayerMemos ? JSON.parse(savedPlayerMemos) : {};
+    localRoleMemos = savedRoleMemos ? JSON.parse(savedRoleMemos) : {};
+    freeMemoText = localStorage.getItem(getStorageKey("freeMemo")) || "";
+    freeMemoInput.value = freeMemoText;
+  }
+
+  function saveLocalMemo() {
+    localStorage.setItem(getStorageKey("playerMemos"), JSON.stringify(localMemos));
+    localStorage.setItem(getStorageKey("roleMemos"), JSON.stringify(localRoleMemos));
+    localStorage.setItem(getStorageKey("freeMemo"), freeMemoInput.value);
+  }
+
+  function clearAllLocalMemo() {
+    localStorage.removeItem(getStorageKey("playerMemos"));
+    localStorage.removeItem(getStorageKey("roleMemos"));
+    localStorage.removeItem(getStorageKey("freeMemo"));
+    localMemos = {};
+    localRoleMemos = {};
+    freeMemoInput.value = "";
+    renderGameScreen();
+  }
+
   function initRoleSelect() {
     roleSelect.innerHTML = '<option value="">-- 役職を選択 --</option>';
     ROLES_DATA.forEach(r => {
@@ -274,66 +323,77 @@
   }
   initRoleSelect();
 
-  // 入室イベント
   joinBtn.addEventListener("click", async () => {
     roomId = roomIdInput.value.trim();
     playerName = playerNameInput.value.trim();
     if (!roomId || !playerName) return alert("ルームナンバーと名前を入力してください");
 
-    playerId = generateId();
-    document.getElementById("my-name").textContent = playerName;
-    document.getElementById("display-room-id").textContent = roomId;
-
     const roomRef = ref(db, `jinro/rooms/${roomId}`);
     const snapshot = await get(roomRef);
 
-    if (!snapshot.exists()) {
-      // ルーム新規作成
+    if (snapshot.exists()) {
+      const roomData = snapshot.val();
+      const existingPlayers = roomData.players || {};
+      if (Object.values(existingPlayers).some(p => p.name === playerName)) {
+        return alert("同じ名前のプレイヤーが既にルーム内に存在します。別の名前を入力してください。");
+      }
+    } else {
       await set(roomRef, {
         status: "lobby",
         dayCount: 0,
         mcPlayerId: "",
+        resetSignal: 0,
         logs: ["ルームが作成されました"]
       });
     }
 
-    // プレイヤー追加
+    playerId = localStorage.getItem(`jinro_session_pid_${roomId}`) || generateId();
+    localStorage.setItem(`jinro_session_pid_${roomId}`, playerId);
+
+    document.getElementById("my-name").textContent = playerName;
+    document.getElementById("display-room-id").textContent = roomId;
+
     await set(ref(db, `jinro/rooms/${roomId}/players/${playerId}`), {
       name: playerName,
       role: "",
+      isRoleConfirmed: false, // 役職確定フラグ
       isAlive: true,
       isGMOnly: false
     });
 
+    loadLocalMemo();
+
     authScreen.classList.add("hidden");
     gameScreen.classList.remove("hidden");
 
-    // リアルタイム同期開始
     listenToRoomUpdates();
   });
 
-  // ルーム変更検知
   function listenToRoomUpdates() {
     const roomRef = ref(db, `jinro/rooms/${roomId}`);
     onValue(roomRef, (snapshot) => {
-      currentRoomData = snapshot.val();
-      if (!currentRoomData) return;
+      const data = snapshot.val();
+      if (!data) return;
 
+      if (currentRoomData && data.resetSignal !== currentRoomData.resetSignal) {
+        clearAllLocalMemo();
+        alert("司会により全リセットが実行されたため、メモ情報をクリアしました。");
+      }
+
+      currentRoomData = data;
       renderGameScreen();
     });
   }
 
-  // 画面再描画
   function renderGameScreen() {
+    if (!currentRoomData) return;
     const { status, dayCount, mcPlayerId, players, logs } = currentRoomData;
     const me = players ? players[playerId] : null;
 
-    // ステータス更新
     document.getElementById("display-phase").textContent = 
       status === "lobby" ? "待機中" : (status === "night" ? "夜" : (status === "day" ? "昼" : "終了"));
     document.getElementById("display-day").textContent = dayCount;
 
-    // 司会状態チェック
     const isMC = mcPlayerId === playerId;
     mcToggleCheck.checked = isMC;
     mcToggleCheck.disabled = Boolean(mcPlayerId && !isMC);
@@ -346,49 +406,99 @@
       mcControls.classList.add("hidden");
     }
 
-    // 専任GM表示制御
     if (me) {
       document.getElementById("my-status").textContent = me.isAlive ? "生存" : "脱落";
-      document.getElementById("my-role-info").textContent = me.isGMOnly ? "【専任GMモード有効】全体閲覧可能" : `あなたの役職: ${me.role || '未選択'}`;
+      document.getElementById("my-role-info").textContent = me.isGMOnly ? "【専任GMモード有効】全体閲覧可能" : `あなたの役職: ${me.role || '未選択'} ${me.isRoleConfirmed ? ' [確定]' : ''}`;
     }
 
-    // 参加者リスト描画
     playerListBody.innerHTML = "";
     if (players) {
       Object.entries(players).forEach(([pId, p]) => {
         const tr = document.createElement("tr");
-        
-        // 役職情報の表示制限（自分、専任GM、または兼任司会が許可されている場合）
-        const canSeeRole = (pId === playerId) || (me && me.isGMOnly);
-        const roleText = canSeeRole ? (p.role || "未選択") : "???";
+
+        // 本物役職の表示判定（自分自身、専任GM、または確定している場合）
+        const canSeeRole = (pId === playerId) || (me && me.isGMOnly) || p.isRoleConfirmed;
+        let roleDisplay = canSeeRole ? (p.role || "未選択") : "???";
+        if (p.isRoleConfirmed) {
+          roleDisplay += ' <span class="badge badge-confirmed">確定</span>';
+        }
+
+        const memoVal = localMemos[pId] || "";
+        const roleMemoVal = localRoleMemos[pId] || "";
 
         tr.innerHTML = `
           <td>${p.name} ${pId === mcPlayerId ? '<span class="badge badge-gm">司会</span>' : ''}</td>
-          <td>${p.isAlive ? '生存' : '<span style="color:var(--danger)">脱落</span>'}</td>
-          <td>${p.isGMOnly ? '<b>専任GM</b>' : roleText}</td>
           <td>
-            ${isMC ? `<button onclick="togglePlayerStatus('${pId}', ${p.isAlive})">${p.isAlive ? 'キル/追放' : '復活'}</button>` : '-'}
+            ${p.isAlive ? '生存' : '<span style="color:var(--danger)">脱落</span>'}
+            ${isMC ? `<button style="font-size:10px; padding:2px 4px; margin-left:4px;" onclick="togglePlayerStatus('${pId}', ${p.isAlive})">切替</button>` : ''}
+          </td>
+          <td>
+            ${p.isGMOnly ? '<b>専任GM</b>' : roleDisplay}
+            ${isMC && !p.isGMOnly ? `<br><button style="font-size:10px; padding:2px 4px; margin-top:2px;" onclick="toggleRoleConfirm('${pId}', ${p.isRoleConfirmed})">${p.isRoleConfirmed ? '確定解除' : '役職確定'}</button>` : ''}
+          </td>
+          <td>
+            <input type="text" class="role-memo-input" data-pid="${pId}" value="${roleMemoVal}" placeholder="例: 占いCO, 狼？">
+          </td>
+          <td>
+            <input type="text" class="memo-input" data-pid="${pId}" value="${memoVal}" placeholder="自由考察メモ">
           </td>
         `;
         playerListBody.appendChild(tr);
       });
+
+      // 仮役職メモ入力イベント
+      document.querySelectorAll(".role-memo-input").forEach(input => {
+        input.addEventListener("input", (e) => {
+          const targetPid = e.target.getAttribute("data-pid");
+          localRoleMemos[targetPid] = e.target.value;
+          saveLocalMemo();
+        });
+      });
+
+      // 自由メモ入力イベント
+      document.querySelectorAll(".memo-input").forEach(input => {
+        input.addEventListener("input", (e) => {
+          const targetPid = e.target.getAttribute("data-pid");
+          localMemos[targetPid] = e.target.value;
+          saveLocalMemo();
+        });
+      });
     }
 
-    // ログ描画
     const logBox = document.getElementById("log-container");
     logBox.innerHTML = (logs || []).map(l => `<div>${l}</div>`).join("");
     logBox.scrollTop = logBox.scrollHeight;
   }
 
-  // 司会権限切り替え
+  freeMemoInput.addEventListener("input", () => {
+    saveLocalMemo();
+  });
+
+  document.getElementById("clear-my-memo-btn").addEventListener("click", () => {
+    if (confirm("自分のすべてのメモ情報を削除しますか？")) {
+      clearAllLocalMemo();
+    }
+  });
+
+  document.getElementById("leave-room-btn").addEventListener("click", async () => {
+    if (!confirm("本当に退室しますか？（あなたのデータは削除されます）")) return;
+
+    if (currentRoomData?.mcPlayerId === playerId) {
+      await update(ref(db, `jinro/rooms/${roomId}`), { mcPlayerId: "" });
+    }
+
+    await remove(ref(db, `jinro/rooms/${roomId}/players/${playerId}`));
+    clearAllLocalMemo();
+    localStorage.removeItem(`jinro_session_pid_${roomId}`);
+    location.reload();
+  });
+
   mcToggleCheck.addEventListener("change", async (e) => {
-    const isChecked = e.target.checked;
     await update(ref(db, `jinro/rooms/${roomId}`), {
-      mcPlayerId: isChecked ? playerId : ""
+      mcPlayerId: e.target.checked ? playerId : ""
     });
   });
 
-  // 専任GMモード切り替え
   gmModeCheck.addEventListener("change", async (e) => {
     const isGM = e.target.checked;
     roleSelect.disabled = isGM;
@@ -398,15 +508,12 @@
     });
   });
 
-  // 役職変更イベント
   roleSelect.addEventListener("change", async (e) => {
-    const newRole = e.target.value;
     await update(ref(db, `jinro/rooms/${roomId}/players/${playerId}`), {
-      role: newRole
+      role: e.target.value
     });
   });
 
-  // 司会アクション：ゲーム開始
   document.getElementById("start-game-btn").addEventListener("click", async () => {
     const logs = currentRoomData.logs || [];
     logs.push("【進行】ゲームが開始されました。1日目の夜に入ります。");
@@ -417,7 +524,6 @@
     });
   });
 
-  // 司会アクション：フェーズ進行
   document.getElementById("next-phase-btn").addEventListener("click", async () => {
     const current = currentRoomData.status;
     let next = "night";
@@ -440,24 +546,33 @@
     });
   });
 
-  // 司会アクション：リセット
   document.getElementById("reset-game-btn").addEventListener("click", async () => {
-    if (!confirm("ゲームをリセットして待機状態に戻しますか？")) return;
+    if (!confirm("ゲームをリセットしますか？参加者全員のローカルメモもクリアされます。")) return;
+    
+    const resetSignal = (currentRoomData.resetSignal || 0) + 1;
     await update(ref(db, `jinro/rooms/${roomId}`), {
       status: "lobby",
       dayCount: 0,
-      logs: ["ゲームがリセットされました"]
+      resetSignal: resetSignal,
+      logs: ["【進行】司会により全リセットが実行されました"]
     });
   });
 
-  // プレイヤーの生存状態切り替え（グローバル関数化）
+  // 生存切り替え
   window.togglePlayerStatus = async (targetId, currentAlive) => {
     await update(ref(db, `jinro/rooms/${roomId}/players/${targetId}`), {
       isAlive: !currentAlive
     });
   };
 
-  // カード説明モーダルの制御
+  // 司会用：役職確定切り替え
+  window.toggleRoleConfirm = async (targetId, currentConfirmed) => {
+    await update(ref(db, `jinro/rooms/${roomId}/players/${targetId}`), {
+      isRoleConfirmed: !currentConfirmed
+    });
+  };
+
+  // モーダル
   const modal = document.getElementById("card-modal");
   document.getElementById("card-desc-btn").addEventListener("click", () => {
     const container = document.getElementById("card-list-container");
