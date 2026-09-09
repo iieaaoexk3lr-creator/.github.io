@@ -75,6 +75,12 @@
     .btn-secondary { background: #ee5253; }
     .btn-gray { background: #8395a7; }
     .btn-green { background: var(--accent-green); color: #fff; }
+    /* ロック中も緑色表示を維持 */
+    .btn-green:disabled {
+      background: var(--accent-green);
+      opacity: 0.7;
+      cursor: not-allowed;
+    }
     .btn-sm { padding: 6px 12px; font-size: 0.85rem; }
 
     input[type="text"] {
@@ -171,6 +177,11 @@
       border-color: var(--primary-color);
       background: #ffeaa7;
     }
+    /* クリア時の回答枠の青色表示 */
+    .answer-card.success {
+      border-color: var(--accent-blue);
+      background-color: #e6f0ff;
+    }
     .answer-left {
       display: flex;
       align-items: center;
@@ -181,6 +192,9 @@
       color: var(--primary-color);
       font-size: 1rem;
       min-width: 28px;
+    }
+    .answer-card.success .answer-rank {
+      color: var(--accent-blue);
     }
     .answer-text {
       font-size: 1.1rem;
@@ -202,6 +216,9 @@
       border-radius: 6px;
       font-weight: bold;
       font-size: 1rem;
+    }
+    .answer-card.success .answer-num {
+      background: var(--accent-blue);
     }
 
     .player-row {
@@ -529,6 +546,12 @@
       const order = data.orderRule || 'asc';
       document.querySelector(`input[name="order-rule"][value="${order}"]`).checked = true;
 
+      // 全員の回答が出揃ったか判定
+      const playerKeys = data.players ? Object.keys(data.players) : [];
+      const answersList = data.answers || [];
+      const isAllAnswered = playerKeys.length > 0 && answersList.length >= playerKeys.length;
+
+      // 手札の描画 (全員回答完了までボタンをロック)
       const myData = data.players ? data.players[myId] : null;
       const myHandDiv = document.getElementById('disp-my-hand');
       myHandDiv.innerHTML = '';
@@ -537,7 +560,14 @@
           const btn = document.createElement('button');
           btn.className = 'btn btn-green';
           btn.style.fontSize = '1.1rem';
-          btn.innerText = `${num} (公開)`;
+          btn.disabled = !isAllAnswered;
+
+          if (isAllAnswered) {
+            btn.innerText = `${num} (公開)`;
+          } else {
+            btn.innerText = `${num} (回答待ち)`;
+          }
+
           btn.onclick = () => playCard(num);
           myHandDiv.appendChild(btn);
         });
@@ -562,15 +592,16 @@
         });
       }
 
+      // 回答一覧の描画（クリア時は枠を青色に変える）
       const answersDiv = document.getElementById('disp-answers');
       answersDiv.innerHTML = '';
 
-      const answersList = data.answers || [];
       const usedNameCounts = {};
+      const isClear = data.isClearHighlighted;
 
       answersList.forEach((item, index) => {
         const card = document.createElement('div');
-        card.className = `answer-card ${selectedAnswerIndex === index ? 'selected' : ''} ${isCurrentHost ? 'is-host' : ''}`;
+        card.className = `answer-card ${selectedAnswerIndex === index ? 'selected' : ''} ${isCurrentHost ? 'is-host' : ''} ${isClear ? 'success' : ''}`;
 
         let numDisp = '';
         if (fieldMap[item.name]) {
@@ -758,43 +789,46 @@
     });
   }
 
+  // カード公開処理 (次のターンで直前のカードのミス判定を実施)
   function playCard(val) {
     if (!confirm(`数字「${val}」を公開しますか？`)) return;
 
     currentRoomRef.once('value', (snapshot) => {
       const data = snapshot.val();
       const order = data.orderRule || 'asc';
-      const fieldArray = data.field ? Object.values(data.field) : [];
-      
-      let isError = false;
+      let fieldArray = data.field ? Object.values(data.field) : [];
+      let errorDetectedNow = false;
 
+      // 前のターンのカードと比較判定（ミスがあれば直前カードの error を true に更新）
       if (fieldArray.length > 0) {
-        const lastCard = fieldArray[fieldArray.length - 1].value;
-        if (order === 'asc' && val < lastCard) isError = true;
-        if (order === 'desc' && val > lastCard) isError = true;
+        const lastIndex = fieldArray.length - 1;
+        const lastVal = fieldArray[lastIndex].value;
+
+        let isError = false;
+        if (order === 'asc' && val < lastVal) isError = true;
+        if (order === 'desc' && val > lastVal) isError = true;
+
+        if (isError) {
+          fieldArray[lastIndex].error = true;
+          errorDetectedNow = true;
+        }
       }
 
-      if (!isError && data.players) {
-        Object.values(data.players).forEach(p => {
-          if (p.hand) {
-            p.hand.forEach(hVal => {
-              if (order === 'asc' && hVal < val) isError = true;
-              if (order === 'desc' && hVal > val) isError = true;
-            });
-          }
-        });
-      }
-
+      // 自分の手札から除外
       const myHand = data.players[myId].hand.filter(h => h !== val);
-      currentRoomRef.child(`players/${myId}/hand`).set(myHand);
-      currentRoomRef.child('field').push({ name: myName, value: val, error: isError });
 
-      if (isError) {
+      // 新しいカードを場に追加 (最新のカードは判定未確定)
+      fieldArray.push({ name: myName, value: val, error: false });
+
+      if (errorDetectedNow) {
         currentRoomRef.child('hasErrorOccurred').set(true);
-        alert(`❌ 順番が違いますが、ゲームを継続します。`);
       }
 
-      setTimeout(checkClear, 300);
+      // Firebase更新
+      currentRoomRef.child(`players/${myId}/hand`).set(myHand);
+      currentRoomRef.child('field').set(fieldArray).then(() => {
+        setTimeout(checkClear, 300);
+      });
     });
   }
 
@@ -809,13 +843,16 @@
       }
 
       if (totalCardsLeft === 0) {
-        if (data.hasErrorOccurred) {
+        let fieldArray = data.field ? Object.values(data.field) : [];
+        const hasError = fieldArray.some(c => c.error) || data.hasErrorOccurred;
+
+        if (hasError) {
           alert("⚠️ 全員のカードが出し切られました！（途中で順番ミスがありました）");
         } else {
           alert("🎉 全員のカードを完全な順番通りに出し切りました！ステージクリア！");
           currentRoomRef.child('clears').set((data.clears || 0) + 1);
+          currentRoomRef.child('isClearHighlighted').set(true); // 全成功時に枠を青色化するフラグ
         }
-        currentRoomRef.child('isClearHighlighted').set(true);
       }
     });
   }
