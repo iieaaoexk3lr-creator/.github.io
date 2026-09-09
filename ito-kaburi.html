@@ -1,0 +1,934 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>kaburi-ito - Web App</title>
+  <style>
+    :root {
+      --bg-color: #f4f6f9;
+      --panel-bg: #ffffff;
+      --primary-color: #ff9f43;
+      --accent-red: #ff5252;
+      --accent-green: #1dd1a1;
+      --accent-blue: #54a0ff;
+      --text-main: #2d3436;
+      --text-sub: #8395a7;
+      --border-color: #e0e6ed;
+    }
+
+    body {
+      font-family: 'Helvetica Neue', Arial, 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', Meiryo, sans-serif;
+      background-color: var(--bg-color);
+      color: var(--text-main);
+      margin: 0;
+      padding: 16px;
+      display: flex;
+      justify-content: center;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 600px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    h1 {
+      text-align: center;
+      margin: 8px 0;
+      font-size: 2.2rem;
+      letter-spacing: 2px;
+      color: var(--primary-color);
+      font-weight: 800;
+    }
+
+    .card {
+      background: var(--panel-bg);
+      border-radius: 16px;
+      padding: 18px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+      border: 1px solid var(--border-color);
+    }
+
+    .header-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 2px solid var(--bg-color);
+      padding-bottom: 12px;
+    }
+
+    .btn {
+      background: var(--primary-color);
+      color: #fff;
+      border: none;
+      padding: 10px 16px;
+      border-radius: 10px;
+      font-weight: bold;
+      cursor: pointer;
+      transition: transform 0.1s, opacity 0.2s;
+    }
+    .btn:active { transform: scale(0.98); }
+    .btn:hover { opacity: 0.9; }
+    .btn-secondary { background: #ee5253; }
+    .btn-gray { background: #8395a7; }
+    .btn-green { background: var(--accent-green); color: #fff; }
+    .btn-green:disabled {
+      background: var(--accent-green);
+      opacity: 0.7;
+      cursor: not-allowed;
+    }
+    .btn-sm { padding: 6px 12px; font-size: 0.85rem; }
+
+    input[type="text"], input[type="number"] {
+      background: #f1f2f6;
+      border: 1px solid var(--border-color);
+      color: var(--text-main);
+      padding: 10px;
+      border-radius: 8px;
+      font-size: 1rem;
+      box-sizing: border-box;
+    }
+
+    .modal {
+      position: fixed;
+      top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0,0,0,0.5);
+      display: flex; justify-content: center; align-items: center;
+      z-index: 1000;
+    }
+    .modal-content {
+      background: var(--panel-bg);
+      width: 90%; max-width: 480px;
+      border-radius: 16px; padding: 20px;
+      max-height: 80vh; overflow-y: auto;
+    }
+
+    .result-board {
+      background: var(--panel-bg);
+      border-radius: 16px;
+      padding: 20px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+      border: 2px dashed var(--primary-color);
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .theme-box {
+      text-align: center;
+      background: #fff8ec;
+      padding: 12px;
+      border-radius: 12px;
+    }
+    .theme-text { font-size: 1.6rem; font-weight: bold; color: var(--primary-color); margin: 4px 0; }
+    .host-badge { font-size: 0.8rem; background: #ffeaa7; color: #d35400; padding: 2px 8px; border-radius: 12px; font-weight: bold; margin-top: 4px; display: inline-block; }
+
+    .my-card-box {
+      background: #f8f9fa;
+      padding: 14px;
+      border-radius: 12px;
+      border: 1px dashed #ced6e0;
+      text-align: center;
+    }
+
+    .field-cards {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 8px;
+      min-height: 50px;
+    }
+    .played-card {
+      background: var(--accent-green);
+      color: #fff;
+      padding: 8px 14px;
+      border-radius: 8px;
+      font-weight: bold;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+    }
+    .played-card.error {
+      background: var(--accent-red);
+    }
+
+    .answer-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      min-height: 40px;
+    }
+
+    .answer-card {
+      background: #f1f2f6;
+      border: 2px solid transparent;
+      padding: 10px 14px;
+      border-radius: 10px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      user-select: none;
+      transition: all 0.2s;
+    }
+    .answer-card.is-host { cursor: pointer; }
+    .answer-card.selected {
+      border-color: var(--primary-color);
+      background: #ffeaa7;
+    }
+    .answer-card.success {
+      border-color: var(--accent-blue);
+      background-color: #e6f0ff;
+    }
+    .answer-left {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .answer-rank {
+      font-weight: bold;
+      color: var(--primary-color);
+      font-size: 1rem;
+      min-width: 28px;
+    }
+    .answer-card.success .answer-rank {
+      color: var(--accent-blue);
+    }
+    .answer-text {
+      font-size: 1.1rem;
+      font-weight: bold;
+    }
+    .answer-right {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .answer-author {
+      font-size: 0.85rem;
+      color: var(--text-sub);
+    }
+    .answer-num {
+      background: var(--primary-color);
+      color: #fff;
+      padding: 2px 8px;
+      border-radius: 6px;
+      font-weight: bold;
+      font-size: 1rem;
+    }
+    .answer-card.success .answer-num {
+      background: var(--accent-blue);
+    }
+
+    .player-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 8px;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .rule-order-selector {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      font-size: 0.9rem;
+    }
+
+    .theme-select-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-top: 12px;
+    }
+    .theme-select-item {
+      background: #f1f2f6;
+      padding: 10px 14px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: bold;
+      transition: background 0.2s;
+    }
+    .theme-select-item:hover {
+      background: #ffeaa7;
+      color: var(--primary-color);
+    }
+  </style>
+
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+</head>
+<body>
+
+<div class="container">
+  <h1>kaburi-ito</h1>
+
+  <!-- 入室ロビー -->
+  <div id="lobby-panel" class="card">
+    <h2 style="margin-top:0;">ルームに参加 / 作成</h2>
+    <div style="display: flex; flex-direction: column; gap: 12px;">
+      <input type="text" id="input-room" placeholder="部屋名 (例: room123)">
+      <input type="text" id="input-name" placeholder="あなたのプレイヤー名">
+      <button class="btn" onclick="joinRoom()">入室する</button>
+    </div>
+  </div>
+
+  <!-- メインゲームエリア -->
+  <div id="game-panel" style="display: none;" class="container">
+    
+    <div class="card">
+      <div class="header-bar">
+        <div>
+          <div>部屋: <b id="disp-room">--</b></div>
+          <div style="font-size: 0.85rem; color: var(--text-sub);">
+            🏆 累計クリア数: <b id="disp-clears" style="color:var(--accent-green)">0</b>
+          </div>
+        </div>
+        <div style="display: flex; gap: 6px;">
+          <button class="btn btn-gray btn-sm" onclick="toggleModal('rule-modal', true)">📖 ルール</button>
+          <button class="btn btn-secondary btn-sm" onclick="leaveRoom()">🚪 退室</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- お題・答えの一体型カード -->
+    <div id="capture-area" class="result-board">
+      <div class="theme-box">
+        <div style="font-size: 0.8rem; color: var(--text-sub);">現在のお題</div>
+        <div id="disp-theme" class="theme-text">未設定</div>
+        <div id="disp-host-name" class="host-badge" style="display: none;">親: --</div>
+      </div>
+
+      <div>
+        <div id="answer-hint-text" style="font-size: 0.85rem; color: var(--text-sub); margin-bottom: 8px; text-align: center;">
+          順位（親のみ移動可能）
+        </div>
+        <div id="disp-answers" class="answer-list"></div>
+      </div>
+    </div>
+
+    <!-- 操作パネル -->
+    <div class="card" style="display: flex; flex-direction: column; gap: 12px;">
+      <div style="display: flex; gap: 6px; justify-content: center; flex-wrap: wrap;">
+        <button class="btn btn-gray btn-sm" onclick="pickRandomTheme()">🎲 ランダム</button>
+        <button class="btn btn-gray btn-sm" onclick="openThemeListModal()">📋 お題を選択</button>
+        <button class="btn btn-gray btn-sm" onclick="toggleModal('theme-modal', true)">✏️ 直接入力</button>
+        <button class="btn btn-gray btn-sm" onclick="saveAsImage()">📸 画像で保存</button>
+      </div>
+
+      <div style="display: flex; gap: 8px;">
+        <input type="text" id="input-answer" style="flex:1;" placeholder="答えを入力 (例: 寿司、うまい棒)">
+        <button class="btn" onclick="postAnswer()">投稿</button>
+      </div>
+    </div>
+
+    <!-- 数字選択エリア -->
+    <div class="card my-card-box">
+      <div style="font-size: 0.85rem; color: var(--text-sub);">あなたの数字を決めてください (1〜100)</div>
+      <div style="display: flex; gap: 8px; justify-content: center; align-items: center; margin-top: 8px;">
+        <input type="number" id="input-my-number" min="1" max="100" placeholder="数字 (1~100)" style="width: 130px; text-align: center; font-size: 1.1rem;">
+        <button class="btn btn-green" onclick="submitMyNumber()">数字を確定</button>
+      </div>
+      <div id="disp-my-selected-number" style="margin-top: 8px; font-weight: bold; font-size: 1rem;"></div>
+      <div id="disp-my-hand" style="display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin-top: 8px;"></div>
+    </div>
+
+    <!-- 場（公開されたカード） -->
+    <div class="card">
+      <div style="display: flex; justify-content: space-between; align-items: center;">
+        <span style="font-weight: bold;">場に出たカード</span>
+        <div class="rule-order-selector">
+          <label><input type="radio" name="order-rule" value="asc" checked onchange="setOrderRule('asc')"> 昇順 (1→100)</label>
+          <label><input type="radio" name="order-rule" value="desc" onchange="setOrderRule('desc')"> 降順 (100→1)</label>
+        </div>
+      </div>
+      <div id="disp-field" class="field-cards"></div>
+    </div>
+
+    <!-- 参加者＆ホスト操作 -->
+    <div class="card">
+      <div style="font-weight: bold; margin-bottom: 8px;">参加者一覧</div>
+      <div id="disp-players"></div>
+
+      <div style="margin-top: 16px; border-top: 1px solid var(--border-color); padding-top: 12px; display: flex; gap: 8px; flex-wrap: wrap;">
+        <button class="btn btn-green" onclick="startNewRound()">🔄 新ラウンドを開始</button>
+        <button class="btn btn-secondary btn-sm" onclick="resetGame()">完全リセット</button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ルールモーダル -->
+<div id="rule-modal" class="modal" style="display: none;">
+  <div class="modal-content">
+    <h3>📖 kaburi-ito 基本ルール</h3>
+    <p><b>数字の決定:</b> 参加者それぞれが 1から100 の数字を1つ自由に選んで入力・確定します。（他の人には見えません）</p>
+    <p><b>数字の重複ペナルティ:</b> 他のプレイヤーと入力した数字が被っていた場合、その時点でチャレンジ失敗となります。</p>
+    <p><b>テーマの決定:</b> お題（テーマ）を1つ決めます。決めた人が「親」になります。</p>
+    <p><b>言葉で表現:</b> 自分の選んだ数字がそのお題においてどのくらいの大きさか、言葉で例えて表現・投稿します。</p>
+    <p><b>カードを出す:</b> 全員の回答が出揃ったら、話し合いながら自分のカードを公開していきます。</p>
+    <p><b>並び替え:</b> 親権限を持っている人のみ、回答の順位を▲▼ボタンやタップで入れ替えられます。</p>
+    <p><b>クリア条件:</b> 全員のカードを順番通りに出せたらステージクリアです。</p>
+    <div style="text-align: right; margin-top: 16px;">
+      <button class="btn btn-gray" onclick="toggleModal('rule-modal', false)">閉じる</button>
+    </div>
+  </div>
+</div>
+
+<!-- お題直接入力モーダル -->
+<div id="theme-modal" class="modal" style="display: none;">
+  <div class="modal-content">
+    <h3>お題を直接入力</h3>
+    <input type="text" id="input-custom-theme" style="width: 100%; margin: 12px 0;" placeholder="オリジナルのお題を入力">
+    <div style="display: flex; justify-content: flex-end; gap: 8px;">
+      <button class="btn btn-gray" onclick="toggleModal('theme-modal', false)">キャンセル</button>
+      <button class="btn" onclick="submitCustomTheme()">決定</button>
+    </div>
+  </div>
+</div>
+
+<!-- お題一覧選択モーダル -->
+<div id="theme-list-modal" class="modal" style="display: none;">
+  <div class="modal-content">
+    <div style="display: flex; justify-content: space-between; align-items: center;">
+      <h3 style="margin: 0;">お題一覧から選択</h3>
+      <button class="btn btn-gray btn-sm" onclick="toggleModal('theme-list-modal', false)">✕</button>
+    </div>
+    <div id="theme-select-container" class="theme-select-list"></div>
+  </div>
+</div>
+
+<script>
+  const firebaseConfig = {
+    apiKey: "AIzaSyC4DQhH_swesAD98Xyjg8d1lcWEkkrHrgw",
+    authDomain: "gamehistory-m84.firebaseapp.com",
+    databaseURL: "https://gamehistory-m84-default-rtdb.firebaseio.com",
+    projectId: "gamehistory-m84",
+    storageBucket: "gamehistory-m84.firebasestorage.app",
+    messagingSenderId: "475761727837",
+    appId: "1:475761727837:web:06d07e1ab4120a7ccaf0b4",
+    measurementId: "G-3636W6LC4F"
+  };
+
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.database();
+
+  const presetThemes = [
+    "食べ物の人気", "強い生き物", "ほしいドラえもんのひみつ道具", "有名な曲", "無人島に持っていきたいもの",
+    "ゾンビ世界で生き残れそうな武器", "カッコいい言葉", "なりたい職業", "うれしいプレゼント", "やってみたいアクティビティ",
+    "居酒屋の人気メニュー", "お弁当に入っていたらうれしいおかず", "遊園地の人気アトラクション", "行きたい旅行先", "言われて嬉しい言葉",
+    "コンビニでつい買ってしまうもの", "世界で評価されそうな日本の文化", "タイムマシンで行きたい時代", "超能力で持ちたい能力", "映画の登場人物になれるなら",
+    "理想のプロポーズの場所", "人生で大切なもの", "怖いもの", "美味しい調味料", "部屋にあると嬉しい家電",
+    "もらって困るプレゼント", "住んでみたい場所", "カッコいい苗字", "強そうな漢字", "観たい映画のジャンル",
+    "好きなおにぎりの具", "学校で楽しかった行事", "ファミレスの人気メニュー", "喫茶店の人気メニュー", "理想の休日",
+    "モテる特技", "テンションが上がる瞬間", "絶叫マシンの怖さ", "痛いケガ", "恥ずかしい瞬間",
+    "美しいもの", "匂いが好きなもの", "高級感のある食べ物", "インドアで楽しめること", "アウトドアで楽しめること",
+    "長続きしそうな趣味", "可愛い動物", "面白いお笑い芸人", "感動するシチュエーション", "冬に食べたいもの",
+    "夏に食べたいもの", "すしネタの人気", "ラーメンの種類人気", "焼肉の部位人気", "好きなスイーツ",
+    "好きなスナック菓子", "好きな清涼飲料水", "ジブリ映画の名作", "ディズニーキャラクターの強さ", "アベンジャーズで強そうなキャラ",
+    "ゲームの難易度", "漫画の名作", "ドラゴンの強さイメージ", "魔法のカッコよさ", "RPGの職業のカッコよさ",
+    "歴史上の有名人", "生まれ変わるならなりたいもの", "一生ものの買い物", "テンションの上がる曲", "落ち着く場所",
+    "テンションが下がる出来事", "やりたくない家事", "子供に人気のあるもの", "大人っぽい趣味", "贅沢だと思うこと",
+    "男らしさの象徴", "女らしさの象徴", "怒ると怖そうなもの", "足が速そうな動物", "賢そうな動物",
+    "一度は食べてみたい高級食材", "宇宙に行ったらやりたいこと", "ヒーローの必殺技", "悪役の魅力", "理想の睡眠時間",
+    "友達になりたい芸能人", "カラオケで盛り上がる曲", "学校の好きな教科", "嫌いな勉強", "朝食べたいもの",
+    "夜食に食べたいもの", "パーキングエリアで食べたいもの", "祭りに出店してほしい屋台", "駄菓子の定番", "一生食べ続けられるもの"
+  ];
+
+  let rawRoomName = "";
+  let myId = "";
+  let myName = "";
+  let currentRoomRef = null;
+  let selectedAnswerIndex = null;
+  let isCurrentHost = false;
+
+  // 起動時の自動復元処理（kaburi-ito用にキー変更）
+  window.addEventListener('DOMContentLoaded', () => {
+    const savedRoom = localStorage.getItem('kaburito_room');
+    const savedName = localStorage.getItem('kaburito_name');
+    const savedId = localStorage.getItem('kaburito_id');
+
+    if (savedRoom && savedName && savedId) {
+      document.getElementById('input-room').value = savedRoom;
+      document.getElementById('input-name').value = savedName;
+      joinRoom(savedId);
+    }
+  });
+
+  function joinRoom(existingId = null) {
+    rawRoomName = document.getElementById('input-room').value.trim();
+    myName = document.getElementById('input-name').value.trim();
+
+    if (!rawRoomName || !myName) return alert("部屋名と名前を入力してください");
+
+    myId = existingId || ("p_" + Math.random().toString(36).substring(2, 9));
+    
+    // LocalStorageへ保存
+    localStorage.setItem('kaburito_room', rawRoomName);
+    localStorage.setItem('kaburito_name', myName);
+    localStorage.setItem('kaburito_id', myId);
+
+    // Firebaseの管理用パスを kaburito/rooms/ に変更
+    currentRoomRef = db.ref('kaburito/rooms/' + rawRoomName);
+
+    currentRoomRef.once('value').then((snapshot) => {
+      if (!snapshot.exists()) {
+        currentRoomRef.set({
+          clears: 0,
+          theme: "未設定",
+          hostId: null,
+          hostName: null,
+          orderRule: "asc",
+          field: [],
+          answers: [],
+          isClearHighlighted: false,
+          hasErrorOccurred: false
+        });
+      }
+
+      currentRoomRef.child('players/' + myId).update({
+        name: myName,
+        lastActive: Date.now()
+      });
+
+      listenRoom();
+      document.getElementById('lobby-panel').style.display = 'none';
+      document.getElementById('game-panel').style.display = 'flex';
+      document.getElementById('disp-room').innerText = rawRoomName;
+    });
+  }
+
+  function leaveRoom() {
+    if (!confirm("本当に退室しますか？")) return;
+
+    if (currentRoomRef && myId) {
+      currentRoomRef.child('players/' + myId).remove();
+      currentRoomRef.off();
+    }
+
+    localStorage.removeItem('kaburito_room');
+    localStorage.removeItem('kaburito_name');
+    localStorage.removeItem('kaburito_id');
+
+    location.reload();
+  }
+
+  function listenRoom() {
+    currentRoomRef.on('value', (snapshot) => {
+      const data = snapshot.val();
+      if (!data) return;
+
+      if (data.players && !data.players[myId] && myName) {
+        currentRoomRef.child('players/' + myId).update({
+          name: myName,
+          lastActive: Date.now()
+        });
+      }
+
+      isCurrentHost = (data.hostId === myId);
+
+      document.getElementById('disp-clears').innerText = data.clears || 0;
+      document.getElementById('disp-theme').innerText = data.theme || "未設定";
+
+      const hostBadge = document.getElementById('disp-host-name');
+      if (data.hostName) {
+        hostBadge.style.display = 'inline-block';
+        hostBadge.innerText = `親: ${data.hostName}${isCurrentHost ? ' (あなた)' : ''}`;
+      } else {
+        hostBadge.style.display = 'none';
+      }
+
+      const hintText = document.getElementById('answer-hint-text');
+      if (isCurrentHost) {
+        hintText.innerText = "順位（あなたは親です。▲▼移動やタップ選択で入れ替え可能）";
+        hintText.style.color = "var(--primary-color)";
+      } else {
+        hintText.innerText = "順位（親のみ移動操作が可能です）";
+        hintText.style.color = "var(--text-sub)";
+      }
+
+      const order = data.orderRule || 'asc';
+      document.querySelector(`input[name="order-rule"][value="${order}"]`).checked = true;
+
+      // 被りチェック & 全員回答判定
+      const playerKeys = data.players ? Object.keys(data.players) : [];
+      const answersList = data.answers || [];
+      const isAllAnswered = playerKeys.length > 0 && answersList.length >= playerKeys.length;
+
+      // 参加者間での数字重複（被り）判定
+      const chosenNumbers = [];
+      let hasDuplicate = false;
+      if (data.players) {
+        Object.values(data.players).forEach(p => {
+          if (p.hand && p.hand.length > 0) {
+            const num = p.hand[0];
+            if (chosenNumbers.includes(num)) {
+              hasDuplicate = true;
+            }
+            chosenNumbers.push(num);
+          }
+        });
+      }
+
+      if (hasDuplicate && !data.hasErrorOccurred) {
+        currentRoomRef.child('hasErrorOccurred').set(true);
+        alert("⚠️ 参加者同士で選んだ数字が被りました！チャレンジ失敗です！");
+      }
+
+      // 自分の確定数字・公開ボタン表示
+      const myData = data.players ? data.players[myId] : null;
+      const mySelectedDisp = document.getElementById('disp-my-selected-number');
+      const myHandDiv = document.getElementById('disp-my-hand');
+      myHandDiv.innerHTML = '';
+
+      if (myData && myData.hand && myData.hand.length > 0) {
+        const num = myData.hand[0];
+        mySelectedDisp.innerText = `設定中の数字: ${num}`;
+        mySelectedDisp.style.color = "var(--primary-color)";
+
+        const btn = document.createElement('button');
+        btn.className = 'btn btn-green';
+        btn.style.fontSize = '1.1rem';
+        btn.disabled = !isAllAnswered;
+
+        if (isAllAnswered) {
+          btn.innerText = `${num} (公開する)`;
+        } else {
+          btn.innerText = `${num} (全員の回答待ち)`;
+        }
+
+        btn.onclick = () => playCard(num);
+        myHandDiv.appendChild(btn);
+      } else {
+        mySelectedDisp.innerText = "数字が未設定です";
+        mySelectedDisp.style.color = "var(--text-sub)";
+      }
+
+      const fieldMap = {};
+      if (data.field) {
+        Object.values(data.field).forEach(item => {
+          if (!fieldMap[item.name]) fieldMap[item.name] = [];
+          fieldMap[item.name].push(item.value);
+        });
+      }
+
+      const fieldDiv = document.getElementById('disp-field');
+      fieldDiv.innerHTML = '';
+      if (data.field) {
+        Object.values(data.field).forEach(item => {
+          const card = document.createElement('div');
+          card.className = `played-card ${item.error ? 'error' : ''}`;
+          card.innerText = `${item.name}: ${item.value}`;
+          fieldDiv.appendChild(card);
+        });
+      }
+
+      // 回答一覧の描画
+      const answersDiv = document.getElementById('disp-answers');
+      answersDiv.innerHTML = '';
+
+      const usedNameCounts = {};
+      const isClear = data.isClearHighlighted;
+
+      answersList.forEach((item, index) => {
+        const card = document.createElement('div');
+        card.className = `answer-card ${selectedAnswerIndex === index ? 'selected' : ''} ${isCurrentHost ? 'is-host' : ''} ${isClear ? 'success' : ''}`;
+
+        let numDisp = '';
+        if (fieldMap[item.name]) {
+          const count = usedNameCounts[item.name] || 0;
+          if (fieldMap[item.name][count] !== undefined) {
+            numDisp = `<span class="answer-num">${fieldMap[item.name][count]}</span>`;
+            usedNameCounts[item.name] = count + 1;
+          }
+        }
+
+        const isFirst = index === 0;
+        const isLast = index === answersList.length - 1;
+
+        let controlsHtml = '';
+        if (isCurrentHost) {
+          controlsHtml = `
+            <div style="display: flex; gap: 2px; margin-left: 6px;" onclick="event.stopPropagation();">
+              <button class="btn btn-gray btn-sm" style="padding: 2px 8px; font-size: 0.8rem;" onclick="moveAnswerStep(${index}, -1)" ${isFirst ? 'disabled style="opacity:0.3; cursor:default;"' : ''}>▲</button>
+              <button class="btn btn-gray btn-sm" style="padding: 2px 8px; font-size: 0.8rem;" onclick="moveAnswerStep(${index}, 1)" ${isLast ? 'disabled style="opacity:0.3; cursor:default;"' : ''}>▼</button>
+            </div>
+          `;
+        }
+
+        card.innerHTML = `
+          <div class="answer-left">
+            <span class="answer-rank">${index + 1}位</span>
+            <span class="answer-text">${item.text}</span>
+          </div>
+          <div class="answer-right">
+            <span class="answer-author">${item.name}</span>
+            ${numDisp}
+            ${controlsHtml}
+          </div>
+        `;
+
+        if (isCurrentHost) {
+          card.onclick = () => handleAnswerClick(index, answersList);
+        }
+        answersDiv.appendChild(card);
+      });
+
+      const playersDiv = document.getElementById('disp-players');
+      playersDiv.innerHTML = '';
+      if (data.players) {
+        Object.values(data.players).forEach(p => {
+          const row = document.createElement('div');
+          row.className = 'player-row';
+          const isSet = (p.hand && p.hand.length > 0);
+          row.innerHTML = `<span><b>${p.name}</b></span><span style="color:${isSet ? 'var(--accent-green)' : 'var(--text-sub)'}; font-weight:bold;">${isSet ? '数字決定済み' : '未選択'}</span>`;
+          playersDiv.appendChild(row);
+        });
+      }
+    });
+  }
+
+  function submitMyNumber() {
+    const input = document.getElementById('input-my-number');
+    const val = parseInt(input.value, 10);
+
+    if (isNaN(val) || val < 1 || val > 100) {
+      return alert("1から100までの数字を入力してください");
+    }
+
+    currentRoomRef.child(`players/${myId}/hand`).set([val]).then(() => {
+      alert(`数字「${val}」に設定しました`);
+      input.value = "";
+    });
+  }
+
+  function setHostAndTheme(themeText) {
+    currentRoomRef.update({
+      theme: themeText,
+      hostId: myId,
+      hostName: myName
+    });
+  }
+
+  function postAnswer() {
+    const input = document.getElementById('input-answer');
+    const text = input.value.trim();
+    if (!text) return;
+
+    currentRoomRef.once('value', (snapshot) => {
+      const data = snapshot.val();
+      const currentAnswers = data.answers || [];
+      const existingIndex = currentAnswers.findIndex(item => item.name === myName);
+
+      if (existingIndex !== -1) {
+        currentAnswers[existingIndex].text = text;
+      } else {
+        currentAnswers.push({ name: myName, text: text });
+      }
+
+      currentRoomRef.child('answers').set(currentAnswers).then(() => {
+        input.value = "";
+      });
+    });
+  }
+
+  function handleAnswerClick(index, currentAnswers) {
+    if (!isCurrentHost) return;
+
+    if (selectedAnswerIndex === null) {
+      selectedAnswerIndex = index;
+    } else if (selectedAnswerIndex === index) {
+      selectedAnswerIndex = null;
+    } else {
+      const temp = currentAnswers[selectedAnswerIndex];
+      currentAnswers[selectedAnswerIndex] = currentAnswers[index];
+      currentAnswers[index] = temp;
+
+      selectedAnswerIndex = null;
+      currentRoomRef.child('answers').set(currentAnswers);
+      return;
+    }
+    listenRoom();
+  }
+
+  function moveAnswerStep(index, direction) {
+    if (!isCurrentHost) return;
+
+    currentRoomRef.once('value', (snapshot) => {
+      const data = snapshot.val();
+      const currentAnswers = data.answers || [];
+      const targetIndex = index + direction;
+
+      if (targetIndex < 0 || targetIndex >= currentAnswers.length) return;
+
+      const temp = currentAnswers[index];
+      currentAnswers[index] = currentAnswers[targetIndex];
+      currentAnswers[targetIndex] = temp;
+
+      selectedAnswerIndex = null;
+      currentRoomRef.child('answers').set(currentAnswers);
+    });
+  }
+
+  function saveAsImage() {
+    const target = document.getElementById('capture-area');
+    html2canvas(target, { backgroundColor: '#ffffff', scale: 2 }).then(canvas => {
+      const link = document.createElement('a');
+      link.download = `kaburi_ito_result_${rawRoomName}.png`;
+      link.href = canvas.toDataURL();
+      link.click();
+    });
+  }
+
+  function startNewRound() {
+    if (!confirm("新しいラウンドを開始しますか？\n（全員の選択数字、場、投稿された答えがリセットされます）")) {
+      return;
+    }
+
+    currentRoomRef.once('value', (snapshot) => {
+      const data = snapshot.val();
+      if (!data || !data.players) return;
+
+      Object.keys(data.players).forEach(pId => {
+        currentRoomRef.child(`players/${pId}/hand`).remove();
+      });
+
+      currentRoomRef.child('field').remove();
+      currentRoomRef.child('answers').remove();
+      currentRoomRef.child('hostId').remove();
+      currentRoomRef.child('hostName').remove();
+      currentRoomRef.child('isClearHighlighted').set(false);
+      currentRoomRef.child('hasErrorOccurred').set(false);
+    });
+  }
+
+  function playCard(val) {
+    if (!confirm(`数字「${val}」を公開しますか？`)) return;
+
+    currentRoomRef.once('value', (snapshot) => {
+      const data = snapshot.val();
+      const order = data.orderRule || 'asc';
+      let fieldArray = data.field ? Object.values(data.field) : [];
+      let errorDetectedNow = false;
+
+      if (fieldArray.length > 0) {
+        const lastIndex = fieldArray.length - 1;
+        const lastVal = fieldArray[lastIndex].value;
+
+        let isError = false;
+        if (order === 'asc' && val < lastVal) isError = true;
+        if (order === 'desc' && val > lastVal) isError = true;
+
+        if (isError) {
+          fieldArray[lastIndex].error = true;
+          errorDetectedNow = true;
+        }
+      }
+
+      const myHand = (data.players[myId].hand || []).filter(h => h !== val);
+
+      fieldArray.push({ name: myName, value: val, error: false });
+
+      if (errorDetectedNow) {
+        currentRoomRef.child('hasErrorOccurred').set(true);
+      }
+
+      currentRoomRef.child(`players/${myId}/hand`).set(myHand);
+      currentRoomRef.child('field').set(fieldArray).then(() => {
+        setTimeout(checkClear, 300);
+      });
+    });
+  }
+
+  function checkClear() {
+    currentRoomRef.once('value', (snapshot) => {
+      const data = snapshot.val();
+      let totalCardsLeft = 0;
+      if (data.players) {
+        Object.values(data.players).forEach(p => {
+          if (p.hand) totalCardsLeft += p.hand.length;
+        });
+      }
+
+      if (totalCardsLeft === 0) {
+        let fieldArray = data.field ? Object.values(data.field) : [];
+        const hasError = fieldArray.some(c => c.error) || data.hasErrorOccurred;
+
+        if (hasError) {
+          alert("⚠️ 全員のカードが出し切られました！（数字の被り、または順番ミスがありました）");
+        } else {
+          alert("🎉 全員のカードを完全な順番通りに出し切りました！ステージクリア！");
+          currentRoomRef.child('clears').set((data.clears || 0) + 1);
+          currentRoomRef.child('isClearHighlighted').set(true);
+        }
+      }
+    });
+  }
+
+  function pickRandomTheme() {
+    const theme = presetThemes[Math.floor(Math.random() * presetThemes.length)];
+    setHostAndTheme(theme);
+  }
+
+  function openThemeListModal() {
+    const container = document.getElementById('theme-select-container');
+    container.innerHTML = '';
+
+    presetThemes.forEach(theme => {
+      const item = document.createElement('div');
+      item.className = 'theme-select-item';
+      item.innerText = theme;
+      item.onclick = () => {
+        setHostAndTheme(theme);
+        toggleModal('theme-list-modal', false);
+      };
+      container.appendChild(item);
+    });
+
+    toggleModal('theme-list-modal', true);
+  }
+
+  function submitCustomTheme() {
+    const val = document.getElementById('input-custom-theme').value.trim();
+    if (val) {
+      setHostAndTheme(val);
+      document.getElementById('input-custom-theme').value = "";
+      toggleModal('theme-modal', false);
+    }
+  }
+
+  function setOrderRule(rule) {
+    currentRoomRef.child('orderRule').set(rule);
+  }
+
+  function resetGame() {
+    if (confirm("数字、お題、親権限、場、投稿された答えを全てリセットしますか？")) {
+      currentRoomRef.update({
+        clears: 0,
+        theme: "未設定",
+        hostId: null,
+        hostName: null,
+        field: [],
+        answers: [],
+        isClearHighlighted: false,
+        hasErrorOccurred: false
+      });
+
+      currentRoomRef.child('players').once('value', (snapshot) => {
+        const players = snapshot.val();
+        if (players) {
+          Object.keys(players).forEach(pId => {
+            currentRoomRef.child(`players/${pId}/hand`).remove();
+          });
+        }
+      });
+    }
+  }
+
+  function toggleModal(id, show) {
+    document.getElementById(id).style.display = show ? 'flex' : 'none';
+  }
+</script>
+</body>
+</html>
