@@ -334,4 +334,610 @@
                         </div>
                     </div>
 
-                    <div id="non-provider-judge-msg" class="text-xs text-
+                    <div id="non-provider-judge-msg" class="text-xs text-gray-400 pt-2 italic">
+                        出題者が口頭発表された解答を正誤判定しています...
+                    </div>
+                </div>
+
+                <!-- SUB-PHASE D: Turn Result Overlay -->
+                <div id="subphase-result" class="w-full max-w-md py-4 space-y-4 hidden">
+                    <div id="result-status-icon" class="text-5xl"></div>
+                    <h3 id="result-status-title" class="text-2xl font-black">---</h3>
+                    <div class="bg-spooky-lightBg/80 p-4 rounded-xl border border-gray-700 text-sm space-y-1">
+                        <div>お題: <span id="result-theme-word" class="font-bold text-amber-400">---</span></div>
+                        <div id="result-point-desc" class="text-xs text-gray-300 mt-1">---</div>
+                    </div>
+                    <button id="btn-next-turn" class="hidden w-full bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 font-bold py-3 px-6 rounded-xl transition-all shadow-md">
+                        次のターンへ進む <i class="fa-solid fa-arrow-right ml-1"></i>
+                    </button>
+                    <div id="waiting-next-turn-msg" class="text-xs text-gray-400 animate-pulse">
+                        ホストが次のターンを開始するのを待っています...
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Player Status / Online Status Grid -->
+            <div class="glass-panel p-4 rounded-2xl space-y-2">
+                <div class="text-xs font-bold text-gray-400 flex items-center justify-between border-b border-gray-800 pb-2">
+                    <span><i class="fa-solid fa-users text-purple-400"></i> 参加者の提出状況</span>
+                    <span id="submitted-progress-count" class="text-amber-400">0/0 完了</span>
+                </div>
+                <div id="game-players-status-list" class="grid grid-cols-2 sm:grid-cols-3 gap-2 pt-1 text-xs">
+                    <!-- Dynamic Status Badges -->
+                </div>
+            </div>
+        </section>
+
+
+        <!-- VIEW 4: GAME OVER / FINAL RESULT VIEW -->
+        <section id="view-gameover" class="hidden glass-panel p-8 rounded-2xl w-full max-w-md mx-auto text-center space-y-6 shadow-2xl glow-orange">
+            <div>
+                <i class="fa-solid fa-trophy text-5xl text-amber-400 mb-3 animate-bounce"></i>
+                <h2 class="text-3xl font-black font-title text-white">ゲーム終了!</h2>
+                <p class="text-xs text-gray-400 mt-1">すべてのターンが完了しました</p>
+            </div>
+
+            <!-- Winner Announcement -->
+            <div id="winner-announcement-box" class="p-4 rounded-xl bg-gradient-to-r from-purple-900/60 to-pink-900/60 border border-purple-500/40">
+                <span class="text-xs text-purple-200 block uppercase font-bold tracking-wider">勝者</span>
+                <div id="winner-team-name" class="text-2xl font-black text-amber-300 my-1">---</div>
+            </div>
+
+            <!-- Final Score Breakdown -->
+            <div class="grid grid-cols-2 gap-3">
+                <div class="bg-blue-950/40 border border-blue-500/30 p-3 rounded-xl">
+                    <span class="text-xs text-blue-300 font-bold block">TEAM A</span>
+                    <span id="final-score-a" class="text-3xl font-black text-blue-400">0</span>
+                </div>
+                <div class="bg-red-950/40 border border-red-500/30 p-3 rounded-xl">
+                    <span class="text-xs text-red-300 font-bold block">TEAM B</span>
+                    <span id="final-score-b" class="text-3xl font-black text-red-400">0</span>
+                </div>
+            </div>
+
+            <button id="btn-return-lobby" class="w-full bg-gradient-to-r from-gray-700 to-gray-800 hover:from-gray-600 hover:to-gray-700 text-white font-bold py-3.5 px-6 rounded-xl border border-gray-600 transition-all shadow-lg">
+                ロビーに戻る
+            </button>
+        </section>
+
+    </main>
+
+    <!-- Custom Modal Container for Notifications -->
+    <div id="custom-modal" class="hidden fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="glass-panel p-6 rounded-2xl max-w-sm w-full text-center space-y-4 border border-purple-500/30 shadow-2xl">
+            <div id="modal-icon" class="text-3xl text-amber-400"><i class="fa-solid fa-circle-info"></i></div>
+            <p id="modal-message" class="text-sm font-semibold text-gray-200">メッセージ</p>
+            <button id="btn-modal-close" class="w-full bg-purple-600 hover:bg-purple-500 text-white font-bold py-2 px-4 rounded-xl text-sm transition-colors">
+                OK
+            </button>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="text-center text-[11px] text-gray-600 mt-8 py-2">
+        Trick or Hint &copy; Realtime Firebase Synchronized Game
+    </footer>
+
+    <script>
+        // --- 1. FIREBASE INITIALIZATION ---
+        const firebaseConfig = {
+            apiKey: "AIzaSyC4DQhH_swesAD98Xyjg8d1lcWEkkrHrgw",
+            authDomain: "gamehistory-m84.firebaseapp.com",
+            databaseURL: "https://gamehistory-m84-default-rtdb.firebaseio.com",
+            projectId: "gamehistory-m84",
+            storageBucket: "gamehistory-m84.firebasestorage.app",
+            messagingSenderId: "475761727837",
+            appId: "1:475761727837:web:06d07e1ab4120a7ccaf0b4",
+            measurementId: "G-3636W6LC4F"
+        };
+
+        // Initialize Firebase Compat
+        if (!firebase.apps.length) {
+            firebase.initializeApp(firebaseConfig);
+        }
+        const db = firebase.database();
+
+        // --- 2. GLOBAL GAME STATE & CONSTANTS ---
+        // CRITICAL DATA PATH PREFIX REQUIREMENT: "trick"
+        const ROOT_PATH = "trick/rooms";
+
+        let localPlayer = {
+            id: 'p_' + Math.random().toString(36).substring(2, 9),
+            name: '',
+            team: 'A'
+        };
+
+        let currentRoomId = null;
+        let roomRef = null;
+        let roomState = null;
+
+        // UI View Cache
+        const views = {
+            entry: document.getElementById('view-entry'),
+            lobby: document.getElementById('view-lobby'),
+            game: document.getElementById('view-game'),
+            gameover: document.getElementById('view-gameover')
+        };
+
+        // Modal helper
+        function showAlert(msg, iconClass = "fa-circle-info text-amber-400") {
+            document.getElementById('modal-icon').className = `text-3xl ${iconClass}`;
+            document.getElementById('modal-message').innerText = msg;
+            document.getElementById('custom-modal').classList.remove('hidden');
+        }
+
+        document.getElementById('btn-modal-close').addEventListener('click', () => {
+            document.getElementById('custom-modal').classList.add('hidden');
+        });
+
+        // --- 3. DOM EVENT LISTENERS & NAVIGATION ---
+        
+        // Random Room ID Generator
+        document.getElementById('btn-random-room').addEventListener('click', () => {
+            const rand = 'room' + Math.floor(1000 + Math.random() * 9000);
+            document.getElementById('input-room-id').value = rand;
+        });
+
+        // Copy Room Link
+        document.getElementById('btn-copy-room').addEventListener('click', () => {
+            if (!currentRoomId) return;
+            const textToCopy = `${window.location.origin}${window.location.pathname}?room=${currentRoomId}`;
+            
+            // execCommand fallback for iframe safety
+            const dummy = document.createElement('input');
+            document.body.appendChild(dummy);
+            dummy.value = textToCopy;
+            dummy.select();
+            document.execCommand('copy');
+            document.body.removeChild(dummy);
+
+            showAlert('ルーム招待リンクをクリップボードにコピーしました！', 'fa-circle-check text-green-400');
+        });
+
+        // Check URL Query parameters for auto-room fill
+        window.addEventListener('load', () => {
+            const params = new URLSearchParams(window.location.search);
+            const rParam = params.get('room');
+            if (rParam) {
+                document.getElementById('input-room-id').value = rParam.toLowerCase();
+            }
+        });
+
+        // Join / Create Room Handler
+        document.getElementById('btn-join-room').addEventListener('click', async () => {
+            const nameInput = document.getElementById('input-player-name').value.trim();
+            const roomInput = document.getElementById('input-room-id').value.trim().toLowerCase();
+
+            if (!nameInput) {
+                showAlert('プレイヤー名を入力してください。');
+                return;
+            }
+            if (!roomInput) {
+                showAlert('ルームIDを入力してください。');
+                return;
+            }
+
+            localPlayer.name = nameInput;
+            currentRoomId = roomInput;
+            roomRef = db.ref(`${ROOT_PATH}/${currentRoomId}`);
+
+            try {
+                const snapshot = await roomRef.once('value');
+                const data = snapshot.val();
+
+                if (!data) {
+                    // Create New Room
+                    const newRoomData = {
+                        roomId: currentRoomId,
+                        hostId: localPlayer.id,
+                        status: 'lobby', // lobby, playing, gameover
+                        scores: { A: 0, B: 0 },
+                        turnInfo: {
+                            currentTurn: 0,
+                            totalTurns: 0,
+                            answererId: null,
+                            providerId: null,
+                            phase: 'theme_input', // theme_input, word_input, guessing, turn_result
+                            themeWord: '',
+                            rechallenge: false
+                        },
+                        players: {}
+                    };
+                    
+                    // Assign to Team A by default
+                    localPlayer.team = 'A';
+                    newRoomData.players[localPlayer.id] = {
+                        id: localPlayer.id,
+                        name: localPlayer.name,
+                        team: 'A',
+                        hasAnswered: false,
+                        isOnline: true
+                    };
+
+                    await roomRef.set(newRoomData);
+                } else {
+                    // Join Existing Room
+                    localPlayer.team = assignBalancedTeam(data.players || {});
+                    
+                    await roomRef.child(`players/${localPlayer.id}`).set({
+                        id: localPlayer.id,
+                        name: localPlayer.name,
+                        team: localPlayer.team,
+                        hasAnswered: false,
+                        isOnline: true
+                    });
+                }
+
+                // Setup disconnect handler
+                roomRef.child(`players/${localPlayer.id}/isOnline`).onDisconnect().set(false);
+
+                // Listen to Realtime Updates
+                subscribeToRoomUpdates();
+
+            } catch (err) {
+                console.error(err);
+                showAlert('Firebaseとの接続に失敗しました: ' + err.message);
+            }
+        });
+
+        // Auto balance team upon joining
+        function assignBalancedTeam(playersObj) {
+            let countA = 0, countB = 0;
+            Object.values(playersObj).forEach(p => {
+                if (p.team === 'A') countA++;
+                else if (p.team === 'B') countB++;
+            });
+            return countA <= countB ? 'A' : 'B';
+        }
+
+        // --- 4. REALTIME DATABASE SUBSCRIBER ---
+        function subscribeToRoomUpdates() {
+            roomRef.on('value', (snapshot) => {
+                const data = snapshot.val();
+                if (!data) {
+                    showAlert('ルームが解散されたか、存在しません。');
+                    switchView('entry');
+                    return;
+                }
+
+                roomState = data;
+                renderApp();
+            });
+        }
+
+        // View Switcher Utility
+        function switchView(viewName) {
+            Object.keys(views).forEach(k => {
+                if (k === viewName) {
+                    views[k].classList.remove('hidden');
+                } else {
+                    views[k].classList.add('hidden');
+                }
+            });
+        }
+
+        // Main Render Loop triggered by DB changes
+        function renderApp() {
+            if (!roomState) return;
+
+            // Sync View Mode
+            if (roomState.status === 'lobby') {
+                switchView('lobby');
+                renderLobbyView();
+            } else if (roomState.status === 'playing') {
+                switchView('game');
+                renderGameView();
+            } else if (roomState.status === 'gameover') {
+                switchView('gameover');
+                renderGameOverView();
+            }
+        }
+
+        // --- 5. LOBBY VIEW LOGIC ---
+        function renderLobbyView() {
+            document.getElementById('lobby-room-id').innerText = roomState.roomId;
+            
+            const players = roomState.players ? Object.values(roomState.players) : [];
+            const hostPlayer = players.find(p => p.id === roomState.hostId);
+            document.getElementById('host-name-display').innerText = hostPlayer ? hostPlayer.name : 'Unknown';
+
+            const teamAList = document.getElementById('list-team-a');
+            const teamBList = document.getElementById('list-team-b');
+            teamAList.innerHTML = '';
+            teamBList.innerHTML = '';
+
+            let countA = 0, countB = 0;
+
+            players.forEach(p => {
+                const li = document.createElement('li');
+                li.className = "flex items-center justify-between bg-spooky-card border border-gray-800 p-2.5 rounded-xl text-xs font-semibold";
+                
+                const isMe = p.id === localPlayer.id;
+                const meBadge = isMe ? `<span class="ml-1 text-[10px] bg-amber-500/30 text-amber-300 px-1.5 py-0.5 rounded">あなた</span>` : '';
+                const hostBadge = p.id === roomState.hostId ? `<i class="fa-solid fa-crown text-amber-400 ml-1"></i>` : '';
+
+                li.innerHTML = `
+                    <span class="flex items-center gap-1.5 text-gray-200">
+                        <i class="fa-solid fa-user text-gray-500"></i> ${escapeHtml(p.name)} ${meBadge} ${hostBadge}
+                    </span>
+                    <span class="w-2 h-2 rounded-full ${p.isOnline ? 'bg-green-500' : 'bg-gray-600'}"></span>
+                `;
+
+                if (p.team === 'A') {
+                    teamAList.appendChild(li);
+                    countA++;
+                } else {
+                    teamBList.appendChild(li);
+                    countB++;
+                }
+            });
+
+            document.getElementById('count-team-a').innerText = `${countA}人`;
+            document.getElementById('count-team-b').innerText = `${countB}人`;
+
+            const isHost = roomState.hostId === localPlayer.id;
+            const startBtn = document.getElementById('btn-start-game');
+            const hostControls = document.getElementById('host-controls');
+            const nonHostMsg = document.getElementById('non-host-msg');
+
+            if (isHost) {
+                hostControls.classList.remove('hidden');
+                nonHostMsg.classList.add('hidden');
+                // Allow start if both teams have at least 1 player (recommended 2 per team)
+                if (countA >= 1 && countB >= 1 && (countA + countB >= 3)) {
+                    startBtn.disabled = false;
+                } else {
+                    startBtn.disabled = true;
+                }
+            } else {
+                hostControls.classList.add('hidden');
+                nonHostMsg.classList.remove('hidden');
+            }
+        }
+
+        // Toggle Local Player Team
+        document.getElementById('btn-toggle-team').addEventListener('click', () => {
+            if (!roomRef) return;
+            const currentP = roomState.players[localPlayer.id];
+            const newTeam = currentP.team === 'A' ? 'B' : 'A';
+            roomRef.child(`players/${localPlayer.id}/team`).set(newTeam);
+        });
+
+        // Shuffle Teams
+        document.getElementById('btn-shuffle-teams').addEventListener('click', () => {
+            if (roomState.hostId !== localPlayer.id) return;
+            const playersArr = Object.values(roomState.players);
+            // Fisher-Yates shuffle
+            for (let i = playersArr.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [playersArr[i], playersArr[j]] = [playersArr[j], playersArr[i]];
+            }
+
+            const updates = {};
+            playersArr.forEach((p, idx) => {
+                const assignedTeam = (idx % 2 === 0) ? 'A' : 'B';
+                updates[`players/${p.id}/team`] = assignedTeam;
+            });
+            roomRef.update(updates);
+        });
+
+        // START GAME ACTION (HOST ONLY)
+        document.getElementById('btn-start-game').addEventListener('click', () => {
+            if (roomState.hostId !== localPlayer.id) return;
+
+            const players = Object.values(roomState.players);
+            const teamAPlayers = players.filter(p => p.team === 'A');
+            const teamBPlayers = players.filter(p => p.team === 'B');
+
+            if (teamAPlayers.length === 0 || teamBPlayers.length === 0) {
+                showAlert('両方のチームに1名以上のプレイヤーが必要です。');
+                return;
+            }
+
+            // Calculation for total turns:
+            // Odd number rule: "奇数の時には少ないチームは最後にランダムで1人再挑戦できるようにする"
+            let totalTurns = 0;
+            const maxTeamSize = Math.max(teamAPlayers.length, teamBPlayers.length);
+            totalTurns = maxTeamSize * 2; // Equal opportunity for both sides!
+
+            // Reset player states
+            const updates = {
+                status: 'playing',
+                scores: { A: 0, B: 0 },
+                'turnInfo/currentTurn': 1,
+                'turnInfo/totalTurns': totalTurns,
+                'turnInfo/phase': 'theme_input',
+                'turnInfo/submittedWords': null,
+                'turnInfo/themeWord': ''
+            };
+
+            players.forEach(p => {
+                updates[`players/${p.id}/hasAnswered`] = false;
+            });
+
+            // Select 1st Answerer & Provider
+            const { answererId, providerId, rechallenge } = selectTurnRoles(players, teamAPlayers, teamBPlayers, 1, totalTurns);
+            updates['turnInfo/answererId'] = answererId;
+            updates['turnInfo/providerId'] = providerId;
+            updates['turnInfo/rechallenge'] = rechallenge;
+
+            roomRef.update(updates);
+        });
+
+        // Helper: Select Answerer and Provider for a Turn
+        function selectTurnRoles(allPlayers, teamA, teamB, currentTurn, totalTurns) {
+            // Find candidates who haven't answered yet
+            let candidates = allPlayers.filter(p => !p.hasAnswered);
+
+            let rechallenge = false;
+
+            // If candidates empty or current turn exceeds natural length -> Rechallenge mode for smaller team
+            if (candidates.length === 0) {
+                rechallenge = true;
+                const countA = teamA.length;
+                const countB = teamB.length;
+                const smallerTeam = countA < countB ? 'A' : (countB < countA ? 'B' : 'A');
+                candidates = allPlayers.filter(p => p.team === smallerTeam);
+            }
+
+            // Pick Answerer randomly from candidates
+            const answerer = candidates[Math.floor(Math.random() * candidates.length)];
+
+            // Provider must be from the SAME team as Answerer (other than Answerer if possible)
+            const sameTeamMembers = allPlayers.filter(p => p.team === answerer.team);
+            let providerCandidates = sameTeamMembers.filter(p => p.id !== answerer.id);
+            
+            // If team size is 1, Provider is the same person (or edge case handle)
+            if (providerCandidates.length === 0) {
+                providerCandidates = [answerer];
+            }
+
+            const provider = providerCandidates[Math.floor(Math.random() * providerCandidates.length)];
+
+            return {
+                answererId: answerer.id,
+                providerId: provider.id,
+                rechallenge
+            };
+        }
+
+
+        // --- 6. GAMEPLAY VIEW LOGIC & PHASES ---
+        function renderGameView() {
+            const turn = roomState.turnInfo || {};
+            const players = roomState.players || {};
+            
+            // Update Scoreboard
+            document.getElementById('score-team-a').innerText = roomState.scores?.A || 0;
+            document.getElementById('score-team-b').innerText = roomState.scores?.B || 0;
+            document.getElementById('current-turn-num').innerText = turn.currentTurn || 1;
+            document.getElementById('total-turns-num').innerText = turn.totalTurns || '--';
+
+            if (turn.rechallenge) {
+                document.getElementById('rechallenge-badge').classList.remove('hidden');
+            } else {
+                document.getElementById('rechallenge-badge').classList.add('hidden');
+            }
+
+            // Answerer & Provider Info
+            const answerer = players[turn.answererId] || { name: '---', team: 'A' };
+            const provider = players[turn.providerId] || { name: '---', team: 'A' };
+
+            document.getElementById('display-answerer-name').innerText = `${answerer.name} (Team ${answerer.team})`;
+            document.getElementById('display-provider-name').innerText = `${provider.name} (Team ${provider.team})`;
+
+            // Local Role Determination
+            const isMeAnswerer = localPlayer.id === turn.answererId;
+            const isMeProvider = localPlayer.id === turn.providerId;
+            const isMeTeammate = localPlayer.team === answerer.team; // Same team as Answerer -> Hint
+            
+            // Set Role Pill Badge
+            const myRolePill = document.getElementById('my-role-pill');
+            if (isMeAnswerer) {
+                myRolePill.className = "text-xs px-3 py-1.5 rounded-full font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40";
+                myRolePill.innerHTML = `<i class="fa-solid fa-question"></i> あなたは【解答者】`;
+            } else if (isMeProvider) {
+                myRolePill.className = "text-xs px-3 py-1.5 rounded-full font-bold bg-purple-500/20 text-purple-300 border border-purple-500/40";
+                myRolePill.innerHTML = `<i class="fa-solid fa-pen-nib"></i> あなたは【出題者】`;
+            } else if (isMeTeammate) {
+                myRolePill.className = "text-xs px-3 py-1.5 rounded-full font-bold bg-blue-500/20 text-blue-300 border border-blue-500/40";
+                myRolePill.innerHTML = `<i class="fa-solid fa-hand-holding-heart"></i> 味方【ヒント担当】`;
+            } else {
+                myRolePill.className = "text-xs px-3 py-1.5 rounded-full font-bold bg-red-500/20 text-red-300 border border-red-500/40";
+                myRolePill.innerHTML = `<i class="fa-solid fa-masks-theater"></i> 敵【トリック担当】`;
+            }
+
+            // Phase Area Handling
+            hideAllSubphases();
+            const phaseTitle = document.getElementById('phase-title');
+            const phaseInstruction = document.getElementById('phase-instruction');
+
+            // --- PHASE 1: THEME INPUT ---
+            if (turn.phase === 'theme_input') {
+                phaseTitle.innerText = "PHASE 1: お題決定";
+                
+                if (isMeProvider) {
+                    phaseInstruction.innerText = "出題者として、お題を入力してください。";
+                    document.getElementById('subphase-theme-input').classList.remove('hidden');
+                } else {
+                    phaseInstruction.innerText = `${provider.name} がお題を入力しています...`;
+                    document.getElementById('theme-provider-waiting-name').innerText = provider.name;
+                    document.getElementById('subphase-theme-waiting').classList.remove('hidden');
+                }
+            }
+
+            // --- PHASE 2: WORD (HINT / TRICK) INPUT ---
+            else if (turn.phase === 'word_input') {
+                phaseTitle.innerText = "PHASE 2: 単語（ヒント/トリック）の提出";
+
+                const submitted = turn.submittedWords || {};
+                const mySubmittedWord = submitted[localPlayer.id];
+
+                if (isMeAnswerer) {
+                    phaseInstruction.innerText = "みんながヒントとトリックを入力中です。お待ちください...";
+                    document.getElementById('subphase-theme-waiting').classList.remove('hidden');
+                    document.getElementById('theme-provider-waiting-name').innerText = "他のプレイヤー";
+                } else {
+                    document.getElementById('subphase-word-input').classList.remove('hidden');
+                    document.getElementById('display-theme-secret').innerText = turn.themeWord || '---';
+
+                    const guide = document.getElementById('word-input-guide');
+                    if (isMeTeammate) {
+                        guide.innerHTML = `<span class="text-blue-400 font-bold"><i class="fa-solid fa-lightbulb"></i> 味方チーム:</span> 解答者を導く【ヒント単語】を入力してください`;
+                    } else {
+                        guide.innerHTML = `<span class="text-red-400 font-bold"><i class="fa-solid fa-ghost"></i> 相手チーム:</span> 解答者を惑わす【トリック単語】を入力してください`;
+                    }
+
+                    if (mySubmittedWord) {
+                        document.getElementById('form-word-submission').classList.add('hidden');
+                        document.getElementById('submitted-word-done').classList.remove('hidden');
+                    } else {
+                        document.getElementById('form-word-submission').classList.remove('hidden');
+                        document.getElementById('submitted-word-done').classList.add('hidden');
+                    }
+                }
+            }
+
+            // --- PHASE 3: GUESSING & DEDUPLICATION DISPLAY ---
+            else if (turn.phase === 'guessing') {
+                phaseTitle.innerText = "PHASE 3: 解答 & 判定";
+                phaseInstruction.innerText = `解答者の ${answerer.name} はカードを見て口頭で答えてください！`;
+
+                document.getElementById('subphase-guessing').classList.remove('hidden');
+
+                // DEDUPLICATION RULE IMPLEMENTATION:
+                // "ヒントが同じ単語で被ったら1個のみ有効で残りは表示されない / 重複は１つだけ残す"
+                const rawSubmitted = turn.submittedWords || {};
+                const dedupedWordsSet = new Set();
+
+                Object.values(rawSubmitted).forEach(w => {
+                    if (w && typeof w === 'string') {
+                        const trimmed = w.trim().toLowerCase();
+                        if (trimmed.length > 0) {
+                            // Store original case representation or trimmed
+                            dedupedWordsSet.add(w.trim());
+                        }
+                    }
+                });
+
+                const finalWordsList = Array.from(dedupedWordsSet);
+                
+                // Shuffle array deterministically or visually so Answerer can't guess order
+                const grid = document.getElementById('deduped-words-grid');
+                grid.innerHTML = '';
+                document.getElementById('valid-cards-count').innerText = finalWordsList.length;
+
+                finalWordsList.forEach(word => {
+                    const card = document.createElement('div');
+                    card.className = "bg-gradient-to-br from-purple-900/60 to-indigo-900/60 border border-amber-400/30 text-amber-200 font-black text-lg px-5 py-3 rounded-xl shadow-lg animate-fade-in flex items-center gap-2";
+                    card.innerHTML = `<i class="fa-solid fa-tag text-xs text-amber-400"></i> ${escapeHtml(word)}`;
+                    grid.appendChild(card);
+                });
+
+                // Display Judging Buttons for Provider
+                const judgeBox = document.getElementById('provider-judge-box');
+                const nonJudgeMsg = document.getElementById('non-provider-judge-msg');
+
+                if (isMeProvider) {
+                    judgeBox.classList.remove('hidden')
