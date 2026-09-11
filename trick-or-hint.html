@@ -940,4 +940,258 @@
                 const nonJudgeMsg = document.getElementById('non-provider-judge-msg');
 
                 if (isMeProvider) {
-                    judgeBox.classList.remove('hidden')
+                    judgeBox.classList.remove('hidden');
+                    nonJudgeMsg.classList.add('hidden');
+                    document.getElementById('actual-theme-word-display').innerText = turn.themeWord || '---';
+                } else {
+                    judgeBox.classList.add('hidden');
+                    nonJudgeMsg.classList.remove('hidden');
+                }
+            }
+
+            // --- PHASE 4: TURN RESULT ---
+            else if (turn.phase === 'turn_result') {
+                phaseTitle.innerText = "PHASE 4: ターン結果";
+                document.getElementById('subphase-result').classList.remove('hidden');
+
+                const icon = document.getElementById('result-status-icon');
+                const title = document.getElementById('result-status-title');
+                const desc = document.getElementById('result-point-desc');
+
+                document.getElementById('result-theme-word').innerText = turn.themeWord;
+
+                if (turn.lastResult === 'correct') {
+                    icon.innerHTML = `<i class="fa-solid fa-circle-check text-green-400"></i>`;
+                    title.className = "text-2xl font-black text-green-400";
+                    title.innerText = "正 解 !";
+                    desc.innerText = `解答者チーム (Team ${answerer.team}) に 1 ポイント！`;
+                } else {
+                    icon.innerHTML = `<i class="fa-solid fa-circle-xmark text-red-400"></i>`;
+                    title.className = "text-2xl font-black text-red-400";
+                    title.innerText = "不 正 解 ...";
+                    desc.innerText = `相手チームに 1 ポイント！`;
+                }
+
+                const isHost = roomState.hostId === localPlayer.id;
+                const nextBtn = document.getElementById('btn-next-turn');
+                const waitMsg = document.getElementById('waiting-next-turn-msg');
+
+                if (isHost) {
+                    nextBtn.classList.remove('hidden');
+                    waitMsg.classList.add('hidden');
+                } else {
+                    nextBtn.classList.add('hidden');
+                    waitMsg.classList.remove('hidden');
+                }
+            }
+
+            // Update Progress / Player Status Grid
+            renderPlayerStatusList(players, turn);
+        }
+
+        function hideAllSubphases() {
+            document.getElementById('subphase-theme-input').classList.add('hidden');
+            document.getElementById('subphase-theme-waiting').classList.add('hidden');
+            document.getElementById('subphase-word-input').classList.add('hidden');
+            document.getElementById('subphase-guessing').classList.add('hidden');
+            document.getElementById('subphase-result').classList.add('hidden');
+        }
+
+        // Render Status Bar for all connected players during gameplay
+        function renderPlayerStatusList(players, turn) {
+            const listContainer = document.getElementById('game-players-status-list');
+            listContainer.innerHTML = '';
+
+            const playerArr = Object.values(players);
+            const answererId = turn.answererId;
+            const submitted = turn.submittedWords || {};
+
+            let completedCount = 0;
+            const targetCount = playerArr.length - 1; // Everyone except Answerer
+
+            playerArr.forEach(p => {
+                const item = document.createElement('div');
+                item.className = "bg-spooky-card border border-gray-800 p-2 rounded-lg flex items-center justify-between";
+
+                const isAnswerer = p.id === answererId;
+                const hasSubmitted = !!submitted[p.id];
+
+                if (hasSubmitted) completedCount++;
+
+                let statusBadge = '';
+                if (isAnswerer) {
+                    statusBadge = `<span class="text-[10px] bg-amber-500/20 text-amber-300 px-1.5 py-0.5 rounded">解答者</span>`;
+                } else if (turn.phase === 'word_input') {
+                    if (hasSubmitted) {
+                        statusBadge = `<span class="text-[10px] bg-green-500/20 text-green-400 px-1.5 py-0.5 rounded"><i class="fa-solid fa-check"></i> 提出済</span>`;
+                    } else {
+                        statusBadge = `<span class="text-[10px] bg-gray-700 text-gray-400 px-1.5 py-0.5 rounded">入力中...</span>`;
+                    }
+                } else {
+                    statusBadge = `<span class="text-[10px] bg-gray-800 text-gray-400 px-1.5 py-0.5 rounded">参加中</span>`;
+                }
+
+                item.innerHTML = `
+                    <span class="truncate font-medium text-gray-300 text-[11px]">${escapeHtml(p.name)}</span>
+                    ${statusBadge}
+                `;
+                listContainer.appendChild(item);
+            });
+
+            document.getElementById('submitted-progress-count').innerText = `${completedCount}/${targetCount} 完了`;
+
+            // Auto Advance Trigger: If Host and all words submitted in 'word_input' phase, move to 'guessing'
+            if (roomState.hostId === localPlayer.id && turn.phase === 'word_input') {
+                if (completedCount >= targetCount && targetCount > 0) {
+                    roomRef.child('turnInfo/phase').set('guessing');
+                }
+            }
+        }
+
+
+        // --- 7. PLAYER ACTIONS & GAME CONTROL HANDLERS ---
+
+        // Provider Submits Theme Word
+        document.getElementById('btn-submit-theme').addEventListener('click', () => {
+            const word = document.getElementById('input-theme-word').value.trim();
+            if (!word) {
+                showAlert('お題を入力してください。');
+                return;
+            }
+
+            roomRef.child('turnInfo').update({
+                themeWord: word,
+                phase: 'word_input'
+            });
+
+            document.getElementById('input-theme-word').value = '';
+        });
+
+        // Hint / Trick Word Submission
+        document.getElementById('btn-submit-word').addEventListener('click', () => {
+            const word = document.getElementById('input-hint-trick-word').value.trim();
+            if (!word) {
+                showAlert('単語を入力してください。');
+                return;
+            }
+
+            // Save word under localPlayer.id
+            roomRef.child(`turnInfo/submittedWords/${localPlayer.id}`).set(word);
+            document.getElementById('input-hint-trick-word').value = '';
+        });
+
+        // Provider Judges: Correct
+        document.getElementById('btn-judge-correct').addEventListener('click', () => {
+            processTurnJudge(true);
+        });
+
+        // Provider Judges: Incorrect
+        document.getElementById('btn-judge-incorrect').addEventListener('click', () => {
+            processTurnJudge(false);
+        });
+
+        function processTurnJudge(isCorrect) {
+            const turn = roomState.turnInfo;
+            const answerer = roomState.players[turn.answererId];
+            const answererTeam = answerer.team;
+            const opponentTeam = answererTeam === 'A' ? 'B' : 'A';
+
+            const newScores = { ...roomState.scores };
+
+            if (isCorrect) {
+                newScores[answererTeam] = (newScores[answererTeam] || 0) + 1;
+            } else {
+                newScores[opponentTeam] = (newScores[opponentTeam] || 0) + 1;
+            }
+
+            // Mark answerer as having answered (if not rechallenge turn)
+            const updates = {
+                scores: newScores,
+                'turnInfo/phase': 'turn_result',
+                'turnInfo/lastResult': isCorrect ? 'correct' : 'incorrect'
+            };
+
+            if (!turn.rechallenge) {
+                updates[`players/${turn.answererId}/hasAnswered`] = true;
+            }
+
+            roomRef.update(updates);
+        }
+
+        // Host Advances to Next Turn
+        document.getElementById('btn-next-turn').addEventListener('click', () => {
+            if (roomState.hostId !== localPlayer.id) return;
+
+            const turn = roomState.turnInfo;
+            const nextTurnNum = turn.currentTurn + 1;
+
+            if (nextTurnNum > turn.totalTurns) {
+                // Game Over
+                roomRef.child('status').set('gameover');
+                return;
+            }
+
+            // Setup Next Turn
+            const players = Object.values(roomState.players);
+            const teamAPlayers = players.filter(p => p.team === 'A');
+            const teamBPlayers = players.filter(p => p.team === 'B');
+
+            const { answererId, providerId, rechallenge } = selectTurnRoles(players, teamAPlayers, teamBPlayers, nextTurnNum, turn.totalTurns);
+
+            roomRef.child('turnInfo').set({
+                currentTurn: nextTurnNum,
+                totalTurns: turn.totalTurns,
+                answererId: answererId,
+                providerId: providerId,
+                phase: 'theme_input',
+                themeWord: '',
+                submittedWords: null,
+                rechallenge: rechallenge
+            });
+        });
+
+
+        // --- 8. FINAL GAME OVER VIEW ---
+        function renderGameOverView() {
+            const scores = roomState.scores || { A: 0, B: 0 };
+            document.getElementById('final-score-a').innerText = scores.A || 0;
+            document.getElementById('final-score-b').innerText = scores.B || 0;
+
+            const winnerBox = document.getElementById('winner-team-name');
+            if (scores.A > scores.B) {
+                winnerBox.innerText = "TEAM A の勝利! 🎉";
+                winnerBox.className = "text-2xl font-black text-blue-400 my-1";
+            } else if (scores.B > scores.A) {
+                winnerBox.innerText = "TEAM B の勝利! 🎉";
+                winnerBox.className = "text-2xl font-black text-red-400 my-1";
+            } else {
+                winnerBox.innerText = "引き分け (DRAW)! 🤝";
+                winnerBox.className = "text-2xl font-black text-amber-300 my-1";
+            }
+        }
+
+        // Return to Lobby button
+        document.getElementById('btn-return-lobby').addEventListener('click', () => {
+            if (roomState && roomState.hostId === localPlayer.id) {
+                roomRef.child('status').set('lobby');
+            } else {
+                switchView('lobby');
+            }
+        });
+
+        // Utility HTML Escaper
+        function escapeHtml(str) {
+            if (!str) return '';
+            return str.replace(/[&<>"']/g, function(m) {
+                return {
+                    '&': '&amp;',
+                    '<': '&lt;',
+                    '>': '&gt;',
+                    '"': '&quot;',
+                    "'": '&#039;'
+                }[m];
+            });
+        }
+    </script>
+</body>
+</html>
