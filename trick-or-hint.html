@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trick or Hint (トリック オア ヒンート)</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts (Outfit & Noto Sans JP) -->
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;600;800&family=Outfit:wght@600;800&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        spooky: {
+                            bg: '#0F0E17',
+                            card: '#1F1D2B',
+                            accent: '#FF8906',
+                            purple: '#A7A9BE',
+                            violet: '#7209B7',
+                            pink: '#F72585',
+                            darkPurple: '#2E1065',
+                            lightBg: '#2A2A38',
+                            teamA: '#3B82F6',
+                            teamB: '#EF4444'
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Noto Sans JP', 'sans-serif'],
+                        title: ['Outfit', 'Noto Sans JP', 'sans-serif']
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            background-color: #0F0E17;
+            color: #FFFFFE;
+            font-family: 'Noto Sans JP', sans-serif;
+            background-image: radial-gradient(#2A2A38 1px, transparent 1px);
+            background-size: 24px 24px;
+        }
+        .glow-orange {
+            box-shadow: 0 0 20px rgba(255, 137, 6, 0.35);
+        }
+        .glow-violet {
+            box-shadow: 0 0 20px rgba(114, 9, 183, 0.4);
+        }
+        .glass-panel {
+            background: rgba(31, 29, 43, 0.85);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0F0E17;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #2A2A38;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #FF8906;
+        }
+    </style>
+
+    <!-- Firebase SDK Compat Core -->
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
+</head>
+<body class="min-h-screen flex flex-col justify-between p-3 md:p-6">
+
+    <!-- Header / Title -->
+    <header class="max-w-4xl w-full mx-auto text-center mb-6">
+        <div class="inline-flex items-center space-x-3 px-4 py-1.5 rounded-full bg-spooky-darkPurple border border-purple-500/30 mb-2">
+            <i class="fa-solid font-bold fa-ghost text-amber-400 animate-bounce"></i>
+            <span class="text-xs md:text-sm font-semibold tracking-wider text-purple-200 uppercase">Realtime Party Game</span>
+        </div>
+        <h1 class="text-3xl md:text-5xl font-black font-title tracking-tight bg-gradient-to-r from-amber-400 via-orange-500 to-fuchsia-500 bg-clip-text text-transparent">
+            Trick or Hint
+        </h1>
+        <p class="text-xs md:text-sm text-gray-400 mt-1">トリック オア ヒンート — 味方の導きと敵の惑わし</p>
+    </header>
+
+    <!-- App Container -->
+    <main class="max-w-4xl w-full mx-auto flex-grow flex flex-col justify-center">
+
+        <!-- VIEW 1: JOIN / CREATE ROOM VIEW -->
+        <section id="view-entry" class="glass-panel p-6 md:p-8 rounded-2xl max-w-md mx-auto w-full shadow-2xl glow-violet">
+            <h2 class="text-xl font-bold text-center mb-6 flex items-center justify-center gap-2">
+                <i class="fa-solid fa-door-open text-orange-400"></i> ゲームに参加 / ルーム作成
+            </h2>
+            
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold text-gray-300 mb-1.5 uppercase">プレイヤー名</label>
+                    <input type="text" id="input-player-name" placeholder="例: はなこ" maxlength="12"
+                           class="w-full bg-spooky-lightBg border border-gray-700 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-orange-500 transition-colors">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-gray-300 mb-1.5 uppercase">ルームID</label>
+                    <div class="flex gap-2">
+                        <input type="text" id="input-room-id" placeholder="半角英数字 (例: room123)" maxlength="16"
+                               class="w-full bg-spooky-lightBg border border-gray-700 rounded-xl px-4 py-3 text-white uppercase placeholder-gray-500 focus:outline-none focus:border-orange-500 transition-colors">
+                        <button id="btn-random-room" title="ランダム作成"
+                                class="bg-gray-800 hover:bg-gray-700 text-gray-300 px-4 py-3 rounded-xl transition-colors border border-gray-700">
+                            <i class="fa-solid fa-dice"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <button id="btn-join-room"
+                        class="w-full mt-2 bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white font-bold py-3.5 px-6 rounded-xl shadow-lg transition-transform active:scale-95 flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-right-to-bracket"></i> 部屋に入る
+                </button>
+            </div>
+            <div class="mt-6 text-xs text-center text-gray-400 leading-relaxed border-t border-gray-800 pt-4">
+                同名のルームが存在しない場合は自動で新規作成され、あなたがホスト（部屋長）になります。
+            </div>
+        </section>
+
+
+        <!-- VIEW 2: LOBBY VIEW -->
+        <section id="view-lobby" class="hidden glass-panel p-6 md:p-8 rounded-2xl w-full max-w-2xl mx-auto shadow-2xl">
+            <!-- Room Info Bar -->
+            <div class="flex flex-wrap items-center justify-between gap-3 pb-5 border-b border-gray-800 mb-6">
+                <div>
+                    <span class="text-xs text-gray-400">ROOM ID</span>
+                    <div class="flex items-center gap-2">
+                        <h2 id="lobby-room-id" class="text-2xl font-black font-title tracking-wider text-orange-400">---</h2>
+                        <button id="btn-copy-room" class="text-xs bg-gray-800 hover:bg-gray-700 px-2.5 py-1 rounded border border-gray-700 text-gray-300 transition-colors">
+                            <i class="fa-regular fa-copy"></i> 共有
+                        </button>
+                    </div>
+                </div>
+                <div id="badge-host-status" class="bg-purple-900/50 border border-purple-500/30 text-purple-300 text-xs px-3 py-1.5 rounded-full flex items-center gap-2">
+                    <i class="fa-solid fa-crown text-amber-400"></i> <span id="host-name-display">---</span> (ホスト)
+                </div>
+            </div>
+
+            <p class="text-sm text-gray-300 mb-4 text-center">プレイヤーが揃ったらチームを分けてゲームを開始してください。</p>
+
+            <!-- Teams Container -->
+            <div class="grid md:grid-cols-2 gap-4 mb-6">
+                <!-- Team A -->
+                <div class="bg-spooky-lightBg/50 border border-blue-500/30 rounded-xl p-4">
+                    <div class="flex items-center justify-between mb-3 border-b border-blue-500/20 pb-2">
+                        <h3 class="font-bold text-blue-400 flex items-center gap-2">
+                            <i class="fa-solid fa-shield-halved"></i> チーム A
+                        </h3>
+                        <span id="count-team-a" class="text-xs bg-blue-900/60 text-blue-300 px-2 py-0.5 rounded-full">0人</span>
+                    </div>
+                    <ul id="list-team-a" class="space-y-2 min-h-[100px]">
+                        <!-- Player Items -->
+                    </ul>
+                </div>
+
+                <!-- Team B -->
+                <div class="bg-spooky-lightBg/50 border border-red-500/30 rounded-xl p-4">
+                    <div class="flex items-center justify-between mb-3 border-b border-red-500/20 pb-2">
+                        <h3 class="font-bold text-red-400 flex items-center gap-2">
+                            <i class="fa-solid fa-skull"></i> チーム B
+                        </h3>
+                        <span id="count-team-b" class="text-xs bg-red-900/60 text-red-300 px-2 py-0.5 rounded-full">0人</span>
+                    </div>
+                    <ul id="list-team-b" class="space-y-2 min-h-[100px]">
+                        <!-- Player Items -->
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Host Actions -->
+            <div id="host-controls" class="space-y-3">
+                <div class="flex gap-2">
+                    <button id="btn-shuffle-teams" class="flex-1 bg-gray-800 hover:bg-gray-700 text-gray-200 font-semibold py-2.5 px-4 rounded-xl border border-gray-700 transition-colors text-sm flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-shuffle"></i> チームランダムシャッフル
+                    </button>
+                    <button id="btn-toggle-team" class="bg-gray-800 hover:bg-gray-700 text-gray-200 font-semibold py-2.5 px-4 rounded-xl border border-gray-700 transition-colors text-sm flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-arrow-right-arrow-left"></i> 自分のチームを変更
+                    </button>
+                </div>
+                <button id="btn-start-game" disabled class="w-full bg-gradient-to-r from-purple-600 to-pink-600 disabled:opacity-50 hover:from-purple-500 hover:to-pink-500 text-white font-bold py-3.5 px-6 rounded-xl shadow-lg transition-all active:scale-95 flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-play"></i> ゲームを開始する (最低4名推奨)
+                </button>
+            </div>
+            
+            <div id="non-host-msg" class="hidden text-center py-3 text-xs text-amber-400/80 bg-amber-900/20 border border-amber-500/20 rounded-xl">
+                ホストがゲームを開始するのを待っています...
+            </div>
+        </section>
+
+
+        <!-- VIEW 3: ACTIVE GAMEPLAY VIEW -->
+        <section id="view-game" class="hidden w-full max-w-3xl mx-auto space-y-4">
+
+            <!-- Top Score Board -->
+            <div class="glass-panel rounded-2xl p-4 flex items-center justify-between shadow-lg">
+                <div class="flex items-center gap-3">
+                    <div class="text-center bg-blue-950/60 border border-blue-500/40 rounded-xl px-4 py-2 min-w-[90px]">
+                        <span class="block text-[10px] text-blue-300 font-bold">TEAM A</span>
+                        <span id="score-team-a" class="text-2xl font-black text-blue-400">0</span>
+                    </div>
+                    <span class="text-xl font-bold text-gray-600">VS</span>
+                    <div class="text-center bg-red-950/60 border border-red-500/40 rounded-xl px-4 py-2 min-w-[90px]">
+                        <span class="block text-[10px] text-red-300 font-bold">TEAM B</span>
+                        <span id="score-team-b" class="text-2xl font-black text-red-400">0</span>
+                    </div>
+                </div>
+
+                <div class="text-right">
+                    <div class="text-xs text-gray-400">TURN</div>
+                    <div class="text-sm font-bold text-amber-400"><span id="current-turn-num">1</span> / <span id="total-turns-num">--</span></div>
+                    <div id="rechallenge-badge" class="hidden text-[10px] bg-amber-500/20 text-amber-300 border border-amber-500/30 px-2 py-0.5 rounded-full mt-0.5">
+                        <i class="fa-solid fa-rotate-right"></i> 人数調整の再挑戦ターン!
+                    </div>
+                </div>
+            </div>
+
+            <!-- Role Banner / Phase Banner -->
+            <div id="role-banner" class="glass-panel p-4 rounded-2xl border-l-4 border-amber-500 flex flex-wrap items-center justify-between gap-2 shadow-md">
+                <div>
+                    <span id="phase-title" class="text-xs font-bold text-amber-400 uppercase tracking-wider block">フェーズ進行中</span>
+                    <p id="phase-instruction" class="text-sm font-bold text-gray-100">準備中です...</p>
+                </div>
+                <div id="my-role-pill" class="text-xs px-3 py-1.5 rounded-full font-bold bg-gray-800 text-gray-300 border border-gray-700">
+                    役割判定中...
+                </div>
+            </div>
+
+            <!-- Roles Breakdown Panel -->
+            <div class="grid grid-cols-2 gap-3 text-xs">
+                <div class="bg-spooky-card border border-gray-800 rounded-xl p-3 flex items-center gap-3">
+                    <div class="w-8 h-8 rounded-full bg-amber-500/20 text-amber-400 flex items-center justify-center font-bold text-sm">
+                        <i class="fa-solid fa-question"></i>
+                    </div>
+                    <div>
+                        <span class="text-gray-400 block text-[10px]">解答者 (答える人)</span>
+                        <span id="display-answerer-name" class="font-bold text-amber-300 text-sm">---</span>
+                    </div>
+                </div>
+
+                <div class="bg-spooky-card border border-gray-800 rounded-xl p-3 flex items-center gap-3">
+                    <div class="w-8 h-8 rounded-full bg-purple-500/20 text-purple-400 flex items-center justify-center font-bold text-sm">
+                        <i class="fa-solid fa-pen-nib"></i>
+                    </div>
+                    <div>
+                        <span class="text-gray-400 block text-[10px]">出題者 (お題を決める)</span>
+                        <span id="display-provider-name" class="font-bold text-purple-300 text-sm">---</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Dynamic Phase Interaction Area -->
+            <div id="game-interactive-area" class="glass-panel p-6 rounded-2xl shadow-xl min-h-[220px] flex flex-col justify-center items-center text-center">
+
+                <!-- SUB-PHASE A: Theme Input (For Provider) -->
+                <div id="subphase-theme-input" class="w-full max-w-md space-y-4 hidden">
+                    <div class="text-purple-300 font-bold text-sm mb-1">
+                        <i class="fa-solid fa-lightbulb text-amber-400 mr-1"></i> あなたが出題者です！お題を決めてください。
+                    </div>
+                    <p class="text-xs text-gray-400">解答者には秘密です。同じチームには【ヒント】、相手チームには【トリック】を出してもらいます。</p>
+                    <input type="text" id="input-theme-word" placeholder="お題を入力 (例: リンゴ)" maxlength="15"
+                           class="w-full bg-spooky-lightBg border border-gray-700 rounded-xl px-4 py-3 text-center text-white text-lg font-bold focus:outline-none focus:border-amber-500">
+                    <button id="btn-submit-theme" class="w-full bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 font-bold py-3 px-6 rounded-xl transition-all shadow-md">
+                        お題を決定して送信
+                    </button>
+                </div>
+
+                <!-- Waiting Message Template -->
+                <div id="subphase-theme-waiting" class="space-y-3 py-4 hidden">
+                    <i class="fa-solid fa-circle-notch fa-spin text-3xl text-purple-400"></i>
+                    <p class="text-sm font-semibold text-gray-300"><span id="theme-provider-waiting-name" class="text-purple-300">出題者</span> がお題を入力しています...</p>
+                </div>
+
+                <!-- SUB-PHASE B: Hint / Trick Word Input -->
+                <div id="subphase-word-input" class="w-full max-w-md space-y-4 hidden">
+                    <div id="hint-trick-instruction-box" class="p-3 rounded-xl bg-purple-950/40 border border-purple-500/30 text-xs text-purple-200">
+                        お題: <span id="display-theme-secret" class="text-lg font-black text-amber-400 mx-1 underline decoration-wavy">---</span>
+                    </div>
+
+                    <div id="form-word-submission" class="space-y-3">
+                        <p id="word-input-guide" class="text-xs font-bold text-gray-300">
+                            <!-- Populated dynamically: Hint or Trick -->
+                        </p>
+                        <input type="text" id="input-hint-trick-word" placeholder="単語を1語だけ入力" maxlength="12"
+                               class="w-full bg-spooky-lightBg border border-gray-700 rounded-xl px-4 py-3 text-center text-white text-lg font-bold focus:outline-none focus:border-purple-500">
+                        <button id="btn-submit-word" class="w-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 font-bold py-3 px-6 rounded-xl transition-all shadow-md">
+                            単語を送信する
+                        </button>
+                    </div>
+
+                    <div id="submitted-word-done" class="hidden p-4 rounded-xl bg-green-950/40 border border-green-500/30 text-green-300 text-sm font-bold flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-circle-check text-green-400"></i> あなたの単語を受け付けました！全員の入力待ちです。
+                    </div>
+                </div>
+
+                <!-- SUB-PHASE C: Guessing & Deduplicated Cards Display -->
+                <div id="subphase-guessing" class="w-full space-y-6 hidden">
+                    <div class="text-center">
+                        <p class="text-xs text-gray-400 mb-1">重複（被り）は1つだけ残してまとめられたヒント＆トリック一覧です</p>
+                        <div class="inline-block px-3 py-1 rounded-full bg-gray-800 text-amber-400 text-xs font-bold border border-gray-700">
+                            表示中のカード数: <span id="valid-cards-count">0</span>枚
+                        </div>
+                    </div>
+
+                    <!-- Cards Grid -->
+                    <div id="deduped-words-grid" class="flex flex-wrap justify-center gap-3 max-w-xl mx-auto py-2">
+                        <!-- Clue Badges Inject Here -->
+                    </div>
+
+                    <!-- Judging Controls (For Theme Provider) -->
+                    <div id="provider-judge-box" class="hidden border-t border-gray-800 pt-5 mt-4 space-y-3 max-w-md mx-auto">
+                        <p class="text-xs font-bold text-amber-300">
+                            <i class="fa-solid fa-gavel"></i> 【出題者判定】解答者の答えを聞いて正誤を選択してください
+                        </p>
+                        <div class="text-xs text-gray-400 bg-gray-900/60 p-2 rounded-lg">
+                            正解お題: <span id="actual-theme-word-display" class="font-bold text-white">---</span>
+                        </div>
+                        <div class="grid grid-cols-2 gap-3">
+                            <button id="btn-judge-correct" class="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 text-white font-bold py-3 px-4 rounded-xl shadow-lg transition-transform active:scale-95 flex items-center justify-center gap-2">
+                                <i class="fa-solid fa-circle-check"></i> 正 解 !
+                            </button>
+                            <button id="btn-judge-incorrect" class="bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 text-white font-bold py-3 px-4 rounded-xl shadow-lg transition-transform active:scale-95 flex items-center justify-center gap-2">
+                                <i class="fa-solid fa-circle-xmark"></i> 不 正 解
+                            </button>
+                        </div>
+                    </div>
+
+                    <div id="non-provider-judge-msg" class="text-xs text-
