@@ -1,1197 +1,584 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Trick or Hint (トリック オア ヒンート)</title>
-    <!-- Tailwind CSS -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <!-- FontAwesome for Icons -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- Google Fonts (Outfit & Noto Sans JP) -->
-    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;600;800&family=Outfit:wght@600;800&display=swap" rel="stylesheet">
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    colors: {
-                        spooky: {
-                            bg: '#0F0E17',
-                            card: '#1F1D2B',
-                            accent: '#FF8906',
-                            purple: '#A7A9BE',
-                            violet: '#7209B7',
-                            pink: '#F72585',
-                            darkPurple: '#2E1065',
-                            lightBg: '#2A2A38',
-                            teamA: '#3B82F6',
-                            teamB: '#EF4444'
-                        }
-                    },
-                    fontFamily: {
-                        sans: ['Noto Sans JP', 'sans-serif'],
-                        title: ['Outfit', 'Noto Sans JP', 'sans-serif']
-                    }
-                }
-            }
-        }
-    </script>
-    <style>
-        body {
-            background-color: #0F0E17;
-            color: #FFFFFE;
-            font-family: 'Noto Sans JP', sans-serif;
-            background-image: radial-gradient(#2A2A38 1px, transparent 1px);
-            background-size: 24px 24px;
-        }
-        .glow-orange {
-            box-shadow: 0 0 20px rgba(255, 137, 6, 0.35);
-        }
-        .glow-violet {
-            box-shadow: 0 0 20px rgba(114, 9, 183, 0.4);
-        }
-        .glass-panel {
-            background: rgba(31, 29, 43, 0.85);
-            backdrop-filter: blur(12px);
-            border: 1px solid rgba(255, 255, 255, 0.08);
-        }
-        /* Custom scrollbar */
-        ::-webkit-scrollbar {
-            width: 8px;
-        }
-        ::-webkit-scrollbar-track {
-            background: #0F0E17;
-        }
-        ::-webkit-scrollbar-thumb {
-            background: #2A2A38;
-            border-radius: 4px;
-        }
-        ::-webkit-scrollbar-thumb:hover {
-            background: #FF8906;
-        }
-    </style>
-
-    <!-- Firebase SDK Compat Core -->
-    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Trick or Hint</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Creepster&family=M+PLUS+Rounded+1c:wght@700;900&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0d0914;
+      --card-bg: rgba(30, 22, 45, 0.9);
+      --accent-orange: #ff6b00;
+      --accent-purple: #9d4edd;
+      --accent-green: #10b981;
+      --accent-yellow: #f59e0b;
+      --team-a: #ff2a85;
+      --team-b: #00e5ff;
+      --text: #f3f4f6;
+      --text-dim: #a0a0b8;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'M PLUS Rounded 1c', sans-serif; }
+    body {
+      background-color: var(--bg);
+      background-image: 
+        radial-gradient(circle at 50% 10%, rgba(255, 107, 0, 0.15) 0%, transparent 60%),
+        radial-gradient(circle at 80% 80%, rgba(157, 78, 221, 0.15) 0%, transparent 50%);
+      color: var(--text);
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      min-height: 100vh;
+      padding: 0.75rem;
+    }
+    .container {
+      background: var(--card-bg);
+      width: 100%;
+      max-width: 420px;
+      border-radius: 18px;
+      padding: 1.25rem;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.8), 0 0 15px rgba(255, 107, 0, 0.2);
+      border: 2px solid #3f2d59;
+      backdrop-filter: blur(8px);
+      margin: auto 0;
+    }
+    h1 {
+      text-align: center;
+      color: var(--accent-orange);
+      font-family: 'Creepster', cursive;
+      font-size: 2.3rem;
+      letter-spacing: 2px;
+      text-shadow: 0 0 10px rgba(255,107,0,0.6), 2px 2px 0px #000;
+      line-height: 1;
+    }
+    .sub-title {
+      text-align: center;
+      color: var(--accent-purple);
+      font-size: 0.85rem;
+      font-weight: 900;
+      margin-bottom: 1rem;
+      letter-spacing: 1px;
+    }
+    .status-bar {
+      display: flex;
+      justify-content: space-between;
+      background: rgba(0,0,0,0.5);
+      padding: 0.6rem 0.8rem;
+      border-radius: 12px;
+      margin-bottom: 1rem;
+      border: 1px solid #3f2d59;
+      font-size: 0.85rem;
+    }
+    .team-box { text-align: center; font-weight: bold; }
+    .team-a-text { color: var(--team-a); text-shadow: 0 0 5px rgba(255,42,133,0.4); }
+    .team-b-text { color: var(--team-b); text-shadow: 0 0 5px rgba(0,229,255,0.4); }
+    .hidden { display: none !important; }
+    .form-group { margin-bottom: 0.85rem; }
+    label { display: block; margin-bottom: 0.35rem; color: var(--text-dim); font-size: 0.8rem; }
+    input[type="text"] {
+      width: 100%;
+      padding: 0.75rem;
+      border-radius: 10px;
+      border: 2px solid #3f2d59;
+      background: rgba(15, 10, 25, 0.8);
+      color: #fff;
+      font-size: 1rem;
+      font-weight: bold;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    input[type="text"]:focus { border-color: var(--accent-orange); }
+    button {
+      width: 100%;
+      padding: 0.8rem;
+      border-radius: 10px;
+      border: none;
+      background: linear-gradient(135deg, var(--accent-orange), #d93800);
+      color: #fff;
+      font-weight: 900;
+      font-size: 1rem;
+      cursor: pointer;
+      box-shadow: 0 4px 10px rgba(255, 107, 0, 0.3);
+      transition: transform 0.1s, opacity 0.2s;
+      margin-top: 0.4rem;
+    }
+    button:active { transform: scale(0.98); }
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
+    .btn-purple { background: linear-gradient(135deg, var(--accent-purple), #6d28d9); box-shadow: 0 4px 10px rgba(157,78,221,0.3); }
+    .btn-green { background: linear-gradient(135deg, var(--accent-green), #047857); }
+    .btn-red { background: linear-gradient(135deg, #ef4444, #b91c1c); }
+    .player-list { list-style: none; margin-bottom: 1rem; }
+    .player-item {
+      padding: 0.6rem 0.8rem;
+      background: rgba(0,0,0,0.3);
+      border-radius: 8px;
+      margin-bottom: 0.4rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border: 1px solid rgba(255,255,255,0.05);
+      font-size: 0.9rem;
+    }
+    .role-badge {
+      background: var(--accent-purple);
+      padding: 0.15rem 0.5rem;
+      border-radius: 6px;
+      font-size: 0.7rem;
+      font-weight: bold;
+    }
+    .hint-grid { display: flex; flex-direction: column; gap: 0.6rem; margin: 0.8rem 0; }
+    .hint-card {
+      background: rgba(15, 10, 25, 0.9);
+      padding: 0.75rem 1rem;
+      border-radius: 10px;
+      border: 1px solid #3f2d59;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .word-text { font-size: 1.1rem; font-weight: 900; }
+    .treat-btn {
+      width: auto;
+      margin: 0;
+      padding: 0.4rem 0.7rem;
+      font-size: 0.75rem;
+      background: linear-gradient(135deg, var(--accent-yellow), #d97706);
+      color: #000;
+      border-radius: 8px;
+    }
+    .revealed-hint { border-left: 5px solid var(--accent-purple); background: rgba(157, 78, 221, 0.15); }
+    .revealed-trick { border-left: 5px solid var(--accent-orange); background: rgba(255, 107, 0, 0.15); }
+    .type-tag { font-size: 0.75rem; font-weight: bold; padding: 0.2rem 0.5rem; border-radius: 6px; }
+    .tag-hint { background: var(--accent-purple); color: #fff; }
+    .tag-trick { background: var(--accent-orange); color: #fff; }
+    .box {
+      background: rgba(0,0,0,0.4);
+      padding: 0.85rem;
+      border-radius: 12px;
+      margin-bottom: 0.85rem;
+      border: 1px dashed #3f2d59;
+      font-size: 0.9rem;
+    }
+    .jack-o-icon { text-shadow: 0 0 8px var(--accent-orange); }
+  </style>
 </head>
-<body class="min-h-screen flex flex-col justify-between p-3 md:p-6">
+<body>
 
-    <!-- Header / Title -->
-    <header class="max-w-4xl w-full mx-auto text-center mb-6">
-        <div class="inline-flex items-center space-x-3 px-4 py-1.5 rounded-full bg-spooky-darkPurple border border-purple-500/30 mb-2">
-            <i class="fa-solid font-bold fa-ghost text-amber-400 animate-bounce"></i>
-            <span class="text-xs md:text-sm font-semibold tracking-wider text-purple-200 uppercase">Realtime Party Game</span>
-        </div>
-        <h1 class="text-3xl md:text-5xl font-black font-title tracking-tight bg-gradient-to-r from-amber-400 via-orange-500 to-fuchsia-500 bg-clip-text text-transparent">
-            Trick or Hint
-        </h1>
-        <p class="text-xs md:text-sm text-gray-400 mt-1">トリック オア ヒンート — 味方の導きと敵の惑わし</p>
-    </header>
+<div class="container">
+  <h1>Trick <span class="jack-o-icon">🎃</span> Hint</h1>
+  <div class="sub-title">〜 トリック オア ヒント 〜</div>
 
-    <!-- App Container -->
-    <main class="max-w-4xl w-full mx-auto flex-grow flex flex-col justify-center">
+  <div id="status-bar" class="status-bar hidden">
+    <div class="team-box team-a-text">
+      Team A<br><span id="score-a">0</span>点 <span style="font-size:0.75rem;">(🍬<span id="treat-a">0</span>)</span>
+    </div>
+    <div class="team-box team-b-text">
+      Team B<br><span id="score-b">0</span>点 <span style="font-size:0.75rem;">(🍬<span id="treat-b">0</span>)</span>
+    </div>
+  </div>
 
-        <!-- VIEW 1: JOIN / CREATE ROOM VIEW -->
-        <section id="view-entry" class="glass-panel p-6 md:p-8 rounded-2xl max-w-md mx-auto w-full shadow-2xl glow-violet">
-            <h2 class="text-xl font-bold text-center mb-6 flex items-center justify-center gap-2">
-                <i class="fa-solid fa-door-open text-orange-400"></i> ゲームに参加 / ルーム作成
-            </h2>
-            
-            <div class="space-y-4">
-                <div>
-                    <label class="block text-xs font-semibold text-gray-300 mb-1.5 uppercase">プレイヤー名</label>
-                    <input type="text" id="input-player-name" placeholder="例: はなこ" maxlength="12"
-                           class="w-full bg-spooky-lightBg border border-gray-700 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-orange-500 transition-colors">
-                </div>
+  <!-- 1. ログイン/ルーム参加 -->
+  <div id="sec-login">
+    <div class="form-group">
+      <label>部屋名 (ID)</label>
+      <input type="text" id="input-room" value="halloween1">
+    </div>
+    <div class="form-group">
+      <label>プレイヤー名</label>
+      <input type="text" id="input-name" placeholder="名前を入力">
+    </div>
+    <button id="btn-join">ゲームに参加 / 部屋作成</button>
+  </div>
 
-                <div>
-                    <label class="block text-xs font-semibold text-gray-300 mb-1.5 uppercase">ルームID</label>
-                    <div class="flex gap-2">
-                        <input type="text" id="input-room-id" placeholder="半角英数字 (例: room123)" maxlength="16"
-                               class="w-full bg-spooky-lightBg border border-gray-700 rounded-xl px-4 py-3 text-white uppercase placeholder-gray-500 focus:outline-none focus:border-orange-500 transition-colors">
-                        <button id="btn-random-room" title="ランダム作成"
-                                class="bg-gray-800 hover:bg-gray-700 text-gray-300 px-4 py-3 rounded-xl transition-colors border border-gray-700">
-                            <i class="fa-solid fa-dice"></i>
-                        </button>
-                    </div>
-                </div>
+  <!-- 2. ロビー待機 -->
+  <div id="sec-lobby" class="hidden">
+    <h3 style="font-size:1rem; margin-bottom:0.5rem;">参加者一覧 (<span id="player-count">0</span>名)</h3>
+    <ul id="list-players" class="player-list"></ul>
+    <p style="color: var(--text-dim); font-size: 0.75rem; margin-bottom: 0.8rem; text-align:center;">※ホストがゲームを開始できます</p>
+    <button id="btn-start" class="btn-purple hidden">ゲームを開始する</button>
+  </div>
 
-                <button id="btn-join-room"
-                        class="w-full mt-2 bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white font-bold py-3.5 px-6 rounded-xl shadow-lg transition-transform active:scale-95 flex items-center justify-center gap-2">
-                    <i class="fa-solid fa-right-to-bracket"></i> 部屋に入る
-                </button>
-            </div>
-            <div class="mt-6 text-xs text-center text-gray-400 leading-relaxed border-t border-gray-800 pt-4">
-                同名のルームが存在しない場合は自動で新規作成され、あなたがホスト（部屋長）になります。
-            </div>
-        </section>
+  <!-- 3. 出題フェーズ -->
+  <div id="sec-theme" class="hidden">
+    <div class="box">
+      <p style="color:var(--accent-orange); font-weight:bold;">あなたが出題者です！</p>
+      <p style="color: var(--text-dim); font-size: 0.8rem; margin-top: 0.2rem;">解答者: <span id="target-answerer-name" style="color:#fff; font-weight:bold;"></span></p>
+    </div>
+    <div class="form-group">
+      <input type="text" id="input-theme" placeholder="お題を入力 (例: かぼちゃ)">
+    </div>
+    <button id="btn-submit-theme">お題を決定する</button>
+  </div>
 
+  <!-- 4. ヒント/トリック入力フェーズ -->
+  <div id="sec-word-input" class="hidden">
+    <div class="box">
+      <p>お題: <strong id="display-theme" style="font-size: 1.2rem; color: var(--accent-orange);"></strong></p>
+      <p id="word-instruction" style="margin-top:0.4rem; font-size:0.85rem; font-weight:bold;"></p>
+    </div>
+    <div class="form-group">
+      <input type="text" id="input-word" placeholder="1単語で入力">
+    </div>
+    <button id="btn-submit-word">送信する</button>
+  </div>
 
-        <!-- VIEW 2: LOBBY VIEW -->
-        <section id="view-lobby" class="hidden glass-panel p-6 md:p-8 rounded-2xl w-full max-w-2xl mx-auto shadow-2xl">
-            <!-- Room Info Bar -->
-            <div class="flex flex-wrap items-center justify-between gap-3 pb-5 border-b border-gray-800 mb-6">
-                <div>
-                    <span class="text-xs text-gray-400">ROOM ID</span>
-                    <div class="flex items-center gap-2">
-                        <h2 id="lobby-room-id" class="text-2xl font-black font-title tracking-wider text-orange-400">---</h2>
-                        <button id="btn-copy-room" class="text-xs bg-gray-800 hover:bg-gray-700 px-2.5 py-1 rounded border border-gray-700 text-gray-300 transition-colors">
-                            <i class="fa-regular fa-copy"></i> 共有
-                        </button>
-                    </div>
-                </div>
-                <div id="badge-host-status" class="bg-purple-900/50 border border-purple-500/30 text-purple-300 text-xs px-3 py-1.5 rounded-full flex items-center gap-2">
-                    <i class="fa-solid fa-crown text-amber-400"></i> <span id="host-name-display">---</span> (ホスト)
-                </div>
-            </div>
+  <!-- 5. 待機画面 -->
+  <div id="sec-wait" class="hidden">
+    <div class="box" style="text-align: center; padding: 1.5rem 0.5rem;">
+      <p id="wait-message" style="color:var(--text-dim);">他のプレイヤーの操作を待っています...</p>
+    </div>
+  </div>
 
-            <p class="text-sm text-gray-300 mb-4 text-center">プレイヤーが揃ったらチームを分けてゲームを開始してください。</p>
-
-            <!-- Teams Container -->
-            <div class="grid md:grid-cols-2 gap-4 mb-6">
-                <!-- Team A -->
-                <div class="bg-spooky-lightBg/50 border border-blue-500/30 rounded-xl p-4">
-                    <div class="flex items-center justify-between mb-3 border-b border-blue-500/20 pb-2">
-                        <h3 class="font-bold text-blue-400 flex items-center gap-2">
-                            <i class="fa-solid fa-shield-halved"></i> チーム A
-                        </h3>
-                        <span id="count-team-a" class="text-xs bg-blue-900/60 text-blue-300 px-2 py-0.5 rounded-full">0人</span>
-                    </div>
-                    <ul id="list-team-a" class="space-y-2 min-h-[100px]">
-                        <!-- Player Items -->
-                    </ul>
-                </div>
-
-                <!-- Team B -->
-                <div class="bg-spooky-lightBg/50 border border-red-500/30 rounded-xl p-4">
-                    <div class="flex items-center justify-between mb-3 border-b border-red-500/20 pb-2">
-                        <h3 class="font-bold text-red-400 flex items-center gap-2">
-                            <i class="fa-solid fa-skull"></i> チーム B
-                        </h3>
-                        <span id="count-team-b" class="text-xs bg-red-900/60 text-red-300 px-2 py-0.5 rounded-full">0人</span>
-                    </div>
-                    <ul id="list-team-b" class="space-y-2 min-h-[100px]">
-                        <!-- Player Items -->
-                    </ul>
-                </div>
-            </div>
-
-            <!-- Host Actions -->
-            <div id="host-controls" class="space-y-3">
-                <div class="flex gap-2">
-                    <button id="btn-shuffle-teams" class="flex-1 bg-gray-800 hover:bg-gray-700 text-gray-200 font-semibold py-2.5 px-4 rounded-xl border border-gray-700 transition-colors text-sm flex items-center justify-center gap-2">
-                        <i class="fa-solid fa-shuffle"></i> チームランダムシャッフル
-                    </button>
-                    <button id="btn-toggle-team" class="bg-gray-800 hover:bg-gray-700 text-gray-200 font-semibold py-2.5 px-4 rounded-xl border border-gray-700 transition-colors text-sm flex items-center justify-center gap-2">
-                        <i class="fa-solid fa-arrow-right-arrow-left"></i> 自分のチームを変更
-                    </button>
-                </div>
-                <button id="btn-start-game" disabled class="w-full bg-gradient-to-r from-purple-600 to-pink-600 disabled:opacity-50 hover:from-purple-500 hover:to-pink-500 text-white font-bold py-3.5 px-6 rounded-xl shadow-lg transition-all active:scale-95 flex items-center justify-center gap-2">
-                    <i class="fa-solid fa-play"></i> ゲームを開始する (最低4名推奨)
-                </button>
-            </div>
-            
-            <div id="non-host-msg" class="hidden text-center py-3 text-xs text-amber-400/80 bg-amber-900/20 border border-amber-500/20 rounded-xl">
-                ホストがゲームを開始するのを待っています...
-            </div>
-        </section>
-
-
-        <!-- VIEW 3: ACTIVE GAMEPLAY VIEW -->
-        <section id="view-game" class="hidden w-full max-w-3xl mx-auto space-y-4">
-
-            <!-- Top Score Board -->
-            <div class="glass-panel rounded-2xl p-4 flex items-center justify-between shadow-lg">
-                <div class="flex items-center gap-3">
-                    <div class="text-center bg-blue-950/60 border border-blue-500/40 rounded-xl px-4 py-2 min-w-[90px]">
-                        <span class="block text-[10px] text-blue-300 font-bold">TEAM A</span>
-                        <span id="score-team-a" class="text-2xl font-black text-blue-400">0</span>
-                    </div>
-                    <span class="text-xl font-bold text-gray-600">VS</span>
-                    <div class="text-center bg-red-950/60 border border-red-500/40 rounded-xl px-4 py-2 min-w-[90px]">
-                        <span class="block text-[10px] text-red-300 font-bold">TEAM B</span>
-                        <span id="score-team-b" class="text-2xl font-black text-red-400">0</span>
-                    </div>
-                </div>
-
-                <div class="text-right">
-                    <div class="text-xs text-gray-400">TURN</div>
-                    <div class="text-sm font-bold text-amber-400"><span id="current-turn-num">1</span> / <span id="total-turns-num">--</span></div>
-                    <div id="rechallenge-badge" class="hidden text-[10px] bg-amber-500/20 text-amber-300 border border-amber-500/30 px-2 py-0.5 rounded-full mt-0.5">
-                        <i class="fa-solid fa-rotate-right"></i> 人数調整の再挑戦ターン!
-                    </div>
-                </div>
-            </div>
-
-            <!-- Role Banner / Phase Banner -->
-            <div id="role-banner" class="glass-panel p-4 rounded-2xl border-l-4 border-amber-500 flex flex-wrap items-center justify-between gap-2 shadow-md">
-                <div>
-                    <span id="phase-title" class="text-xs font-bold text-amber-400 uppercase tracking-wider block">フェーズ進行中</span>
-                    <p id="phase-instruction" class="text-sm font-bold text-gray-100">準備中です...</p>
-                </div>
-                <div id="my-role-pill" class="text-xs px-3 py-1.5 rounded-full font-bold bg-gray-800 text-gray-300 border border-gray-700">
-                    役割判定中...
-                </div>
-            </div>
-
-            <!-- Roles Breakdown Panel -->
-            <div class="grid grid-cols-2 gap-3 text-xs">
-                <div class="bg-spooky-card border border-gray-800 rounded-xl p-3 flex items-center gap-3">
-                    <div class="w-8 h-8 rounded-full bg-amber-500/20 text-amber-400 flex items-center justify-center font-bold text-sm">
-                        <i class="fa-solid fa-question"></i>
-                    </div>
-                    <div>
-                        <span class="text-gray-400 block text-[10px]">解答者 (答える人)</span>
-                        <span id="display-answerer-name" class="font-bold text-amber-300 text-sm">---</span>
-                    </div>
-                </div>
-
-                <div class="bg-spooky-card border border-gray-800 rounded-xl p-3 flex items-center gap-3">
-                    <div class="w-8 h-8 rounded-full bg-purple-500/20 text-purple-400 flex items-center justify-center font-bold text-sm">
-                        <i class="fa-solid fa-pen-nib"></i>
-                    </div>
-                    <div>
-                        <span class="text-gray-400 block text-[10px]">出題者 (お題を決める)</span>
-                        <span id="display-provider-name" class="font-bold text-purple-300 text-sm">---</span>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Dynamic Phase Interaction Area -->
-            <div id="game-interactive-area" class="glass-panel p-6 rounded-2xl shadow-xl min-h-[220px] flex flex-col justify-center items-center text-center">
-
-                <!-- SUB-PHASE A: Theme Input (For Provider) -->
-                <div id="subphase-theme-input" class="w-full max-w-md space-y-4 hidden">
-                    <div class="text-purple-300 font-bold text-sm mb-1">
-                        <i class="fa-solid fa-lightbulb text-amber-400 mr-1"></i> あなたが出題者です！お題を決めてください。
-                    </div>
-                    <p class="text-xs text-gray-400">解答者には秘密です。同じチームには【ヒント】、相手チームには【トリック】を出してもらいます。</p>
-                    <input type="text" id="input-theme-word" placeholder="お題を入力 (例: リンゴ)" maxlength="15"
-                           class="w-full bg-spooky-lightBg border border-gray-700 rounded-xl px-4 py-3 text-center text-white text-lg font-bold focus:outline-none focus:border-amber-500">
-                    <button id="btn-submit-theme" class="w-full bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 font-bold py-3 px-6 rounded-xl transition-all shadow-md">
-                        お題を決定して送信
-                    </button>
-                </div>
-
-                <!-- Waiting Message Template -->
-                <div id="subphase-theme-waiting" class="space-y-3 py-4 hidden">
-                    <i class="fa-solid fa-circle-notch fa-spin text-3xl text-purple-400"></i>
-                    <p class="text-sm font-semibold text-gray-300"><span id="theme-provider-waiting-name" class="text-purple-300">出題者</span> がお題を入力しています...</p>
-                </div>
-
-                <!-- SUB-PHASE B: Hint / Trick Word Input -->
-                <div id="subphase-word-input" class="w-full max-w-md space-y-4 hidden">
-                    <div id="hint-trick-instruction-box" class="p-3 rounded-xl bg-purple-950/40 border border-purple-500/30 text-xs text-purple-200">
-                        お題: <span id="display-theme-secret" class="text-lg font-black text-amber-400 mx-1 underline decoration-wavy">---</span>
-                    </div>
-
-                    <div id="form-word-submission" class="space-y-3">
-                        <p id="word-input-guide" class="text-xs font-bold text-gray-300">
-                            <!-- Populated dynamically: Hint or Trick -->
-                        </p>
-                        <input type="text" id="input-hint-trick-word" placeholder="単語を1語だけ入力" maxlength="12"
-                               class="w-full bg-spooky-lightBg border border-gray-700 rounded-xl px-4 py-3 text-center text-white text-lg font-bold focus:outline-none focus:border-purple-500">
-                        <button id="btn-submit-word" class="w-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 font-bold py-3 px-6 rounded-xl transition-all shadow-md">
-                            単語を送信する
-                        </button>
-                    </div>
-
-                    <div id="submitted-word-done" class="hidden p-4 rounded-xl bg-green-950/40 border border-green-500/30 text-green-300 text-sm font-bold flex items-center justify-center gap-2">
-                        <i class="fa-solid fa-circle-check text-green-400"></i> あなたの単語を受け付けました！全員の入力待ちです。
-                    </div>
-                </div>
-
-                <!-- SUB-PHASE C: Guessing & Deduplicated Cards Display -->
-                <div id="subphase-guessing" class="w-full space-y-6 hidden">
-                    <div class="text-center">
-                        <p class="text-xs text-gray-400 mb-1">重複（被り）は1つだけ残してまとめられたヒント＆トリック一覧です</p>
-                        <div class="inline-block px-3 py-1 rounded-full bg-gray-800 text-amber-400 text-xs font-bold border border-gray-700">
-                            表示中のカード数: <span id="valid-cards-count">0</span>枚
-                        </div>
-                    </div>
-
-                    <!-- Cards Grid -->
-                    <div id="deduped-words-grid" class="flex flex-wrap justify-center gap-3 max-w-xl mx-auto py-2">
-                        <!-- Clue Badges Inject Here -->
-                    </div>
-
-                    <!-- Judging Controls (For Theme Provider) -->
-                    <div id="provider-judge-box" class="hidden border-t border-gray-800 pt-5 mt-4 space-y-3 max-w-md mx-auto">
-                        <p class="text-xs font-bold text-amber-300">
-                            <i class="fa-solid fa-gavel"></i> 【出題者判定】解答者の答えを聞いて正誤を選択してください
-                        </p>
-                        <div class="text-xs text-gray-400 bg-gray-900/60 p-2 rounded-lg">
-                            正解お題: <span id="actual-theme-word-display" class="font-bold text-white">---</span>
-                        </div>
-                        <div class="grid grid-cols-2 gap-3">
-                            <button id="btn-judge-correct" class="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 text-white font-bold py-3 px-4 rounded-xl shadow-lg transition-transform active:scale-95 flex items-center justify-center gap-2">
-                                <i class="fa-solid fa-circle-check"></i> 正 解 !
-                            </button>
-                            <button id="btn-judge-incorrect" class="bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 text-white font-bold py-3 px-4 rounded-xl shadow-lg transition-transform active:scale-95 flex items-center justify-center gap-2">
-                                <i class="fa-solid fa-circle-xmark"></i> 不 正 解
-                            </button>
-                        </div>
-                    </div>
-
-                    <div id="non-provider-judge-msg" class="text-xs text-gray-400 pt-2 italic">
-                        出題者が口頭発表された解答を正誤判定しています...
-                    </div>
-                </div>
-
-                <!-- SUB-PHASE D: Turn Result Overlay -->
-                <div id="subphase-result" class="w-full max-w-md py-4 space-y-4 hidden">
-                    <div id="result-status-icon" class="text-5xl"></div>
-                    <h3 id="result-status-title" class="text-2xl font-black">---</h3>
-                    <div class="bg-spooky-lightBg/80 p-4 rounded-xl border border-gray-700 text-sm space-y-1">
-                        <div>お題: <span id="result-theme-word" class="font-bold text-amber-400">---</span></div>
-                        <div id="result-point-desc" class="text-xs text-gray-300 mt-1">---</div>
-                    </div>
-                    <button id="btn-next-turn" class="hidden w-full bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 font-bold py-3 px-6 rounded-xl transition-all shadow-md">
-                        次のターンへ進む <i class="fa-solid fa-arrow-right ml-1"></i>
-                    </button>
-                    <div id="waiting-next-turn-msg" class="text-xs text-gray-400 animate-pulse">
-                        ホストが次のターンを開始するのを待っています...
-                    </div>
-                </div>
-
-            </div>
-
-            <!-- Player Status / Online Status Grid -->
-            <div class="glass-panel p-4 rounded-2xl space-y-2">
-                <div class="text-xs font-bold text-gray-400 flex items-center justify-between border-b border-gray-800 pb-2">
-                    <span><i class="fa-solid fa-users text-purple-400"></i> 参加者の提出状況</span>
-                    <span id="submitted-progress-count" class="text-amber-400">0/0 完了</span>
-                </div>
-                <div id="game-players-status-list" class="grid grid-cols-2 sm:grid-cols-3 gap-2 pt-1 text-xs">
-                    <!-- Dynamic Status Badges -->
-                </div>
-            </div>
-        </section>
-
-
-        <!-- VIEW 4: GAME OVER / FINAL RESULT VIEW -->
-        <section id="view-gameover" class="hidden glass-panel p-8 rounded-2xl w-full max-w-md mx-auto text-center space-y-6 shadow-2xl glow-orange">
-            <div>
-                <i class="fa-solid fa-trophy text-5xl text-amber-400 mb-3 animate-bounce"></i>
-                <h2 class="text-3xl font-black font-title text-white">ゲーム終了!</h2>
-                <p class="text-xs text-gray-400 mt-1">すべてのターンが完了しました</p>
-            </div>
-
-            <!-- Winner Announcement -->
-            <div id="winner-announcement-box" class="p-4 rounded-xl bg-gradient-to-r from-purple-900/60 to-pink-900/60 border border-purple-500/40">
-                <span class="text-xs text-purple-200 block uppercase font-bold tracking-wider">勝者</span>
-                <div id="winner-team-name" class="text-2xl font-black text-amber-300 my-1">---</div>
-            </div>
-
-            <!-- Final Score Breakdown -->
-            <div class="grid grid-cols-2 gap-3">
-                <div class="bg-blue-950/40 border border-blue-500/30 p-3 rounded-xl">
-                    <span class="text-xs text-blue-300 font-bold block">TEAM A</span>
-                    <span id="final-score-a" class="text-3xl font-black text-blue-400">0</span>
-                </div>
-                <div class="bg-red-950/40 border border-red-500/30 p-3 rounded-xl">
-                    <span class="text-xs text-red-300 font-bold block">TEAM B</span>
-                    <span id="final-score-b" class="text-3xl font-black text-red-400">0</span>
-                </div>
-            </div>
-
-            <button id="btn-return-lobby" class="w-full bg-gradient-to-r from-gray-700 to-gray-800 hover:from-gray-600 hover:to-gray-700 text-white font-bold py-3.5 px-6 rounded-xl border border-gray-600 transition-all shadow-lg">
-                ロビーに戻る
-            </button>
-        </section>
-
-    </main>
-
-    <!-- Custom Modal Container for Notifications -->
-    <div id="custom-modal" class="hidden fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-        <div class="glass-panel p-6 rounded-2xl max-w-sm w-full text-center space-y-4 border border-purple-500/30 shadow-2xl">
-            <div id="modal-icon" class="text-3xl text-amber-400"><i class="fa-solid fa-circle-info"></i></div>
-            <p id="modal-message" class="text-sm font-semibold text-gray-200">メッセージ</p>
-            <button id="btn-modal-close" class="w-full bg-purple-600 hover:bg-purple-500 text-white font-bold py-2 px-4 rounded-xl text-sm transition-colors">
-                OK
-            </button>
-        </div>
+  <!-- 6. 解答・トリート券使用・判定フェーズ -->
+  <div id="sec-answer" class="hidden">
+    <div id="answerer-view" class="hidden">
+      <p style="font-size: 0.85rem; color: var(--text-dim);">提示された単語ヒント:</p>
+      <div id="hint-cards-container" class="hint-grid"></div>
+      <p style="font-size: 0.8rem; color: var(--accent-yellow); margin-bottom: 0.8rem; text-align:right;">
+        持ちトリート(お菓子)券: <span id="my-team-treats" style="font-weight:bold; font-size:1rem;">0</span> 枚
+      </p>
+      <div class="box" style="text-align:center;">
+        <p style="font-weight:bold;">口頭で正解を回答してください！</p>
+      </div>
     </div>
 
-    <!-- Footer -->
-    <footer class="text-center text-[11px] text-gray-600 mt-8 py-2">
-        Trick or Hint &copy; Realtime Firebase Synchronized Game
-    </footer>
+    <div id="judge-view" class="hidden">
+      <div class="box">
+        <p>お題: <strong id="judge-theme-word" style="color: var(--accent-orange); font-size:1.1rem;"></strong></p>
+        <p style="margin-top:0.2rem;">解答者: <span id="judge-answerer-name" style="font-weight:bold;"></span></p>
+      </div>
+      <p style="font-size:0.8rem; color:var(--text-dim); margin-bottom:0.4rem; text-align:center;">口頭回答を聞いて判定してください</p>
+      <button id="btn-judge-correct" class="btn-green">正解 (+1点)</button>
+      <button id="btn-judge-wrong" class="btn-red">不正解 (相手に+1点)</button>
+    </div>
+  </div>
 
-    <script>
-        // --- 1. FIREBASE INITIALIZATION ---
-        const firebaseConfig = {
-            apiKey: "AIzaSyC4DQhH_swesAD98Xyjg8d1lcWEkkrHrgw",
-            authDomain: "gamehistory-m84.firebaseapp.com",
-            databaseURL: "https://gamehistory-m84-default-rtdb.firebaseio.com",
-            projectId: "gamehistory-m84",
-            storageBucket: "gamehistory-m84.firebasestorage.app",
-            messagingSenderId: "475761727837",
-            appId: "1:475761727837:web:06d07e1ab4120a7ccaf0b4",
-            measurementId: "G-3636W6LC4F"
-        };
+  <!-- 7. 結果画面 -->
+  <div id="sec-finished" class="hidden">
+    <h2 style="color: var(--accent-orange); font-size: 1.3rem; margin-bottom: 0.8rem; text-align:center;">🎃 GAME OVER 🎃</h2>
+    <div class="box" style="text-align: center;">
+      <p id="winner-text" style="font-size: 1.2rem; font-weight: bold; margin-bottom: 0.5rem; color:var(--accent-yellow);"></p>
+      <p class="team-a-text">Team A: <span id="final-score-a">0</span>点</p>
+      <p class="team-b-text">Team B: <span id="final-score-b">0</span>点</p>
+    </div>
+    <button onclick="location.reload()" class="btn-purple">ロビーに戻る</button>
+  </div>
+</div>
 
-        // Initialize Firebase Compat
-        if (!firebase.apps.length) {
-            firebase.initializeApp(firebaseConfig);
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+  import { getDatabase, ref, set, get, update, onValue } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyC4DQhH_swesAD98Xyjg8d1lcWEkkrHrgw",
+    authDomain: "gamehistory-m84.firebaseapp.com",
+    databaseURL: "https://gamehistory-m84-default-rtdb.firebaseio.com",
+    projectId: "gamehistory-m84",
+    storageBucket: "gamehistory-m84.firebasestorage.app",
+    messagingSenderId: "475761727837",
+    appId: "1:475761727837:web:06d07e1ab4120a7ccaf0b4",
+    measurementId: "G-3636W6LC4F"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const db = getDatabase(app);
+
+  let roomId = "";
+  let myId = "";
+  let myName = "";
+  let roomRef = null;
+
+  const $ = id => document.getElementById(id);
+  const hideAll = () => ["sec-login", "sec-lobby", "sec-theme", "sec-word-input", "sec-wait", "sec-answer", "sec-finished"].forEach(id => $(id).classList.add("hidden"));
+
+  $("btn-join").onclick = async () => {
+    roomId = $("input-room").value.trim();
+    myName = $("input-name").value.trim();
+    if (!roomId || !myName) return alert("部屋名と名前を入力してください");
+
+    myId = "usr_" + Math.random().toString(36).substring(2, 9);
+    roomRef = ref(db, `trick/rooms/${roomId}`);
+
+    const snap = await get(roomRef);
+    if (!snap.exists()) {
+      await set(roomRef, {
+        status: "lobby",
+        hostId: myId,
+        scores: { A: 0, B: 0 },
+        treats: { A: 0, B: 0 },
+        players: { [myId]: { name: myName, team: "", hasAnswered: false } }
+      });
+    } else {
+      await update(ref(db, `trick/rooms/${roomId}/players/${myId}`), {
+        name: myName, team: "", hasAnswered: false
+      });
+    }
+
+    onValue(roomRef, snapshot => {
+      const data = snapshot.val();
+      if (data) render(data);
+    });
+  };
+
+  $("btn-start").onclick = async () => {
+    const snap = await get(roomRef);
+    const room = snap.val();
+    const pKeys = Object.keys(room.players || {});
+    if (pKeys.length < 2) return alert("2名以上必要です");
+
+    const shuffled = [...pKeys].sort(() => Math.random() - 0.5);
+    const updates = {};
+    shuffled.forEach((id, idx) => {
+      const team = idx % 2 === 0 ? "A" : "B";
+      updates[`players/${id}/team`] = team;
+      updates[`players/${id}/hasAnswered`] = false;
+    });
+
+    const totalCount = pKeys.length;
+    updates["status"] = "playing";
+    updates["scores"] = { A: 0, B: 0 };
+    updates["treats"] = { A: totalCount, B: totalCount };
+    await update(roomRef, updates);
+
+    startNewTurn();
+  };
+
+  async function startNewTurn() {
+    const snap = await get(roomRef);
+    const room = snap.val();
+    const players = room.players;
+    const pKeys = Object.keys(players);
+
+    let candidates = pKeys.filter(id => !players[id].hasAnswered);
+
+    if (candidates.length === 0) {
+      const countA = pKeys.filter(id => players[id].team === "A").length;
+      const countB = pKeys.filter(id => players[id].team === "B").length;
+      if (countA !== countB) {
+        const smallerTeam = countA < countB ? "A" : "B";
+        candidates = pKeys.filter(id => players[id].team === smallerTeam);
+      } else {
+        await update(roomRef, { status: "finished" });
+        return;
+      }
+    }
+
+    const answererId = candidates[Math.floor(Math.random() * candidates.length)];
+    const answererTeam = players[answererId].team;
+    const sameTeam = pKeys.filter(id => players[id].team === answererTeam && id !== answererId);
+    
+    let themeProviderId = sameTeam.length > 0 ? sameTeam[Math.floor(Math.random() * sameTeam.length)] : answererId;
+
+    await update(roomRef, {
+      "turnState": {
+        answererId,
+        themeProviderId,
+        phase: "theme_input",
+        themeWord: "",
+        submittedWords: {},
+        revealedKeys: {}
+      }
+    });
+  }
+
+  $("btn-submit-theme").onclick = async () => {
+    const val = $("input-theme").value.trim();
+    if (!val) return;
+    await update(ref(db, `trick/rooms/${roomId}/turnState`), {
+      themeWord: val,
+      phase: "word_input"
+    });
+    $("input-theme").value = "";
+  };
+
+  $("btn-submit-word").onclick = async () => {
+    const val = $("input-word").value.trim();
+    if (!val) return;
+    await set(ref(db, `trick/rooms/${roomId}/turnState/submittedWords/${myId}`), val);
+    $("input-word").value = "";
+
+    const snap = await get(roomRef);
+    const room = snap.val();
+    const pKeys = Object.keys(room.players);
+    const submitted = Object.keys(room.turnState.submittedWords || {});
+    if (submitted.length >= pKeys.length - 1) {
+      await update(ref(db, `trick/rooms/${roomId}/turnState`), { phase: "guessing" });
+    }
+  };
+
+  $("btn-judge-correct").onclick = () => finishTurn(true);
+  $("btn-judge-wrong").onclick = () => finishTurn(false);
+
+  async function finishTurn(isCorrect) {
+    const snap = await get(roomRef);
+    const room = snap.val();
+    const answererTeam = room.players[room.turnState.answererId].team;
+    const winTeam = isCorrect ? answererTeam : (answererTeam === "A" ? "B" : "A");
+
+    const newScores = { ...room.scores, [winTeam]: room.scores[winTeam] + 1 };
+    await update(roomRef, {
+      [`players/${room.turnState.answererId}/hasAnswered`]: true,
+      scores: newScores
+    });
+
+    startNewTurn();
+  }
+
+  window.useTreat = async (wordKey) => {
+    const snap = await get(roomRef);
+    const room = snap.val();
+    const myTeam = room.players[myId].team;
+    
+    if (room.treats[myTeam] <= 0) return alert("トリート券が残っていません！");
+
+    const updates = {};
+    updates[`treats/${myTeam}`] = room.treats[myTeam] - 1;
+    updates[`turnState/revealedKeys/${wordKey}`] = true;
+
+    await update(roomRef, updates);
+  };
+
+  function render(data) {
+    hideAll();
+    
+    if (data.status === "playing") {
+      $("status-bar").classList.remove("hidden");
+      $("score-a").textContent = data.scores.A;
+      $("score-b").textContent = data.scores.B;
+      $("treat-a").textContent = data.treats.A;
+      $("treat-b").textContent = data.treats.B;
+    }
+
+    if (data.status === "lobby") {
+      $("sec-lobby").classList.remove("hidden");
+      const pList = $("list-players");
+      pList.innerHTML = "";
+      const pKeys = Object.keys(data.players || {});
+      $("player-count").textContent = pKeys.length;
+      pKeys.forEach(id => {
+        const li = document.createElement("li");
+        li.className = "player-item";
+        li.innerHTML = `<span>${data.players[id].name}</span>` + (id === data.hostId ? `<span class="role-badge">ホスト</span>` : "");
+        pList.appendChild(li);
+      });
+      if (myId === data.hostId) $("btn-start").classList.remove("hidden");
+      return;
+    }
+
+    if (data.status === "finished") {
+      $("sec-finished").classList.remove("hidden");
+      $("final-score-a").textContent = data.scores.A;
+      $("final-score-b").textContent = data.scores.B;
+      if (data.scores.A > data.scores.B) $("winner-text").textContent = "Team A の勝利！";
+      else if (data.scores.B > data.scores.A) $("winner-text").textContent = "Team B の勝利！";
+      else $("winner-text").textContent = "引き分け！";
+      return;
+    }
+
+    const ts = data.turnState;
+    if (!ts) return;
+
+    const isAnswerer = myId === ts.answererId;
+    const isThemeProvider = myId === ts.themeProviderId;
+    const myTeam = data.players[myId]?.team;
+    const answererTeam = data.players[ts.answererId]?.team;
+
+    if (ts.phase === "theme_input") {
+      if (isThemeProvider) {
+        $("sec-theme").classList.remove("hidden");
+        $("target-answerer-name").textContent = data.players[ts.answererId].name;
+      } else {
+        $("sec-wait").classList.remove("hidden");
+        $("wait-message").textContent = `${data.players[ts.themeProviderId].name} がお題を入力中...`;
+      }
+      return;
+    }
+
+    if (ts.phase === "word_input") {
+      if (isAnswerer) {
+        $("sec-wait").classList.remove("hidden");
+        $("wait-message").textContent = "みんながヒント/トリックを入力中...";
+      } else {
+        const hasSubmitted = ts.submittedWords && ts.submittedWords[myId];
+        if (hasSubmitted) {
+          $("sec-wait").classList.remove("hidden");
+          $("wait-message").textContent = "他の人の入力を待っています...";
+        } else {
+          $("sec-word-input").classList.remove("hidden");
+          $("display-theme").textContent = ts.themeWord;
+          const inst = $("word-instruction");
+          if (myTeam === answererTeam) {
+            inst.textContent = "【味方】正解へ導く「ヒント」を入力！";
+            inst.style.color = "var(--accent-purple)";
+          } else {
+            inst.textContent = "【敵】惑わすための「トリック」を入力！";
+            inst.style.color = "var(--accent-orange)";
+          }
         }
-        const db = firebase.database();
+      }
+      return;
+    }
 
-        // --- 2. GLOBAL GAME STATE & CONSTANTS ---
-        // CRITICAL DATA PATH PREFIX REQUIREMENT: "trick"
-        const ROOT_PATH = "trick/rooms";
+    if (ts.phase === "guessing") {
+      $("sec-answer").classList.remove("hidden");
 
-        let localPlayer = {
-            id: 'p_' + Math.random().toString(36).substring(2, 9),
-            name: '',
-            team: 'A'
-        };
+      if (isAnswerer) {
+        $("answerer-view").classList.remove("hidden");
+        $("judge-view").classList.add("hidden");
+        $("my-team-treats").textContent = data.treats[myTeam];
 
-        let currentRoomId = null;
-        let roomRef = null;
-        let roomState = null;
+        const container = $("hint-cards-container");
+        container.innerHTML = "";
 
-        // UI View Cache
-        const views = {
-            entry: document.getElementById('view-entry'),
-            lobby: document.getElementById('view-lobby'),
-            game: document.getElementById('view-game'),
-            gameover: document.getElementById('view-gameover')
-        };
-
-        // Modal helper
-        function showAlert(msg, iconClass = "fa-circle-info text-amber-400") {
-            document.getElementById('modal-icon').className = `text-3xl ${iconClass}`;
-            document.getElementById('modal-message').innerText = msg;
-            document.getElementById('custom-modal').classList.remove('hidden');
-        }
-
-        document.getElementById('btn-modal-close').addEventListener('click', () => {
-            document.getElementById('custom-modal').classList.add('hidden');
-        });
-
-        // --- 3. DOM EVENT LISTENERS & NAVIGATION ---
-        
-        // Random Room ID Generator
-        document.getElementById('btn-random-room').addEventListener('click', () => {
-            const rand = 'room' + Math.floor(1000 + Math.random() * 9000);
-            document.getElementById('input-room-id').value = rand;
-        });
-
-        // Copy Room Link
-        document.getElementById('btn-copy-room').addEventListener('click', () => {
-            if (!currentRoomId) return;
-            const textToCopy = `${window.location.origin}${window.location.pathname}?room=${currentRoomId}`;
-            
-            // execCommand fallback for iframe safety
-            const dummy = document.createElement('input');
-            document.body.appendChild(dummy);
-            dummy.value = textToCopy;
-            dummy.select();
-            document.execCommand('copy');
-            document.body.removeChild(dummy);
-
-            showAlert('ルーム招待リンクをクリップボードにコピーしました！', 'fa-circle-check text-green-400');
-        });
-
-        // Check URL Query parameters for auto-room fill
-        window.addEventListener('load', () => {
-            const params = new URLSearchParams(window.location.search);
-            const rParam = params.get('room');
-            if (rParam) {
-                document.getElementById('input-room-id').value = rParam.toLowerCase();
+        const wordMap = {};
+        if (ts.submittedWords) {
+          Object.entries(ts.submittedWords).forEach(([pId, word]) => {
+            const cleanWord = word.trim();
+            if (!wordMap[cleanWord]) {
+              wordMap[cleanWord] = {
+                key: cleanWord,
+                isHint: data.players[pId].team === answererTeam
+              };
             }
-        });
-
-        // Join / Create Room Handler
-        document.getElementById('btn-join-room').addEventListener('click', async () => {
-            const nameInput = document.getElementById('input-player-name').value.trim();
-            const roomInput = document.getElementById('input-room-id').value.trim().toLowerCase();
-
-            if (!nameInput) {
-                showAlert('プレイヤー名を入力してください。');
-                return;
-            }
-            if (!roomInput) {
-                showAlert('ルームIDを入力してください。');
-                return;
-            }
-
-            localPlayer.name = nameInput;
-            currentRoomId = roomInput;
-            roomRef = db.ref(`${ROOT_PATH}/${currentRoomId}`);
-
-            try {
-                const snapshot = await roomRef.once('value');
-                const data = snapshot.val();
-
-                if (!data) {
-                    // Create New Room
-                    const newRoomData = {
-                        roomId: currentRoomId,
-                        hostId: localPlayer.id,
-                        status: 'lobby', // lobby, playing, gameover
-                        scores: { A: 0, B: 0 },
-                        turnInfo: {
-                            currentTurn: 0,
-                            totalTurns: 0,
-                            answererId: null,
-                            providerId: null,
-                            phase: 'theme_input', // theme_input, word_input, guessing, turn_result
-                            themeWord: '',
-                            rechallenge: false
-                        },
-                        players: {}
-                    };
-                    
-                    // Assign to Team A by default
-                    localPlayer.team = 'A';
-                    newRoomData.players[localPlayer.id] = {
-                        id: localPlayer.id,
-                        name: localPlayer.name,
-                        team: 'A',
-                        hasAnswered: false,
-                        isOnline: true
-                    };
-
-                    await roomRef.set(newRoomData);
-                } else {
-                    // Join Existing Room
-                    localPlayer.team = assignBalancedTeam(data.players || {});
-                    
-                    await roomRef.child(`players/${localPlayer.id}`).set({
-                        id: localPlayer.id,
-                        name: localPlayer.name,
-                        team: localPlayer.team,
-                        hasAnswered: false,
-                        isOnline: true
-                    });
-                }
-
-                // Setup disconnect handler
-                roomRef.child(`players/${localPlayer.id}/isOnline`).onDisconnect().set(false);
-
-                // Listen to Realtime Updates
-                subscribeToRoomUpdates();
-
-            } catch (err) {
-                console.error(err);
-                showAlert('Firebaseとの接続に失敗しました: ' + err.message);
-            }
-        });
-
-        // Auto balance team upon joining
-        function assignBalancedTeam(playersObj) {
-            let countA = 0, countB = 0;
-            Object.values(playersObj).forEach(p => {
-                if (p.team === 'A') countA++;
-                else if (p.team === 'B') countB++;
-            });
-            return countA <= countB ? 'A' : 'B';
-        }
-
-        // --- 4. REALTIME DATABASE SUBSCRIBER ---
-        function subscribeToRoomUpdates() {
-            roomRef.on('value', (snapshot) => {
-                const data = snapshot.val();
-                if (!data) {
-                    showAlert('ルームが解散されたか、存在しません。');
-                    switchView('entry');
-                    return;
-                }
-
-                roomState = data;
-                renderApp();
-            });
-        }
-
-        // View Switcher Utility
-        function switchView(viewName) {
-            Object.keys(views).forEach(k => {
-                if (k === viewName) {
-                    views[k].classList.remove('hidden');
-                } else {
-                    views[k].classList.add('hidden');
-                }
-            });
-        }
-
-        // Main Render Loop triggered by DB changes
-        function renderApp() {
-            if (!roomState) return;
-
-            // Sync View Mode
-            if (roomState.status === 'lobby') {
-                switchView('lobby');
-                renderLobbyView();
-            } else if (roomState.status === 'playing') {
-                switchView('game');
-                renderGameView();
-            } else if (roomState.status === 'gameover') {
-                switchView('gameover');
-                renderGameOverView();
-            }
-        }
-
-        // --- 5. LOBBY VIEW LOGIC ---
-        function renderLobbyView() {
-            document.getElementById('lobby-room-id').innerText = roomState.roomId;
-            
-            const players = roomState.players ? Object.values(roomState.players) : [];
-            const hostPlayer = players.find(p => p.id === roomState.hostId);
-            document.getElementById('host-name-display').innerText = hostPlayer ? hostPlayer.name : 'Unknown';
-
-            const teamAList = document.getElementById('list-team-a');
-            const teamBList = document.getElementById('list-team-b');
-            teamAList.innerHTML = '';
-            teamBList.innerHTML = '';
-
-            let countA = 0, countB = 0;
-
-            players.forEach(p => {
-                const li = document.createElement('li');
-                li.className = "flex items-center justify-between bg-spooky-card border border-gray-800 p-2.5 rounded-xl text-xs font-semibold";
-                
-                const isMe = p.id === localPlayer.id;
-                const meBadge = isMe ? `<span class="ml-1 text-[10px] bg-amber-500/30 text-amber-300 px-1.5 py-0.5 rounded">あなた</span>` : '';
-                const hostBadge = p.id === roomState.hostId ? `<i class="fa-solid fa-crown text-amber-400 ml-1"></i>` : '';
-
-                li.innerHTML = `
-                    <span class="flex items-center gap-1.5 text-gray-200">
-                        <i class="fa-solid fa-user text-gray-500"></i> ${escapeHtml(p.name)} ${meBadge} ${hostBadge}
-                    </span>
-                    <span class="w-2 h-2 rounded-full ${p.isOnline ? 'bg-green-500' : 'bg-gray-600'}"></span>
-                `;
-
-                if (p.team === 'A') {
-                    teamAList.appendChild(li);
-                    countA++;
-                } else {
-                    teamBList.appendChild(li);
-                    countB++;
-                }
-            });
-
-            document.getElementById('count-team-a').innerText = `${countA}人`;
-            document.getElementById('count-team-b').innerText = `${countB}人`;
-
-            const isHost = roomState.hostId === localPlayer.id;
-            const startBtn = document.getElementById('btn-start-game');
-            const hostControls = document.getElementById('host-controls');
-            const nonHostMsg = document.getElementById('non-host-msg');
-
-            if (isHost) {
-                hostControls.classList.remove('hidden');
-                nonHostMsg.classList.add('hidden');
-                // Allow start if both teams have at least 1 player (recommended 2 per team)
-                if (countA >= 1 && countB >= 1 && (countA + countB >= 3)) {
-                    startBtn.disabled = false;
-                } else {
-                    startBtn.disabled = true;
-                }
-            } else {
-                hostControls.classList.add('hidden');
-                nonHostMsg.classList.remove('hidden');
-            }
-        }
-
-        // Toggle Local Player Team
-        document.getElementById('btn-toggle-team').addEventListener('click', () => {
-            if (!roomRef) return;
-            const currentP = roomState.players[localPlayer.id];
-            const newTeam = currentP.team === 'A' ? 'B' : 'A';
-            roomRef.child(`players/${localPlayer.id}/team`).set(newTeam);
-        });
-
-        // Shuffle Teams
-        document.getElementById('btn-shuffle-teams').addEventListener('click', () => {
-            if (roomState.hostId !== localPlayer.id) return;
-            const playersArr = Object.values(roomState.players);
-            // Fisher-Yates shuffle
-            for (let i = playersArr.length - 1; i > 0; i--) {
-                const j = Math.floor(Math.random() * (i + 1));
-                [playersArr[i], playersArr[j]] = [playersArr[j], playersArr[i]];
-            }
-
-            const updates = {};
-            playersArr.forEach((p, idx) => {
-                const assignedTeam = (idx % 2 === 0) ? 'A' : 'B';
-                updates[`players/${p.id}/team`] = assignedTeam;
-            });
-            roomRef.update(updates);
-        });
-
-        // START GAME ACTION (HOST ONLY)
-        document.getElementById('btn-start-game').addEventListener('click', () => {
-            if (roomState.hostId !== localPlayer.id) return;
-
-            const players = Object.values(roomState.players);
-            const teamAPlayers = players.filter(p => p.team === 'A');
-            const teamBPlayers = players.filter(p => p.team === 'B');
-
-            if (teamAPlayers.length === 0 || teamBPlayers.length === 0) {
-                showAlert('両方のチームに1名以上のプレイヤーが必要です。');
-                return;
-            }
-
-            // Calculation for total turns:
-            // Odd number rule: "奇数の時には少ないチームは最後にランダムで1人再挑戦できるようにする"
-            let totalTurns = 0;
-            const maxTeamSize = Math.max(teamAPlayers.length, teamBPlayers.length);
-            totalTurns = maxTeamSize * 2; // Equal opportunity for both sides!
-
-            // Reset player states
-            const updates = {
-                status: 'playing',
-                scores: { A: 0, B: 0 },
-                'turnInfo/currentTurn': 1,
-                'turnInfo/totalTurns': totalTurns,
-                'turnInfo/phase': 'theme_input',
-                'turnInfo/submittedWords': null,
-                'turnInfo/themeWord': ''
-            };
-
-            players.forEach(p => {
-                updates[`players/${p.id}/hasAnswered`] = false;
-            });
-
-            // Select 1st Answerer & Provider
-            const { answererId, providerId, rechallenge } = selectTurnRoles(players, teamAPlayers, teamBPlayers, 1, totalTurns);
-            updates['turnInfo/answererId'] = answererId;
-            updates['turnInfo/providerId'] = providerId;
-            updates['turnInfo/rechallenge'] = rechallenge;
-
-            roomRef.update(updates);
-        });
-
-        // Helper: Select Answerer and Provider for a Turn
-        function selectTurnRoles(allPlayers, teamA, teamB, currentTurn, totalTurns) {
-            // Find candidates who haven't answered yet
-            let candidates = allPlayers.filter(p => !p.hasAnswered);
-
-            let rechallenge = false;
-
-            // If candidates empty or current turn exceeds natural length -> Rechallenge mode for smaller team
-            if (candidates.length === 0) {
-                rechallenge = true;
-                const countA = teamA.length;
-                const countB = teamB.length;
-                const smallerTeam = countA < countB ? 'A' : (countB < countA ? 'B' : 'A');
-                candidates = allPlayers.filter(p => p.team === smallerTeam);
-            }
-
-            // Pick Answerer randomly from candidates
-            const answerer = candidates[Math.floor(Math.random() * candidates.length)];
-
-            // Provider must be from the SAME team as Answerer (other than Answerer if possible)
-            const sameTeamMembers = allPlayers.filter(p => p.team === answerer.team);
-            let providerCandidates = sameTeamMembers.filter(p => p.id !== answerer.id);
-            
-            // If team size is 1, Provider is the same person (or edge case handle)
-            if (providerCandidates.length === 0) {
-                providerCandidates = [answerer];
-            }
-
-            const provider = providerCandidates[Math.floor(Math.random() * providerCandidates.length)];
-
-            return {
-                answererId: answerer.id,
-                providerId: provider.id,
-                rechallenge
-            };
+          });
         }
 
+        Object.values(wordMap).forEach(item => {
+          const isRevealed = ts.revealedKeys && ts.revealedKeys[item.key];
+          const card = document.createElement("div");
+          card.className = "hint-card";
 
-        // --- 6. GAMEPLAY VIEW LOGIC & PHASES ---
-        function renderGameView() {
-            const turn = roomState.turnInfo || {};
-            const players = roomState.players || {};
-            
-            // Update Scoreboard
-            document.getElementById('score-team-a').innerText = roomState.scores?.A || 0;
-            document.getElementById('score-team-b').innerText = roomState.scores?.B || 0;
-            document.getElementById('current-turn-num').innerText = turn.currentTurn || 1;
-            document.getElementById('total-turns-num').innerText = turn.totalTurns || '--';
-
-            if (turn.rechallenge) {
-                document.getElementById('rechallenge-badge').classList.remove('hidden');
-            } else {
-                document.getElementById('rechallenge-badge').classList.add('hidden');
-            }
-
-            // Answerer & Provider Info
-            const answerer = players[turn.answererId] || { name: '---', team: 'A' };
-            const provider = players[turn.providerId] || { name: '---', team: 'A' };
-
-            document.getElementById('display-answerer-name').innerText = `${answerer.name} (Team ${answerer.team})`;
-            document.getElementById('display-provider-name').innerText = `${provider.name} (Team ${provider.team})`;
-
-            // Local Role Determination
-            const isMeAnswerer = localPlayer.id === turn.answererId;
-            const isMeProvider = localPlayer.id === turn.providerId;
-            const isMeTeammate = localPlayer.team === answerer.team; // Same team as Answerer -> Hint
-            
-            // Set Role Pill Badge
-            const myRolePill = document.getElementById('my-role-pill');
-            if (isMeAnswerer) {
-                myRolePill.className = "text-xs px-3 py-1.5 rounded-full font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40";
-                myRolePill.innerHTML = `<i class="fa-solid fa-question"></i> あなたは【解答者】`;
-            } else if (isMeProvider) {
-                myRolePill.className = "text-xs px-3 py-1.5 rounded-full font-bold bg-purple-500/20 text-purple-300 border border-purple-500/40";
-                myRolePill.innerHTML = `<i class="fa-solid fa-pen-nib"></i> あなたは【出題者】`;
-            } else if (isMeTeammate) {
-                myRolePill.className = "text-xs px-3 py-1.5 rounded-full font-bold bg-blue-500/20 text-blue-300 border border-blue-500/40";
-                myRolePill.innerHTML = `<i class="fa-solid fa-hand-holding-heart"></i> 味方【ヒント担当】`;
-            } else {
-                myRolePill.className = "text-xs px-3 py-1.5 rounded-full font-bold bg-red-500/20 text-red-300 border border-red-500/40";
-                myRolePill.innerHTML = `<i class="fa-solid fa-masks-theater"></i> 敵【トリック担当】`;
-            }
-
-            // Phase Area Handling
-            hideAllSubphases();
-            const phaseTitle = document.getElementById('phase-title');
-            const phaseInstruction = document.getElementById('phase-instruction');
-
-            // --- PHASE 1: THEME INPUT ---
-            if (turn.phase === 'theme_input') {
-                phaseTitle.innerText = "PHASE 1: お題決定";
-                
-                if (isMeProvider) {
-                    phaseInstruction.innerText = "出題者として、お題を入力してください。";
-                    document.getElementById('subphase-theme-input').classList.remove('hidden');
-                } else {
-                    phaseInstruction.innerText = `${provider.name} がお題を入力しています...`;
-                    document.getElementById('theme-provider-waiting-name').innerText = provider.name;
-                    document.getElementById('subphase-theme-waiting').classList.remove('hidden');
-                }
-            }
-
-            // --- PHASE 2: WORD (HINT / TRICK) INPUT ---
-            else if (turn.phase === 'word_input') {
-                phaseTitle.innerText = "PHASE 2: 単語（ヒント/トリック）の提出";
-
-                const submitted = turn.submittedWords || {};
-                const mySubmittedWord = submitted[localPlayer.id];
-
-                if (isMeAnswerer) {
-                    phaseInstruction.innerText = "みんながヒントとトリックを入力中です。お待ちください...";
-                    document.getElementById('subphase-theme-waiting').classList.remove('hidden');
-                    document.getElementById('theme-provider-waiting-name').innerText = "他のプレイヤー";
-                } else {
-                    document.getElementById('subphase-word-input').classList.remove('hidden');
-                    document.getElementById('display-theme-secret').innerText = turn.themeWord || '---';
-
-                    const guide = document.getElementById('word-input-guide');
-                    if (isMeTeammate) {
-                        guide.innerHTML = `<span class="text-blue-400 font-bold"><i class="fa-solid fa-lightbulb"></i> 味方チーム:</span> 解答者を導く【ヒント単語】を入力してください`;
-                    } else {
-                        guide.innerHTML = `<span class="text-red-400 font-bold"><i class="fa-solid fa-ghost"></i> 相手チーム:</span> 解答者を惑わす【トリック単語】を入力してください`;
-                    }
-
-                    if (mySubmittedWord) {
-                        document.getElementById('form-word-submission').classList.add('hidden');
-                        document.getElementById('submitted-word-done').classList.remove('hidden');
-                    } else {
-                        document.getElementById('form-word-submission').classList.remove('hidden');
-                        document.getElementById('submitted-word-done').classList.add('hidden');
-                    }
-                }
-            }
-
-            // --- PHASE 3: GUESSING & DEDUPLICATION DISPLAY ---
-            else if (turn.phase === 'guessing') {
-                phaseTitle.innerText = "PHASE 3: 解答 & 判定";
-                phaseInstruction.innerText = `解答者の ${answerer.name} はカードを見て口頭で答えてください！`;
-
-                document.getElementById('subphase-guessing').classList.remove('hidden');
-
-                // DEDUPLICATION RULE IMPLEMENTATION:
-                // "ヒントが同じ単語で被ったら1個のみ有効で残りは表示されない / 重複は１つだけ残す"
-                const rawSubmitted = turn.submittedWords || {};
-                const dedupedWordsSet = new Set();
-
-                Object.values(rawSubmitted).forEach(w => {
-                    if (w && typeof w === 'string') {
-                        const trimmed = w.trim().toLowerCase();
-                        if (trimmed.length > 0) {
-                            // Store original case representation or trimmed
-                            dedupedWordsSet.add(w.trim());
-                        }
-                    }
-                });
-
-                const finalWordsList = Array.from(dedupedWordsSet);
-                
-                // Shuffle array deterministically or visually so Answerer can't guess order
-                const grid = document.getElementById('deduped-words-grid');
-                grid.innerHTML = '';
-                document.getElementById('valid-cards-count').innerText = finalWordsList.length;
-
-                finalWordsList.forEach(word => {
-                    const card = document.createElement('div');
-                    card.className = "bg-gradient-to-br from-purple-900/60 to-indigo-900/60 border border-amber-400/30 text-amber-200 font-black text-lg px-5 py-3 rounded-xl shadow-lg animate-fade-in flex items-center gap-2";
-                    card.innerHTML = `<i class="fa-solid fa-tag text-xs text-amber-400"></i> ${escapeHtml(word)}`;
-                    grid.appendChild(card);
-                });
-
-                // Display Judging Buttons for Provider
-                const judgeBox = document.getElementById('provider-judge-box');
-                const nonJudgeMsg = document.getElementById('non-provider-judge-msg');
-
-                if (isMeProvider) {
-                    judgeBox.classList.remove('hidden');
-                    nonJudgeMsg.classList.add('hidden');
-                    document.getElementById('actual-theme-word-display').innerText = turn.themeWord || '---';
-                } else {
-                    judgeBox.classList.add('hidden');
-                    nonJudgeMsg.classList.remove('hidden');
-                }
-            }
-
-            // --- PHASE 4: TURN RESULT ---
-            else if (turn.phase === 'turn_result') {
-                phaseTitle.innerText = "PHASE 4: ターン結果";
-                document.getElementById('subphase-result').classList.remove('hidden');
-
-                const icon = document.getElementById('result-status-icon');
-                const title = document.getElementById('result-status-title');
-                const desc = document.getElementById('result-point-desc');
-
-                document.getElementById('result-theme-word').innerText = turn.themeWord;
-
-                if (turn.lastResult === 'correct') {
-                    icon.innerHTML = `<i class="fa-solid fa-circle-check text-green-400"></i>`;
-                    title.className = "text-2xl font-black text-green-400";
-                    title.innerText = "正 解 !";
-                    desc.innerText = `解答者チーム (Team ${answerer.team}) に 1 ポイント！`;
-                } else {
-                    icon.innerHTML = `<i class="fa-solid fa-circle-xmark text-red-400"></i>`;
-                    title.className = "text-2xl font-black text-red-400";
-                    title.innerText = "不 正 解 ...";
-                    desc.innerText = `相手チームに 1 ポイント！`;
-                }
-
-                const isHost = roomState.hostId === localPlayer.id;
-                const nextBtn = document.getElementById('btn-next-turn');
-                const waitMsg = document.getElementById('waiting-next-turn-msg');
-
-                if (isHost) {
-                    nextBtn.classList.remove('hidden');
-                    waitMsg.classList.add('hidden');
-                } else {
-                    nextBtn.classList.add('hidden');
-                    waitMsg.classList.remove('hidden');
-                }
-            }
-
-            // Update Progress / Player Status Grid
-            renderPlayerStatusList(players, turn);
-        }
-
-        function hideAllSubphases() {
-            document.getElementById('subphase-theme-input').classList.add('hidden');
-            document.getElementById('subphase-theme-waiting').classList.add('hidden');
-            document.getElementById('subphase-word-input').classList.add('hidden');
-            document.getElementById('subphase-guessing').classList.add('hidden');
-            document.getElementById('subphase-result').classList.add('hidden');
-        }
-
-        // Render Status Bar for all connected players during gameplay
-        function renderPlayerStatusList(players, turn) {
-            const listContainer = document.getElementById('game-players-status-list');
-            listContainer.innerHTML = '';
-
-            const playerArr = Object.values(players);
-            const answererId = turn.answererId;
-            const submitted = turn.submittedWords || {};
-
-            let completedCount = 0;
-            const targetCount = playerArr.length - 1; // Everyone except Answerer
-
-            playerArr.forEach(p => {
-                const item = document.createElement('div');
-                item.className = "bg-spooky-card border border-gray-800 p-2 rounded-lg flex items-center justify-between";
-
-                const isAnswerer = p.id === answererId;
-                const hasSubmitted = !!submitted[p.id];
-
-                if (hasSubmitted) completedCount++;
-
-                let statusBadge = '';
-                if (isAnswerer) {
-                    statusBadge = `<span class="text-[10px] bg-amber-500/20 text-amber-300 px-1.5 py-0.5 rounded">解答者</span>`;
-                } else if (turn.phase === 'word_input') {
-                    if (hasSubmitted) {
-                        statusBadge = `<span class="text-[10px] bg-green-500/20 text-green-400 px-1.5 py-0.5 rounded"><i class="fa-solid fa-check"></i> 提出済</span>`;
-                    } else {
-                        statusBadge = `<span class="text-[10px] bg-gray-700 text-gray-400 px-1.5 py-0.5 rounded">入力中...</span>`;
-                    }
-                } else {
-                    statusBadge = `<span class="text-[10px] bg-gray-800 text-gray-400 px-1.5 py-0.5 rounded">参加中</span>`;
-                }
-
-                item.innerHTML = `
-                    <span class="truncate font-medium text-gray-300 text-[11px]">${escapeHtml(p.name)}</span>
-                    ${statusBadge}
-                `;
-                listContainer.appendChild(item);
-            });
-
-            document.getElementById('submitted-progress-count').innerText = `${completedCount}/${targetCount} 完了`;
-
-            // Auto Advance Trigger: If Host and all words submitted in 'word_input' phase, move to 'guessing'
-            if (roomState.hostId === localPlayer.id && turn.phase === 'word_input') {
-                if (completedCount >= targetCount && targetCount > 0) {
-                    roomRef.child('turnInfo/phase').set('guessing');
-                }
-            }
-        }
-
-
-        // --- 7. PLAYER ACTIONS & GAME CONTROL HANDLERS ---
-
-        // Provider Submits Theme Word
-        document.getElementById('btn-submit-theme').addEventListener('click', () => {
-            const word = document.getElementById('input-theme-word').value.trim();
-            if (!word) {
-                showAlert('お題を入力してください。');
-                return;
-            }
-
-            roomRef.child('turnInfo').update({
-                themeWord: word,
-                phase: 'word_input'
-            });
-
-            document.getElementById('input-theme-word').value = '';
+          if (isRevealed) {
+            card.classList.add(item.isHint ? "revealed-hint" : "revealed-trick");
+            card.innerHTML = `
+              <span class="word-text">${item.key}</span>
+              <span class="type-tag ${item.isHint ? 'tag-hint' : 'tag-trick'}">
+                ${item.isHint ? 'ヒント(味方)' : 'トリック(敵)'}
+              </span>
+            `;
+          } else {
+            card.innerHTML = `
+              <span class="word-text">${item.key}</span>
+              ${data.treats[myTeam] > 0 ? `<button class="treat-btn" onclick="useTreat('${item.key}')">🍬 トリート券を使う</button>` : ''}
+            `;
+          }
+          container.appendChild(card);
         });
 
-        // Hint / Trick Word Submission
-        document.getElementById('btn-submit-word').addEventListener('click', () => {
-            const word = document.getElementById('input-hint-trick-word').value.trim();
-            if (!word) {
-                showAlert('単語を入力してください。');
-                return;
-            }
+      } else {
+        $("answerer-view").classList.add("hidden");
+        $("judge-view").classList.remove("hidden");
+        $("judge-theme-word").textContent = ts.themeWord;
+        $("judge-answerer-name").textContent = data.players[ts.answererId].name;
 
-            // Save word under localPlayer.id
-            roomRef.child(`turnInfo/submittedWords/${localPlayer.id}`).set(word);
-            document.getElementById('input-hint-trick-word').value = '';
-        });
-
-        // Provider Judges: Correct
-        document.getElementById('btn-judge-correct').addEventListener('click', () => {
-            processTurnJudge(true);
-        });
-
-        // Provider Judges: Incorrect
-        document.getElementById('btn-judge-incorrect').addEventListener('click', () => {
-            processTurnJudge(false);
-        });
-
-        function processTurnJudge(isCorrect) {
-            const turn = roomState.turnInfo;
-            const answerer = roomState.players[turn.answererId];
-            const answererTeam = answerer.team;
-            const opponentTeam = answererTeam === 'A' ? 'B' : 'A';
-
-            const newScores = { ...roomState.scores };
-
-            if (isCorrect) {
-                newScores[answererTeam] = (newScores[answererTeam] || 0) + 1;
-            } else {
-                newScores[opponentTeam] = (newScores[opponentTeam] || 0) + 1;
-            }
-
-            // Mark answerer as having answered (if not rechallenge turn)
-            const updates = {
-                scores: newScores,
-                'turnInfo/phase': 'turn_result',
-                'turnInfo/lastResult': isCorrect ? 'correct' : 'incorrect'
-            };
-
-            if (!turn.rechallenge) {
-                updates[`players/${turn.answererId}/hasAnswered`] = true;
-            }
-
-            roomRef.update(updates);
-        }
-
-        // Host Advances to Next Turn
-        document.getElementById('btn-next-turn').addEventListener('click', () => {
-            if (roomState.hostId !== localPlayer.id) return;
-
-            const turn = roomState.turnInfo;
-            const nextTurnNum = turn.currentTurn + 1;
-
-            if (nextTurnNum > turn.totalTurns) {
-                // Game Over
-                roomRef.child('status').set('gameover');
-                return;
-            }
-
-            // Setup Next Turn
-            const players = Object.values(roomState.players);
-            const teamAPlayers = players.filter(p => p.team === 'A');
-            const teamBPlayers = players.filter(p => p.team === 'B');
-
-            const { answererId, providerId, rechallenge } = selectTurnRoles(players, teamAPlayers, teamBPlayers, nextTurnNum, turn.totalTurns);
-
-            roomRef.child('turnInfo').set({
-                currentTurn: nextTurnNum,
-                totalTurns: turn.totalTurns,
-                answererId: answererId,
-                providerId: providerId,
-                phase: 'theme_input',
-                themeWord: '',
-                submittedWords: null,
-                rechallenge: rechallenge
-            });
-        });
-
-
-        // --- 8. FINAL GAME OVER VIEW ---
-        function renderGameOverView() {
-            const scores = roomState.scores || { A: 0, B: 0 };
-            document.getElementById('final-score-a').innerText = scores.A || 0;
-            document.getElementById('final-score-b').innerText = scores.B || 0;
-
-            const winnerBox = document.getElementById('winner-team-name');
-            if (scores.A > scores.B) {
-                winnerBox.innerText = "TEAM A の勝利! 🎉";
-                winnerBox.className = "text-2xl font-black text-blue-400 my-1";
-            } else if (scores.B > scores.A) {
-                winnerBox.innerText = "TEAM B の勝利! 🎉";
-                winnerBox.className = "text-2xl font-black text-red-400 my-1";
-            } else {
-                winnerBox.innerText = "引き分け (DRAW)! 🤝";
-                winnerBox.className = "text-2xl font-black text-amber-300 my-1";
-            }
-        }
-
-        // Return to Lobby button
-        document.getElementById('btn-return-lobby').addEventListener('click', () => {
-            if (roomState && roomState.hostId === localPlayer.id) {
-                roomRef.child('status').set('lobby');
-            } else {
-                switchView('lobby');
-            }
-        });
-
-        // Utility HTML Escaper
-        function escapeHtml(str) {
-            if (!str) return '';
-            return str.replace(/[&<>"']/g, function(m) {
-                return {
-                    '&': '&amp;',
-                    '<': '&lt;',
-                    '>': '&gt;',
-                    '"': '&quot;',
-                    "'": '&#039;'
-                }[m];
-            });
-        }
-    </script>
+        const canJudge = isThemeProvider;
+        $("btn-judge-correct").style.display = canJudge ? "block" : "none";
+        $("btn-judge-wrong").style.display = canJudge ? "block" : "none";
+      }
+    }
+  }
+</script>
 </body>
 </html>
