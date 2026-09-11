@@ -257,11 +257,10 @@
     <div class="rule-body hidden" id="rule-content">
       <ul>
         <li><b>目的:</b> 味方が出す正解への「ヒント」と、敵が出す邪魔な「トリック（嘘）」を見極めてお題を当てるゲームです。</li>
-        <li><b>進行:</b> 解答者（1名）と出題者（味方1名）が選出されます。</li>
-        <li><b>チーム変更:</b> プレイ中も自由に自分のチームを変更・選択できます。</li>
+        <li><b>進行:</b> 解答者（1名）と出題者（味方1名、解答者とは別の人）が選出されます。全員が1度は手番を担当します。</li>
+        <li><b>チーム設定:</b> ゲーム開始前のみチームを選べます。ゲーム開始後は変更できません。チーム人数分の「トリート券」が付与されます。</li>
         <li><b>入力:</b> 解答者以外の全員がお題に対する単語を1個入力（味方＝ヒント、敵＝トリック）。完全被りの単語は1つだけ残ります。</li>
-        <li><b>🍬 トリート券:</b> 解答者はチーム共通のトリート券を消費して、提示された単語が「ヒント」か「トリック」かを暴露できます。</li>
-        <li><b>判定:</b> 解答者が口頭で答えを発表し、出題者が正誤を確定します。</li>
+        <li><b>解答・判定:</b> 解答者はヒントを見て画面から答えを送信し、全員に共有されます。出題者が正誤判定ボタンを押して次の手番へ移ります。</li>
       </ul>
     </div>
   </div>
@@ -275,9 +274,9 @@
     </div>
   </div>
 
-  <!-- プレイヤー一覧＆自分のチーム自由切替パネル -->
+  <!-- プレイヤー一覧＆自分のチーム選択パネル -->
   <div id="sec-players-panel" class="hidden" style="margin-bottom: 0.8rem;">
-    <div class="team-selector">
+    <div id="team-selector-box" class="team-selector">
       <button id="btn-set-team-a" class="team-btn" style="background:var(--team-a); color:#fff;">Team A に入る</button>
       <button id="btn-set-team-b" class="team-btn" style="background:var(--team-b); color:#000;">Team B に入る</button>
     </div>
@@ -346,8 +345,19 @@
       <p style="font-size: 0.8rem; color: var(--accent-yellow); margin-bottom: 0.8rem; text-align:right;">
         持ちトリート(お菓子)券: <span id="my-team-treats" style="font-weight:bold; font-size:1rem;">0</span> 枚
       </p>
-      <div class="box" style="text-align:center;">
-        <p style="font-weight:bold;">口頭で正解を回答してください！</p>
+
+      <div id="answer-input-box" class="box">
+        <div class="form-group" style="margin-bottom:0.5rem;">
+          <label style="color:#fff; font-weight:bold;">答えを入力して送信してください</label>
+          <input type="text" id="input-answer-word" placeholder="回答を入力">
+        </div>
+        <button id="btn-submit-answer">回答を送信する</button>
+      </div>
+
+      <div id="submitted-answer-display" class="box hidden" style="text-align:center;">
+        <p style="font-size:0.8rem; color:var(--text-dim);">送信された解答:</p>
+        <p id="display-submitted-answer" style="font-size:1.3rem; font-weight:bold; color:var(--accent-yellow); margin-top:0.2rem;"></p>
+        <p style="font-size:0.75rem; color:var(--text-dim); margin-top:0.4rem;">出題者の正誤判定を待っています...</p>
       </div>
     </div>
 
@@ -356,7 +366,13 @@
         <p>お題: <strong id="judge-theme-word" style="color: var(--accent-orange); font-size:1.1rem;"></strong></p>
         <p style="margin-top:0.2rem;">解答者: <span id="judge-answerer-name" style="font-weight:bold;"></span></p>
       </div>
-      <p style="font-size:0.8rem; color:var(--text-dim); margin-bottom:0.4rem; text-align:center;">口頭回答を聞いて判定してください</p>
+
+      <div id="judge-answer-box" class="box" style="text-align:center;">
+        <p style="font-size:0.8rem; color:var(--text-dim);">解答者の送信した答え:</p>
+        <p id="judge-submitted-answer" style="font-size:1.3rem; font-weight:bold; color:var(--accent-yellow); margin-top:0.2rem;">(回答入力待ち...)</p>
+      </div>
+
+      <p style="font-size:0.8rem; color:var(--text-dim); margin-bottom:0.4rem; text-align:center;">送信された答えを見て判定してください</p>
       <button id="btn-judge-correct" class="btn-green">正解 (+1点)</button>
       <button id="btn-judge-wrong" class="btn-red">不正解 (相手に+1点)</button>
     </div>
@@ -469,23 +485,17 @@
     if (!snap.exists()) {
       await set(roomRef, {
         status: "playing",
+        gameStarted: false,
         hostId: myId,
         scores: { A: 0, B: 0 },
         treats: { A: 0, B: 0 },
         players: { [myId]: { name: myName, team: "A", hasAnswered: false } }
       });
-      await startNewTurn();
     } else {
       const room = snap.val();
       if (!room.players || !room.players[myId]) {
         await update(ref(db, `trick/rooms/${roomId}/players/${myId}`), {
           name: myName, team: "A", hasAnswered: false
-        });
-        // 人数が増えたのでトリート券追加
-        const pCount = Object.keys(room.players || {}).length + 1;
-        await update(roomRef, {
-          "treats/A": pCount,
-          "treats/B": pCount
         });
       }
     }
@@ -496,7 +506,6 @@
       const data = snapshot.val();
       if (data) render(data);
       else {
-        // ルーム削除時等
         leaveGame();
       }
     });
@@ -513,12 +522,15 @@
     location.reload();
   }
 
-  // チーム変更
+  // チーム変更（ゲーム開始前のみ可）
   $("btn-set-team-a").onclick = () => changeMyTeam("A");
   $("btn-set-team-b").onclick = () => changeMyTeam("B");
 
   async function changeMyTeam(team) {
     if (!roomRef || !myId) return;
+    const snap = await get(roomRef);
+    const room = snap.val();
+    if (room.gameStarted) return alert("ゲーム開始後はチーム変更できません");
     await update(ref(db, `trick/rooms/${roomId}/players/${myId}`), { team });
   }
 
@@ -528,9 +540,30 @@
   };
 
   window.forceChangeTeam = async (pId, currentTeam) => {
+    const snap = await get(roomRef);
+    const room = snap.val();
+    if (room.gameStarted) return alert("ゲーム開始後はチーム変更できません");
     const nextTeam = currentTeam === "A" ? "B" : "A";
     await update(ref(db, `trick/rooms/${roomId}/players/${pId}`), { team: nextTeam });
   };
+
+  async function startGameByHost() {
+    const snap = await get(roomRef);
+    const room = snap.val();
+    const pKeys = Object.keys(room.players || {});
+    if (pKeys.length < 2) return alert("ゲームを開始するには2人以上のプレイヤーが必要です");
+
+    const countA = pKeys.filter(id => room.players[id].team === "A").length;
+    const countB = pKeys.filter(id => room.players[id].team === "B").length;
+
+    await update(roomRef, {
+      gameStarted: true,
+      treats: { A: countA, B: countB },
+      scores: { A: 0, B: 0 }
+    });
+
+    startNewTurn();
+  }
 
   async function startNewTurn() {
     const snap = await get(roomRef);
@@ -541,25 +574,26 @@
 
     if (pKeys.length === 0) return;
 
+    // 解答者未担当の候補者を取得（全員が1度は回るように管理）
     let candidates = pKeys.filter(id => !players[id].hasAnswered);
 
     if (candidates.length === 0) {
-      const countA = pKeys.filter(id => players[id].team === "A").length;
-      const countB = pKeys.filter(id => players[id].team === "B").length;
-      if (countA !== countB) {
-        const smallerTeam = countA < countB ? "A" : "B";
-        candidates = pKeys.filter(id => players[id].team === smallerTeam);
-      } else {
-        await update(roomRef, { status: "finished" });
-        return;
-      }
+      await update(roomRef, { status: "finished" });
+      return;
     }
 
     const answererId = candidates[Math.floor(Math.random() * candidates.length)];
     const answererTeam = players[answererId].team;
-    const sameTeam = pKeys.filter(id => players[id].team === answererTeam && id !== answererId);
     
-    let themeProviderId = sameTeam.length > 0 ? sameTeam[Math.floor(Math.random() * sameTeam.length)] : answererId;
+    // 出題者は同じチームの別の人、同一チームに他がいない場合は他のチームから選出し、解答者と出題者が絶対に被らないように設定
+    const sameTeamOthers = pKeys.filter(id => players[id].team === answererTeam && id !== answererId);
+    let themeProviderId = "";
+    if (sameTeamOthers.length > 0) {
+      themeProviderId = sameTeamOthers[Math.floor(Math.random() * sameTeamOthers.length)];
+    } else {
+      const otherPlayers = pKeys.filter(id => id !== answererId);
+      themeProviderId = otherPlayers[Math.floor(Math.random() * otherPlayers.length)];
+    }
 
     await update(roomRef, {
       "turnState": {
@@ -568,7 +602,8 @@
         phase: "theme_input",
         themeWord: "",
         submittedWords: {},
-        revealedKeys: {}
+        revealedKeys: {},
+        answerSubmitted: ""
       }
     });
   }
@@ -599,6 +634,14 @@
     }
   };
 
+  // 解答者による答えの送信
+  $("btn-submit-answer").onclick = async () => {
+    const val = $("input-answer-word").value.trim();
+    if (!val) return;
+    await update(ref(db, `trick/rooms/${roomId}/turnState`), { answerSubmitted: val });
+    $("input-answer-word").value = "";
+  };
+
   $("btn-judge-correct").onclick = () => finishTurn(true);
   $("btn-judge-wrong").onclick = () => finishTurn(false);
 
@@ -608,7 +651,7 @@
     const answererTeam = room.players[room.turnState.answererId].team;
     const winTeam = isCorrect ? answererTeam : (answererTeam === "A" ? "B" : "A");
 
-    const newScores = { ...room.scores, [winTeam]: room.scores[winTeam] + 1 };
+    const newScores = { ...room.scores, [winTeam]: (room.scores[winTeam] || 0) + 1 };
     await update(roomRef, {
       [`players/${room.turnState.answererId}/hasAnswered`]: true,
       scores: newScores
@@ -622,7 +665,7 @@
     const room = snap.val();
     const myTeam = room.players[myId].team;
     
-    if (room.treats[myTeam] <= 0) return alert("トリート券が残っていません！");
+    if ((room.treats[myTeam] || 0) <= 0) return alert("トリート券が残っていません！");
 
     const updates = {};
     updates[`treats/${myTeam}`] = room.treats[myTeam] - 1;
@@ -639,10 +682,14 @@
     pKeys.forEach(id => {
       updates[`players/${id}/hasAnswered`] = false;
     });
-    const totalCount = pKeys.length;
+
+    const countA = pKeys.filter(id => room.players[id].team === "A").length;
+    const countB = pKeys.filter(id => room.players[id].team === "B").length;
+
     updates["status"] = "playing";
+    updates["gameStarted"] = true;
     updates["scores"] = { A: 0, B: 0 };
-    updates["treats"] = { A: totalCount, B: totalCount };
+    updates["treats"] = { A: countA, B: countB };
     await update(roomRef, updates);
     startNewTurn();
   };
@@ -653,10 +700,17 @@
     if (data.status === "playing") {
       $("status-bar").classList.remove("hidden");
       $("sec-players-panel").classList.remove("hidden");
-      $("score-a").textContent = data.scores.A;
-      $("score-b").textContent = data.scores.B;
-      $("treat-a").textContent = data.treats.A;
-      $("treat-b").textContent = data.treats.B;
+      $("score-a").textContent = data.scores.A || 0;
+      $("score-b").textContent = data.scores.B || 0;
+      $("treat-a").textContent = data.treats.A || 0;
+      $("treat-b").textContent = data.treats.B || 0;
+
+      // ゲーム開始後はチーム変更選択UIを非表示
+      if (data.gameStarted) {
+        $("team-selector-box").classList.add("hidden");
+      } else {
+        $("team-selector-box").classList.remove("hidden");
+      }
 
       // チーム切替ボタンのアクティブ表示
       const myTeam = data.players[myId]?.team;
@@ -681,10 +735,16 @@
         li.className = "player-item";
         
         let controls = "";
-        if (isHost && id !== myId) {
+        if (isHost && id !== myId && !data.gameStarted) {
           controls = `
             <div class="player-controls">
               <button class="btn-sm btn-purple" onclick="forceChangeTeam('${id}', '${p.team}')">切替</button>
+              <button class="btn-sm btn-red" onclick="kickPlayer('${id}')">削除</button>
+            </div>
+          `;
+        } else if (isHost && id !== myId) {
+          controls = `
+            <div class="player-controls">
               <button class="btn-sm btn-red" onclick="kickPlayer('${id}')">削除</button>
             </div>
           `;
@@ -699,13 +759,34 @@
         `;
         pList.appendChild(li);
       });
+
+      // ホスト用 START ボタン制御
+      if (isHost && !data.gameStarted) {
+        if (!$("btn-host-start")) {
+          const btn = document.createElement("button");
+          btn.id = "btn-host-start";
+          btn.className = "btn-purple";
+          btn.style.marginTop = "0.8rem";
+          btn.textContent = "ゲームを開始する (START)";
+          btn.onclick = startGameByHost;
+          $("sec-players-panel").appendChild(btn);
+        }
+      } else {
+        if ($("btn-host-start")) $("btn-host-start").remove();
+      }
+    }
+
+    if (!data.gameStarted && data.status === "playing") {
+      $("sec-wait").classList.remove("hidden");
+      $("wait-message").textContent = "ホストがゲームを開始するのを待っています...";
+      return;
     }
 
     if (data.status === "finished") {
       $("sec-finished").classList.remove("hidden");
       $("sec-players-panel").classList.add("hidden");
-      $("final-score-a").textContent = data.scores.A;
-      $("final-score-b").textContent = data.scores.B;
+      $("final-score-a").textContent = data.scores.A || 0;
+      $("final-score-b").textContent = data.scores.B || 0;
       if (data.scores.A > data.scores.B) $("winner-text").textContent = "Team A の勝利！";
       else if (data.scores.B > data.scores.A) $("winner-text").textContent = "Team B の勝利！";
       else $("winner-text").textContent = "引き分け！";
@@ -734,7 +815,7 @@
     if (ts.phase === "word_input") {
       if (isAnswerer) {
         $("sec-wait").classList.remove("hidden");
-        $("wait-message").textContent = "みんながヒント/トリックを入力中...";
+        $("wait-message").textContent = "みんながヒント/トリックを入力中... (お題は隠されています)";
       } else {
         const hasSubmitted = ts.submittedWords && ts.submittedWords[myId];
         if (hasSubmitted) {
@@ -802,11 +883,22 @@
           container.appendChild(card);
         });
 
+        // 解答者の答え入力フォーム/送信済表示切り替え
+        if (ts.answerSubmitted) {
+          $("answer-input-box").classList.add("hidden");
+          $("submitted-answer-display").classList.remove("hidden");
+          $("display-submitted-answer").textContent = ts.answerSubmitted;
+        } else {
+          $("answer-input-box").classList.remove("hidden");
+          $("submitted-answer-display").classList.add("hidden");
+        }
+
       } else {
         $("answerer-view").classList.add("hidden");
         $("judge-view").classList.remove("hidden");
         $("judge-theme-word").textContent = ts.themeWord;
         $("judge-answerer-name").textContent = data.players[ts.answererId]?.name || "";
+        $("judge-submitted-answer").textContent = ts.answerSubmitted || "(回答入力待ち...)";
 
         const canJudge = isThemeProvider;
         $("btn-judge-correct").style.display = canJudge ? "block" : "none";
