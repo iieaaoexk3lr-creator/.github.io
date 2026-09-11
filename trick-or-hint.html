@@ -58,16 +58,61 @@
       color: var(--accent-purple);
       font-size: 0.85rem;
       font-weight: 900;
-      margin-bottom: 1rem;
+      margin-bottom: 0.5rem;
       letter-spacing: 1px;
     }
+
+    /* ルールアコーディオン */
+    .rule-accordion {
+      background: rgba(0, 0, 0, 0.4);
+      border: 1px solid #3f2d59;
+      border-radius: 10px;
+      margin-bottom: 0.8rem;
+      overflow: hidden;
+    }
+    .rule-header {
+      background: rgba(157, 78, 221, 0.2);
+      padding: 0.5rem 0.8rem;
+      font-size: 0.8rem;
+      font-weight: bold;
+      color: var(--accent-yellow);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      cursor: pointer;
+      user-select: none;
+    }
+    .rule-body {
+      padding: 0.75rem;
+      font-size: 0.75rem;
+      line-height: 1.5;
+      color: var(--text-dim);
+      border-top: 1px solid #3f2d59;
+    }
+    .rule-body ul { padding-left: 1.2rem; }
+    .rule-body li { margin-bottom: 0.3rem; }
+
+    .header-actions {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 0.8rem;
+    }
+    .btn-leave {
+      width: auto;
+      margin: 0;
+      padding: 0.3rem 0.6rem;
+      font-size: 0.75rem;
+      background: #4b5563;
+    }
+
     .status-bar {
       display: flex;
       justify-content: space-between;
       background: rgba(0,0,0,0.5);
       padding: 0.6rem 0.8rem;
       border-radius: 12px;
-      margin-bottom: 1rem;
+      margin-bottom: 0.8rem;
       border: 1px solid #3f2d59;
       font-size: 0.85rem;
     }
@@ -77,7 +122,7 @@
     .hidden { display: none !important; }
     .form-group { margin-bottom: 0.85rem; }
     label { display: block; margin-bottom: 0.35rem; color: var(--text-dim); font-size: 0.8rem; }
-    input[type="text"] {
+    input[type="text"], select {
       width: 100%;
       padding: 0.75rem;
       border-radius: 10px;
@@ -89,7 +134,7 @@
       outline: none;
       transition: border-color 0.2s;
     }
-    input[type="text"]:focus { border-color: var(--accent-orange); }
+    input[type="text"]:focus, select:focus { border-color: var(--accent-orange); }
     button {
       width: 100%;
       padding: 0.8rem;
@@ -109,7 +154,8 @@
     .btn-purple { background: linear-gradient(135deg, var(--accent-purple), #6d28d9); box-shadow: 0 4px 10px rgba(157,78,221,0.3); }
     .btn-green { background: linear-gradient(135deg, var(--accent-green), #047857); }
     .btn-red { background: linear-gradient(135deg, #ef4444, #b91c1c); }
-    .player-list { list-style: none; margin-bottom: 1rem; }
+    
+    .player-list { list-style: none; margin-bottom: 0.8rem; }
     .player-item {
       padding: 0.6rem 0.8rem;
       background: rgba(0,0,0,0.3);
@@ -119,11 +165,38 @@
       justify-content: space-between;
       align-items: center;
       border: 1px solid rgba(255,255,255,0.05);
-      font-size: 0.9rem;
+      font-size: 0.85rem;
+      gap: 0.3rem;
     }
+    .player-controls { display: flex; align-items: center; gap: 0.3rem; }
+    .btn-sm {
+      width: auto;
+      margin: 0;
+      padding: 0.2rem 0.4rem;
+      font-size: 0.7rem;
+      border-radius: 6px;
+    }
+
+    .team-selector {
+      display: flex;
+      gap: 0.5rem;
+      margin-bottom: 0.8rem;
+      background: rgba(0,0,0,0.3);
+      padding: 0.4rem;
+      border-radius: 10px;
+    }
+    .team-btn {
+      flex: 1;
+      margin: 0;
+      padding: 0.5rem;
+      font-size: 0.85rem;
+      opacity: 0.6;
+    }
+    .team-btn.active { opacity: 1; outline: 2px solid #fff; }
+
     .role-badge {
       background: var(--accent-purple);
-      padding: 0.15rem 0.5rem;
+      padding: 0.15rem 0.4rem;
       border-radius: 6px;
       font-size: 0.7rem;
       font-weight: bold;
@@ -167,8 +240,31 @@
 <body>
 
 <div class="container">
-  <h1>Trick <span class="jack-o-icon">🎃</span> Hint</h1>
-  <div class="sub-title">〜 トリック オア ヒント 〜</div>
+  <div class="header-actions">
+    <div style="flex-grow:1;">
+      <h1>Trick <span class="jack-o-icon">🎃</span> Hint</h1>
+      <div class="sub-title">〜 トリック オア ヒント 〜</div>
+    </div>
+    <button id="btn-leave-top" class="btn-leave hidden">退室</button>
+  </div>
+
+  <!-- ルール説明アコーディオン -->
+  <div class="rule-accordion">
+    <div class="rule-header" id="toggle-rule">
+      <span>📖 遊びかた・ルールを見る</span>
+      <span id="rule-arrow">▼</span>
+    </div>
+    <div class="rule-body hidden" id="rule-content">
+      <ul>
+        <li><b>目的:</b> 味方が出す正解への「ヒント」と、敵が出す邪魔な「トリック（嘘）」を見極めてお題を当てるゲームです。</li>
+        <li><b>進行:</b> 解答者（1名）と出題者（味方1名）が選出されます。</li>
+        <li><b>チーム変更:</b> プレイ中も自由に自分のチームを変更・選択できます。</li>
+        <li><b>入力:</b> 解答者以外の全員がお題に対する単語を1個入力（味方＝ヒント、敵＝トリック）。完全被りの単語は1つだけ残ります。</li>
+        <li><b>🍬 トリート券:</b> 解答者はチーム共通のトリート券を消費して、提示された単語が「ヒント」か「トリック」かを暴露できます。</li>
+        <li><b>判定:</b> 解答者が口頭で答えを発表し、出題者が正誤を確定します。</li>
+      </ul>
+    </div>
+  </div>
 
   <div id="status-bar" class="status-bar hidden">
     <div class="team-box team-a-text">
@@ -176,6 +272,18 @@
     </div>
     <div class="team-box team-b-text">
       Team B<br><span id="score-b">0</span>点 <span style="font-size:0.75rem;">(🍬<span id="treat-b">0</span>)</span>
+    </div>
+  </div>
+
+  <!-- プレイヤー一覧＆自分のチーム自由切替パネル -->
+  <div id="sec-players-panel" class="hidden" style="margin-bottom: 0.8rem;">
+    <div class="team-selector">
+      <button id="btn-set-team-a" class="team-btn" style="background:var(--team-a); color:#fff;">Team A に入る</button>
+      <button id="btn-set-team-b" class="team-btn" style="background:var(--team-b); color:#000;">Team B に入る</button>
+    </div>
+    <div class="box" style="padding:0.5rem; margin-bottom:0;">
+      <p style="font-size:0.75rem; color:var(--text-dim); margin-bottom:0.3rem;">参加者一覧 (<span id="player-count">0</span>名)</p>
+      <ul id="list-players" class="player-list" style="margin-bottom:0;"></ul>
     </div>
   </div>
 
@@ -192,14 +300,6 @@
     <button id="btn-join">ゲームに参加 / 部屋作成</button>
   </div>
 
-  <!-- 2. ロビー待機 -->
-  <div id="sec-lobby" class="hidden">
-    <h3 style="font-size:1rem; margin-bottom:0.5rem;">参加者一覧 (<span id="player-count">0</span>名)</h3>
-    <ul id="list-players" class="player-list"></ul>
-    <p style="color: var(--text-dim); font-size: 0.75rem; margin-bottom: 0.8rem; text-align:center;">※ホストがゲームを開始できます</p>
-    <button id="btn-start" class="btn-purple hidden">ゲームを開始する</button>
-  </div>
-
   <!-- 3. 出題フェーズ -->
   <div id="sec-theme" class="hidden">
     <div class="box">
@@ -207,6 +307,13 @@
       <p style="color: var(--text-dim); font-size: 0.8rem; margin-top: 0.2rem;">解答者: <span id="target-answerer-name" style="color:#fff; font-weight:bold;"></span></p>
     </div>
     <div class="form-group">
+      <label>お題サンプルから選択</label>
+      <select id="select-preset-theme">
+        <option value="">-- お題リストから選ぶ --</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>または直接入力</label>
       <input type="text" id="input-theme" placeholder="お題を入力 (例: かぼちゃ)">
     </div>
     <button id="btn-submit-theme">お題を決定する</button>
@@ -263,13 +370,13 @@
       <p class="team-a-text">Team A: <span id="final-score-a">0</span>点</p>
       <p class="team-b-text">Team B: <span id="final-score-b">0</span>点</p>
     </div>
-    <button onclick="location.reload()" class="btn-purple">ロビーに戻る</button>
+    <button id="btn-restart" class="btn-purple">もう一度遊ぶ</button>
   </div>
 </div>
 
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-  import { getDatabase, ref, set, get, update, onValue } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+  import { getDatabase, ref, set, get, update, onValue, remove } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 
   const firebaseConfig = {
     apiKey: "AIzaSyC4DQhH_swesAD98Xyjg8d1lcWEkkrHrgw",
@@ -290,66 +397,149 @@
   let myName = "";
   let roomRef = null;
 
+  const PRESET_THEMES = [
+    "かぼちゃ", "ハロウィン", "キャンディ", "おばけ", "黒猫", "魔女", "コウモリ", "ドラキュラ",
+    "ゾンビ", "包帯", "蜘蛛の巣", "ランタン", "チョコレート", "墓地", "お菓子", "仮装",
+    "りんご", "お城", "月", "骸骨", "ほうき", "館", "パーティー", "スープ", "魔法",
+    "ろうそく", "夜", "悪魔", "ミイラ", "変装"
+  ];
+
   const $ = id => document.getElementById(id);
-  const hideAll = () => ["sec-login", "sec-lobby", "sec-theme", "sec-word-input", "sec-wait", "sec-answer", "sec-finished"].forEach(id => $(id).classList.add("hidden"));
 
-  $("btn-join").onclick = async () => {
-    roomId = $("input-room").value.trim();
-    myName = $("input-name").value.trim();
-    if (!roomId || !myName) return alert("部屋名と名前を入力してください");
+  // お題セレクトの初期化
+  const selectPreset = $("select-preset-theme");
+  PRESET_THEMES.forEach(theme => {
+    const opt = document.createElement("option");
+    opt.value = theme;
+    opt.textContent = theme;
+    selectPreset.appendChild(opt);
+  });
+  selectPreset.onchange = (e) => {
+    if (e.target.value) $("input-theme").value = e.target.value;
+  };
 
-    myId = "usr_" + Math.random().toString(36).substring(2, 9);
+  // ルールの開閉イベント
+  $("toggle-rule").onclick = () => {
+    const content = $("rule-content");
+    const arrow = $("rule-arrow");
+    const isHidden = content.classList.contains("hidden");
+    if (isHidden) {
+      content.classList.remove("hidden");
+      arrow.textContent = "▲";
+    } else {
+      content.classList.add("hidden");
+      arrow.textContent = "▼";
+    }
+  };
+
+  const hideAll = () => ["sec-login", "sec-theme", "sec-word-input", "sec-wait", "sec-answer", "sec-finished"].forEach(id => $(id).classList.add("hidden"));
+
+  // ローカルストレージ自動復元処理
+  window.addEventListener("DOMContentLoaded", () => {
+    const saved = localStorage.getItem("trick_game_user");
+    if (saved) {
+      try {
+        const data = JSON.parse(saved);
+        if (data.roomId && data.myId && data.myName) {
+          $("input-room").value = data.roomId;
+          $("input-name").value = data.myName;
+          joinRoom(data.roomId, data.myName, data.myId);
+        }
+      } catch (e) { localStorage.removeItem("trick_game_user"); }
+    }
+  });
+
+  $("btn-join").onclick = () => {
+    const r = $("input-room").value.trim();
+    const n = $("input-name").value.trim();
+    if (!r || !n) return alert("部屋名と名前を入力してください");
+    const newId = "usr_" + Math.random().toString(36).substring(2, 9);
+    joinRoom(r, n, newId);
+  };
+
+  async function joinRoom(rId, name, uId) {
+    roomId = rId;
+    myName = name;
+    myId = uId;
     roomRef = ref(db, `trick/rooms/${roomId}`);
+
+    localStorage.setItem("trick_game_user", JSON.stringify({ roomId, myName, myId }));
 
     const snap = await get(roomRef);
     if (!snap.exists()) {
       await set(roomRef, {
-        status: "lobby",
+        status: "playing",
         hostId: myId,
         scores: { A: 0, B: 0 },
         treats: { A: 0, B: 0 },
-        players: { [myId]: { name: myName, team: "", hasAnswered: false } }
+        players: { [myId]: { name: myName, team: "A", hasAnswered: false } }
       });
+      await startNewTurn();
     } else {
-      await update(ref(db, `trick/rooms/${roomId}/players/${myId}`), {
-        name: myName, team: "", hasAnswered: false
-      });
+      const room = snap.val();
+      if (!room.players || !room.players[myId]) {
+        await update(ref(db, `trick/rooms/${roomId}/players/${myId}`), {
+          name: myName, team: "A", hasAnswered: false
+        });
+        // 人数が増えたのでトリート券追加
+        const pCount = Object.keys(room.players || {}).length + 1;
+        await update(roomRef, {
+          "treats/A": pCount,
+          "treats/B": pCount
+        });
+      }
     }
+
+    $("btn-leave-top").classList.remove("hidden");
 
     onValue(roomRef, snapshot => {
       const data = snapshot.val();
       if (data) render(data);
+      else {
+        // ルーム削除時等
+        leaveGame();
+      }
     });
+  }
+
+  // 退室処理
+  $("btn-leave-top").onclick = () => leaveGame();
+
+  async function leaveGame() {
+    if (roomRef && myId) {
+      await remove(ref(db, `trick/rooms/${roomId}/players/${myId}`));
+    }
+    localStorage.removeItem("trick_game_user");
+    location.reload();
+  }
+
+  // チーム変更
+  $("btn-set-team-a").onclick = () => changeMyTeam("A");
+  $("btn-set-team-b").onclick = () => changeMyTeam("B");
+
+  async function changeMyTeam(team) {
+    if (!roomRef || !myId) return;
+    await update(ref(db, `trick/rooms/${roomId}/players/${myId}`), { team });
+  }
+
+  window.kickPlayer = async (pId) => {
+    if (!confirm("このプレイヤーを退室させますか？")) return;
+    await remove(ref(db, `trick/rooms/${roomId}/players/${pId}`));
   };
 
-  $("btn-start").onclick = async () => {
-    const snap = await get(roomRef);
-    const room = snap.val();
-    const pKeys = Object.keys(room.players || {});
-    if (pKeys.length < 2) return alert("2名以上必要です");
-
-    const shuffled = [...pKeys].sort(() => Math.random() - 0.5);
-    const updates = {};
-    shuffled.forEach((id, idx) => {
-      const team = idx % 2 === 0 ? "A" : "B";
-      updates[`players/${id}/team`] = team;
-      updates[`players/${id}/hasAnswered`] = false;
-    });
-
-    const totalCount = pKeys.length;
-    updates["status"] = "playing";
-    updates["scores"] = { A: 0, B: 0 };
-    updates["treats"] = { A: totalCount, B: totalCount };
-    await update(roomRef, updates);
-
-    startNewTurn();
+  window.forceChangeTeam = async (pId, currentTeam) => {
+    const nextTeam = currentTeam === "A" ? "B" : "A";
+    await update(ref(db, `trick/rooms/${roomId}/players/${pId}`), { team: nextTeam });
   };
 
   async function startNewTurn() {
     const snap = await get(roomRef);
     const room = snap.val();
+    if (!room || !room.players) return;
     const players = room.players;
     const pKeys = Object.keys(players);
+
+    if (pKeys.length === 0) return;
 
     let candidates = pKeys.filter(id => !players[id].hasAnswered);
 
@@ -391,6 +581,7 @@
       phase: "word_input"
     });
     $("input-theme").value = "";
+    $("select-preset-theme").value = "";
   };
 
   $("btn-submit-word").onclick = async () => {
@@ -440,35 +631,79 @@
     await update(roomRef, updates);
   };
 
+  $("btn-restart").onclick = async () => {
+    const snap = await get(roomRef);
+    const room = snap.val();
+    const pKeys = Object.keys(room.players || {});
+    const updates = {};
+    pKeys.forEach(id => {
+      updates[`players/${id}/hasAnswered`] = false;
+    });
+    const totalCount = pKeys.length;
+    updates["status"] = "playing";
+    updates["scores"] = { A: 0, B: 0 };
+    updates["treats"] = { A: totalCount, B: totalCount };
+    await update(roomRef, updates);
+    startNewTurn();
+  };
+
   function render(data) {
     hideAll();
     
     if (data.status === "playing") {
       $("status-bar").classList.remove("hidden");
+      $("sec-players-panel").classList.remove("hidden");
       $("score-a").textContent = data.scores.A;
       $("score-b").textContent = data.scores.B;
       $("treat-a").textContent = data.treats.A;
       $("treat-b").textContent = data.treats.B;
-    }
 
-    if (data.status === "lobby") {
-      $("sec-lobby").classList.remove("hidden");
+      // チーム切替ボタンのアクティブ表示
+      const myTeam = data.players[myId]?.team;
+      if (myTeam === "A") {
+        $("btn-set-team-a").classList.add("active");
+        $("btn-set-team-b").classList.remove("active");
+      } else {
+        $("btn-set-team-a").classList.remove("active");
+        $("btn-set-team-b").classList.add("active");
+      }
+
+      // プレイヤー一覧描画
       const pList = $("list-players");
       pList.innerHTML = "";
       const pKeys = Object.keys(data.players || {});
       $("player-count").textContent = pKeys.length;
+      const isHost = myId === data.hostId;
+
       pKeys.forEach(id => {
+        const p = data.players[id];
         const li = document.createElement("li");
         li.className = "player-item";
-        li.innerHTML = `<span>${data.players[id].name}</span>` + (id === data.hostId ? `<span class="role-badge">ホスト</span>` : "");
+        
+        let controls = "";
+        if (isHost && id !== myId) {
+          controls = `
+            <div class="player-controls">
+              <button class="btn-sm btn-purple" onclick="forceChangeTeam('${id}', '${p.team}')">切替</button>
+              <button class="btn-sm btn-red" onclick="kickPlayer('${id}')">削除</button>
+            </div>
+          `;
+        }
+
+        const teamLabel = p.team === "A" ? `<span class="team-a-text">[Team A]</span>` : `<span class="team-b-text">[Team B]</span>`;
+        const hostLabel = id === data.hostId ? `<span class="role-badge">ホスト</span>` : "";
+
+        li.innerHTML = `
+          <div>${teamLabel} ${p.name} ${hostLabel}</div>
+          ${controls}
+        `;
         pList.appendChild(li);
       });
-      if (myId === data.hostId) $("btn-start").classList.remove("hidden");
-      return;
     }
 
     if (data.status === "finished") {
       $("sec-finished").classList.remove("hidden");
+      $("sec-players-panel").classList.add("hidden");
       $("final-score-a").textContent = data.scores.A;
       $("final-score-b").textContent = data.scores.B;
       if (data.scores.A > data.scores.B) $("winner-text").textContent = "Team A の勝利！";
@@ -488,10 +723,10 @@
     if (ts.phase === "theme_input") {
       if (isThemeProvider) {
         $("sec-theme").classList.remove("hidden");
-        $("target-answerer-name").textContent = data.players[ts.answererId].name;
+        $("target-answerer-name").textContent = data.players[ts.answererId]?.name || "";
       } else {
         $("sec-wait").classList.remove("hidden");
-        $("wait-message").textContent = `${data.players[ts.themeProviderId].name} がお題を入力中...`;
+        $("wait-message").textContent = `${data.players[ts.themeProviderId]?.name || "出題者"} がお題を入力中...`;
       }
       return;
     }
@@ -527,7 +762,7 @@
       if (isAnswerer) {
         $("answerer-view").classList.remove("hidden");
         $("judge-view").classList.add("hidden");
-        $("my-team-treats").textContent = data.treats[myTeam];
+        $("my-team-treats").textContent = data.treats[myTeam] || 0;
 
         const container = $("hint-cards-container");
         container.innerHTML = "";
@@ -539,7 +774,7 @@
             if (!wordMap[cleanWord]) {
               wordMap[cleanWord] = {
                 key: cleanWord,
-                isHint: data.players[pId].team === answererTeam
+                isHint: data.players[pId]?.team === answererTeam
               };
             }
           });
@@ -561,7 +796,7 @@
           } else {
             card.innerHTML = `
               <span class="word-text">${item.key}</span>
-              ${data.treats[myTeam] > 0 ? `<button class="treat-btn" onclick="useTreat('${item.key}')">🍬 トリート券を使う</button>` : ''}
+              ${(data.treats[myTeam] || 0) > 0 ? `<button class="treat-btn" onclick="useTreat('${item.key}')">🍬 トリート券を使う</button>` : ''}
             `;
           }
           container.appendChild(card);
@@ -571,7 +806,7 @@
         $("answerer-view").classList.add("hidden");
         $("judge-view").classList.remove("hidden");
         $("judge-theme-word").textContent = ts.themeWord;
-        $("judge-answerer-name").textContent = data.players[ts.answererId].name;
+        $("judge-answerer-name").textContent = data.players[ts.answererId]?.name || "";
 
         const canJudge = isThemeProvider;
         $("btn-judge-correct").style.display = canJudge ? "block" : "none";
