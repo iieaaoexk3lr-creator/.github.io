@@ -45,7 +45,7 @@
       flex-direction: column;
     }
 
-    /* タイマー表示 */
+    /* ヘッダー・タイマー表示 */
     .header {
       display: flex;
       justify-content: space-between;
@@ -108,6 +108,33 @@
       font-size: 1.4rem;
       margin-bottom: 25px;
       line-height: 1.6;
+    }
+
+    /* 開始フェーズ */
+    .start-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 30px;
+    }
+
+    .btn-start {
+      font-size: 1.8rem;
+      padding: 15px 40px;
+      background: rgba(255, 255, 255, 0.1);
+      border: 3px solid #ffff88;
+      color: #ffff88;
+      border-radius: 8px;
+      cursor: pointer;
+      font-family: 'Yuji Syuku', serif;
+      box-shadow: 0 0 15px rgba(255, 255, 136, 0.3);
+      transition: all 0.3s;
+    }
+
+    .btn-start:hover {
+      background: #ffff88;
+      color: #1b382b;
+      box-shadow: 0 0 25px rgba(255, 255, 136, 0.8);
     }
 
     /* 教科グリッド */
@@ -187,7 +214,7 @@
       border-color: #ffff88;
     }
 
-    /* 物理キー・金庫表現 */
+    /* 金庫番号表現 */
     .key-display {
       font-size: 3.5rem;
       color: #ffff88;
@@ -205,15 +232,16 @@
     }
 
     .square-char {
-      width: 50px;
-      height: 50px;
+      width: 60px;
+      height: 60px;
       border: 2px solid #fff;
       background: transparent;
       color: #fff;
       font-size: 1.8rem;
       text-align: center;
-      line-height: 50px;
+      line-height: 60px;
       font-family: 'Yuji Syuku', serif;
+      border-radius: 4px;
     }
 
     /* アナウンス枠 */
@@ -254,8 +282,16 @@
     </div>
 
     <div class="content">
+      <!-- PHASE 0: スタート待ち -->
+      <div id="phase0" class="phase active">
+        <div class="start-container">
+          <div class="instruction">準備ができたらボタンを押して試験を開始してください。</div>
+          <button class="btn-start" onclick="startGame()">卒業試験開始</button>
+        </div>
+      </div>
+
       <!-- PHASE 1: 最初 3教科 -->
-      <div id="phase1" class="phase active">
+      <div id="phase1" class="phase">
         <div class="instruction">机の上の問題用紙を解き、答えを入力せよ。</div>
         <div class="subjects-grid">
           <div class="subject-card" id="card-japanese">
@@ -312,11 +348,11 @@
         <div>残り解答回数: <span id="attempts-left" style="color:#ffff88; font-weight:bold;">3</span> 回</div>
         
         <div class="square-input-container">
-          <input type="text" class="square-char" id="m1" maxlength="1">
-          <input type="text" class="square-char" id="m2" maxlength="1">
-          <input type="text" class="square-char" id="m3" maxlength="1">
-          <input type="text" class="square-char" id="m4" maxlength="1">
-          <input type="text" class="square-char" id="m5" maxlength="1">
+          <input type="text" class="square-char" id="m1">
+          <input type="text" class="square-char" id="m2">
+          <input type="text" class="square-char" id="m3">
+          <input type="text" class="square-char" id="m4">
+          <input type="text" class="square-char" id="m5">
         </div>
 
         <button class="btn" onclick="checkMusic()">解答を提出</button>
@@ -337,7 +373,7 @@
 
     <!-- 音声読み上げ同期テキスト表示欄 -->
     <div class="announcement" id="announcement">
-      🔊 システム：ゲームを開始します。
+      🔊 システム：ボタンを押して試験を開始してください。
     </div>
   </div>
 
@@ -354,7 +390,7 @@
     let totalSeconds = 90 * 60;
     let timerInterval = null;
 
-    // 音声読み上げ 簡易関数
+    // 音声読み上げ
     function speak(text) {
       document.getElementById('announcement').innerText = "🔊 " + text;
       if ('speechSynthesis' in window) {
@@ -364,6 +400,13 @@
         uttr.rate = 1.0;
         window.speechSynthesis.speak(uttr);
       }
+    }
+
+    // ゲーム開始処理
+    function startGame() {
+      goToPhase(1);
+      startTimer();
+      speak("卒業試験を開始します。まずは国語、社会、算数の3教科を解きなさい。");
     }
 
     // タイマー開始
@@ -402,6 +445,8 @@
         speak("3教科クリア。Webに表示された番号で箱を開けなさい。");
       } else if (phaseNum === 4) {
         speak("すべての答案が揃いました。採点済みの問題用紙を返却します。音楽の解答を入力してください。");
+        // 音楽フェーズに移ったら最初の入力欄にフォーカス
+        setTimeout(() => document.getElementById('m1').focus(), 300);
       }
     }
 
@@ -442,15 +487,15 @@
     // PHASE 4 (音楽) 判定
     function checkMusic() {
       const chars = [
-        document.getElementById('m1').value,
-        document.getElementById('m2').value,
-        document.getElementById('m3').value,
-        document.getElementById('m4').value,
-        document.getElementById('m5').value
+        document.getElementById('m1').value.trim(),
+        document.getElementById('m2').value.trim(),
+        document.getElementById('m3').value.trim(),
+        document.getElementById('m4').value.trim(),
+        document.getElementById('m5').value.trim()
       ];
       const answer = chars.join('');
 
-      // 「答え」または5文字の仮正解（例: 答え○○○など）判定。テスト用のため入力の先頭が「答え」なら正解扱いに設定
+      // 「答え」または「答え○○○」のように頭に「答え」が入っていればクリア（テスト用）
       if (answer === CORRECT_ANSWER || answer.startsWith(CORRECT_ANSWER)) {
         clearInterval(timerInterval);
         goToPhase('clear');
@@ -473,7 +518,6 @@
           document.getElementById('music-instruction').innerText = "追試：ラストチャンス";
           
           speak("残り回数がゼロになりました。最終ヒント：五文字の卒業ソングです。追試を一回だけ受けられます。");
-          alert("【最終ヒント】\n五文字の卒業ソングです。\n\n追試を1回だけ受けられます。");
         }
       } else {
         // 追試も失敗
@@ -488,25 +532,49 @@
       return names[sub] || "";
     }
 
-    // マス目入力のフォーカス自動移動
-    document.querySelectorAll('.square-char').forEach((input, index, inputs) => {
-      input.addEventListener('input', () => {
-        if (input.value.length === 1 && index < inputs.length - 1) {
-          inputs[index + 1].focus();
+    // --- 漢字変換（IME）に対応したマス目フォーカス制御 ---
+    const squareInputs = document.querySelectorAll('.square-char');
+
+    squareInputs.forEach((input, index) => {
+      let isComposing = false; // IMEで日本語変換中かどうかを管理するフラグ
+
+      // 変換開始
+      input.addEventListener('compositionstart', () => {
+        isComposing = true;
+      });
+
+      // 変換確定
+      input.addEventListener('compositionend', () => {
+        isComposing = false;
+        // 確定後、入力が入っていれば次のマスへ移動
+        if (input.value.length >= 1 && index < squareInputs.length - 1) {
+          // 2文字以上入った場合は最初の1文字だけ残す
+          if (input.value.length > 1) {
+            input.value = input.value.charAt(0);
+          }
+          squareInputs[index + 1].focus();
         }
       });
+
+      // 通常入力・直接入力時の挙動
+      input.addEventListener('input', () => {
+        if (!isComposing && input.value.length >= 1) {
+          if (input.value.length > 1) {
+            input.value = input.value.charAt(0);
+          }
+          if (index < squareInputs.length - 1) {
+            squareInputs[index + 1].focus();
+          }
+        }
+      });
+
+      // Backspaceで前のマスに戻る制御
       input.addEventListener('keydown', (e) => {
         if (e.key === 'Backspace' && input.value === '' && index > 0) {
-          inputs[index - 1].focus();
+          squareInputs[index - 1].focus();
         }
       });
     });
-
-    // 初期化実行
-    window.onload = () => {
-      startTimer();
-      speak("ゲーム開始。まずは国語、社会、算数の3教科を解きなさい。");
-    };
   </script>
 </body>
 </html>
