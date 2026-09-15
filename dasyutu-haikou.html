@@ -1,0 +1,512 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>廃校からの脱出</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Yuji+Syuku&display=swap" rel="stylesheet">
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: #1b382b;
+      background-image: 
+        radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.05) 0%, transparent 80%),
+        linear-gradient(rgba(0, 0, 0, 0.2), rgba(0, 0, 0, 0.2));
+      color: #f0f0f0;
+      font-family: 'Yuji Syuku', serif, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      padding: 20px;
+      user-select: none;
+    }
+
+    /* 黒板の木枠風フレーム */
+    .chalkboard {
+      width: 100%;
+      max-width: 900px;
+      background-color: #234433;
+      border: 12px solid #5c3a21;
+      border-radius: 8px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.7), inset 0 0 100px rgba(0,0,0,0.5);
+      padding: 30px;
+      position: relative;
+      min-height: 580px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* タイマー表示 */
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 2px dashed rgba(255,255,255,0.3);
+      padding-bottom: 15px;
+      margin-bottom: 25px;
+    }
+
+    .title {
+      font-size: 1.8rem;
+      letter-spacing: 2px;
+      text-shadow: 0 0 5px rgba(255,255,255,0.6);
+    }
+
+    .timer-container {
+      text-align: right;
+    }
+
+    .timer-label {
+      font-size: 0.9rem;
+      color: #ff8888;
+    }
+
+    .timer {
+      font-size: 2.2rem;
+      color: #ff5555;
+      font-weight: bold;
+      letter-spacing: 3px;
+      text-shadow: 0 0 8px rgba(255,85,85,0.6);
+    }
+
+    /* メインコンテンツエリア */
+    .content {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+    }
+
+    /* 各フェーズのスタイル */
+    .phase {
+      display: none;
+      width: 100%;
+      animation: fadeIn 0.8s ease-in-out;
+    }
+
+    .phase.active {
+      display: block;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(5px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .instruction {
+      font-size: 1.4rem;
+      margin-bottom: 25px;
+      line-height: 1.6;
+    }
+
+    /* 教科グリッド */
+    .subjects-grid {
+      display: flex;
+      justify-content: center;
+      gap: 20px;
+      flex-wrap: wrap;
+      margin-bottom: 20px;
+    }
+
+    .subject-card {
+      background: rgba(255, 255, 255, 0.05);
+      border: 2px solid rgba(255, 255, 255, 0.4);
+      border-radius: 6px;
+      padding: 15px;
+      width: 220px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .subject-card.cleared {
+      border-color: #88ff88;
+      background: rgba(136, 255, 136, 0.1);
+    }
+
+    .subject-title {
+      font-size: 1.3rem;
+    }
+
+    .status-badge {
+      font-size: 0.9rem;
+      color: #aaa;
+    }
+
+    .subject-card.cleared .status-badge {
+      color: #88ff88;
+      font-weight: bold;
+    }
+
+    /* 入力フォーム群 */
+    input[type="text"] {
+      background: transparent;
+      border: none;
+      border-bottom: 2px solid #fff;
+      color: #fff;
+      font-family: 'Yuji Syuku', serif;
+      font-size: 1.2rem;
+      text-align: center;
+      padding: 5px;
+      width: 80%;
+      outline: none;
+    }
+
+    input[type="text"]:focus {
+      border-bottom-color: #ffff88;
+    }
+
+    button.btn {
+      background: transparent;
+      border: 2px solid #fff;
+      color: #fff;
+      font-family: 'Yuji Syuku', serif;
+      font-size: 1rem;
+      padding: 6px 16px;
+      cursor: pointer;
+      border-radius: 4px;
+      transition: all 0.2s;
+      margin-top: 5px;
+    }
+
+    button.btn:hover {
+      background: rgba(255, 255, 255, 0.2);
+      color: #ffff88;
+      border-color: #ffff88;
+    }
+
+    /* 物理キー・金庫表現 */
+    .key-display {
+      font-size: 3.5rem;
+      color: #ffff88;
+      letter-spacing: 10px;
+      margin: 20px 0;
+      text-shadow: 0 0 10px rgba(255,255,136,0.5);
+    }
+
+    /* マス目入力（音楽） */
+    .square-input-container {
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+      margin: 25px 0;
+    }
+
+    .square-char {
+      width: 50px;
+      height: 50px;
+      border: 2px solid #fff;
+      background: transparent;
+      color: #fff;
+      font-size: 1.8rem;
+      text-align: center;
+      line-height: 50px;
+      font-family: 'Yuji Syuku', serif;
+    }
+
+    /* アナウンス枠 */
+    .announcement {
+      margin-top: 20px;
+      padding: 10px;
+      border: 1px solid rgba(255,255,255,0.2);
+      font-size: 0.95rem;
+      color: #ffffaa;
+      min-height: 45px;
+    }
+
+    /* 追試モードの演出 */
+    .reexam-mode {
+      border-color: #ff4444 !important;
+    }
+    .reexam-title {
+      color: #ff4444;
+      font-size: 2rem;
+      animation: pulse 1s infinite alternate;
+    }
+
+    @keyframes pulse {
+      from { opacity: 0.7; }
+      to { opacity: 1; }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="chalkboard" id="board">
+    <div class="header">
+      <div class="title">廃校からの脱出</div>
+      <div class="timer-container">
+        <div class="timer-label">留年まで</div>
+        <div class="timer" id="timer">90:00</div>
+      </div>
+    </div>
+
+    <div class="content">
+      <!-- PHASE 1: 最初 3教科 -->
+      <div id="phase1" class="phase active">
+        <div class="instruction">机の上の問題用紙を解き、答えを入力せよ。</div>
+        <div class="subjects-grid">
+          <div class="subject-card" id="card-japanese">
+            <div class="subject-title">国語</div>
+            <div class="status-badge" id="status-japanese">未クリア</div>
+            <input type="text" id="input-japanese" placeholder="解答">
+            <button class="btn" onclick="checkPhase1('japanese')">判定</button>
+          </div>
+          <div class="subject-card" id="card-society">
+            <div class="subject-title">社会</div>
+            <div class="status-badge" id="status-society">未クリア</div>
+            <input type="text" id="input-society" placeholder="解答">
+            <button class="btn" onclick="checkPhase1('society')">判定</button>
+          </div>
+          <div class="subject-card" id="card-math">
+            <div class="subject-title">算数</div>
+            <div class="status-badge" id="status-math">未クリア</div>
+            <input type="text" id="input-math" placeholder="解答">
+            <button class="btn" onclick="checkPhase1('math')">判定</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- PHASE 2: 鍵番号表示 -->
+      <div id="phase2" class="phase">
+        <div class="instruction">3教科クリア。宝箱の鍵を開けよ。</div>
+        <div class="key-display">4 7 2 9</div>
+        <div class="instruction" style="font-size: 1.1rem;">箱の中から「理科」「英語」の問題用紙を取り出してください。</div>
+        <button class="btn" style="margin-top: 20px;" onclick="goToPhase(3)">理科・英語の解答へ進む</button>
+      </div>
+
+      <!-- PHASE 3: 理科・英語 -->
+      <div id="phase3" class="phase">
+        <div class="instruction">取り出した問題の答えを入力せよ。</div>
+        <div class="subjects-grid">
+          <div class="subject-card" id="card-science">
+            <div class="subject-title">理科</div>
+            <div class="status-badge" id="status-science">未クリア</div>
+            <input type="text" id="input-science" placeholder="解答">
+            <button class="btn" onclick="checkPhase3('science')">判定</button>
+          </div>
+          <div class="subject-card" id="card-english">
+            <div class="subject-title">英語</div>
+            <div class="status-badge" id="status-english">未クリア</div>
+            <input type="text" id="input-english" placeholder="解答">
+            <button class="btn" onclick="checkPhase3('english')">判定</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- PHASE 4: 最終問題（音楽） -->
+      <div id="phase4" class="phase">
+        <div class="instruction" id="music-instruction">最終問題：音楽</div>
+        <div>残り解答回数: <span id="attempts-left" style="color:#ffff88; font-weight:bold;">3</span> 回</div>
+        
+        <div class="square-input-container">
+          <input type="text" class="square-char" id="m1" maxlength="1">
+          <input type="text" class="square-char" id="m2" maxlength="1">
+          <input type="text" class="square-char" id="m3" maxlength="1">
+          <input type="text" class="square-char" id="m4" maxlength="1">
+          <input type="text" class="square-char" id="m5" maxlength="1">
+        </div>
+
+        <button class="btn" onclick="checkMusic()">解答を提出</button>
+      </div>
+
+      <!-- GAME CLEAR -->
+      <div id="phase-clear" class="phase">
+        <div class="instruction" style="font-size: 2.5rem; color: #88ff88;">卒業おめでとう</div>
+        <p style="margin-top: 15px; font-size: 1.2rem;">全ての教科を収め、無事に脱出（卒業）しました。</p>
+      </div>
+
+      <!-- GAME OVER -->
+      <div id="phase-over" class="phase">
+        <div class="instruction" style="font-size: 2.5rem; color: #ff5555;">留年確定</div>
+        <p style="margin-top: 15px; font-size: 1.2rem;">時間切れです。もう一度やり直してください。</p>
+      </div>
+    </div>
+
+    <!-- 音声読み上げ同期テキスト表示欄 -->
+    <div class="announcement" id="announcement">
+      🔊 システム：ゲームを開始します。
+    </div>
+  </div>
+
+  <script>
+    // --- ゲーム状態管理 ---
+    const CORRECT_ANSWER = "答え"; // テスト用の共通正解コード
+
+    let phase1Cleared = { japanese: false, society: false, math: false };
+    let phase3Cleared = { science: false, english: false };
+    let musicAttemptsLeft = 3;
+    let isReexam = false;
+
+    // タイマー設定 (90分 = 5400秒)
+    let totalSeconds = 90 * 60;
+    let timerInterval = null;
+
+    // 音声読み上げ 簡易関数
+    function speak(text) {
+      document.getElementById('announcement').innerText = "🔊 " + text;
+      if ('speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+        const uttr = new SpeechSynthesisUtterance(text);
+        uttr.lang = 'ja-JP';
+        uttr.rate = 1.0;
+        window.speechSynthesis.speak(uttr);
+      }
+    }
+
+    // タイマー開始
+    function startTimer() {
+      timerInterval = setInterval(() => {
+        if (totalSeconds <= 0) {
+          clearInterval(timerInterval);
+          goToPhase('over');
+          speak("時間切れです。留年が確定しました。");
+          return;
+        }
+        totalSeconds--;
+        const m = Math.floor(totalSeconds / 60).toString().padStart(2, '0');
+        const s = (totalSeconds % 60).toString().padStart(2, '0');
+        document.getElementById('timer').innerText = `${m}:${s}`;
+      }, 1000);
+    }
+
+    // 画面遷移コントロール
+    function goToPhase(phaseNum) {
+      document.querySelectorAll('.phase').forEach(p => p.classList.remove('active'));
+      
+      if (phaseNum === 'clear') {
+        document.getElementById('phase-clear').classList.add('active');
+        return;
+      }
+      if (phaseNum === 'over') {
+        document.getElementById('phase-over').classList.add('active');
+        return;
+      }
+
+      const nextPhase = document.getElementById(`phase${phaseNum}`);
+      if (nextPhase) nextPhase.classList.add('active');
+
+      if (phaseNum === 2) {
+        speak("3教科クリア。Webに表示された番号で箱を開けなさい。");
+      } else if (phaseNum === 4) {
+        speak("すべての答案が揃いました。採点済みの問題用紙を返却します。音楽の解答を入力してください。");
+      }
+    }
+
+    // PHASE 1 判定
+    function checkPhase1(subject) {
+      const val = document.getElementById(`input-${subject}`).value.trim();
+      if (val === CORRECT_ANSWER) {
+        phase1Cleared[subject] = true;
+        document.getElementById(`card-${subject}`).classList.add('cleared');
+        document.getElementById(`status-${subject}`).innerText = "✓ クリア";
+        speak(`${getSubjectName(subject)}、正解。`);
+
+        if (phase1Cleared.japanese && phase1Cleared.society && phase1Cleared.math) {
+          setTimeout(() => goToPhase(2), 1000);
+        }
+      } else {
+        speak(`${getSubjectName(subject)}、不正解。`);
+      }
+    }
+
+    // PHASE 3 判定
+    function checkPhase3(subject) {
+      const val = document.getElementById(`input-${subject}`).value.trim();
+      if (val === CORRECT_ANSWER) {
+        phase3Cleared[subject] = true;
+        document.getElementById(`card-${subject}`).classList.add('cleared');
+        document.getElementById(`status-${subject}`).innerText = "✓ クリア";
+        speak(`${getSubjectName(subject)}、正解。`);
+
+        if (phase3Cleared.science && phase3Cleared.english) {
+          setTimeout(() => goToPhase(4), 1000);
+        }
+      } else {
+        speak(`${getSubjectName(subject)}、不正解。`);
+      }
+    }
+
+    // PHASE 4 (音楽) 判定
+    function checkMusic() {
+      const chars = [
+        document.getElementById('m1').value,
+        document.getElementById('m2').value,
+        document.getElementById('m3').value,
+        document.getElementById('m4').value,
+        document.getElementById('m5').value
+      ];
+      const answer = chars.join('');
+
+      // 「答え」または5文字の仮正解（例: 答え○○○など）判定。テスト用のため入力の先頭が「答え」なら正解扱いに設定
+      if (answer === CORRECT_ANSWER || answer.startsWith(CORRECT_ANSWER)) {
+        clearInterval(timerInterval);
+        goToPhase('clear');
+        speak("正解です。おめでとうございます、卒業です！");
+        return;
+      }
+
+      // 不正解処理
+      if (!isReexam) {
+        musicAttemptsLeft--;
+        document.getElementById('attempts-left').innerText = musicAttemptsLeft;
+
+        if (musicAttemptsLeft > 0) {
+          speak(`不正解。残り${musicAttemptsLeft}回。`);
+        } else {
+          // 3回失敗 -> 追試モードへ
+          isReexam = true;
+          document.getElementById('board').classList.add('reexam-mode');
+          document.getElementById('music-instruction').classList.add('reexam-title');
+          document.getElementById('music-instruction').innerText = "追試：ラストチャンス";
+          
+          speak("残り回数がゼロになりました。最終ヒント：五文字の卒業ソングです。追試を一回だけ受けられます。");
+          alert("【最終ヒント】\n五文字の卒業ソングです。\n\n追試を1回だけ受けられます。");
+        }
+      } else {
+        // 追試も失敗
+        clearInterval(timerInterval);
+        goToPhase('over');
+        speak("追試不合格。留年が確定しました。");
+      }
+    }
+
+    function getSubjectName(sub) {
+      const names = { japanese: "国語", society: "社会", math: "算数", science: "理科", english: "英語" };
+      return names[sub] || "";
+    }
+
+    // マス目入力のフォーカス自動移動
+    document.querySelectorAll('.square-char').forEach((input, index, inputs) => {
+      input.addEventListener('input', () => {
+        if (input.value.length === 1 && index < inputs.length - 1) {
+          inputs[index + 1].focus();
+        }
+      });
+      input.addEventListener('keydown', (e) => {
+        if (e.key === 'Backspace' && input.value === '' && index > 0) {
+          inputs[index - 1].focus();
+        }
+      });
+    });
+
+    // 初期化実行
+    window.onload = () => {
+      startTimer();
+      speak("ゲーム開始。まずは国語、社会、算数の3教科を解きなさい。");
+    };
+  </script>
+</body>
+</html>
