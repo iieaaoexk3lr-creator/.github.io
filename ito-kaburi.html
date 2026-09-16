@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>FreeIto - Web App</title>
+  <title>FreeIto</title>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@400;700;800&display=swap');
 
@@ -103,9 +103,23 @@
       box-sizing: border-box;
       outline: none;
       font-family: 'M PLUS Rounded 1c', sans-serif;
+      min-width: 0;
     }
     input[type="text"]:focus, input[type="number"]:focus {
       border-color: var(--primary-color);
+    }
+
+    .input-group {
+      display: flex;
+      gap: 8px;
+      width: 100%;
+    }
+    .input-group input[type="text"] {
+      flex: 1;
+    }
+    .input-group .btn {
+      flex-shrink: 0;
+      white-space: nowrap;
     }
 
     .modal {
@@ -224,7 +238,15 @@
     .answer-text {
       font-size: 1.1rem;
       font-weight: bold;
+      transition: filter 0.3s ease;
     }
+    
+    .answer-text.blurred {
+      filter: blur(6px);
+      user-select: none;
+      pointer-events: none;
+    }
+
     .answer-right {
       display: flex;
       align-items: center;
@@ -280,6 +302,17 @@
       background: var(--accent-pink);
       color: #fff;
     }
+
+    .range-setting-box {
+      background: #fdf0ff;
+      border: 1px solid var(--accent-pink);
+      border-radius: 12px;
+      padding: 10px;
+      margin-top: 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
   </style>
 
   <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
@@ -325,6 +358,7 @@
         <div style="font-size: 0.8rem; color: var(--text-sub);">現在のお題</div>
         <div id="disp-theme" class="theme-text">未設定</div>
         <div id="disp-host-name" class="host-badge" style="display: none;">親: --</div>
+        <div id="disp-num-range" style="font-size: 0.85rem; color: var(--text-sub); margin-top: 4px; font-weight: bold;">範囲: 1 〜 100</div>
       </div>
 
       <div>
@@ -344,17 +378,17 @@
         <button class="btn btn-gray btn-sm" onclick="saveAsImage()">📸 画像で保存</button>
       </div>
 
-      <div style="display: flex; gap: 8px;">
-        <input type="text" id="input-answer" style="flex:1;" placeholder="答えを入力 (例: 寿司、うまい棒)">
+      <div class="input-group">
+        <input type="text" id="input-answer" placeholder="答えを入力 (例: 寿司、うまい棒)">
         <button class="btn" onclick="postAnswer()">投稿</button>
       </div>
     </div>
 
     <!-- 数字選択エリア -->
     <div class="card my-card-box">
-      <div style="font-size: 0.85rem; color: var(--text-sub);">あなたの数字を決めてください (1〜100)</div>
+      <div id="disp-range-guide" style="font-size: 0.85rem; color: var(--text-sub);">あなたの数字を決めてください (1〜100)</div>
       <div style="display: flex; gap: 8px; justify-content: center; align-items: center; margin-top: 8px;">
-        <input type="number" id="input-my-number" min="1" max="100" placeholder="数字 (1~100)" style="width: 130px; text-align: center; font-size: 1.1rem;">
+        <input type="number" id="input-my-number" min="1" max="100" placeholder="数字 (1~100)" style="width: 140px; text-align: center; font-size: 1.1rem;">
         <button class="btn btn-green" onclick="submitMyNumber()">数字を確定</button>
       </div>
       <div id="disp-my-selected-number" style="margin-top: 8px; font-weight: bold; font-size: 1rem;"></div>
@@ -366,8 +400,8 @@
       <div style="display: flex; justify-content: space-between; align-items: center;">
         <span style="font-weight: bold;">場に出たカード</span>
         <div class="rule-order-selector">
-          <label><input type="radio" name="order-rule" value="asc" checked onchange="setOrderRule('asc')"> 昇順 (1→100)</label>
-          <label><input type="radio" name="order-rule" value="desc" onchange="setOrderRule('desc')"> 降順 (100→1)</label>
+          <label><input type="radio" name="order-rule" value="asc" checked onchange="setOrderRule('asc')"> 昇順</label>
+          <label><input type="radio" name="order-rule" value="desc" onchange="setOrderRule('desc')"> 降順</label>
         </div>
       </div>
       <div id="disp-field" class="field-cards"></div>
@@ -377,6 +411,17 @@
     <div class="card">
       <div style="font-weight: bold; margin-bottom: 8px;">参加者一覧</div>
       <div id="disp-players"></div>
+
+      <!-- 親のみ設定可能な数字範囲コントロール -->
+      <div id="host-range-controls" class="range-setting-box" style="display: none;">
+        <div style="font-size: 0.85rem; font-weight: bold; color: var(--primary-color);">⚙️ 【親専用】数字の範囲を設定</div>
+        <div style="display: flex; gap: 6px; align-items: center; justify-content: center;">
+          <input type="number" id="input-min-range" value="1" style="width: 80px; text-align: center;">
+          <span>〜</span>
+          <input type="number" id="input-max-range" value="100" style="width: 80px; text-align: center;">
+          <button class="btn btn-sm" onclick="updateNumberRange()">設定</button>
+        </div>
+      </div>
 
       <div style="margin-top: 16px; border-top: 2px dashed var(--border-color); padding-top: 12px; display: flex; gap: 8px; flex-wrap: wrap;">
         <button class="btn btn-green" onclick="startNewRound()">🔄 新ラウンドを開始</button>
@@ -391,13 +436,12 @@
 <div id="rule-modal" class="modal" style="display: none;">
   <div class="modal-content">
     <h3 style="color:var(--primary-color);">📖 FreeIto 基本ルール</h3>
-    <p><b>数字の決定:</b> 参加者それぞれが 1から100 の数字を1つ自由に選んで入力・確定します。（他の人には見えません）</p>
+    <p><b>数字の決定:</b> 参加者それぞれが指定された範囲の数字（現在: <span id="rule-range-text">1〜100</span>）を1つ自由に選んで入力・確定します。（他の人には見えません）</p>
     <p><b>テーマの決定:</b> お題（テーマ）を1つ決めます。決めた人が「親」になります。</p>
     <p><b>言葉で表現:</b> 自分の選んだ数字がそのお題においてどのくらいの大きさか、言葉で例えて表現・投稿します。</p>
+    <p><b>モザイク解除:</b> 全員の回答が出揃うとモザイクが解除され、お互いの言葉が見えるようになります。</p>
     <p><b>カードを出す:</b> 全員の回答が出揃ったら、話し合いながら自分のカードを公開していきます。</p>
-    <p><b>被り失敗判定:</b> 同じ数字を選んだプレイヤー同士の数字が<b>両方場に出された瞬間</b>にチャレンジ失敗となります。（場に出すまではバレません）</p>
-    <p><b>並び替え:</b> 親権限を持っている人のみ、回答の順位を▲▼ボタンやタップで入れ替えられます。</p>
-    <p><b>クリア条件:</b> 被りがなく、全員のカードを順番通りに出せたらステージクリアです。</p>
+    <p><b>被り失敗判定:</b> 同じ数字を選んだプレイヤー同士の数字が<b>両方場に出された瞬間</b>にチャレンジ失敗となります。</p>
     <div style="text-align: right; margin-top: 16px;">
       <button class="btn btn-gray" onclick="toggleModal('rule-modal', false)">閉じる</button>
     </div>
@@ -470,6 +514,8 @@
   let currentRoomRef = null;
   let selectedAnswerIndex = null;
   let isCurrentHost = false;
+  let currentMinNum = 1;
+  let currentMaxNum = 100;
 
   window.addEventListener('DOMContentLoaded', () => {
     const savedRoom = localStorage.getItem('freeito_room');
@@ -483,7 +529,7 @@
     }
   });
 
-  function joinRoom(existingId = null) {
+  async function joinRoom(existingId = null) {
     rawRoomName = document.getElementById('input-room').value.trim();
     myName = document.getElementById('input-name').value.trim();
 
@@ -495,40 +541,51 @@
     localStorage.setItem('freeito_name', myName);
     localStorage.setItem('freeito_id', myId);
 
+    if (currentRoomRef) {
+      currentRoomRef.off();
+    }
+
     currentRoomRef = db.ref('freeito/rooms/' + rawRoomName);
 
-    currentRoomRef.once('value').then((snapshot) => {
-      if (!snapshot.exists()) {
-        currentRoomRef.set({
-          clears: 0,
-          theme: "未設定",
-          hostId: null,
-          hostName: null,
-          orderRule: "asc",
-          field: [],
-          answers: [],
-          isClearHighlighted: false,
-          hasErrorOccurred: false
-        });
-      }
-
-      currentRoomRef.child('players/' + myId).update({
-        name: myName,
-        lastActive: Date.now()
+    const snapshot = await currentRoomRef.once('value');
+    if (!snapshot.exists()) {
+      await currentRoomRef.set({
+        clears: 0,
+        theme: "未設定",
+        hostId: null,
+        hostName: null,
+        orderRule: "asc",
+        minNum: 1,
+        maxNum: 100,
+        field: [],
+        answers: [],
+        isClearHighlighted: false,
+        hasErrorOccurred: false
       });
+    }
 
-      listenRoom();
-      document.getElementById('lobby-panel').style.display = 'none';
-      document.getElementById('game-panel').style.display = 'flex';
-      document.getElementById('disp-room').innerText = rawRoomName;
+    const playerRef = currentRoomRef.child('players/' + myId);
+    await playerRef.update({
+      name: myName,
+      lastActive: Date.now()
     });
+
+    playerRef.onDisconnect().remove();
+
+    listenRoom();
+
+    document.getElementById('lobby-panel').style.display = 'none';
+    document.getElementById('game-panel').style.display = 'flex';
+    document.getElementById('disp-room').innerText = rawRoomName;
   }
 
   function leaveRoom() {
     if (!confirm("本当に退室しますか？")) return;
 
     if (currentRoomRef && myId) {
-      currentRoomRef.child('players/' + myId).remove();
+      const playerRef = currentRoomRef.child('players/' + myId);
+      playerRef.onDisconnect().cancel();
+      playerRef.remove();
       currentRoomRef.off();
     }
 
@@ -544,7 +601,7 @@
       const data = snapshot.val();
       if (!data) return;
 
-      if (data.players && !data.players[myId] && myName) {
+      if (data.players && !data.players[myId] && myName)  {
         currentRoomRef.child('players/' + myId).update({
           name: myName,
           lastActive: Date.now()
@@ -552,6 +609,28 @@
       }
 
       isCurrentHost = (data.hostId === myId);
+
+      // 上限下限の設定値取得
+      currentMinNum = data.minNum !== undefined ? data.minNum : 1;
+      currentMaxNum = data.maxNum !== undefined ? data.maxNum : 100;
+
+      // UIに範囲を反映
+      document.getElementById('disp-num-range').innerText = `範囲: ${currentMinNum} 〜 ${currentMaxNum}`;
+      document.getElementById('disp-range-guide').innerText = `あなたの数字を決めてください (${currentMinNum}〜${currentMaxNum})`;
+      document.getElementById('rule-range-text').innerText = `${currentMinNum}〜${currentMaxNum}`;
+
+      const numInput = document.getElementById('input-my-number');
+      numInput.min = currentMinNum;
+      numInput.max = currentMaxNum;
+      numInput.placeholder = `数字 (${currentMinNum}~${currentMaxNum})`;
+
+      // 親コントロールパネルの切り替え
+      const rangeCtrl = document.getElementById('host-range-controls');
+      if (isCurrentHost) {
+        rangeCtrl.style.display = 'flex';
+      } else {
+        rangeCtrl.style.display = 'none';
+      }
 
       document.getElementById('disp-clears').innerText = data.clears || 0;
       document.getElementById('disp-theme').innerText = data.theme || "未設定";
@@ -580,7 +659,6 @@
       const answersList = data.answers || [];
       const isAllAnswered = playerKeys.length > 0 && answersList.length >= playerKeys.length;
 
-      // 自分の確定数字・公開ボタン表示
       const myData = data.players ? data.players[myId] : null;
       const mySelectedDisp = document.getElementById('disp-my-selected-number');
       const myHandDiv = document.getElementById('disp-my-hand');
@@ -628,7 +706,6 @@
         });
       }
 
-      // 回答一覧の描画
       const answersDiv = document.getElementById('disp-answers');
       answersDiv.innerHTML = '';
 
@@ -661,10 +738,13 @@
           `;
         }
 
+        const shouldBlur = !isAllAnswered && item.name !== myName;
+        const blurClass = shouldBlur ? 'blurred' : '';
+
         card.innerHTML = `
           <div class="answer-left">
             <span class="answer-rank">${index + 1}位</span>
-            <span class="answer-text">${item.text}</span>
+            <span class="answer-text ${blurClass}">${item.text}</span>
           </div>
           <div class="answer-right">
             <span class="answer-author">${item.name}</span>
@@ -697,13 +777,31 @@
     const input = document.getElementById('input-my-number');
     const val = parseInt(input.value, 10);
 
-    if (isNaN(val) || val < 1 || val > 100) {
-      return alert("1から100までの数字を入力してください");
+    if (isNaN(val) || val < currentMinNum || val > currentMaxNum) {
+      return alert(`${currentMinNum} から ${currentMaxNum} までの数字を入力してください`);
     }
 
     currentRoomRef.child(`players/${myId}/hand`).set([val]).then(() => {
       alert(`数字「${val}」に設定しました`);
       input.value = "";
+    });
+  }
+
+  function updateNumberRange() {
+    if (!isCurrentHost) return;
+
+    const minVal = parseInt(document.getElementById('input-min-range').value, 10);
+    const maxVal = parseInt(document.getElementById('input-max-range').value, 10);
+
+    if (isNaN(minVal) || isNaN(maxVal) || minVal >= maxVal) {
+      return alert("最小値は最大値より小さい数値を設定してください");
+    }
+
+    currentRoomRef.update({
+      minNum: minVal,
+      maxNum: maxVal
+    }).then(() => {
+      alert(`数字の範囲を ${minVal} 〜 ${maxVal} に更新しました`);
     });
   }
 
@@ -816,7 +914,6 @@
       let fieldArray = data.field ? Object.values(data.field) : [];
       let errorDetectedNow = false;
 
-      // 1. 昇順/降順の順番エラーチェック
       if (fieldArray.length > 0) {
         const lastIndex = fieldArray.length - 1;
         const lastVal = fieldArray[lastIndex].value;
@@ -831,16 +928,13 @@
         }
       }
 
-      // 2. 場に出された数字同士の重複（被り）チェック
       const isDuplicateInField = fieldArray.some(item => item.value === val);
       let isNewCardError = false;
 
       if (isDuplicateInField) {
-        // 既に同じ数字が場にでている場合は赤判定（失敗）にする
         isNewCardError = true;
         errorDetectedNow = true;
 
-        // 既存の同じ数字のカードもエラー表記（赤色）にする
         fieldArray.forEach(item => {
           if (item.value === val) {
             item.error = true;
@@ -934,6 +1028,8 @@
         theme: "未設定",
         hostId: null,
         hostName: null,
+        minNum: 1,
+        maxNum: 100,
         field: [],
         answers: [],
         isClearHighlighted: false,
