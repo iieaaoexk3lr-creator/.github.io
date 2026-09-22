@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>人狼ゲーム 進行＆メモツール</title>
   <style>
     :root {
@@ -12,30 +12,37 @@
       --text: #e0e0e0;
       --danger: #cf6679;
       --success: #03dac6;
+      --citizen: #00bcd4;
+      --werewolf: #f44336;
+      --neutral: #ff9800;
     }
+    * { box-sizing: border-box; }
     body {
-      font-family: 'Helvetica Neue', Arial, sans-serif;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
       background-color: var(--bg-color);
       color: var(--text);
       margin: 0;
-      padding: 16px;
+      padding: 12px;
+      font-size: 15px;
     }
     .container {
-      max-width: 1000px;
+      max-width: 800px;
       margin: 0 auto;
     }
-    h1, h2, h3 { color: var(--accent); margin-top: 0; }
+    h1, h2, h3 { color: var(--accent); margin: 0 0 12px 0; font-size: 1.2rem; }
     .card {
       background: var(--card-bg);
-      padding: 16px;
-      border-radius: 8px;
-      margin-bottom: 16px;
-      box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+      padding: 14px;
+      border-radius: 10px;
+      margin-bottom: 12px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.4);
     }
     .flex { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+    .flex-between { display: flex; justify-content: space-between; align-items: center; }
+    
     input, select, button, textarea {
-      padding: 8px 10px;
-      border-radius: 4px;
+      padding: 10px 12px;
+      border-radius: 6px;
       border: 1px solid #333;
       background: #2c2c2c;
       color: #fff;
@@ -43,7 +50,6 @@
     }
     textarea {
       width: 100%;
-      box-sizing: border-box;
       resize: vertical;
       font-family: inherit;
     }
@@ -53,159 +59,291 @@
       font-weight: bold;
       cursor: pointer;
       border: none;
+      touch-action: manipulation;
     }
-    button:disabled { opacity: 0.5; cursor: not-allowed; }
+    button:active { opacity: 0.8; }
+    button:disabled { opacity: 0.4; cursor: not-allowed; }
     button.danger { background: var(--danger); color: #fff; }
     button.secondary { background: #444; color: #fff; }
+    button.small { padding: 4px 8px; font-size: 12px; }
+    
     .hidden { display: none !important; }
+
+    /* 自分の役職カード大表示 */
+    .my-role-card {
+      background: #282828;
+      border-radius: 8px;
+      padding: 12px;
+      text-align: center;
+      margin-top: 8px;
+      border: 2px solid #333;
+    }
+    .my-role-title {
+      font-size: 1.8rem;
+      font-weight: bold;
+      margin: 6px 0;
+      display: inline-block;
+      padding: 4px 16px;
+      border-radius: 6px;
+    }
+    .role-citizen { background-color: rgba(0, 188, 212, 0.2); color: var(--citizen); border: 1px solid var(--citizen); }
+    .role-werewolf { background-color: rgba(244, 67, 54, 0.2); color: var(--werewolf); border: 1px solid var(--werewolf); }
+    .role-neutral { background-color: rgba(255, 152, 0, 0.2); color: var(--neutral); border: 1px solid var(--neutral); }
+    .role-none { background-color: #333; color: #aaa; }
+
+    /* タイマー表示 */
+    .timer-display {
+      font-size: 2.2rem;
+      font-family: monospace;
+      font-weight: bold;
+      text-align: center;
+      color: #fff;
+      background: #000;
+      padding: 6px;
+      border-radius: 6px;
+      letter-spacing: 2px;
+    }
+
+    /* 横スクロール対応テーブル */
+    .table-container {
+      width: 100%;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      border: 1px solid #333;
+      border-radius: 6px;
+    }
     table {
       width: 100%;
+      min-width: 450px;
       border-collapse: collapse;
-      margin-top: 8px;
     }
     th, td {
       border: 1px solid #333;
-      padding: 8px;
+      padding: 8px 10px;
       text-align: left;
+      white-space: nowrap;
     }
-    th { background: #2a2a2a; }
-    .modal {
-      position: fixed;
-      top: 0; left: 0; width: 100%; height: 100%;
-      background: rgba(0,0,0,0.8);
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      z-index: 100;
-    }
-    .modal-content {
-      background: var(--card-bg);
-      padding: 24px;
-      border-radius: 8px;
-      max-width: 600px;
-      max-height: 80vh;
-      overflow-y: auto;
-    }
+    th { background: #2a2a2a; font-size: 13px; }
+    
     .badge {
       padding: 2px 6px;
       border-radius: 4px;
       font-size: 11px;
+      font-weight: bold;
     }
     .badge-gm { background: #ffd700; color: #000; }
-    .badge-citizen { background: var(--success); color: #000; }
     .badge-confirmed { background: #4caf50; color: #fff; font-size: 10px; margin-left: 4px; }
-    .memo-input {
+    
+    .role-memo-input {
       width: 100%;
+      min-width: 180px;
       box-sizing: border-box;
-      padding: 4px 6px;
-      font-size: 12px;
+      padding: 6px 8px;
+      font-size: 13px;
       background: #121212;
       border: 1px solid #444;
+    }
+
+    /* モーダル（役職選択 / 説明） */
+    .modal {
+      position: fixed;
+      top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0,0,0,0.85);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 100;
+      padding: 12px;
+    }
+    .modal-content {
+      background: var(--card-bg);
+      padding: 16px;
+      border-radius: 10px;
+      width: 100%;
+      max-width: 550px;
+      max-height: 85vh;
+      overflow-y: auto;
+    }
+
+    /* タブ切り替えUI */
+    .tab-container {
+      display: flex;
+      gap: 4px;
+      margin-bottom: 12px;
+      border-bottom: 2px solid #333;
+    }
+    .tab-btn {
+      flex: 1;
+      padding: 8px 4px;
+      background: #2a2a2a;
+      color: #aaa;
+      border: none;
+      border-radius: 6px 6px 0 0;
+      font-size: 13px;
+    }
+    .tab-btn.active {
+      background: var(--accent);
+      color: #000;
+      font-weight: bold;
+    }
+    .role-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+      gap: 8px;
+    }
+    .role-option-btn {
+      padding: 10px 6px;
+      font-size: 13px;
+      text-align: center;
+      background: #2c2c2c;
+      border: 1px solid #444;
+      color: #fff;
+      border-radius: 6px;
+      width: 100%;
     }
   </style>
 </head>
 <body>
 
 <div class="container">
-  <h1>人狼ゲーム 進行＆メモツール</h1>
+  <h1 style="text-align: center;">人狼ゲーム メモ＆タイマー</h1>
 
   <!-- 入室・作成画面 -->
   <div id="auth-screen" class="card">
     <h2>ルーム入室 / 作成</h2>
-    <div class="flex">
-      <input type="text" id="room-id-input" placeholder="ルームナンバー (例: 1234)">
-      <input type="text" id="player-name-input" placeholder="あなたの名前">
-      <button id="join-btn">入室する</button>
+    <div class="flex" style="flex-direction: column;">
+      <input type="text" id="room-id-input" placeholder="ルームナンバー (例: 1234)" style="width: 100%;">
+      <input type="text" id="player-name-input" placeholder="あなたの名前" style="width: 100%;">
+      <button id="join-btn" style="width: 100%; padding: 12px;">入室する</button>
     </div>
   </div>
 
-  <!-- メインゲーム画面 -->
+  <!-- メイン画面 -->
   <div id="game-screen" class="hidden">
-    <!-- ヘッダー情報 -->
-    <div class="card flex" style="justify-content: space-between;">
+    <!-- ルーム基本情報 ＆ 司会設定 -->
+    <div class="card flex-between">
       <div>
-        <h2>ルーム: <span id="display-room-id"></span></h2>
-        <div>フェーズ: <strong id="display-phase" style="color:var(--accent);">待機中</strong> (日数: <span id="display-day">0</span>日目)</div>
+        <span style="color:#aaa; font-size: 12px;">ROOM</span>
+        <div style="font-size: 1.2rem; font-weight: bold;" id="display-room-id">----</div>
       </div>
       <div class="flex">
-        <button id="card-desc-btn">❓ 役職一覧・説明</button>
-        <button id="leave-room-btn" class="danger">退室する</button>
+        <button id="card-desc-btn" class="secondary small">❓ 役職一覧</button>
+        <button id="leave-room-btn" class="danger small">退室</button>
       </div>
     </div>
 
-    <!-- 司会コントロール領域 -->
+    <!-- 自分のステータス ＆ 役職表示（大きく目立たせる） -->
     <div class="card">
-      <div class="flex">
-        <label>
+      <div class="flex-between">
+        <div>
+          名前: <strong id="my-name"></strong>
+          <span id="my-status" class="badge" style="margin-left:6px; background:#444; color:#fff;">生存</span>
+        </div>
+        <label class="flex" style="font-size:12px;">
+          <input type="checkbox" id="gm-mode-check"> 専任GMモード
+        </label>
+      </div>
+
+      <div class="my-role-card">
+        <div style="font-size:12px; color:#aaa;">あなたの役職</div>
+        <div id="my-role-display" class="my-role-title role-none">未選択</div>
+        <div>
+          <button id="open-role-select-btn" style="margin-top: 6px;" class="small">役職を変更・選択する</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 全体共有 タイマー機能 -->
+    <div class="card">
+      <div class="flex-between" style="margin-bottom: 8px;">
+        <h3>⏱ 会議タイマー（全員共有）</h3>
+        <span id="mc-status-text" style="font-size: 12px; color: #aaa;"></span>
+      </div>
+
+      <div class="timer-display" id="timer-text">03:00</div>
+
+      <!-- 司会用タイマーコントロール -->
+      <div id="mc-timer-controls" class="hidden" style="margin-top: 10px;">
+        <div class="flex" style="justify-content: center; margin-bottom: 8px;">
+          <button class="secondary small set-time-btn" data-sec="60">1分</button>
+          <button class="secondary small set-time-btn" data-sec="180">3分</button>
+          <button class="secondary small set-time-btn" data-sec="300">5分</button>
+          <button class="secondary small set-time-btn" data-sec="600">10分</button>
+        </div>
+        <div class="flex" style="justify-content: center;">
+          <button id="timer-start-btn" style="background:var(--success); color:#000;">スタート</button>
+          <button id="timer-stop-btn" style="background:#ff9800; color:#000;">ストップ</button>
+          <button id="timer-reset-btn" class="danger">リセット</button>
+        </div>
+      </div>
+
+      <div style="margin-top: 10px; border-top: 1px dashed #333; padding-top: 8px;">
+        <label style="font-size: 13px; color: #ccc;">
           <input type="checkbox" id="mc-toggle-check">
-          司会（進行操作権限）を引き受ける
-        </label>
-        <span id="mc-status-text" style="margin-left: auto; color: #aaa;"></span>
-      </div>
-      <hr style="border-color: #333; margin: 12px 0;">
-      <div id="mc-controls" class="flex hidden">
-        <span>【司会専用操作】</span>
-        <button id="start-game-btn">ゲーム開始 (夜へ)</button>
-        <button id="next-phase-btn">次のフェーズへ進む</button>
-        <button id="reset-game-btn" class="danger">全リセット</button>
-      </div>
-    </div>
-
-    <!-- 自分のステータス＆役職選択 -->
-    <div class="card">
-      <h3>自分のステータス</h3>
-      <p>名前: <strong id="my-name"></strong> | 状態: <span id="my-status">生存</span></p>
-      <div class="flex">
-        <label for="role-select">自分の役職:</label>
-        <select id="role-select"></select>
-        <label class="flex" style="margin-left: 16px;">
-          <input type="checkbox" id="gm-mode-check"> 専任GMモード（プレイに参加せず全体進行のみ）
+          自分が司会（進行操作権限）を引き受ける
         </label>
       </div>
-      <div id="my-role-info" style="margin-top: 8px; color: var(--success);"></div>
     </div>
 
-    <!-- 参加者一覧＆メモ（仮役職・CO・確定連動） -->
+    <!-- 参加者一覧 ＆ 考察メモ（横スクロール対応） -->
     <div class="card">
-      <div class="flex" style="justify-content: space-between;">
-        <h3>参加者一覧 ＆ 考察メモ</h3>
-        <button id="clear-my-memo-btn" class="secondary" style="font-size: 12px;">自分のメモを全消去</button>
+      <div class="flex-between" style="margin-bottom: 8px;">
+        <h3>参加者一覧 ＆ COメモ</h3>
+        <button id="clear-my-memo-btn" class="secondary small">メモ全消去</button>
       </div>
-      <table>
-        <thead>
-          <tr>
-            <th style="width: 20%;">名前</th>
-            <th style="width: 12%;">状態</th>
-            <th style="width: 18%;">役職（本物）</th>
-            <th style="width: 25%;">仮役職 / COメモ</th>
-            <th style="width: 25%;">自由考察メモ</th>
-          </tr>
-        </thead>
-        <tbody id="player-list-body"></tbody>
-      </table>
+      
+      <div class="table-container">
+        <table>
+          <thead>
+            <tr>
+              <th style="width: 25%;">名前</th>
+              <th style="width: 15%;">状態</th>
+              <th style="width: 25%;">役職（本物）</th>
+              <th style="width: 35%;">仮役職 / COメモ</th>
+            </tr>
+          </thead>
+          <tbody id="player-list-body"></tbody>
+        </table>
+      </div>
+      <div style="font-size: 11px; color: #888; margin-top: 4px; text-align: right;">※表は横スライドできます</div>
     </div>
 
-    <!-- 全体自由メモ -->
+    <!-- 全体フリーメモ（自分専用） -->
     <div class="card">
       <h3>全体フリーメモ（自分専用）</h3>
       <textarea id="free-memo-text" rows="4" placeholder="盤面全体や過去ログの整理など..."></textarea>
     </div>
+  </div>
+</div>
 
-    <!-- 進行ログ -->
-    <div class="card">
-      <h3>進行ログ</h3>
-      <div id="log-container" style="height: 120px; overflow-y: auto; background: #000; padding: 8px; font-family: monospace; font-size: 13px;"></div>
+<!-- 陣営別 役職選択ダイアログ モーダル -->
+<div id="role-select-modal" class="modal hidden">
+  <div class="modal-content">
+    <div class="flex-between" style="margin-bottom: 12px;">
+      <h2>役職を選択</h2>
+      <button id="close-role-modal-btn" class="secondary small">✕ 閉じる</button>
     </div>
+
+    <div class="tab-container">
+      <button class="tab-btn active" data-tab="tab-citizen">市民陣営</button>
+      <button class="tab-btn" data-tab="tab-werewolf">人狼陣営</button>
+      <button class="tab-btn" data-tab="tab-neutral">第三陣営</button>
+    </div>
+
+    <div id="tab-citizen" class="tab-content role-grid"></div>
+    <div id="tab-werewolf" class="tab-content role-grid hidden"></div>
+    <div id="tab-neutral" class="tab-content role-grid hidden"></div>
   </div>
 </div>
 
 <!-- 役職カード説明モーダル -->
 <div id="card-modal" class="modal hidden">
   <div class="modal-content">
-    <h2>役職一覧・カード説明</h2>
+    <div class="flex-between" style="margin-bottom: 12px;">
+      <h2>役職一覧・説明</h2>
+      <button id="close-desc-modal-btn" class="secondary small">✕ 閉じる</button>
+    </div>
     <div id="card-list-container"></div>
-    <br>
-    <button id="close-modal-btn">閉じる</button>
   </div>
 </div>
 
@@ -229,6 +367,7 @@
   const db = getDatabase(app);
 
   const ROLES_DATA = [
+    // 人狼陣営
     { name: "人狼", team: "人狼", count: 4, desc: "夜に人狼同士で話し合い、人間1人を襲撃する。" },
     { name: "人狼の子ども", team: "人狼", count: 1, desc: "追放されると、次の夜の人狼襲撃枠が+1される。" },
     { name: "裏切り者", team: "人狼", count: 2, desc: "市民としてカウント。人狼陣営の勝利を目指す。" },
@@ -236,6 +375,7 @@
     { name: "内通者", team: "人狼", count: 1, desc: "夜に人狼が誰かを特定・把握できる。" },
     { name: "裏切りの襲撃者", team: "人狼", count: 1, desc: "夜に人狼とは別に独自で1人襲撃できる。" },
     { name: "スパイ", team: "人狼", count: 1, desc: "夜に誰か1人の役職を占える（人狼陣営）。" },
+    // 市民陣営
     { name: "市民", team: "市民", count: 9, desc: "特別な能力は持たない一般的な市民。" },
     { name: "予言者", team: "市民", count: 2, desc: "夜に指定した1人が「人狼」か「人間」かを知る。" },
     { name: "ボディーガード", team: "市民", count: 2, desc: "夜に1人を護衛し、人狼の襲撃から守る。" },
@@ -250,6 +390,7 @@
     { name: "騎士団", team: "市民", count: 3, desc: "騎士団同士でお互いを認識できる。" },
     { name: "影武者", team: "市民", count: 1, desc: "王様が襲撃された際に代わりに身代わりになる。" },
     { name: "王様", team: "市民", count: 1, desc: "生き残っている限り重要な決定権を持つ。" },
+    // 第三陣営 / その他
     { name: "妖狐", team: "単独", count: 1, desc: "襲撃で死なないが占われると死亡。生き残れば単独勝利。" },
     { name: "神様", team: "単独", count: 1, desc: "全知の能力を持つ。" },
     { name: "恋人", team: "単独", count: 2, desc: "2人で1対。片方が死ぬと後を追う。最後まで生存で勝利。" },
@@ -263,19 +404,18 @@
   let playerId = "";
   let playerName = "";
   let currentRoomData = null;
-  let localMemos = {};     // 自由メモ { pid: "内容" }
-  let localRoleMemos = {}; // 仮役職メモ { pid: "予言CO / 狼？" }
+  let localRoleMemos = {};
   let freeMemoText = "";
+  let timerInterval = null;
 
   const authScreen = document.getElementById("auth-screen");
   const gameScreen = document.getElementById("game-screen");
   const roomIdInput = document.getElementById("room-id-input");
   const playerNameInput = document.getElementById("player-name-input");
   const joinBtn = document.getElementById("join-btn");
-  const roleSelect = document.getElementById("role-select");
   const mcToggleCheck = document.getElementById("mc-toggle-check");
   const gmModeCheck = document.getElementById("gm-mode-check");
-  const mcControls = document.getElementById("mc-controls");
+  const mcTimerControls = document.getElementById("mc-timer-controls");
   const playerListBody = document.getElementById("player-list-body");
   const freeMemoInput = document.getElementById("free-memo-text");
 
@@ -288,40 +428,58 @@
   }
 
   function loadLocalMemo() {
-    const savedPlayerMemos = localStorage.getItem(getStorageKey("playerMemos"));
     const savedRoleMemos = localStorage.getItem(getStorageKey("roleMemos"));
-    localMemos = savedPlayerMemos ? JSON.parse(savedPlayerMemos) : {};
     localRoleMemos = savedRoleMemos ? JSON.parse(savedRoleMemos) : {};
     freeMemoText = localStorage.getItem(getStorageKey("freeMemo")) || "";
     freeMemoInput.value = freeMemoText;
   }
 
   function saveLocalMemo() {
-    localStorage.setItem(getStorageKey("playerMemos"), JSON.stringify(localMemos));
     localStorage.setItem(getStorageKey("roleMemos"), JSON.stringify(localRoleMemos));
     localStorage.setItem(getStorageKey("freeMemo"), freeMemoInput.value);
   }
 
   function clearAllLocalMemo() {
-    localStorage.removeItem(getStorageKey("playerMemos"));
     localStorage.removeItem(getStorageKey("roleMemos"));
     localStorage.removeItem(getStorageKey("freeMemo"));
-    localMemos = {};
     localRoleMemos = {};
     freeMemoInput.value = "";
     renderGameScreen();
   }
 
-  function initRoleSelect() {
-    roleSelect.innerHTML = '<option value="">-- 役職を選択 --</option>';
+  // 役職選択モーダルのタブ構築
+  function initRoleSelectModal() {
+    const tabCitizen = document.getElementById("tab-citizen");
+    const tabWerewolf = document.getElementById("tab-werewolf");
+    const tabNeutral = document.getElementById("tab-neutral");
+
+    tabCitizen.innerHTML = "";
+    tabWerewolf.innerHTML = "";
+    tabNeutral.innerHTML = "";
+
     ROLES_DATA.forEach(r => {
-      const opt = document.createElement("option");
-      opt.value = r.name;
-      opt.textContent = `[${r.team}] ${r.name} (上限:${r.count})`;
-      roleSelect.appendChild(opt);
+      const btn = document.createElement("button");
+      btn.className = "role-option-btn";
+      btn.textContent = r.name;
+      btn.onclick = () => selectRole(r.name);
+
+      if (r.team === "市民") {
+        tabCitizen.appendChild(btn);
+      } else if (r.team === "人狼") {
+        tabWerewolf.appendChild(btn);
+      } else {
+        tabNeutral.appendChild(btn);
+      }
     });
   }
-  initRoleSelect();
+  initRoleSelectModal();
+
+  async function selectRole(roleName) {
+    await update(ref(db, `jinro/rooms/${roomId}/players/${playerId}`), {
+      role: roleName
+    });
+    document.getElementById("role-select-modal").classList.add("hidden");
+  }
 
   joinBtn.addEventListener("click", async () => {
     roomId = roomIdInput.value.trim();
@@ -335,15 +493,12 @@
       const roomData = snapshot.val();
       const existingPlayers = roomData.players || {};
       if (Object.values(existingPlayers).some(p => p.name === playerName)) {
-        return alert("同じ名前のプレイヤーが既にルーム内に存在します。別の名前を入力してください。");
+        return alert("同じ名前のプレイヤーが既に存在します。別の名前を入力してください。");
       }
     } else {
       await set(roomRef, {
-        status: "lobby",
-        dayCount: 0,
         mcPlayerId: "",
-        resetSignal: 0,
-        logs: ["ルームが作成されました"]
+        timer: { seconds: 180, isRunning: false, lastUpdated: Date.now() }
       });
     }
 
@@ -356,7 +511,7 @@
     await set(ref(db, `jinro/rooms/${roomId}/players/${playerId}`), {
       name: playerName,
       role: "",
-      isRoleConfirmed: false, // 役職確定フラグ
+      isRoleConfirmed: false,
       isAlive: true,
       isGMOnly: false
     });
@@ -374,79 +529,81 @@
     onValue(roomRef, (snapshot) => {
       const data = snapshot.val();
       if (!data) return;
-
-      if (currentRoomData && data.resetSignal !== currentRoomData.resetSignal) {
-        clearAllLocalMemo();
-        alert("司会により全リセットが実行されたため、メモ情報をクリアしました。");
-      }
-
       currentRoomData = data;
       renderGameScreen();
+      updateTimerDisplay();
     });
   }
 
   function renderGameScreen() {
     if (!currentRoomData) return;
-    const { status, dayCount, mcPlayerId, players, logs } = currentRoomData;
+    const { mcPlayerId, players } = currentRoomData;
     const me = players ? players[playerId] : null;
-
-    document.getElementById("display-phase").textContent = 
-      status === "lobby" ? "待機中" : (status === "night" ? "夜" : (status === "day" ? "昼" : "終了"));
-    document.getElementById("display-day").textContent = dayCount;
 
     const isMC = mcPlayerId === playerId;
     mcToggleCheck.checked = isMC;
     mcToggleCheck.disabled = Boolean(mcPlayerId && !isMC);
     document.getElementById("mc-status-text").textContent = 
-      mcPlayerId ? (isMC ? "あなたが司会です" : `司会: ${players[mcPlayerId]?.name || ''}`) : "司会が不在です";
+      mcPlayerId ? (isMC ? "（あなたが進行役）" : `（進行役: ${players[mcPlayerId]?.name || ''}）`) : "（進行役不在）";
 
     if (isMC) {
-      mcControls.classList.remove("hidden");
+      mcTimerControls.classList.remove("hidden");
     } else {
-      mcControls.classList.add("hidden");
+      mcTimerControls.classList.add("hidden");
     }
 
+    // 自分のステータス・役職カード更新
     if (me) {
-      document.getElementById("my-status").textContent = me.isAlive ? "生存" : "脱落";
-      document.getElementById("my-role-info").textContent = me.isGMOnly ? "【専任GMモード有効】全体閲覧可能" : `あなたの役職: ${me.role || '未選択'} ${me.isRoleConfirmed ? ' [確定]' : ''}`;
+      const statusEl = document.getElementById("my-status");
+      statusEl.textContent = me.isAlive ? "生存" : "脱落";
+      statusEl.style.background = me.isAlive ? "#4caf50" : "var(--danger)";
+
+      const roleDisplay = document.getElementById("my-role-display");
+      const currentRole = me.role || "未選択";
+      roleDisplay.textContent = currentRole;
+      
+      roleDisplay.className = "my-role-title ";
+      const roleData = ROLES_DATA.find(r => r.name === currentRole);
+      if (roleData) {
+        if (roleData.team === "市民") roleDisplay.classList.add("role-citizen");
+        else if (roleData.team === "人狼") roleDisplay.classList.add("role-werewolf");
+        else roleDisplay.classList.add("role-neutral");
+      } else {
+        roleDisplay.classList.add("role-none");
+      }
     }
 
+    // 参加者テーブル生成
     playerListBody.innerHTML = "";
     if (players) {
       Object.entries(players).forEach(([pId, p]) => {
         const tr = document.createElement("tr");
 
-        // 本物役職の表示判定（自分自身、専任GM、または確定している場合）
         const canSeeRole = (pId === playerId) || (me && me.isGMOnly) || p.isRoleConfirmed;
         let roleDisplay = canSeeRole ? (p.role || "未選択") : "???";
         if (p.isRoleConfirmed) {
           roleDisplay += ' <span class="badge badge-confirmed">確定</span>';
         }
 
-        const memoVal = localMemos[pId] || "";
         const roleMemoVal = localRoleMemos[pId] || "";
 
         tr.innerHTML = `
           <td>${p.name} ${pId === mcPlayerId ? '<span class="badge badge-gm">司会</span>' : ''}</td>
           <td>
             ${p.isAlive ? '生存' : '<span style="color:var(--danger)">脱落</span>'}
-            ${isMC ? `<button style="font-size:10px; padding:2px 4px; margin-left:4px;" onclick="togglePlayerStatus('${pId}', ${p.isAlive})">切替</button>` : ''}
+            ${isMC ? `<button class="small secondary" style="padding:1px 4px; margin-left:4px;" onclick="togglePlayerStatus('${pId}',${p.isAlive})">切替</button>` : ''}
           </td>
           <td>
             ${p.isGMOnly ? '<b>専任GM</b>' : roleDisplay}
-            ${isMC && !p.isGMOnly ? `<br><button style="font-size:10px; padding:2px 4px; margin-top:2px;" onclick="toggleRoleConfirm('${pId}', ${p.isRoleConfirmed})">${p.isRoleConfirmed ? '確定解除' : '役職確定'}</button>` : ''}
+            ${isMC && !p.isGMOnly ? `<br><button class="small secondary" style="padding:1px 4px; margin-top:2px;" onclick="toggleRoleConfirm('${pId}', ${p.isRoleConfirmed})">${p.isRoleConfirmed ? '解除' : '確定'}</button>` : ''}
           </td>
           <td>
             <input type="text" class="role-memo-input" data-pid="${pId}" value="${roleMemoVal}" placeholder="例: 占いCO, 狼？">
-          </td>
-          <td>
-            <input type="text" class="memo-input" data-pid="${pId}" value="${memoVal}" placeholder="自由考察メモ">
           </td>
         `;
         playerListBody.appendChild(tr);
       });
 
-      // 仮役職メモ入力イベント
       document.querySelectorAll(".role-memo-input").forEach(input => {
         input.addEventListener("input", (e) => {
           const targetPid = e.target.getAttribute("data-pid");
@@ -454,39 +611,88 @@
           saveLocalMemo();
         });
       });
-
-      // 自由メモ入力イベント
-      document.querySelectorAll(".memo-input").forEach(input => {
-        input.addEventListener("input", (e) => {
-          const targetPid = e.target.getAttribute("data-pid");
-          localMemos[targetPid] = e.target.value;
-          saveLocalMemo();
-        });
-      });
     }
-
-    const logBox = document.getElementById("log-container");
-    logBox.innerHTML = (logs || []).map(l => `<div>${l}</div>`).join("");
-    logBox.scrollTop = logBox.scrollHeight;
   }
 
-  freeMemoInput.addEventListener("input", () => {
-    saveLocalMemo();
+  // タイマー同期処理
+  function updateTimerDisplay() {
+    if (!currentRoomData || !currentRoomData.timer) return;
+    const timer = currentRoomData.timer;
+
+    if (timerInterval) clearInterval(timerInterval);
+
+    function calcRemaining() {
+      if (!timer.isRunning) return timer.seconds;
+      const elapsed = Math.floor((Date.now() - timer.lastUpdated) / 1000);
+      return Math.max(0, timer.seconds - elapsed);
+    }
+
+    function render() {
+      const rem = calcRemaining();
+      const m = String(Math.floor(rem / 60)).padStart(2, '0');
+      const s = String(rem % 60).padStart(2, '0');
+      document.getElementById("timer-text").textContent = `${m}:${s}`;
+    }
+
+    render();
+    if (timer.isRunning) {
+      timerInterval = setInterval(render, 1000);
+    }
+  }
+
+  // タイマーコントロール（司会用）
+  document.querySelectorAll(".set-time-btn").forEach(btn => {
+    btn.addEventListener("click", async (e) => {
+      const sec = parseInt(e.target.getAttribute("data-sec"));
+      await update(ref(db, `jinro/rooms/${roomId}/timer`), {
+        seconds: sec,
+        isRunning: false,
+        lastUpdated: Date.now()
+      });
+    });
   });
 
+  document.getElementById("timer-start-btn").addEventListener("click", async () => {
+    if (!currentRoomData?.timer) return;
+    await update(ref(db, `jinro/rooms/${roomId}/timer`), {
+      isRunning: true,
+      lastUpdated: Date.now()
+    });
+  });
+
+  document.getElementById("timer-stop-btn").addEventListener("click", async () => {
+    if (!currentRoomData?.timer) return;
+    const timer = currentRoomData.timer;
+    const elapsed = Math.floor((Date.now() - timer.lastUpdated) / 1000);
+    const remaining = Math.max(0, timer.seconds - elapsed);
+
+    await update(ref(db, `jinro/rooms/${roomId}/timer`), {
+      seconds: remaining,
+      isRunning: false,
+      lastUpdated: Date.now()
+    });
+  });
+
+  document.getElementById("timer-reset-btn").addEventListener("click", async () => {
+    await update(ref(db, `jinro/rooms/${roomId}/timer`), {
+      seconds: 180,
+      isRunning: false,
+      lastUpdated: Date.now()
+    });
+  });
+
+  // フリーメモ
+  freeMemoInput.addEventListener("input", () => saveLocalMemo());
+
   document.getElementById("clear-my-memo-btn").addEventListener("click", () => {
-    if (confirm("自分のすべてのメモ情報を削除しますか？")) {
-      clearAllLocalMemo();
-    }
+    if (confirm("自分のすべてのメモ情報を削除しますか？")) clearAllLocalMemo();
   });
 
   document.getElementById("leave-room-btn").addEventListener("click", async () => {
-    if (!confirm("本当に退室しますか？（あなたのデータは削除されます）")) return;
-
+    if (!confirm("本当に退室しますか？")) return;
     if (currentRoomData?.mcPlayerId === playerId) {
       await update(ref(db, `jinro/rooms/${roomId}`), { mcPlayerId: "" });
     }
-
     await remove(ref(db, `jinro/rooms/${roomId}/players/${playerId}`));
     clearAllLocalMemo();
     localStorage.removeItem(`jinro_session_pid_${roomId}`);
@@ -501,92 +707,50 @@
 
   gmModeCheck.addEventListener("change", async (e) => {
     const isGM = e.target.checked;
-    roleSelect.disabled = isGM;
     await update(ref(db, `jinro/rooms/${roomId}/players/${playerId}`), {
       isGMOnly: isGM,
       role: isGM ? "GM" : ""
     });
   });
 
-  roleSelect.addEventListener("change", async (e) => {
-    await update(ref(db, `jinro/rooms/${roomId}/players/${playerId}`), {
-      role: e.target.value
-    });
-  });
-
-  document.getElementById("start-game-btn").addEventListener("click", async () => {
-    const logs = currentRoomData.logs || [];
-    logs.push("【進行】ゲームが開始されました。1日目の夜に入ります。");
-    await update(ref(db, `jinro/rooms/${roomId}`), {
-      status: "night",
-      dayCount: 1,
-      logs: logs
-    });
-  });
-
-  document.getElementById("next-phase-btn").addEventListener("click", async () => {
-    const current = currentRoomData.status;
-    let next = "night";
-    let day = currentRoomData.dayCount;
-    const logs = currentRoomData.logs || [];
-
-    if (current === "night") {
-      next = "day";
-      logs.push(`【進行】${day}日目の昼になりました。議論を開始してください。`);
-    } else {
-      next = "night";
-      day += 1;
-      logs.push(`【進行】${day}日目の夜になりました。`);
-    }
-
-    await update(ref(db, `jinro/rooms/${roomId}`), {
-      status: next,
-      dayCount: day,
-      logs: logs
-    });
-  });
-
-  document.getElementById("reset-game-btn").addEventListener("click", async () => {
-    if (!confirm("ゲームをリセットしますか？参加者全員のローカルメモもクリアされます。")) return;
-    
-    const resetSignal = (currentRoomData.resetSignal || 0) + 1;
-    await update(ref(db, `jinro/rooms/${roomId}`), {
-      status: "lobby",
-      dayCount: 0,
-      resetSignal: resetSignal,
-      logs: ["【進行】司会により全リセットが実行されました"]
-    });
-  });
-
-  // 生存切り替え
+  // 生存/役職確定切り替え関数
   window.togglePlayerStatus = async (targetId, currentAlive) => {
-    await update(ref(db, `jinro/rooms/${roomId}/players/${targetId}`), {
-      isAlive: !currentAlive
-    });
+    await update(ref(db, `jinro/rooms/${roomId}/players/${targetId}`), { isAlive: !currentAlive });
   };
-
-  // 司会用：役職確定切り替え
   window.toggleRoleConfirm = async (targetId, currentConfirmed) => {
-    await update(ref(db, `jinro/rooms/${roomId}/players/${targetId}`), {
-      isRoleConfirmed: !currentConfirmed
-    });
+    await update(ref(db, `jinro/rooms/${roomId}/players/${targetId}`), { isRoleConfirmed: !currentConfirmed });
   };
 
-  // モーダル
-  const modal = document.getElementById("card-modal");
-  document.getElementById("card-desc-btn").addEventListener("click", () => {
+  // 役職選択モーダル管理
+  const roleModal = document.getElementById("role-select-modal");
+  document.getElementById("open-role-select-btn").onclick = () => roleModal.classList.remove("hidden");
+  document.getElementById("close-role-modal-btn").onclick = () => roleModal.classList.add("hidden");
+
+  // タブ切り替え logic
+  document.querySelectorAll(".tab-btn").forEach(btn => {
+    btn.addEventListener("click", (e) => {
+      document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
+      document.querySelectorAll(".tab-content").forEach(c => c.classList.add("hidden"));
+      
+      e.target.classList.add("active");
+      const tabId = e.target.getAttribute("data-tab");
+      document.getElementById(tabId).classList.remove("hidden");
+    });
+  });
+
+  // 役職説明モーダル管理
+  const cardModal = document.getElementById("card-modal");
+  document.getElementById("card-desc-btn").onclick = () => {
     const container = document.getElementById("card-list-container");
     container.innerHTML = ROLES_DATA.map(r => `
       <div style="border-bottom: 1px solid #333; padding: 8px 0;">
-        <strong>${r.name}</strong> <span class="badge badge-citizen">${r.team}</span> (最大 ${r.count} 枚)
+        <strong>${r.name}</strong> <span class="badge" style="background:#333; color:#fff;">${r.team}</span> (最大 ${r.count} 枚)
         <p style="margin: 4px 0 0 0; font-size: 13px; color: #ccc;">${r.desc}</p>
       </div>
     `).join("");
-    modal.classList.remove("hidden");
-  });
-  document.getElementById("close-modal-btn").addEventListener("click", () => {
-    modal.classList.add("hidden");
-  });
+    cardModal.classList.remove("hidden");
+  };
+  document.getElementById("close-desc-modal-btn").onclick = () => cardModal.classList.add("hidden");
 </script>
 
 </body>
