@@ -350,7 +350,7 @@
 <!-- Firebase SDK -->
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
-  import { getDatabase, ref, set, get, update, onValue, remove } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-database.js";
+  import { getDatabase, ref, set, get, update, onValue, remove, onDisconnect } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-database.js";
 
   const firebaseConfig = {
     apiKey: "AIzaSyC4DQhH_swesAD98Xyjg8d1lcWEkkrHrgw",
@@ -481,10 +481,15 @@
     document.getElementById("role-select-modal").classList.add("hidden");
   }
 
+  // --- 入退室の最適化処理 ---
+
   joinBtn.addEventListener("click", async () => {
     roomId = roomIdInput.value.trim();
     playerName = playerNameInput.value.trim();
     if (!roomId || !playerName) return alert("ルームナンバーと名前を入力してください");
+
+    // 既存セッションIDの読み込みまたは新規作成
+    playerId = localStorage.getItem(`jinro_session_pid_${roomId}`) || generateId();
 
     const roomRef = ref(db, `jinro/rooms/${roomId}`);
     const snapshot = await get(roomRef);
@@ -492,29 +497,47 @@
     if (snapshot.exists()) {
       const roomData = snapshot.val();
       const existingPlayers = roomData.players || {};
-      if (Object.values(existingPlayers).some(p => p.name === playerName)) {
+
+      // 同名チェック（自分のID以外のプレイヤーで同名が存在する場合のみ弾く）
+      const isDuplicateName = Object.entries(existingPlayers).some(
+        ([pId, p]) => p.name === playerName && pId !== playerId
+      );
+
+      if (isDuplicateName) {
         return alert("同じ名前のプレイヤーが既に存在します。別の名前を入力してください。");
       }
     } else {
+      // ルーム新規作成
       await set(roomRef, {
         mcPlayerId: "",
         timer: { seconds: 180, isRunning: false, lastUpdated: Date.now() }
       });
     }
 
-    playerId = localStorage.getItem(`jinro_session_pid_${roomId}`) || generateId();
     localStorage.setItem(`jinro_session_pid_${roomId}`, playerId);
 
     document.getElementById("my-name").textContent = playerName;
     document.getElementById("display-room-id").textContent = roomId;
 
-    await set(ref(db, `jinro/rooms/${roomId}/players/${playerId}`), {
-      name: playerName,
-      role: "",
-      isRoleConfirmed: false,
-      isAlive: true,
-      isGMOnly: false
-    });
+    const playerRef = ref(db, `jinro/rooms/${roomId}/players/${playerId}`);
+    const playerSnapshot = await get(playerRef);
+
+    // 既にデータが存在する場合（復帰）は状態を維持し、新規の場合のみ初期化
+    if (!playerSnapshot.exists()) {
+      await set(playerRef, {
+        name: playerName,
+        role: "",
+        isRoleConfirmed: false,
+        isAlive: true,
+        isGMOnly: false
+      });
+    } else {
+      await update(playerRef, { name: playerName });
+    }
+
+    // --- 自動退室・切断ハンドリング設定 ---
+    // 1. 接続切断（タブ閉じ・回線切れ等）時の自動削除登録
+    onDisconnect(playerRef).remove();
 
     loadLocalMemo();
 
@@ -523,6 +546,33 @@
 
     listenToRoomUpdates();
   });
+
+  // 明示的な退室処理関数
+  async function leaveRoom() {
+    if (!roomId || !playerId) return;
+
+    // 司会権限を持っていた場合は解除
+    if (currentRoomData?.mcPlayerId === playerId) {
+      await update(ref(db, `jinro/rooms/${roomId}`), { mcPlayerId: "" });
+    }
+
+    // プレイヤーデータをDBから削除
+    const playerRef = ref(db, `jinro/rooms/${roomId}/players/${playerId}`);
+    await onDisconnect(playerRef).cancel(); // onDisconnectの予約をキャンセル
+    await remove(playerRef);
+
+    clearAllLocalMemo();
+    localStorage.removeItem(`jinro_session_pid_${roomId}`);
+    location.reload();
+  }
+
+  document.getElementById("leave-room-btn").addEventListener("click", async () => {
+    if (confirm("本当に退室しますか？")) {
+      await leaveRoom();
+    }
+  });
+
+  // --- その他のゲームロジック（そのまま保持） ---
 
   function listenToRoomUpdates() {
     const roomRef = ref(db, `jinro/rooms/${roomId}`);
@@ -688,21 +738,19 @@
     if (confirm("自分のすべてのメモ情報を削除しますか？")) clearAllLocalMemo();
   });
 
-  document.getElementById("leave-room-btn").addEventListener("click", async () => {
-    if (!confirm("本当に退室しますか？")) return;
-    if (currentRoomData?.mcPlayerId === playerId) {
-      await update(ref(db, `jinro/rooms/${roomId}`), { mcPlayerId: "" });
-    }
-    await remove(ref(db, `jinro/rooms/${roomId}/players/${playerId}`));
-    clearAllLocalMemo();
-    localStorage.removeItem(`jinro_session_pid_${roomId}`);
-    location.reload();
-  });
-
   mcToggleCheck.addEventListener("change", async (e) => {
-    await update(ref(db, `jinro/rooms/${roomId}`), {
-      mcPlayerId: e.target.checked ? playerId : ""
+    const isChecked = e.target.checked;
+    const mcRef = ref(db, `jinro/rooms/${roomId}`);
+    await update(mcRef, {
+      mcPlayerId: isChecked ? playerId : ""
     });
+
+    // 司会中に切断された場合の自動解放処理
+    if (isChecked) {
+      onDisconnect(ref(db, `jinro/rooms/${roomId}/mcPlayerId`)).set("");
+    } else {
+      onDisconnect(ref(db, `jinro/rooms/${roomId}/mcPlayerId`)).cancel();
+    }
   });
 
   gmModeCheck.addEventListener("change", async (e) => {
@@ -752,6 +800,3 @@
   };
   document.getElementById("close-desc-modal-btn").onclick = () => cardModal.classList.add("hidden");
 </script>
-
-</body>
-</html>
