@@ -747,13 +747,16 @@
       const playerIds = Object.keys(data.players);
       if (playerIds.length === 0) return alert("プレイヤーがいません");
 
-      // 1〜100の山札を完全シャッフル
+      // 1〜100の配列を作成し、Fisher-Yatesシャッフルで厳密にランダム化
       let deck = Array.from({length: 100}, (_, i) => i + 1);
-      deck.sort(() => Math.random() - 0.5);
+      for (let i = deck.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [deck[i], deck[j]] = [deck[j], deck[i]];
+      }
 
       const assignedHands = {};
 
-      // 各プレイヤーに完全ランダムに1枚ずつ配布
+      // 各プレイヤーに1枚ずつ配布
       playerIds.forEach(pId => {
         assignedHands[pId] = [deck.pop()];
       });
