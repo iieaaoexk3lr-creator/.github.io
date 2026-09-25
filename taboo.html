@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>タブートーク - Taboo Talk</title>
+  <!-- Firebase SDKs -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background-color: #121212;
+      color: #ffffff;
+      padding-bottom: 30px;
+    }
+
+    .header {
+      background-color: #1e1e1e;
+      padding: 12px 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid #333;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    .header-title { font-size: 1.1rem; font-weight: bold; color: #ff4757; }
+    .header-actions { display: flex; gap: 8px; }
+
+    button, select, input {
+      font-size: 0.95rem;
+      padding: 8px 12px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: bold;
+    }
+    button:disabled { opacity: 0.4; cursor: not-allowed; }
+    .btn-primary { background-color: #ff4757; color: #fff; }
+    .btn-secondary { background-color: #2ed573; color: #fff; }
+    .btn-warning { background-color: #ffa502; color: #fff; }
+    .btn-outline { background-color: #2f3542; color: #fff; border: 1px solid #57606f; }
+
+    input[type="text"] {
+      background-color: #2f3542;
+      color: #fff;
+      border: 1px solid #57606f;
+    }
+
+    .container {
+      max-width: 600px;
+      margin: 20px auto;
+      padding: 0 16px;
+    }
+
+    .card {
+      background-color: #1e1e1e;
+      border-radius: 10px;
+      padding: 20px;
+      margin-bottom: 16px;
+      border: 1px solid #333;
+    }
+    .card h2 { font-size: 1.2rem; margin-bottom: 12px; color: #ffa502; }
+
+    .timer-bar {
+      background-color: #2f3542;
+      border-radius: 8px;
+      padding: 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+      border: 2px solid #ff4757;
+    }
+    .timer-display { font-size: 1.8rem; font-weight: bold; color: #ff4757; font-family: monospace; }
+    .timer-controls { display: flex; gap: 6px; align-items: center; }
+
+    .player-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+      gap: 12px;
+    }
+    .player-card {
+      background-color: #2f3542;
+      border-radius: 8px;
+      padding: 14px;
+      border: 2px solid transparent;
+      position: relative;
+    }
+    .player-card.is-me { border-color: #ffa502; }
+    .player-card.eliminated { opacity: 0.5; background-color: #1e1e1e; text-decoration: line-through; }
+
+    .player-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+    .player-name { font-weight: bold; font-size: 1rem; }
+    .player-status {
+      font-size: 0.75rem;
+      padding: 2px 6px;
+      border-radius: 4px;
+      background-color: #2ed573;
+      color: #000;
+    }
+    .player-status.out { background-color: #ff4757; color: #fff; }
+
+    .taboo-box {
+      background-color: #1e1e1e;
+      border-radius: 6px;
+      padding: 10px;
+      text-align: center;
+      font-weight: bold;
+      font-size: 1.2rem;
+      color: #ff4757;
+      min-height: 48px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .taboo-secret { color: #747d8c; font-size: 0.9rem; font-style: italic; }
+
+    .foul-btn {
+      width: 100%;
+      margin-top: 8px;
+      padding: 6px;
+      font-size: 0.85rem;
+      background-color: #ff4757;
+      color: #fff;
+    }
+
+    .help-modal {
+      position: fixed;
+      top: 0; left: 0; width: 100vw; height: 100vh;
+      background-color: rgba(0, 0, 0, 0.75);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 1000;
+    }
+    .help-modal.hidden { display: none; }
+    .help-content {
+      background-color: #1e1e1e;
+      border: 1px solid #57606f;
+      border-radius: 12px;
+      padding: 20px;
+      max-width: 480px;
+      width: 90%;
+      max-height: 80vh;
+      overflow-y: auto;
+    }
+    .help-content h3 { color: #ffa502; margin-bottom: 12px; border-bottom: 1px solid #333; padding-bottom: 6px; }
+    .help-content p, .help-content ul { font-size: 0.9rem; line-height: 1.6; margin-bottom: 10px; }
+    .help-content ul { list-style-position: inside; }
+
+    .hidden-view { display: none !important; }
+  </style>
+</head>
+<body>
+
+  <header class="header">
+    <div class="header-title">タブートーク 🤫</div>
+    <div class="header-actions">
+      <button id="btn-rules" class="btn-outline">❓ 遊び方</button>
+      <button id="btn-controls" class="btn-outline">🎮 操作方法</button>
+    </div>
+  </header>
+
+  <div class="container">
+
+    <div id="view-lobby" class="card">
+      <h2>ルームに参加 / 作成</h2>
+      <div style="display: flex; flex-direction: column; gap: 10px; margin-top: 10px;">
+        <input type="text" id="input-player-name" placeholder="あなたの名前を入力" maxlength="10">
+        <input type="text" id="input-room-id" placeholder="部屋ID (空欄で新規作成)">
+        <button id="btn-join" class="btn-primary">部屋に入る / 作成する</button>
+      </div>
+    </div>
+
+    <div id="view-game" class="hidden-view">
+      
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+        <div>部屋ID: <strong id="room-id-display" style="color:#ffa502;">-</strong></div>
+        <button id="btn-leave" class="btn-outline" style="font-size:0.8rem; padding:4px 8px;">部屋を出る</button>
+      </div>
+
+      <div class="timer-bar">
+        <div>
+          <div style="font-size: 0.75rem; color: #aaa;">REMAINING TIME</div>
+          <div id="timer-display" class="timer-display">03:00</div>
+        </div>
+        <div class="timer-controls">
+          <select id="time-select" class="btn-outline">
+            <option value="60">1分</option>
+            <option value="180" selected>3分</option>
+            <option value="300">5分</option>
+          </select>
+          <button id="btn-timer-start" class="btn-secondary">開始</button>
+          <button id="btn-timer-pause" class="btn-warning" disabled>停止</button>
+          <button id="btn-deal" class="btn-primary">お題再配布</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>参加者とタブー（NGワード）</h2>
+        <p style="font-size:0.8rem; color:#aaa; margin-bottom:12px;">※自分のタブーは見えません。相手がタブーを言ったら「タブー指摘」を押してください。</p>
+        <div id="player-grid" class="player-grid"></div>
+      </div>
+
+    </div>
+
+  </div>
+
+  <div id="modal-rules" class="help-modal hidden">
+    <div class="help-content">
+      <h3>❓ タブートークの遊び方</h3>
+      <p>1. 各プレイヤーに1つずつ「タブー（禁止ワード）」が配られます。</p>
+      <p>2. <strong>自分のタブーは表示されず、他の全員のタブーは見えています。</strong></p>
+      <p>3. 雑談やテーマに沿って会話を進めます。</p>
+      <p>4. 他のプレイヤーが自分のタブー（NGワード）を発言したと思ったら、周囲が「タブー指摘」ボタンを押して脱落させます。</p>
+      <p>5. 制限時間内にタブーを言わずに生き残ることが目的です！</p>
+      <p style="color:#ff4757; font-size:0.8rem;">※説明を開いていてもタイマーはそのまま進みます。</p>
+      <button class="btn-outline close-modal" style="width:100%; margin-top:12px;">閉じる</button>
+    </div>
+  </div>
+
+  <div id="modal-controls" class="help-modal hidden">
+    <div class="help-content">
+      <h3>🎮 操作方法</h3>
+      <ul>
+        <li><strong>お題再配布</strong>：全員に新しいタブー（NGワード）をランダムに割り当てます。</li>
+        <li><strong>開始 / 停止</strong>：タイマーを部屋全体で同期して進行・一時停止します。</li>
+        <li><strong>タブー指摘！</strong>：対象プレイヤーがNGワードを発言した際に押し、脱落（OUT）にします。</li>
+      </ul>
+      <p style="color:#ff4757; font-size:0.8rem;">※説明を開いていてもタイマーはそのまま進みます。</p>
+      <button class="btn-outline close-modal" style="width:100%; margin-top:12px;">閉じる</button>
+    </div>
+  </div>
+
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyC4DQhH_swesAD98Xyjg8d1lcWEkkrHrgw",
+      authDomain: "gamehistory-m84.firebaseapp.com",
+      databaseURL: "https://gamehistory-m84-default-rtdb.firebaseio.com",
+      projectId: "gamehistory-m84",
+      storageBucket: "gamehistory-m84.firebasestorage.app",
+      messagingSenderId: "475761727837",
+      appId: "1:475761727837:web:06d07e1ab4120a7ccaf0b4",
+      measurementId: "G-3636W6LC4F"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    const TABOO_WORDS_POOL = [
+      "マジで", "ヤバい", "それな", "確かに", "要するに",
+      "ウソでしょ", "なるほど", "なんか", "逆に", "要は",
+      "草", "普通に", "絶対", "たぶん", "無理",
+      "可愛い", "かっこいい", "美味しい", "わかる", "ウケる"
+    ];
+
+    let currentRoomId = null;
+    let myPlayerId = null;
+    let myPlayerName = "";
+    let roomRef = null;
+    let timerInterval = null;
+
+    const viewLobby = document.getElementById('view-lobby');
+    const viewGame = document.getElementById('view-game');
+    const inputPlayerName = document.getElementById('input-player-name');
+    const inputRoomId = document.getElementById('input-room-id');
+    const btnJoin = document.getElementById('btn-join');
+    const btnLeave = document.getElementById('btn-leave');
+    const roomIdDisplay = document.getElementById('room-id-display');
+    const playerGrid = document.getElementById('player-grid');
+    const timerDisplay = document.getElementById('timer-display');
+    const timeSelect = document.getElementById('time-select');
+    const btnTimerStart = document.getElementById('btn-timer-start');
+    const btnTimerPause = document.getElementById('btn-timer-pause');
+    const btnDeal = document.getElementById('btn-deal');
+
+    btnJoin.addEventListener('click', () => {
+      myPlayerName = inputPlayerName.value.trim();
+      if (!myPlayerName) {
+        alert("名前を入力してください。");
+        return;
+      }
+
+      let roomId = inputRoomId.value.trim();
+      if (!roomId) {
+        roomId = Math.floor(1000 + Math.random() * 9000).toString();
+      }
+
+      currentRoomId = roomId;
+      myPlayerId = "p_" + Date.now() + "_" + Math.floor(Math.random()*1000);
+      roomRef = db.ref('tabooRooms/' + currentRoomId);
+
+      const playerRef = roomRef.child('players/' + myPlayerId);
+      playerRef.set({
+        name: myPlayerName,
+        taboo: "未配布",
+        status: "ALIVE"
+      });
+
+      playerRef.onDisconnect().remove();
+
+      roomIdDisplay.textContent = currentRoomId;
+      viewLobby.classList.add('hidden-view');
+      viewGame.classList.remove('hidden-view');
+
+      listenToRoomUpdates();
+    });
+
+    btnLeave.addEventListener('click', leaveRoom);
+
+    function leaveRoom() {
+      if (roomRef && myPlayerId) {
+        roomRef.child('players/' + myPlayerId).remove();
+        roomRef.off();
+      }
+      if (timerInterval) clearInterval(timerInterval);
+      currentRoomId = null;
+      myPlayerId = null;
+      viewGame.classList.add('hidden-view');
+      viewLobby.classList.remove('hidden-view');
+    }
+
+    function listenToRoomUpdates() {
+      roomRef.on('value', (snapshot) => {
+        const data = snapshot.val();
+        if (!data) return;
+
+        renderPlayers(data.players || {});
+
+        if (data.timer) {
+          syncTimerUI(data.timer);
+        }
+      });
+    }
+
+    function renderPlayers(players) {
+      playerGrid.innerHTML = '';
+      
+      Object.keys(players).forEach(pId => {
+        const player = players[pId];
+        const isMe = (pId === myPlayerId);
+        const isAlive = (player.status === "ALIVE");
+
+        const card = document.createElement('div');
+        card.className = `player-card ${isMe ? 'is-me' : ''} ${!isAlive ? 'eliminated' : ''}`;
+
+        let tabooContent = '';
+        if (isMe) {
+          tabooContent = `<span class="taboo-secret">（あなたには見えません）</span>`;
+        } else {
+          tabooContent = player.taboo || '未配布';
+        }
+
+        card.innerHTML = `
+          <div class="player-header">
+            <span class="player-name">${escapeHTML(player.name)} ${isMe ? '（あなた）' : ''}</span>
+            <span class="player-status ${isAlive ? '' : 'out'}">${isAlive ? '生存' : '脱落'}</span>
+          </div>
+          <div class="taboo-box">${tabooContent}</div>
+          ${(!isMe && isAlive) ? `<button class="foul-btn" onclick="triggerFoul('${pId}')">タブー指摘！</button>` : ''}
+        `;
+
+        playerGrid.appendChild(card);
+      });
+    }
+
+    window.triggerFoul = function(targetPlayerId) {
+      if (confirm("このプレイヤーがタブー（NGワード）を発言しましたか？")) {
+        roomRef.child(`players/${targetPlayerId}`).update({
+          status: "OUT"
+        });
+      }
+    };
+
+    btnDeal.addEventListener('click', () => {
+      roomRef.child('players').once('value', (snapshot) => {
+        const players = snapshot.val();
+        if (!players) return;
+
+        const pIds = Object.keys(players);
+        const shuffledWords = [...TABOO_WORDS_POOL].sort(() => Math.random() - 0.5);
+
+        const updates = {};
+        pIds.forEach((pId, idx) => {
+          const word = shuffledWords[idx % shuffledWords.length];
+          updates[`players/${pId}/taboo`] = word;
+          updates[`players/${pId}/status`] = "ALIVE";
+        });
+
+        roomRef.update(updates);
+      });
+    });
+
+    btnTimerStart.addEventListener('click', () => {
+      const selectedSecs = parseInt(timeSelect.value, 10);
+      const endTime = Date.now() + (selectedSecs * 1000);
+      roomRef.child('timer').set({
+        state: "RUNNING",
+        endTime: endTime,
+        remainingSecs: selectedSecs
+      });
+    });
+
+    btnTimerPause.addEventListener('click', () => {
+      roomRef.child('timer/state').set("PAUSED");
+    });
+
+    function syncTimerUI(timerData) {
+      if (timerInterval) clearInterval(timerInterval);
+
+      if (timerData.state === "RUNNING") {
+        btnTimerStart.disabled = true;
+        btnTimerPause.disabled = false;
+        timeSelect.disabled = true;
+
+        timerInterval = setInterval(() => {
+          const now = Date.now();
+          const leftSecs = Math.max(0, Math.ceil((timerData.endTime - now) / 1000));
+          
+          updateTimerText(leftSecs);
+
+          if (leftSecs <= 0) {
+            clearInterval(timerInterval);
+            btnTimerStart.disabled = false;
+            btnTimerPause.disabled = true;
+            timeSelect.disabled = false;
+          }
+        }, 500);
+
+      } else {
+        btnTimerStart.disabled = false;
+        btnTimerPause.disabled = true;
+        timeSelect.disabled = false;
+        if (timerData.remainingSecs !== undefined) {
+          updateTimerText(timerData.remainingSecs);
+        }
+      }
+    }
+
+    function updateTimerText(totalSecs) {
+      const mins = Math.floor(totalSecs / 60);
+      const secs = totalSecs % 60;
+      timerDisplay.textContent = `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+    }
+
+    const modalRules = document.getElementById('modal-rules');
+    const modalControls = document.getElementById('modal-controls');
+
+    document.getElementById('btn-rules').addEventListener('click', () => modalRules.classList.remove('hidden'));
+    document.getElementById('btn-controls').addEventListener('click', () => modalControls.classList.remove('hidden'));
+
+    document.querySelectorAll('.close-modal').forEach(btn => {
+      btn.addEventListener('click', () => {
+        modalRules.classList.add('hidden');
+        modalControls.classList.add('hidden');
+      });
+    });
+
+    function escapeHTML(str) {
+      return str.replace(/[&<>'"]/g, 
+        tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag] || tag)
+      );
+    }
+  </script>
+</body>
+</html>
