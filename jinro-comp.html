@@ -114,7 +114,7 @@
     }
     table {
       width: 100%;
-      min-width: 450px;
+      min-width: 550px;
       border-collapse: collapse;
     }
     th, td {
@@ -133,15 +133,18 @@
     }
     .badge-gm { background: #ffd700; color: #000; }
     .badge-confirmed { background: #4caf50; color: #fff; font-size: 10px; margin-left: 4px; }
+    .badge-result { background: #2196F3; color: #fff; margin-left: 4px; }
+    .badge-dead { background: var(--danger); color: #fff; }
     
     .role-memo-input {
       width: 100%;
-      min-width: 180px;
+      min-width: 150px;
       box-sizing: border-box;
       padding: 6px 8px;
       font-size: 13px;
       background: #121212;
       border: 1px solid #444;
+      color: #fff;
     }
 
     /* モーダル（役職選択 / 説明） */
@@ -201,6 +204,16 @@
       border-radius: 6px;
       width: 100%;
     }
+
+    .gm-control-box {
+      font-size: 12px;
+      display: flex;
+      gap: 6px;
+      align-items: center;
+    }
+    .gm-control-box label {
+      cursor: pointer;
+    }
   </style>
 </head>
 <body>
@@ -253,16 +266,20 @@
       </div>
     </div>
 
-    <!-- 全体共有 タイマー機能 -->
+    <!-- 全体共有 タイマー機能 ＆ 日数管理 -->
     <div class="card">
       <div class="flex-between" style="margin-bottom: 8px;">
         <h3>⏱ 会議タイマー（全員共有）</h3>
         <span id="mc-status-text" style="font-size: 12px; color: #aaa;"></span>
       </div>
 
+      <div style="text-align: center; font-weight: bold; margin-bottom: 4px; color: var(--accent);" id="current-day-display">
+        1日目 (夜)
+      </div>
+
       <div class="timer-display" id="timer-text">03:00</div>
 
-      <!-- 司会用タイマーコントロール -->
+      <!-- 司会用タイマー＆進行コントロール -->
       <div id="mc-timer-controls" class="hidden" style="margin-top: 10px;">
         <div class="flex" style="justify-content: center; margin-bottom: 8px;">
           <button class="secondary small set-time-btn" data-sec="60">1分</button>
@@ -270,10 +287,13 @@
           <button class="secondary small set-time-btn" data-sec="300">5分</button>
           <button class="secondary small set-time-btn" data-sec="600">10分</button>
         </div>
-        <div class="flex" style="justify-content: center;">
+        <div class="flex" style="justify-content: center; margin-bottom: 8px;">
           <button id="timer-start-btn" style="background:var(--success); color:#000;">スタート</button>
           <button id="timer-stop-btn" style="background:#ff9800; color:#000;">ストップ</button>
           <button id="timer-reset-btn" class="danger">リセット</button>
+        </div>
+        <div class="flex" style="justify-content: center; border-top: 1px dashed #444; padding-top: 8px;">
+          <button id="next-day-btn" class="small" style="background: var(--accent); color: #000;">翌日へ進める ➔</button>
         </div>
       </div>
 
@@ -296,10 +316,10 @@
         <table>
           <thead>
             <tr>
-              <th style="width: 25%;">名前</th>
-              <th style="width: 15%;">状態</th>
+              <th style="width: 20%;">名前</th>
+              <th style="width: 25%;">状態 / 勝敗判定</th>
               <th style="width: 25%;">役職（本物）</th>
-              <th style="width: 35%;">仮役職 / COメモ</th>
+              <th style="width: 30%;">仮役職 / COメモ</th>
             </tr>
           </thead>
           <tbody id="player-list-body"></tbody>
@@ -368,36 +388,36 @@
 
   const ROLES_DATA = [
     // 人狼陣営
-    { name: "人狼", team: "人狼", count: 4, desc: "夜に人狼同士で話し合い、人間1人を襲撃する。" },
-    { name: "人狼の子ども", team: "人狼", count: 1, desc: "追放されると、次の夜の人狼襲撃枠が+1される。" },
-    { name: "裏切り者", team: "人狼", count: 2, desc: "市民としてカウント。人狼陣営の勝利を目指す。" },
-    { name: "裏切りの共有者", team: "人狼", count: 2, desc: "裏切り者同士でお互いを認識できる。" },
-    { name: "内通者", team: "人狼", count: 1, desc: "夜に人狼が誰かを特定・把握できる。" },
-    { name: "裏切りの襲撃者", team: "人狼", count: 1, desc: "夜に人狼とは別に独自で1人襲撃できる。" },
-    { name: "スパイ", team: "人狼", count: 1, desc: "夜に誰か1人の役職を占える（人狼陣営）。" },
+    { name: "人狼", team: "人狼", spiritResult: "人狼", count: 4, desc: "夜に人狼同士で話し合い、人間1人を襲撃する。" },
+    { name: "人狼の子ども", team: "人狼", spiritResult: "人狼", count: 1, desc: "追放されると、次の夜の人狼襲撃枠が+1される。" },
+    { name: "裏切り者", team: "人狼", spiritResult: "人間", count: 2, desc: "市民としてカウント。人狼陣営の勝利を目指す。" },
+    { name: "裏切りの共有者", team: "人狼", spiritResult: "人間", count: 2, desc: "裏切り者同士でお互いを認識できる。" },
+    { name: "内通者", team: "人狼", spiritResult: "人間", count: 1, desc: "夜に人狼が誰かを特定・把握できる。" },
+    { name: "裏切りの襲撃者", team: "人狼", spiritResult: "人間", count: 1, desc: "夜に人狼とは別に独自で1人襲撃できる。" },
+    { name: "スパイ", team: "人狼", spiritResult: "人間", count: 1, desc: "夜に誰か1人の役職を占える（人狼陣営）。" },
     // 市民陣営
-    { name: "市民", team: "市民", count: 9, desc: "特別な能力は持たない一般的な市民。" },
-    { name: "予言者", team: "市民", count: 2, desc: "夜に指定した1人が「人狼」か「人間」かを知る。" },
-    { name: "ボディーガード", team: "市民", count: 2, desc: "夜に1人を護衛し、人狼の襲撃から守る。" },
-    { name: "霊媒師", team: "市民", count: 2, desc: "前日に追放された人が「人狼」か「人間」かを知る。" },
-    { name: "ハンター", team: "市民", count: 1, desc: "死亡時に道連れとして1人を指名して脱落させる。" },
-    { name: "共有者", team: "市民", count: 2, desc: "お互いが共有者であることを認識できる。" },
-    { name: "独裁者", team: "市民", count: 1, desc: "昼の議論中、全投票を無効化し自分の一票で追放者を決定できる。" },
-    { name: "タフガイ", team: "市民", count: 1, desc: "人狼に襲撃されても翌日の夜まで生き残る。" },
-    { name: "カウンセラー", team: "市民", count: 1, desc: "指定した1人の陣営を知ることができる。" },
-    { name: "奇術師", team: "市民", count: 1, desc: "ゲーム中1回、夜に2人の役職を入れ替える。" },
-    { name: "罠師", team: "市民", count: 1, desc: "夜に仕掛けた罠で、襲撃してきた人狼を返り討ちにする。" },
-    { name: "騎士団", team: "市民", count: 3, desc: "騎士団同士でお互いを認識できる。" },
-    { name: "影武者", team: "市民", count: 1, desc: "王様が襲撃された際に代わりに身代わりになる。" },
-    { name: "王様", team: "市民", count: 1, desc: "生き残っている限り重要な決定権を持つ。" },
+    { name: "市民", team: "市民", spiritResult: "人間", count: 9, desc: "特別な能力は持たない一般的な市民。" },
+    { name: "予言者", team: "市民", spiritResult: "人間", count: 2, desc: "夜に指定した1人が「人狼」か「人間」かを知る。" },
+    { name: "ボディーガード", team: "市民", spiritResult: "人間", count: 2, desc: "夜に1人を護衛し、人狼の襲撃から守る。" },
+    { name: "霊媒師", team: "市民", spiritResult: "人間", count: 2, desc: "前日に追放された人が「人狼」か「人間」かを知る。" },
+    { name: "ハンター", team: "市民", spiritResult: "人間", count: 1, desc: "死亡時に道連れとして1人を指名して脱落させる。" },
+    { name: "共有者", team: "市民", spiritResult: "人間", count: 2, desc: "お互いが共有者であることを認識できる。" },
+    { name: "独裁者", team: "市民", spiritResult: "人間", count: 1, desc: "昼の議論中、全投票を無効化し自分の一票で追放者を決定できる。" },
+    { name: "タフガイ", team: "市民", spiritResult: "人間", count: 1, desc: "人狼に襲撃されても翌日の夜まで生き残る。" },
+    { name: "カウンセラー", team: "市民", spiritResult: "人間", count: 1, desc: "指定した1人の陣営を知ることができる。" },
+    { name: "奇術師", team: "市民", spiritResult: "人間", count: 1, desc: "ゲーム中1回、夜に2人の役職を入れ替える。" },
+    { name: "罠師", team: "市民", spiritResult: "人間", count: 1, desc: "夜に仕掛けた罠で、襲撃してきた人狼を返り討ちにする。" },
+    { name: "騎士団", team: "市民", spiritResult: "人間", count: 3, desc: "騎士団同士でお互いを認識できる。" },
+    { name: "影武者", team: "市民", spiritResult: "人間", count: 1, desc: "王様が襲撃された際に代わりに身代わりになる。" },
+    { name: "王様", team: "市民", spiritResult: "人間", count: 1, desc: "生き残っている限り重要な決定権を持つ。" },
     // 第三陣営 / その他
-    { name: "妖狐", team: "単独", count: 1, desc: "襲撃で死なないが占われると死亡。生き残れば単独勝利。" },
-    { name: "神様", team: "単独", count: 1, desc: "全知の能力を持つ。" },
-    { name: "恋人", team: "単独", count: 2, desc: "2人で1対。片方が死ぬと後を追う。最後まで生存で勝利。" },
-    { name: "一匹狼", team: "単独", count: 1, desc: "人狼が全滅した状態で最後まで生存すると単独勝利。" },
-    { name: "アンドロイド", team: "単独", count: 1, desc: "コピー対象を選択し、その勝利条件に依存する。" },
-    { name: "案山子", team: "単独", count: 3, desc: "追放されることで勝利する特殊役職。" },
-    { name: "呪われた者", team: "両陣営", count: 1, desc: "初期は市民。襲撃されると「人狼」に覚醒する。" }
+    { name: "妖狐", team: "単独", spiritResult: "人間", count: 1, desc: "襲撃で死なないが占われると死亡。生き残れば単独勝利。" },
+    { name: "神様", team: "単独", spiritResult: "人間", count: 1, desc: "全知の能力を持つ。" },
+    { name: "恋人", team: "単独", spiritResult: "人間", count: 2, desc: "2人で1対。片方が死ぬと後を追う。最後まで生存で勝利。" },
+    { name: "一匹狼", team: "単独", spiritResult: "人狼", count: 1, desc: "人狼が全滅した状態で最後まで生存すると単独勝利。" },
+    { name: "アンドロイド", team: "単独", spiritResult: "人間", count: 1, desc: "コピー対象を選択し、その勝利条件に依存する。" },
+    { name: "案山子", team: "単独", spiritResult: "人間", count: 3, desc: "追放されることで勝利する特殊役職。" },
+    { name: "呪われた者", team: "両陣営", spiritResult: "人間", count: 1, desc: "初期は市民。襲撃されると「人狼」に覚醒する。" }
   ];
 
   let roomId = "";
@@ -510,6 +530,7 @@
       // ルーム新規作成
       await set(roomRef, {
         mcPlayerId: "",
+        currentDay: 1,
         timer: { seconds: 180, isRunning: false, lastUpdated: Date.now() }
       });
     }
@@ -520,7 +541,7 @@
     document.getElementById("display-room-id").textContent = roomId;
 
     const playerRef = ref(db, `jinro/rooms/${roomId}/players/${playerId}`);
-    const playerSnapshot = await get(playerRef);
+    const playerSnapshot = await getplayerSnapshot = await get(playerRef);
 
     // 既にデータが存在する場合（復帰）は状態を維持し、新規の場合のみ初期化
     if (!playerSnapshot.exists()) {
@@ -529,14 +550,15 @@
         role: "",
         isRoleConfirmed: false,
         isAlive: true,
-        isGMOnly: false
+        causeOfDeath: "none",
+        isGMOnly: false,
+        divinations: {}
       });
     } else {
       await update(playerRef, { name: playerName });
     }
 
     // --- 自動退室・切断ハンドリング設定 ---
-    // 1. 接続切断（タブ閉じ・回線切れ等）時の自動削除登録
     onDisconnect(playerRef).remove();
 
     loadLocalMemo();
@@ -551,14 +573,12 @@
   async function leaveRoom() {
     if (!roomId || !playerId) return;
 
-    // 司会権限を持っていた場合は解除
     if (currentRoomData?.mcPlayerId === playerId) {
       await update(ref(db, `jinro/rooms/${roomId}`), { mcPlayerId: "" });
     }
 
-    // プレイヤーデータをDBから削除
     const playerRef = ref(db, `jinro/rooms/${roomId}/players/${playerId}`);
-    await onDisconnect(playerRef).cancel(); // onDisconnectの予約をキャンセル
+    await onDisconnect(playerRef).cancel();
     await remove(playerRef);
 
     clearAllLocalMemo();
@@ -572,7 +592,7 @@
     }
   });
 
-  // --- その他のゲームロジック（そのまま保持） ---
+  // --- その他のゲームロジック ---
 
   function listenToRoomUpdates() {
     const roomRef = ref(db, `jinro/rooms/${roomId}`);
@@ -587,8 +607,10 @@
 
   function renderGameScreen() {
     if (!currentRoomData) return;
-    const { mcPlayerId, players } = currentRoomData;
+    const { mcPlayerId, players, currentDay = 1 } = currentRoomData;
     const me = players ? players[playerId] : null;
+
+    document.getElementById("current-day-display").textContent = `${currentDay}日目 (夜)`;
 
     const isMC = mcPlayerId === playerId;
     mcToggleCheck.checked = isMC;
@@ -629,23 +651,74 @@
       Object.entries(players).forEach(([pId, p]) => {
         const tr = document.createElement("tr");
 
-        const canSeeRole = (pId === playerId) || (me && me.isGMOnly) || p.isRoleConfirmed;
+        // 役職可視ロジック
+        // 自分自身 OR GM OR 確定フラグ OR (自分が人狼かつ対象も人狼)
+        const myRoleData = me ? ROLES_DATA.find(r => r.name === me.role) : null;
+        const targetRoleData = ROLES_DATA.find(r => r.name === p.role);
+
+        const isBothWerewolf = (myRoleData?.team === "人狼") && (targetRoleData?.team === "人狼");
+        const canSeeRole = (pId === playerId) || (me && me.isGMOnly) || p.isRoleConfirmed || isBothWerewolf;
+
         let roleDisplay = canSeeRole ? (p.role || "未選択") : "???";
         if (p.isRoleConfirmed) {
           roleDisplay += ' <span class="badge badge-confirmed">確定</span>';
         }
 
+        // 霊媒師判定表示（自分が霊媒師 かつ 対象が追放死の場合）
+        if (me && me.role === "霊媒師" && p.causeOfDeath === "executed") {
+          const resultText = targetRoleData?.spiritResult || "人間";
+          roleDisplay += ` <span class="badge badge-result">霊媒: ${resultText}</span>`;
+        }
+
+        // 占い師表示＆操作ロジック
+        let divinationUI = "";
+        if (me && me.role === "予言者") {
+          const myDivinations = me.divinations || {};
+          // 過去に占った記録があるか検索
+          const pastRecordDay = Object.keys(myDivinations).find(day => myDivinations[day].targetId === pId);
+          
+          if (pastRecordDay) {
+            const res = myDivinations[pastRecordDay].result;
+            divinationUI = `<br><span class="badge badge-result">${pastRecordDay}日目: ${res}</span>`;
+          } else if (pId !== playerId) {
+            // 本日の占い済みチェック
+            const alreadyDivinedToday = Boolean(myDivinations[currentDay]);
+            if (!alreadyDivinedToday) {
+              divinationUI = `<br><button class="small" style="padding:1px 4px; margin-top:2px;" onclick="divinePlayer('${pId}')">占う</button>`;
+            }
+          }
+        }
+
         const roleMemoVal = localRoleMemos[pId] || "";
+
+        // 生存・死亡ステータスUI
+        let statusHtml = "";
+        if (p.isAlive) {
+          statusHtml = '生存';
+        } else {
+          const reasonText = p.causeOfDeath === "executed" ? "追放" : (p.causeOfDeath === "attacked" ? "襲撃" : "死亡");
+          statusHtml = `<span class="badge badge-dead">${reasonText}</span>`;
+        }
+
+        // GM操作用UI (追放/襲撃チェック)
+        if (isMC) {
+          const cause = p.causeOfDeath || "none";
+          statusHtml += `
+            <div class="gm-control-box" style="margin-top: 4px;">
+              <label><input type="radio" name="death_${pId}" ${cause === 'none' ? 'checked' : ''} onclick="setPlayerDeath('${pId}', 'none')"> 生</label>
+              <label><input type="radio" name="death_${pId}" ${cause === 'executed' ? 'checked' : ''} onclick="setPlayerDeath('${pId}', 'executed')"> 追</label>
+              <label><input type="radio" name="death_${pId}" ${cause === 'attacked' ? 'checked' : ''} onclick="setPlayerDeath('${pId}', 'attacked')"> 襲</label>
+            </div>
+          `;
+        }
 
         tr.innerHTML = `
           <td>${p.name} ${pId === mcPlayerId ? '<span class="badge badge-gm">司会</span>' : ''}</td>
-          <td>
-            ${p.isAlive ? '生存' : '<span style="color:var(--danger)">脱落</span>'}
-            ${isMC ? `<button class="small secondary" style="padding:1px 4px; margin-left:4px;" onclick="togglePlayerStatus('${pId}',${p.isAlive})">切替</button>` : ''}
-          </td>
+          <td>${statusHtml}</td>
           <td>
             ${p.isGMOnly ? '<b>専任GM</b>' : roleDisplay}
-            ${isMC && !p.isGMOnly ? `<br><button class="small secondary" style="padding:1px 4px; margin-top:2px;" onclick="toggleRoleConfirm('${pId}', ${p.isRoleConfirmed})">${p.isRoleConfirmed ? '解除' : '確定'}</button>` : ''}
+            ${divinationUI}
+            ${isMC && !p.isGMOnly ? `<br><button class="small secondary" style="padding:1px 4px; margin-top:4px;" onclick="toggleRoleConfirm('${pId}', ${p.isRoleConfirmed})">${p.isRoleConfirmed ? '解除' : '確定'}</button>` : ''}
           </td>
           <td>
             <input type="text" class="role-memo-input" data-pid="${pId}" value="${roleMemoVal}" placeholder="例: 占いCO, 狼？">
@@ -731,6 +804,17 @@
     });
   });
 
+  // 翌日へ進めるボタン（司会用）
+  document.getElementById("next-day-btn").addEventListener("click", async () => {
+    if (!currentRoomData) return;
+    const nextDay = (currentRoomData.currentDay || 1) + 1;
+    if (confirm(`${nextDay}日目(夜)に進めますか？`)) {
+      await update(ref(db, `jinro/rooms/${roomId}`), {
+        currentDay: nextDay
+      });
+    }
+  });
+
   // フリーメモ
   freeMemoInput.addEventListener("input", () => saveLocalMemo());
 
@@ -745,7 +829,6 @@
       mcPlayerId: isChecked ? playerId : ""
     });
 
-    // 司会中に切断された場合の自動解放処理
     if (isChecked) {
       onDisconnect(ref(db, `jinro/rooms/${roomId}/mcPlayerId`)).set("");
     } else {
@@ -761,10 +844,33 @@
     });
   });
 
-  // 生存/役職確定切り替え関数
-  window.togglePlayerStatus = async (targetId, currentAlive) => {
-    await update(ref(db, `jinro/rooms/${roomId}/players/${targetId}`), { isAlive: !currentAlive });
+  // GM用：死亡状態更新関数（ラジオボタン）
+  window.setPlayerDeath = async (targetId, cause) => {
+    const isAlive = cause === "none";
+    await update(ref(db, `jinro/rooms/${roomId}/players/${targetId}`), {
+      isAlive: isAlive,
+      causeOfDeath: cause
+    });
   };
+
+  // 占い師用：占い実行関数
+  window.divinePlayer = async (targetId) => {
+    if (!currentRoomData) return;
+    const targetPlayer = currentRoomData.players[targetId];
+    if (!targetPlayer) return;
+
+    const targetRoleData = ROLES_DATA.find(r => r.name === targetPlayer.role);
+    const result = targetRoleData?.spiritResult || "人間";
+    const day = currentRoomData.currentDay || 1;
+
+    if (confirm(`${targetPlayer.name} さんを占いますか？（${day}日目の占いとして確定します）`)) {
+      await update(ref(db, `jinro/rooms/${roomId}/players/${playerId}/divinations/${day}`), {
+        targetId: targetId,
+        result: result
+      });
+    }
+  };
+
   window.toggleRoleConfirm = async (targetId, currentConfirmed) => {
     await update(ref(db, `jinro/rooms/${roomId}/players/${targetId}`), { isRoleConfirmed: !currentConfirmed });
   };
