@@ -72,7 +72,7 @@
       color: #4b5563;
     }
 
-    input[type="text"], select {
+    input[type="text"], input[type="number"], select {
       width: 100%;
       padding: 12px;
       border: 1px solid var(--border-color);
@@ -120,7 +120,6 @@
 
     /* グリッドレイアウト */
     .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-    .grid-4 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
 
     /* 入室画面のラジオボタン */
     .radio-group {
@@ -161,9 +160,23 @@
       box-shadow: 0 2px 4px rgba(0,0,0,0.05);
     }
 
+    .header-info {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .header-sub {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.8rem;
+      color: #6b7280;
+    }
+
     .badge {
       font-size: 0.75rem;
-      padding: 4px 8px;
+      padding: 2px 6px;
       border-radius: 6px;
       font-weight: 700;
     }
@@ -320,7 +333,7 @@
       </div>
     </div>
 
-    <!-- 回答者向けチーム選択 (進行役が事前に設定した部屋に入る想定) -->
+    <!-- 回答者向けチーム選択 -->
     <div id="player-setup-group" class="form-group">
       <label>所属チーム (チーム戦時のみ反映)</label>
       <select id="select-player-team">
@@ -340,9 +353,14 @@
     
     <!-- 共通ヘッダー -->
     <div class="header-bar">
-      <div>
-        <span id="display-room" style="font-weight: bold; font-size: 1.1rem;"></span>
-        <span id="display-role-badge" class="badge"></span>
+      <div class="header-info">
+        <div>
+          <span id="display-room" style="font-weight: bold; font-size: 1.1rem;"></span>
+          <span id="display-role-badge" class="badge"></span>
+        </div>
+        <div class="header-sub">
+          <span id="display-online-count">👥 オンライン: 0人</span>
+        </div>
       </div>
       <button class="btn btn-secondary" style="width: auto; padding: 6px 12px; font-size: 0.8rem;" onclick="leaveRoom()">退室</button>
     </div>
@@ -364,7 +382,7 @@
         </button>
       </div>
       <div style="display: flex; align-items: center; gap: 8px;">
-        <label style="margin:0; whitespace: nowrap;">加算Pt:</label>
+        <label style="margin:0; white-space: nowrap;">加算Pt:</label>
         <input type="number" id="input-points" value="10" style="width: 80px; padding: 6px; text-align: center; border:1px solid #ccc; border-radius:6px;">
       </div>
     </div>
@@ -421,7 +439,27 @@
   let roomConfig = {};
   let playersData = {};
 
-  // 画面初期化
+  // 起動時: localStorageのセッション情報を確認して自動再入室
+  window.addEventListener('DOMContentLoaded', () => {
+    const savedSession = localStorage.getItem('qpanel_session');
+    if (savedSession) {
+      try {
+        const session = JSON.parse(savedSession);
+        if (session && session.roomId && session.playerId && session.name) {
+          myRoomId = session.roomId;
+          myPlayerId = session.playerId;
+          myRole = session.role || "player";
+          
+          // 自動再入室処理実行
+          rejoinRoom(session);
+        }
+      } catch(e) {
+        localStorage.removeItem('qpanel_session');
+      }
+    }
+  });
+
+  // UI切り替え補助
   function toggleRoleUI() {
     const isHost = document.getElementById('role-host').checked;
     document.getElementById('host-setup-group').classList.toggle('hidden', !isHost);
@@ -433,7 +471,7 @@
     document.getElementById('team-count-group').classList.toggle('hidden', !isTeamMode);
   }
 
-  // 2. 入室処理
+  // 2. 新規入室処理
   function joinRoom() {
     const roomInput = document.getElementById('input-room').value.trim();
     const nameInput = document.getElementById('input-name').value.trim();
@@ -446,11 +484,18 @@
 
     myRoomId = roomInput;
     myPlayerId = 'p_' + Math.random().toString(36).substr(2, 9);
+    const teamId = document.getElementById('select-player-team').value;
 
-    const roomRef = db.ref(`qpanel/rooms/${myRoomId}`);
+    const sessionData = {
+      roomId: myRoomId,
+      playerId: myPlayerId,
+      name: nameInput,
+      role: myRole,
+      teamId: teamId
+    };
 
+    // 進行役入室時：部屋初期化設定
     if (myRole === 'host') {
-      // 進行役入室時：部屋の基本設定を書き込み/更新
       const mode = document.getElementById('select-mode').value;
       const teamCount = parseInt(document.getElementById('select-team-count').value, 10);
       
@@ -461,7 +506,7 @@
         teams[key] = { name: teamNames[i] };
       }
 
-      roomRef.child('config').update({
+      db.ref(`qpanel/rooms/${myRoomId}/config`).update({
         mode: mode,
         teamCount: teamCount,
         teams: teams,
@@ -469,20 +514,50 @@
       });
     }
 
-    // 自分のプレイヤー情報をセット
-    const teamId = document.getElementById('select-player-team').value;
-    const playerRef = roomRef.child(`players/${myPlayerId}`);
-    
-    playerRef.set({
-      name: nameInput,
-      role: myRole,
-      teamId: teamId,
-      answer: "",
-      score: 0,
-      isCorrect: null
-    });
+    // セッションの保存
+    localStorage.setItem('qpanel_session', JSON.stringify(sessionData));
 
-    // 接続解除時の自動削除
+    // Firebaseへプレイヤー登録
+    setupPlayerDataAndConnect(sessionData);
+  }
+
+  // 自動再入室（リロード・接続復旧時）
+  function rejoinRoom(session) {
+    const playerRef = db.ref(`qpanel/rooms/${session.roomId}/players/${session.playerId}`);
+    
+    // 既存データの有無を確認して復元
+    playerRef.once('value').then(snapshot => {
+      const existing = snapshot.val();
+      if (existing) {
+        // 既存データがある場合はそのまま復元接続
+        setupPlayerDataAndConnect({
+          ...session,
+          name: existing.name || session.name,
+          teamId: existing.teamId || session.teamId
+        }, false);
+      } else {
+        // サーバーから削除されていた場合は保存データで再作成
+        setupPlayerDataAndConnect(session, true);
+      }
+    });
+  }
+
+  // プレイヤーデータの同期登録・画面切り替え共通関数
+  function setupPlayerDataAndConnect(session, isNew = true) {
+    const playerRef = db.ref(`qpanel/rooms/${session.roomId}/players/${session.playerId}`);
+
+    if (isNew) {
+      playerRef.set({
+        name: session.name,
+        role: session.role,
+        teamId: session.teamId,
+        answer: "",
+        score: 0,
+        isCorrect: null
+      });
+    }
+
+    // 接続切断時の自動削除（通信途絶時にゴミデータが残るのを防止）
     playerRef.onDisconnect().remove();
 
     // 画面切り替え
@@ -523,7 +598,11 @@
   function updateGameUI() {
     const isVisible = roomConfig.isAnswerVisible || false;
 
-    // A. ロック状態バッジ & 回答者入力フォームの制御
+    // A. オンライン人数のカウント表示更新
+    const totalCount = Object.keys(playersData).length;
+    document.getElementById('display-online-count').innerText = `👥 オンライン: ${totalCount}人`;
+
+    // B. ロック状態バッジ & 回答者入力フォームの制御
     const lockBadge = document.getElementById('answer-lock-status');
     const answerInput = document.getElementById('input-answer');
     const sendBtn = document.getElementById('btn-send-answer');
@@ -551,7 +630,7 @@
       }
     }
 
-    // B. 進行役ボタンの表示切替
+    // C. 進行役ボタンの表示切替
     const toggleBtn = document.getElementById('btn-toggle-visible');
     if (toggleBtn) {
       if (isVisible) {
@@ -563,7 +642,7 @@
       }
     }
 
-    // C. チーム集計ボード描画
+    // D. チーム集計ボード描画
     const teamBoard = document.getElementById('team-score-board');
     if (roomConfig.mode === 'team') {
       teamBoard.classList.remove('hidden');
@@ -596,7 +675,7 @@
       teamBoard.classList.add('hidden');
     }
 
-    // D. パネルリスト（回答者一覧）描画
+    // E. パネルリスト（回答者一覧）描画
     const panelList = document.getElementById('panel-list');
     panelList.innerHTML = "";
 
@@ -722,11 +801,18 @@
     if (inputAns) inputAns.value = "";
   }
 
-  // 退室
+  // 明示的な退室（セッション消去）
   function leaveRoom() {
+    if (!confirm("本当に退室しますか？")) return;
+
+    // セッション削除
+    localStorage.removeItem('qpanel_session');
+
+    // データベースから自身を削除
     if (myRoomId && myPlayerId) {
       db.ref(`qpanel/rooms/${myRoomId}/players/${myPlayerId}`).remove();
     }
+    
     location.reload();
   }
 </script>
