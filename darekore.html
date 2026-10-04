@@ -139,6 +139,17 @@
       margin-left: 6px;
     }
 
+    .score-badge {
+      background: #e8f5e9;
+      color: #2e7d32;
+      border: 1px solid #a5d6a7;
+      padding: 2px 8px;
+      border-radius: 12px;
+      font-size: 0.8rem;
+      font-weight: bold;
+      margin-left: 6px;
+    }
+
     .status-badge {
       background: #e3f2fd;
       color: #1976d2;
@@ -274,7 +285,17 @@
       font-size: 0.85rem;
     }
 
-    /* 匿名回答カード表示用スタイル */
+    .my-answer-sticky {
+      background-color: #e8f4f8;
+      border: 1px solid #bce8f1;
+      color: #31708f;
+      padding: 8px 12px;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      margin-top: 6px;
+      font-weight: bold;
+    }
+
     .anonymous-answers-list {
       margin-top: 12px;
       background: #f8f9fa;
@@ -282,6 +303,7 @@
       border-radius: 6px;
       padding: 10px;
     }
+
     .anonymous-answer-item {
       background: #fff;
       border: 1px solid var(--border);
@@ -291,9 +313,35 @@
       font-weight: bold;
       color: #2c3e50;
     }
-    .anonymous-answer-item:last-child {
-      margin-bottom: 0;
+
+    .q-history-card {
+      background: #fff;
+      border: 1px solid #cbd5e1;
+      border-radius: 6px;
+      padding: 10px;
+      margin-bottom: 10px;
     }
+
+    .q-history-title {
+      font-weight: bold;
+      color: #1e293b;
+      font-size: 0.9rem;
+      margin-bottom: 6px;
+      border-bottom: 1px solid #f1f5f9;
+      padding-bottom: 4px;
+    }
+
+    .q-answer-tag {
+      display: inline-block;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 0.75rem;
+      font-weight: bold;
+      margin-left: 4px;
+    }
+
+    .tag-yes { background: #dcfce7; color: #166534; }
+    .tag-no { background: #fee2e2; color: #991b1b; }
   </style>
   <!-- Firebase JS SDK v10 (Module CDN) -->
   <script type="module">
@@ -435,7 +483,7 @@
         const playerIds = currentGameData.players ? Object.keys(currentGameData.players) : [];
         const isHost = playerIds[0] === myPlayerId;
 
-        // 【修正点1】回答フェーズ：全員の回答が揃ったら自動で質問フェーズへ移行
+        // 回答フェーズ：全員回答完了で質問フェーズへ
         if (currentGameData.status === 'ANSWERING') {
           const answers = currentGameData.answers ? currentGameData.answers : {};
           const answeredPlayerIds = new Set(Object.values(answers).map(a => a.playerId));
@@ -449,7 +497,7 @@
           }
         }
 
-        // 【修正点2】質問フェーズ：現在の質問に対し全員が「はい/いいえ」を答え終えたら自動で次へ
+        // 質問フェーズ：現在の質問に対し全員回答完了で次へ
         if (currentGameData.status === 'QUESTIONING') {
           const qIndex = (currentGameData.currentQuestionerIndex || 0) % playerIds.length;
           const currentQuestionerId = playerIds[qIndex];
@@ -461,6 +509,18 @@
               if (isHost) {
                 adminNextQuestioner();
               }
+            }
+          }
+        }
+
+        // 推理（GUESSING）フェーズ：全員が予想を完了したら集計＆結果画面へ
+        if (currentGameData.status === 'GUESSING') {
+          const guesses = currentGameData.guesses || {};
+          const guessedPlayerIds = Object.keys(guesses);
+
+          if (playerIds.length > 0 && playerIds.every(id => guessedPlayerIds.includes(id))) {
+            if (isHost) {
+              adminCalculateResults();
             }
           }
         }
@@ -518,13 +578,32 @@
       document.getElementById('disp-my-name').textContent = myName;
       document.getElementById('disp-round').textContent = round || 1;
 
+      // 自分の回答を常時確認できるエリアの更新
+      const stickyMyAnswer = document.getElementById('sticky-my-answer');
+      const myAnswerObj = answers ? Object.values(answers).find(a => a.playerId === myPlayerId) : null;
+      if (myAnswerObj && myAnswerObj.text) {
+        stickyMyAnswer.classList.remove('hidden');
+        document.getElementById('disp-my-sticky-text').textContent = myAnswerObj.text;
+      } else {
+        stickyMyAnswer.classList.add('hidden');
+      }
+
+      // プレイヤー一覧＆獲得ポイント表示の更新
       const playersUl = document.getElementById('player-list-ul');
       playersUl.innerHTML = '';
       playerList.forEach(id => {
         const p = players[id];
+        const pts = (p.correctCount || 0) - (p.questionPenalty || 0);
         const li = document.createElement('li');
         li.className = 'list-item';
-        li.innerHTML = `<span>${p.name} ${id === myPlayerId ? '<span class="badge">あなた</span>' : ''} ${id === playerList[0] ? '<span class="badge">ホスト</span>' : ''}</span>`;
+        li.innerHTML = `
+          <span>
+            ${p.name} 
+            ${id === myPlayerId ? '<span class="badge">あなた</span>' : ''} 
+            ${id === playerList[0] ? '<span class="badge">ホスト</span>' : ''}
+          </span>
+          <span class="score-badge">${pts} pt</span>
+        `;
         playersUl.appendChild(li);
       });
 
@@ -560,14 +639,13 @@
         document.getElementById('disp-mode').textContent = answerMode;
         document.getElementById('disp-topic').textContent = topic;
 
-        const myAnswer = answers ? Object.values(answers).find(a => a.playerId === myPlayerId) : null;
         const answerInputArea = document.getElementById('answer-input-area');
         const answerDoneArea = document.getElementById('answer-done-area');
 
-        if (myAnswer) {
+        if (myAnswerObj) {
           answerInputArea.classList.add('hidden');
           answerDoneArea.classList.remove('hidden');
-          document.getElementById('my-submitted-answer').textContent = myAnswer.text;
+          document.getElementById('my-submitted-answer').textContent = myAnswerObj.text;
         } else {
           answerInputArea.classList.remove('hidden');
           answerDoneArea.classList.add('hidden');
@@ -576,8 +654,8 @@
       else if (status === 'QUESTIONING') {
         document.getElementById('sec-questioning').classList.remove('hidden');
 
-        // 【機能追加】質問フェーズ・推理フェーズ時、回答者の名前を隠した「匿名回答一覧」を常時表示
         renderAnonymousAnswers('q-anonymous-answers-container');
+        renderQuestionsAndResponses('q-history-container');
 
         const qIndex = (currentGameData.currentQuestionerIndex || 0) % playerList.length;
         const currentQuestionerId = playerList[qIndex];
@@ -619,6 +697,8 @@
       else if (status === 'GUESSING') {
         document.getElementById('sec-guessing').classList.remove('hidden');
 
+        renderQuestionsAndResponses('guess-history-container');
+
         const guessContainer = document.getElementById('guess-list-container');
         guessContainer.innerHTML = '';
 
@@ -651,7 +731,7 @@
       }
     }
 
-    // 回答者の名前を伏せた匿名の回答一覧を描画する関数
+    // 匿名回答一覧の描画
     function renderAnonymousAnswers(containerId) {
       const container = document.getElementById(containerId);
       if (!container) return;
@@ -668,6 +748,54 @@
         html += `<div class="anonymous-answer-item">回答 ${idx + 1}: ${ans.text}</div>`;
       });
       html += '</div>';
+      container.innerHTML = html;
+    }
+
+    // 出された質問と「誰がはい/いいえと答えたか」の一覧描画
+    function renderQuestionsAndResponses(containerId) {
+      const container = document.getElementById(containerId);
+      if (!container) return;
+
+      const { questions, players } = currentGameData;
+      if (!questions) {
+        container.innerHTML = '';
+        return;
+      }
+
+      let html = '<label style="margin-top:12px; display:block;">【これまでの質問と回答結果】</label>';
+      const qAuthorIds = Object.keys(questions);
+
+      if (qAuthorIds.length === 0) {
+        html += '<p style="font-size:0.8rem; color:#888;">まだ質問はありません</p>';
+      } else {
+        qAuthorIds.forEach((qAuthorId) => {
+          const q = questions[qAuthorId];
+          if (!q || !q.text) return;
+          const authorName = players[qAuthorId]?.name || '誰か';
+
+          html += `
+            <div class="q-history-card">
+              <div class="q-history-title">質問者 (${authorName}): 「${q.text}」</div>
+              <div style="font-size:0.85rem; display:flex; flex-wrap:wrap; gap:8px; margin-top:4px;">
+          `;
+
+          if (q.answers) {
+            Object.keys(players).forEach(pId => {
+              const ansVal = q.answers[pId];
+              if (ansVal) {
+                const tagClass = ansVal === 'yes' ? 'tag-yes' : 'tag-no';
+                const tagText = ansVal === 'yes' ? 'はい' : 'いいえ';
+                html += `<span>${players[pId].name}: <span class="q-answer-tag ${tagClass}">${tagText}</span></span>`;
+              }
+            });
+          } else {
+            html += '<span style="color:#888;">(回答待ち...)</span>';
+          }
+
+          html += `</div></div>`;
+        });
+      }
+
       container.innerHTML = html;
     }
 
@@ -754,7 +882,7 @@
       }
 
       await set(ref(db, `dare/games/${currentGameId}/guesses/${myPlayerId}`), myGuesses);
-      alert('予想を保存しました。全員の完了を待ちます。');
+      alert('予想を送信しました。全員の送信完了で自動的に結果画面へ進みます。');
     }
 
     function renderResults() {
@@ -842,13 +970,14 @@
       }
     }
 
+    // 1人だけ「はい」または「いいえ」だった場合（1対N-1）の減点判定ロジック
     async function calculateQuestionPenalties() {
       const { questions, players } = currentGameData;
       if (!questions) return;
 
       const playerIds = Object.keys(players);
       const N = playerIds.length;
-      if (N < 3) return;
+      if (N < 3) return; // 3名未満の場合は判定スキップ
 
       const newPlayers = { ...players };
 
@@ -864,6 +993,7 @@
           if (val === 'no') noCount++;
         });
 
+        // 1人だけ「はい」（Yes:1, No:N-1）または 1人だけ「いいえ」（No:1, Yes:N-1）の場合にペナルティ
         if ((yesCount === 1 && noCount === N - 1) || (noCount === 1 && yesCount === N - 1)) {
           newPlayers[qAuthorId].questionPenalty = (newPlayers[qAuthorId].questionPenalty || 0) + 1;
         }
@@ -984,6 +1114,11 @@
       </div>
       <div style="font-size: 0.85rem; margin-top: 4px;">
         プレイヤー: <strong id="disp-my-name"></strong>
+      </div>
+
+      <!-- 自分の回答常時表示枠 -->
+      <div id="sticky-my-answer" class="my-answer-sticky hidden">
+        あなたの回答: <span id="disp-my-sticky-text"></span>
       </div>
     </div>
 
@@ -1159,8 +1294,11 @@
     <div id="sec-questioning" class="card hidden">
       <h2>質問フェーズ</h2>
       
-      <!-- 匿名回答一覧を表示するコンテナ -->
+      <!-- 匿名回答一覧 -->
       <div id="q-anonymous-answers-container"></div>
+
+      <!-- 質問と「はい/いいえ」結果一覧 -->
+      <div id="q-history-container"></div>
 
       <p style="margin-top: 12px; margin-bottom: 8px;">現在の質問担当: <strong id="questioner-name-disp"></strong> さん</p>
 
@@ -1201,9 +1339,12 @@
       <h2>誰が書いた？ (推理)</h2>
       <p style="font-size: 0.85rem; color: #666; margin-bottom: 12px;">各回答を書いたと思う人を選択してください。</p>
 
-      <div id="guess-list-container"></div>
+      <!-- 質問と「はい/いいえ」結果一覧（推理用参照） -->
+      <div id="guess-history-container"></div>
 
-      <button onclick="submitGuesses()" style="margin-top: 12px;">予想を確定する</button>
+      <div id="guess-list-container" style="margin-top: 12px;"></div>
+
+      <button onclick="submitGuesses()" style="margin-top: 12px;">予想を確定・送信</button>
 
       <div id="admin-area-guess" class="admin-controls hidden">
         <p style="font-size: 0.8rem; font-weight: bold; color: var(--primary);">【管理者操作】</p>
