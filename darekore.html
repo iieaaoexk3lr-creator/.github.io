@@ -513,18 +513,6 @@
           }
         }
 
-        // 推理（GUESSING）フェーズ：全員が予想を完了したら集計＆結果画面へ
-        if (currentGameData.status === 'GUESSING') {
-          const guesses = currentGameData.guesses || {};
-          const guessedPlayerIds = Object.keys(guesses);
-
-          if (playerIds.length > 0 && playerIds.every(id => guessedPlayerIds.includes(id))) {
-            if (isHost) {
-              adminCalculateResults();
-            }
-          }
-        }
-
         renderUI();
       });
     }
@@ -578,10 +566,10 @@
       document.getElementById('disp-my-name').textContent = myName;
       document.getElementById('disp-round').textContent = round || 1;
 
-      // 自分の回答を常時確認できるエリアの更新
+      // 自分の回答を回答後のどの画面でも見れるように（常時表示）
       const stickyMyAnswer = document.getElementById('sticky-my-answer');
       const myAnswerObj = answers ? Object.values(answers).find(a => a.playerId === myPlayerId) : null;
-      if (myAnswerObj && myAnswerObj.text) {
+      if (myAnswerObj && myAnswerObj.text && status !== 'LOBBY' && status !== 'SETTING_TOPIC') {
         stickyMyAnswer.classList.remove('hidden');
         document.getElementById('disp-my-sticky-text').textContent = myAnswerObj.text;
       } else {
@@ -724,10 +712,47 @@
             guessContainer.appendChild(row);
           });
         }
+
+        // 推理フェーズでの出題者制御エリア（全員回答完了チェック）
+        const guessStatusArea = document.getElementById('guess-status-area');
+        const isGuessedAll = guesses && playerList.length > 0 && playerList.every(id => guesses[id]);
+
+        if (isMyTurnToPick) {
+          guessStatusArea.innerHTML = `
+            <div class="notice" style="background:#e8f4f8; color:#31708f; border-color:#bce8f1;">
+              あなたがこのラウンドの出題者です。<br>
+              ${isGuessedAll ? '<strong>全員の予想送信が完了しました！ボタンを押して結果を表示してください。</strong>' : '全員が予想を送信するのをお待ちください...'}
+            </div>
+            <button onclick="adminCalculateResults()" ${!isGuessedAll ? 'disabled' : ''}>全員の予想完了 → 結果発表を見る</button>
+          `;
+        } else {
+          guessStatusArea.innerHTML = `
+            <div class="notice">
+              ${isGuessedAll ? `出題者（${players[currentPickerId]?.name}さん）が結果を表示するのをお待ちください...` : '全員の予想送信をお待ちください...'}
+            </div>
+          `;
+        }
       }
       else if (status === 'RESULT' || status === 'CLEARED') {
         document.getElementById('sec-result').classList.remove('hidden');
         renderResults();
+
+        // 次のラウンド進行権限の制御（出題者のみ表示）
+        const resultActionArea = document.getElementById('result-action-area');
+        if (isMyTurnToPick) {
+          resultActionArea.innerHTML = `
+            <div class="notice" style="background:#e8f4f8; color:#31708f; border-color:#bce8f1;">
+              あなたが出題者です。準備ができたら次のラウンドへ進んでください。
+            </div>
+            <button onclick="adminNextRound()">次のラウンドへ進む</button>
+          `;
+        } else {
+          resultActionArea.innerHTML = `
+            <div class="notice">
+              出題者（${players[currentPickerId]?.name}さん）が次のラウンドを開始するのをお待ちください...
+            </div>
+          `;
+        }
       }
     }
 
@@ -882,7 +907,7 @@
       }
 
       await set(ref(db, `dare/games/${currentGameId}/guesses/${myPlayerId}`), myGuesses);
-      alert('予想を送信しました。全員の送信完了で自動的に結果画面へ進みます。');
+      alert('予想を送信しました。全員の選択完了後、出題者がボタンを押すと結果が表示されます。');
     }
 
     function renderResults() {
@@ -1346,10 +1371,8 @@
 
       <button onclick="submitGuesses()" style="margin-top: 12px;">予想を確定・送信</button>
 
-      <div id="admin-area-guess" class="admin-controls hidden">
-        <p style="font-size: 0.8rem; font-weight: bold; color: var(--primary);">【管理者操作】</p>
-        <button onclick="adminCalculateResults()">予想締め切り → 答え合わせ表示</button>
-      </div>
+      <!-- 出題者用の結果表示切り替えエリア -->
+      <div id="guess-status-area" style="margin-top: 16px;"></div>
     </div>
 
     <!-- フェーズ6: 結果表示 -->
@@ -1357,10 +1380,8 @@
       <h2>ラウンド結果</h2>
       <div id="result-detail-container"></div>
 
-      <div id="admin-area-result" class="admin-controls hidden">
-        <p style="font-size: 0.8rem; font-weight: bold; color: var(--primary);">【管理者操作】</p>
-        <button onclick="adminNextRound()">次のラウンドへ進む</button>
-      </div>
+      <!-- 出題者用の次ラウンド進行エリア -->
+      <div id="result-action-area" style="margin-top: 16px;"></div>
     </div>
 
   </div>
