@@ -129,11 +129,6 @@
       background-color: var(--secondary);
     }
 
-    .btn-group {
-      display: flex;
-      gap: 8px;
-    }
-
     .badge {
       display: inline-block;
       padding: 2px 8px;
@@ -278,6 +273,27 @@
       margin-bottom: 12px;
       font-size: 0.85rem;
     }
+
+    /* 匿名回答カード表示用スタイル */
+    .anonymous-answers-list {
+      margin-top: 12px;
+      background: #f8f9fa;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 10px;
+    }
+    .anonymous-answer-item {
+      background: #fff;
+      border: 1px solid var(--border);
+      padding: 8px 12px;
+      border-radius: 4px;
+      margin-bottom: 6px;
+      font-weight: bold;
+      color: #2c3e50;
+    }
+    .anonymous-answer-item:last-child {
+      margin-bottom: 0;
+    }
   </style>
   <!-- Firebase JS SDK v10 (Module CDN) -->
   <script type="module">
@@ -416,19 +432,35 @@
         }
 
         currentGameData = snapshot.val();
+        const playerIds = currentGameData.players ? Object.keys(currentGameData.players) : [];
+        const isHost = playerIds[0] === myPlayerId;
 
-        // 【修正点】回答フェーズで全員の回答が揃ったかを判定し自動で質問フェーズへ遷移
+        // 【修正点1】回答フェーズ：全員の回答が揃ったら自動で質問フェーズへ移行
         if (currentGameData.status === 'ANSWERING') {
-          const playerIds = currentGameData.players ? Object.keys(currentGameData.players) : [];
           const answers = currentGameData.answers ? currentGameData.answers : {};
           const answeredPlayerIds = new Set(Object.values(answers).map(a => a.playerId));
 
           if (playerIds.length > 0 && playerIds.every(id => answeredPlayerIds.has(id))) {
-            // ホスト（または先頭のプレイヤー）が代表してステータス更新を実行
-            if (playerIds[0] === myPlayerId) {
+            if (isHost) {
               update(ref(db, `dare/games/${currentGameId}`), {
                 status: 'QUESTIONING'
               });
+            }
+          }
+        }
+
+        // 【修正点2】質問フェーズ：現在の質問に対し全員が「はい/いいえ」を答え終えたら自動で次へ
+        if (currentGameData.status === 'QUESTIONING') {
+          const qIndex = (currentGameData.currentQuestionerIndex || 0) % playerIds.length;
+          const currentQuestionerId = playerIds[qIndex];
+          const currentQ = currentGameData.questions ? currentGameData.questions[currentQuestionerId] : null;
+
+          if (currentQ && currentQ.answers) {
+            const answeredIds = Object.keys(currentQ.answers);
+            if (playerIds.length > 0 && playerIds.every(id => answeredIds.includes(id))) {
+              if (isHost) {
+                adminNextQuestioner();
+              }
             }
           }
         }
@@ -544,6 +576,9 @@
       else if (status === 'QUESTIONING') {
         document.getElementById('sec-questioning').classList.remove('hidden');
 
+        // 【機能追加】質問フェーズ・推理フェーズ時、回答者の名前を隠した「匿名回答一覧」を常時表示
+        renderAnonymousAnswers('q-anonymous-answers-container');
+
         const qIndex = (currentGameData.currentQuestionerIndex || 0) % playerList.length;
         const currentQuestionerId = playerList[qIndex];
         const isMyQuestion = currentQuestionerId === myPlayerId;
@@ -603,7 +638,7 @@
             selectHtml += `</select>`;
 
             row.innerHTML = `
-              <span><strong>③ ${idx + 1}.</strong> ${ans.text}</span>
+              <span><strong>回答 ${idx + 1}.</strong> ${ans.text}</span>
               ${selectHtml}
             `;
             guessContainer.appendChild(row);
@@ -614,6 +649,26 @@
         document.getElementById('sec-result').classList.remove('hidden');
         renderResults();
       }
+    }
+
+    // 回答者の名前を伏せた匿名の回答一覧を描画する関数
+    function renderAnonymousAnswers(containerId) {
+      const container = document.getElementById(containerId);
+      if (!container) return;
+
+      const answers = currentGameData.answers;
+      if (!answers) {
+        container.innerHTML = '';
+        return;
+      }
+
+      let html = '<div class="anonymous-answers-list"><label style="margin-bottom:6px;">【集まった回答一覧 (匿名)】</label>';
+      Object.keys(answers).forEach((ansId, idx) => {
+        const ans = answers[ansId];
+        html += `<div class="anonymous-answer-item">回答 ${idx + 1}: ${ans.text}</div>`;
+      });
+      html += '</div>';
+      container.innerHTML = html;
     }
 
     function hideAllSections() {
@@ -713,7 +768,7 @@
         Object.keys(answers).forEach((ansId, idx) => {
           const ans = answers[ansId];
           const author = players[ans.playerId]?.name || '不明';
-          html += `<li class="list-item"><span><strong>${idx + 1}. ${ans.text}</strong></span> <span>正解: <strong>${author}</strong></span></li>`;
+          html += `<li class="list-item"><span><strong>回答 ${idx + 1}. ${ans.text}</strong></span> <span>正解: <strong>${author}</strong></span></li>`;
         });
       }
       html += '</ul>';
@@ -827,7 +882,6 @@
       Object.keys(players).forEach(pId => {
         const myGuess = guesses[pId];
         let roundCorrect = 0;
-        let totalAnswerCount = Object.keys(answers).length;
         let otherAnswerCount = 0;
 
         if (myGuess) {
@@ -1104,7 +1158,11 @@
     <!-- フェーズ4: 質問フェーズ -->
     <div id="sec-questioning" class="card hidden">
       <h2>質問フェーズ</h2>
-      <p style="margin-bottom: 8px;">現在の質問担当: <strong id="questioner-name-disp"></strong> さん</p>
+      
+      <!-- 匿名回答一覧を表示するコンテナ -->
+      <div id="q-anonymous-answers-container"></div>
+
+      <p style="margin-top: 12px; margin-bottom: 8px;">現在の質問担当: <strong id="questioner-name-disp"></strong> さん</p>
 
       <!-- 質問入力 -->
       <div id="q-input-form" class="hidden">
