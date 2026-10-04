@@ -1,0 +1,1185 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>だれこれ？ - パーティー推理ゲーム</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@500;700;900&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Zen Maru Gothic', sans-serif;
+            background: linear-gradient(135deg, #f0fdf4 0%, #e0f2fe 100%);
+            min-height: 100vh;
+        }
+        .pop-card {
+            background: white;
+            border-radius: 1.25rem;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.08), 0 8px 10px -6px rgba(0, 0, 0, 0.05);
+            border: 3px solid #f1f5f9;
+        }
+        .pop-btn {
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            transform: translateY(0);
+        }
+        .pop-btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 15px -3px rgba(0, 0, 0, 0.15);
+        }
+        .pop-btn:active:not(:disabled) {
+            transform: translateY(1px);
+        }
+        .gradient-title {
+            background: linear-gradient(45deg, #3b82f6, #8b5cf6, #ec4899);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+    </style>
+</head>
+<body class="text-slate-800 p-3 sm:p-6 flex flex-col items-center justify-start min-h-screen">
+
+    <!-- Header -->
+    <header class="w-full max-w-2xl text-center my-4">
+        <h1 class="text-3xl sm:text-5xl font-black gradient-title tracking-wider mb-2">だれこれ？</h1>
+        <p class="text-xs sm:text-sm text-slate-500 font-bold">匿名回答を見破れ！みんなの個性を当てる協力＆個人戦推理ゲーム</p>
+    </header>
+
+    <!-- Global Room Info Header (Shown when in a game) -->
+    <div id="room-badge" class="hidden w-full max-w-2xl bg-white/80 backdrop-blur border-2 border-indigo-200 rounded-full py-2 px-4 mb-4 flex items-center justify-between text-xs sm:text-sm shadow-sm">
+        <div class="flex items-center gap-2">
+            <span class="bg-indigo-600 text-white font-bold px-3 py-1 rounded-full text-xs">部屋コード</span>
+            <span id="display-room-id" class="font-black text-indigo-700 text-base tracking-widest">-----</span>
+        </div>
+        <div class="flex items-center gap-3">
+            <span id="display-player-name" class="font-bold text-slate-700"></span>
+            <span id="display-role-badge" class="bg-amber-100 text-amber-800 font-bold text-xs px-2.5 py-0.5 rounded-md">参加者</span>
+            <button id="btn-leave-room" class="text-xs text-rose-500 hover:text-rose-700 font-bold underline ml-2">退室</button>
+        </div>
+    </div>
+
+    <!-- MAIN CONTAINER -->
+    <main id="app" class="w-full max-w-2xl">
+
+        <!-- SCREEN 0: LOGIN & ROOM ENTRY -->
+        <section id="screen-login" class="pop-card p-6 sm:p-8 space-y-6">
+            <div class="text-center space-y-2">
+                <div class="w-16 h-16 bg-indigo-100 rounded-full flex items-center justify-center mx-auto text-indigo-600 text-2xl">
+                    <i class="fa-solid fa-masks-theater"></i>
+                </div>
+                <h2 class="text-xl font-black text-slate-800">ゲームに参加 / 部屋を作成</h2>
+            </div>
+
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-xs font-bold text-slate-600 mb-1">プレイヤー名</label>
+                    <input type="text" id="input-player-name" placeholder="例: たろう" maxlength="12"
+                           class="w-full px-4 py-3 rounded-xl border-2 border-slate-200 focus:border-indigo-500 focus:ring-0 font-bold text-slate-700 outline-none">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-slate-600 mb-1">部屋コード (参加する場合)</label>
+                    <input type="text" id="input-room-id" placeholder="例: 1234" maxlength="8"
+                           class="w-full px-4 py-3 rounded-xl border-2 border-slate-200 focus:border-indigo-500 focus:ring-0 font-bold text-slate-700 uppercase outline-none">
+                </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3 pt-2">
+                <button id="btn-create-room" class="pop-btn w-full py-3.5 bg-emerald-500 hover:bg-emerald-600 text-white font-black rounded-xl shadow-lg shadow-emerald-200">
+                    <i class="fa-solid fa-plus-circle mr-1"></i> 部屋を作成 (管理者)
+                </button>
+                <button id="btn-join-room" class="pop-btn w-full py-3.5 bg-indigo-600 hover:bg-indigo-700 text-white font-black rounded-xl shadow-lg shadow-indigo-200">
+                    <i class="fa-solid fa-right-to-bracket mr-1"></i> 部屋に入る
+                </button>
+            </div>
+        </section>
+
+        <!-- SCREEN 1: LOBBY (WAITING) -->
+        <section id="screen-lobby" class="hidden pop-card p-6 sm:p-8 space-y-6">
+            <div class="text-center border-b pb-4">
+                <span class="text-xs font-bold text-indigo-600 bg-indigo-50 px-3 py-1 rounded-full uppercase tracking-wider">WAITING LOBBY</span>
+                <h2 class="text-2xl font-black text-slate-800 mt-2">参加者待機中</h2>
+                <p class="text-xs text-slate-500 mt-1">全員が揃ったら管理者がテーマを決定してゲームを開始します</p>
+            </div>
+
+            <!-- Host Config Controls -->
+            <div id="host-topic-setup" class="hidden bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-4">
+                <h3 class="font-black text-sm text-indigo-900 border-b border-slate-200 pb-2"><i class="fa-solid fa-sliders mr-1"></i> 【管理者設定】お題と回答方法</h3>
+                
+                <div>
+                    <label class="block text-xs font-bold text-slate-600 mb-1">回答方法</label>
+                    <select id="select-answer-mode" class="w-full p-2.5 bg-white rounded-lg border font-bold text-sm text-slate-700">
+                        <option value="好きなもの">好きなもの</option>
+                        <option value="嫌いなもの">嫌いなもの</option>
+                        <option value="思いついたもの">思いついたもの</option>
+                        <option value="自分自身を例えると">自分自身を例えると</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-slate-600 mb-1">ジャンルから選択</label>
+                    <div class="grid grid-cols-2 gap-2">
+                        <select id="select-topic-genre" class="p-2.5 bg-white rounded-lg border font-bold text-sm text-slate-700">
+                            <!-- Populated dynamically via JS -->
+                        </select>
+                        <select id="select-topic-item" class="p-2.5 bg-white rounded-lg border font-bold text-sm text-slate-700">
+                            <!-- Populated dynamically via JS -->
+                        </select>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-slate-600 mb-1">または自由入力でお題を指定</label>
+                    <input type="text" id="input-custom-topic" placeholder="例: お菓子" class="w-full p-2.5 bg-white rounded-lg border font-bold text-sm text-slate-700">
+                </div>
+            </div>
+
+            <!-- Non-host view for topic settings -->
+            <div id="guest-topic-view" class="bg-amber-50 border border-amber-200 rounded-xl p-4 text-center">
+                <p class="text-xs font-bold text-amber-700">管理者がお題とルールを設定しています...</p>
+            </div>
+
+            <!-- Player List -->
+            <div>
+                <h3 class="font-bold text-sm text-slate-700 mb-2 flex justify-between items-center">
+                    <span>参加プレイヤー (<span id="player-count">0</span>名)</span>
+                    <span class="text-xs text-slate-400 font-normal">※2名以上で開始可能</span>
+                </h3>
+                <div id="player-list" class="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                    <!-- Populated via JS -->
+                </div>
+            </div>
+
+            <button id="btn-start-game" class="hidden pop-btn w-full py-4 bg-emerald-500 hover:bg-emerald-600 text-white font-black text-lg rounded-xl shadow-lg shadow-emerald-200">
+                <i class="fa-solid fa-play mr-2"></i> このお題でゲームを開始！
+            </button>
+        </section>
+
+        <!-- SCREEN 2: ANSWERING PHASE -->
+        <section id="screen-answering" class="hidden pop-card p-6 sm:p-8 space-y-6">
+            <div class="bg-indigo-50 border border-indigo-100 rounded-xl p-4 text-center space-y-1">
+                <span class="text-xs font-bold text-indigo-500">回答方法: <span id="display-answer-mode" class="text-indigo-700"></span></span>
+                <h2 class="text-2xl font-black text-indigo-900">お題: <span id="display-topic" class="underline decoration-indigo-300"></span></h2>
+            </div>
+
+            <div id="answer-form-container" class="space-y-4">
+                <label class="block text-sm font-bold text-slate-700">あなたの回答を入力してください（他人には秘匿されます）</label>
+                <input type="text" id="input-answer" placeholder="回答を入力..." maxlength="30"
+                       class="w-full p-4 rounded-xl border-2 border-indigo-200 focus:border-indigo-500 font-bold text-lg text-slate-800 outline-none">
+                <button id="btn-submit-answer" class="pop-btn w-full py-3.5 bg-indigo-600 hover:bg-indigo-700 text-white font-black rounded-xl shadow-md">
+                    回答を送信する
+                </button>
+            </div>
+
+            <div id="answer-waiting-notice" class="hidden bg-emerald-50 border border-emerald-200 rounded-xl p-6 text-center space-y-2">
+                <i class="fa-solid fa-circle-check text-3xl text-emerald-500"></i>
+                <p class="font-black text-emerald-800">回答を送信しました！</p>
+                <p class="text-xs text-emerald-600">全員の回答が揃うまで待機しています...</p>
+            </div>
+
+            <div class="border-t pt-4">
+                <h4 class="text-xs font-bold text-slate-500 mb-2">回答進捗</h4>
+                <div id="answer-progress-list" class="flex flex-wrap gap-2">
+                    <!-- Dynamic badges -->
+                </div>
+            </div>
+        </section>
+
+        <!-- SCREEN 3: QUESTION PHASE -->
+        <section id="screen-questioning" class="hidden pop-card p-6 sm:p-8 space-y-6">
+            <div class="flex justify-between items-center border-b pb-3">
+                <h2 class="text-xl font-black text-slate-800"><i class="fa-solid fa-circle-question text-indigo-500 mr-2"></i>質問フェーズ</h2>
+                <span class="text-xs font-bold text-amber-800 bg-amber-100 px-3 py-1 rounded-full">質問減点ルール適用中</span>
+            </div>
+
+            <!-- Anonymous Answer List -->
+            <div class="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-2">
+                <h3 class="text-xs font-bold text-slate-500">今回の公開回答（順不同）</h3>
+                <div id="public-answers-list" class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <!-- Dynamic -->
+                </div>
+            </div>
+
+            <!-- Question Submission Area -->
+            <div id="question-input-area" class="space-y-4 bg-indigo-50 border border-indigo-100 p-4 rounded-xl">
+                <h3 class="font-black text-indigo-900 text-sm">「はい」か「いいえ」で答えられる質問をしてヒントを得よう！</h3>
+                <p class="text-xs text-indigo-700">※全員の回答結果が「4対1」など1人だけ偏った結果になると、質問者に減点1点！</p>
+                
+                <input type="text" id="input-question-text" placeholder="例: これはチョコレートを使っていますか？"
+                       class="w-full p-3 rounded-xl border border-indigo-300 font-bold text-slate-800 outline-none">
+                <button id="btn-submit-question" class="pop-btn w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-black rounded-xl">
+                    質問を出題する
+                </button>
+            </div>
+
+            <!-- Active Question Voting Area -->
+            <div id="question-voting-area" class="hidden bg-amber-50 border border-amber-200 p-5 rounded-xl text-center space-y-4">
+                <span class="text-xs font-bold text-amber-700 bg-amber-200 px-3 py-1 rounded-full">出題者: <span id="current-questioner-name"></span></span>
+                <p id="current-question-text" class="text-xl font-black text-slate-800"></p>
+                
+                <div id="vote-buttons" class="grid grid-cols-2 gap-4 max-w-xs mx-auto">
+                    <button class="btn-vote pop-btn py-3 bg-emerald-500 hover:bg-emerald-600 text-white font-black text-lg rounded-xl shadow" data-vote="yes">
+                        ⭕ はい
+                    </button>
+                    <button class="btn-vote pop-btn py-3 bg-rose-500 hover:bg-rose-600 text-white font-black text-lg rounded-xl shadow" data-vote="no">
+                        ❌ いいえ
+                    </button>
+                </div>
+                <p id="voted-status" class="hidden text-xs font-bold text-emerald-600">あなたの回答を受け付けました。回答完了を待っています...</p>
+            </div>
+
+            <!-- Question Results Log -->
+            <div class="space-y-2 border-t pt-4">
+                <h3 class="text-xs font-bold text-slate-500">これまでの質問結果履歴</h3>
+                <div id="question-history" class="space-y-2 max-h-48 overflow-y-auto">
+                    <!-- Dynamic -->
+                </div>
+            </div>
+
+            <button id="btn-finish-questions" class="hidden pop-btn w-full py-3.5 bg-emerald-600 hover:bg-emerald-700 text-white font-black rounded-xl">
+                全員の質問が完了！推理フェーズへ進む <i class="fa-solid fa-arrow-right ml-1"></i>
+            </button>
+        </section>
+
+        <!-- SCREEN 4: GUESSING PHASE -->
+        <section id="screen-guessing" class="hidden pop-card p-6 sm:p-8 space-y-6">
+            <div class="text-center space-y-1">
+                <span class="text-xs font-bold text-purple-600 bg-purple-100 px-3 py-1 rounded-full">FINAL GUESS</span>
+                <h2 class="text-2xl font-black text-slate-800">推理・予想フェーズ</h2>
+                <p class="text-xs text-slate-500">誰がどの回答を書いたか推理して選択してください（自分の回答は当てても得点対象外）</p>
+            </div>
+
+            <!-- Guess Form List -->
+            <div id="guess-list-container" class="space-y-4">
+                <!-- Dynamic cards with selects -->
+            </div>
+
+            <button id="btn-submit-guesses" class="pop-btn w-full py-4 bg-purple-600 hover:bg-purple-700 text-white font-black text-lg rounded-xl shadow-lg shadow-purple-200">
+                <i class="fa-solid fa-check-double mr-1"></i> 予想を確定する
+            </button>
+            <p id="guess-submitted-notice" class="hidden text-center text-xs font-bold text-emerald-600">予想を提出しました！全員の提出を待っています...</p>
+        </section>
+
+        <!-- SCREEN 5: RESULT / ROUND CLEAR -->
+        <section id="screen-result" class="hidden pop-card p-6 sm:p-8 space-y-6">
+            <div class="text-center space-y-2">
+                <span id="result-status-badge" class="text-xs font-bold px-3 py-1 rounded-full"></span>
+                <h2 id="result-title" class="text-3xl font-black"></h2>
+            </div>
+
+            <!-- Answer Revelation -->
+            <div class="space-y-3">
+                <h3 class="font-black text-sm text-slate-700">正解発表とあなたの予想結果</h3>
+                <div id="revelation-list" class="space-y-2">
+                    <!-- Dynamic comparison -->
+                </div>
+            </div>
+
+            <!-- Leaderboard / Round Summary -->
+            <div class="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-3">
+                <h3 class="font-black text-sm text-slate-700 flex justify-between">
+                    <span>現在のスコア・MVPランキング</span>
+                    <span class="text-xs font-normal text-slate-500">MVPpt ＝ 累計正解 − 質問減点</span>
+                </h3>
+                <div id="score-ranking-list" class="space-y-2">
+                    <!-- Dynamic ranking -->
+                </div>
+            </div>
+
+            <!-- Host Next Controls -->
+            <div id="host-next-controls" class="hidden space-y-3 pt-2">
+                <button id="btn-next-round" class="pop-btn w-full py-3.5 bg-indigo-600 hover:bg-indigo-700 text-white font-black rounded-xl">
+                    <i class="fa-solid fa-rotate-right mr-1"></i> 全員完全正解を目指して次のラウンドへ
+                </button>
+            </div>
+            <p id="guest-next-notice" class="hidden text-center text-xs font-bold text-slate-500">管理者の操作を待っています...</p>
+        </section>
+
+        <!-- SCREEN 6: GAME CLEARED MVP -->
+        <section id="screen-cleared" class="hidden pop-card p-6 sm:p-8 space-y-6 text-center">
+            <div class="space-y-2">
+                <div class="text-5xl">🎉 🏆 🎉</div>
+                <h2 class="text-3xl font-black text-emerald-600">GAME CLEAR!</h2>
+                <p class="text-xs font-bold text-slate-500">見事に全回答を正しく特定しました！</p>
+            </div>
+
+            <div class="bg-amber-50 border-2 border-amber-300 rounded-2xl p-6 space-y-2 shadow-inner">
+                <span class="bg-amber-400 text-amber-950 text-xs font-black px-3 py-1 rounded-full">👑 今回のMVP 👑</span>
+                <div id="mvp-name" class="text-3xl font-black text-amber-900"></div>
+                <div class="flex justify-center gap-4 text-xs font-bold text-amber-800 pt-2">
+                    <div>MVPポイント: <span id="mvp-score" class="text-base font-black text-indigo-700"></span></div>
+                    <div>累計正解数: <span id="mvp-correct"></span></div>
+                    <div>質問減点: <span id="mvp-penalty"></span></div>
+                </div>
+            </div>
+
+            <!-- Final Rankings -->
+            <div class="space-y-2 text-left">
+                <h3 class="font-black text-sm text-slate-700">最終ランキング</h3>
+                <div id="final-ranking-list" class="space-y-2">
+                    <!-- Dynamic -->
+                </div>
+            </div>
+
+            <button id="btn-return-lobby" class="pop-btn w-full py-3.5 bg-slate-800 hover:bg-slate-900 text-white font-black rounded-xl">
+                ロビーに戻る
+            </button>
+        </section>
+
+    </main>
+
+    <!-- Modal alert container -->
+    <div id="custom-modal" class="hidden fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-sm w-full p-6 text-center space-y-4 shadow-2xl">
+            <div id="modal-icon" class="text-3xl text-indigo-500"><i class="fa-solid fa-circle-info"></i></div>
+            <p id="modal-message" class="font-bold text-slate-800 text-sm"></p>
+            <button id="btn-modal-close" class="pop-btn px-6 py-2 bg-indigo-600 text-white font-bold text-xs rounded-lg">OK</button>
+        </div>
+    </div>
+
+    <!-- Application Engine Script -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { 
+            getDatabase, ref, set, get, update, remove, onValue, onDisconnect, child, push 
+        } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+
+        // Firebase Configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyC4DQhH_swesAD98Xyjg8d1lcWEkkrHrgw",
+            authDomain: "gamehistory-m84.firebaseapp.com",
+            databaseURL: "https://gamehistory-m84-default-rtdb.firebaseio.com",
+            projectId: "gamehistory-m84",
+            storageBucket: "gamehistory-m84.firebasestorage.app",
+            messagingSenderId: "475761727837",
+            appId: "1:475761727837:web:06d07e1ab4120a7ccaf0b4",
+            measurementId: "G-3636W6LC4F"
+        };
+
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+
+        // Topic Genre Preset Data
+        const TOPIC_PRESETS = {
+            "食べ物系": ["お菓子", "アイス", "果物", "野菜", "料理", "ファストフード", "コンビニ商品", "パン", "飲み物", "ジュース", "ラーメン", "寿司ネタ", "鍋の具", "給食のメニュー", "ファミレスのメニュー"],
+            "生き物系": ["動物", "鳥", "魚", "虫", "ペット", "海の生き物", "恐竜", "幻獣・架空の生き物"],
+            "身近なもの": ["文房具", "家電", "家具", "日用品", "コンビニにあるもの", "スーパーにあるもの", "100円ショップにあるもの", "学校にあるもの", "職場にあるもの", "身につけるもの", "車", "電車"],
+            "エンタメ系": ["アニメ", "漫画", "ゲーム", "ゲームキャラクター", "映画", "ドラマ", "芸能人", "YouTuber", "キャラクター", "ポケモン", "マリオシリーズのキャラクター", "サンリオキャラクター", "ディズニーキャラクター"],
+            "音楽・カラオケ系": ["曲", "歌手", "バンド", "アーティスト", "カラオケで歌う曲", "カラオケで歌ってほしい曲", "アニソン", "童謡", "ボカロ曲"],
+            "場所・地理": ["都道府県", "日本の観光地", "世界の国", "都市", "駅", "遊園地", "コンビニチェーン", "ファストフードチェーン"],
+            "抽象・ネタ系": ["色", "職業", "スポーツ", "趣味", "休日の過ごし方", "学校の教科", "天気", "季節", "行事", "言葉", "擬音", "四字熟語", "ことわざ"],
+            "ちょっと変化球": ["無人島に持っていくもの", "旅行に持っていくもの", "もらって嬉しいもの", "もらって困るもの", "家にあったら嬉しいもの", "家にあったら嫌なもの", "強そうなもの", "弱そうなもの", "怖いもの", "癒やされるもの", "テンションが上がるもの", "子供の頃好きだったもの", "一生食べ続けられそうなもの", "絶対に住みたくない場所"]
+        };
+
+        // Local State
+        let myPlayerId = localStorage.getItem('dare_playerId');
+        if (!myPlayerId) {
+            myPlayerId = 'p_' + Math.random().toString(36).substr(2, 9);
+            localStorage.setItem('dare_playerId', myPlayerId);
+        }
+        let myPlayerName = localStorage.getItem('dare_playerName') || '';
+        let currentRoomId = localStorage.getItem('dare_roomId') || '';
+        let isHost = false;
+        let currentGameData = null;
+        let roomUnsubscribe = null;
+
+        // Custom Modal UI Helper
+        function showAlert(msg, icon = 'fa-circle-info') {
+            const modal = document.getElementById('custom-modal');
+            document.getElementById('modal-message').innerText = msg;
+            document.getElementById('modal-icon').innerHTML = `<i class="fa-solid ${icon}"></i>`;
+            modal.classList.remove('hidden');
+        }
+        document.getElementById('btn-modal-close').onclick = () => {
+            document.getElementById('custom-modal').classList.add('hidden');
+        };
+
+        // DOM Elements setup
+        const screens = {
+            login: document.getElementById('screen-login'),
+            lobby: document.getElementById('screen-lobby'),
+            answering: document.getElementById('screen-answering'),
+            questioning: document.getElementById('screen-questioning'),
+            guessing: document.getElementById('screen-guessing'),
+            result: document.getElementById('screen-result'),
+            cleared: document.getElementById('screen-cleared')
+        };
+
+        function showScreen(screenKey) {
+            Object.keys(screens).forEach(k => {
+                if (k === screenKey) screens[k].classList.remove('hidden');
+                else screens[k].classList.add('hidden');
+            });
+        }
+
+        // Initialize Topic Genre Dropdowns
+        function initTopicDropdowns() {
+            const genreSelect = document.getElementById('select-topic-genre');
+            const itemSelect = document.getElementById('select-topic-item');
+            genreSelect.innerHTML = '';
+
+            Object.keys(TOPIC_PRESETS).forEach(genre => {
+                const opt = document.createElement('option');
+                opt.value = genre;
+                opt.textContent = genre;
+                genreSelect.appendChild(opt);
+            });
+
+            const updateItems = () => {
+                const selectedGenre = genreSelect.value;
+                itemSelect.innerHTML = '';
+                TOPIC_PRESETS[selectedGenre].forEach(item => {
+                    const opt = document.createElement('option');
+                    opt.value = item;
+                    opt.textContent = item;
+                    itemSelect.appendChild(opt);
+                });
+            };
+
+            genreSelect.onchange = updateItems;
+            updateItems();
+        }
+        initTopicDropdowns();
+
+        // Database Reference Helper with Mandatory `dare/` Prefix
+        function dbRef(path) {
+            return ref(db, `dare/${path}`);
+        }
+
+        // Join / Create Room handlers
+        document.getElementById('btn-create-room').onclick = async () => {
+            const name = document.getElementById('input-player-name').value.trim();
+            if (!name) return showAlert('プレイヤー名を入力してください。');
+
+            myPlayerName = name;
+            localStorage.setItem('dare_playerName', name);
+
+            const roomId = Math.floor(1000 + Math.random() * 9000).toString();
+            currentRoomId = roomId;
+            localStorage.setItem('dare_roomId', roomId);
+
+            isHost = true;
+            const newGameData = {
+                status: 'LOBBY',
+                hostId: myPlayerId,
+                round: 1,
+                answerMode: '好きなもの',
+                topic: 'お菓子',
+                players: {
+                    [myPlayerId]: {
+                        name: name,
+                        correctCount: 0,
+                        questionPenalty: 0,
+                        mvpScore: 0
+                    }
+                }
+            };
+
+            try {
+                await set(dbRef(`games/${roomId}`), newGameData);
+                setupDisconnectHandler(roomId);
+                subscribeToRoom(roomId);
+            } catch (err) {
+                showAlert('部屋の作成に失敗しました: ' + err.message);
+            }
+        };
+
+        document.getElementById('btn-join-room').onclick = async () => {
+            const name = document.getElementById('input-player-name').value.trim();
+            const roomId = document.getElementById('input-room-id').value.trim().toUpperCase();
+            if (!name) return showAlert('プレイヤー名を入力してください。');
+            if (!roomId) return showAlert('部屋コードを入力してください。');
+
+            myPlayerName = name;
+            localStorage.setItem('dare_playerName', name);
+
+            const roomSnapshot = await get(dbRef(`games/${roomId}`));
+            if (!roomSnapshot.exists()) {
+                return showAlert('指定された部屋が存在しません。');
+            }
+
+            currentRoomId = roomId;
+            localStorage.setItem('dare_roomId', roomId);
+
+            // Add player
+            await update(dbRef(`games/${roomId}/players/${myPlayerId}`), {
+                name: name,
+                correctCount: 0,
+                questionPenalty: 0,
+                mvpScore: 0
+            });
+
+            setupDisconnectHandler(roomId);
+            subscribeToRoom(roomId);
+        };
+
+        // Disconnect handler on Realtime Database
+        function setupDisconnectHandler(roomId) {
+            const myPlayerRef = dbRef(`games/${roomId}/players/${myPlayerId}`);
+            onDisconnect(myPlayerRef).remove();
+        }
+
+        // Leave Room Button
+        document.getElementById('btn-leave-room').onclick = async () => {
+            if (!currentRoomId) return;
+            const roomRef = dbRef(`games/${currentRoomId}`);
+            const myPlayerRef = dbRef(`games/${currentRoomId}/players/${myPlayerId}`);
+
+            await remove(myPlayerRef);
+
+            // Check if last player left
+            const roomSnap = await get(roomRef);
+            if (roomSnap.exists()) {
+                const players = roomSnap.val().players || {};
+                if (Object.keys(players).length === 0) {
+                    await remove(roomRef);
+                }
+            }
+
+            localStorage.removeItem('dare_roomId');
+            currentRoomId = '';
+            if (roomUnsubscribe) roomUnsubscribe();
+            document.getElementById('room-badge').classList.add('hidden');
+            showScreen('login');
+        };
+
+        // Subscribe to Room State Updates
+        function subscribeToRoom(roomId) {
+            document.getElementById('room-badge').classList.remove('hidden');
+            document.getElementById('display-room-id').innerText = roomId;
+            document.getElementById('display-player-name').innerText = myPlayerName;
+
+            const roomRef = dbRef(`games/${roomId}`);
+            roomUnsubscribe = onValue(roomRef, (snapshot) => {
+                if (!snapshot.exists()) {
+                    showAlert('部屋が解散されました。');
+                    localStorage.removeItem('dare_roomId');
+                    document.getElementById('room-badge').classList.add('hidden');
+                    showScreen('login');
+                    return;
+                }
+
+                currentGameData = snapshot.val();
+                isHost = (currentGameData.hostId === myPlayerId);
+                document.getElementById('display-role-badge').innerText = isHost ? '管理者' : '参加者';
+                document.getElementById('display-role-badge').className = isHost 
+                    ? 'bg-purple-100 text-purple-800 font-bold text-xs px-2.5 py-0.5 rounded-md' 
+                    : 'bg-amber-100 text-amber-800 font-bold text-xs px-2.5 py-0.5 rounded-md';
+
+                // Dispatch View Logic based on State
+                switch (currentGameData.status) {
+                    case 'LOBBY':
+                        renderLobbyView();
+                        showScreen('lobby');
+                        break;
+                    case 'ANSWERING':
+                        renderAnsweringView();
+                        showScreen('answering');
+                        break;
+                    case 'QUESTIONING':
+                        renderQuestioningView();
+                        showScreen('questioning');
+                        break;
+                    case 'GUESSING':
+                        renderGuessingView();
+                        showScreen('guessing');
+                        break;
+                    case 'RESULT':
+                        renderResultView();
+                        showScreen('result');
+                        break;
+                    case 'CLEARED':
+                        renderClearedView();
+                        showScreen('cleared');
+                        break;
+                }
+            });
+        }
+
+        // Auto-reconnect on Page Refresh
+        if (currentRoomId && myPlayerName) {
+            document.getElementById('input-player-name').value = myPlayerName;
+            document.getElementById('input-room-id').value = currentRoomId;
+            get(dbRef(`games/${currentRoomId}`)).then(snap => {
+                if (snap.exists()) {
+                    setupDisconnectHandler(currentRoomId);
+                    subscribeToRoom(currentRoomId);
+                } else {
+                    localStorage.removeItem('dare_roomId');
+                }
+            });
+        } else {
+            showScreen('login');
+        }
+
+        // 1. LOBBY VIEW
+        function renderLobbyView() {
+            const players = currentGameData.players || {};
+            const playerListEl = document.getElementById('player-list');
+            playerListEl.innerHTML = '';
+            document.getElementById('player-count').innerText = Object.keys(players).length;
+
+            Object.entries(players).forEach(([pId, pData]) => {
+                const badge = document.createElement('div');
+                badge.className = `p-3 rounded-xl border flex items-center justify-between font-bold text-sm ${pId === myPlayerId ? 'bg-indigo-50 border-indigo-300 text-indigo-900' : 'bg-slate-50 border-slate-200 text-slate-700'}`;
+                badge.innerHTML = `
+                    <span class="truncate">${pData.name} ${pId === currentGameData.hostId ? '👑' : ''}</span>
+                    ${pId === myPlayerId ? '<span class="text-[10px] bg-indigo-200 text-indigo-800 px-1.5 py-0.5 rounded">自分</span>' : ''}
+                `;
+                playerListEl.appendChild(badge);
+            });
+
+            const hostSetup = document.getElementById('host-topic-setup');
+            const guestNotice = document.getElementById('guest-topic-view');
+            const startBtn = document.getElementById('btn-start-game');
+
+            if (isHost) {
+                hostSetup.classList.remove('hidden');
+                guestNotice.classList.add('hidden');
+                startBtn.classList.remove('hidden');
+            } else {
+                hostSetup.classList.add('hidden');
+                guestNotice.classList.remove('hidden');
+                startBtn.classList.add('hidden');
+            }
+        }
+
+        document.getElementById('btn-start-game').onclick = async () => {
+            const players = currentGameData.players || {};
+            if (Object.keys(players).length < 2) {
+                return showAlert('ゲームを開始するには最低2名の参加者が必要です。');
+            }
+
+            let topic = document.getElementById('input-custom-topic').value.trim();
+            if (!topic) {
+                topic = document.getElementById('select-topic-item').value;
+            }
+            const answerMode = document.getElementById('select-answer-mode').value;
+
+            await update(dbRef(`games/${currentRoomId}`), {
+                status: 'ANSWERING',
+                topic: topic,
+                answerMode: answerMode,
+                answers: null,
+                publicAnswers: null,
+                questions: null,
+                guesses: null
+            });
+        };
+
+        // 2. ANSWERING VIEW
+        function renderAnsweringView() {
+            document.getElementById('display-answer-mode').innerText = currentGameData.answerMode;
+            document.getElementById('display-topic').innerText = currentGameData.topic;
+
+            const answers = currentGameData.answers || {};
+            const myAnswer = answers[myPlayerId];
+
+            const formContainer = document.getElementById('answer-form-container');
+            const waitingNotice = document.getElementById('answer-waiting-notice');
+
+            if (myAnswer) {
+                formContainer.classList.add('hidden');
+                waitingNotice.classList.remove('hidden');
+            } else {
+                formContainer.classList.remove('hidden');
+                waitingNotice.classList.add('hidden');
+            }
+
+            // Render Answer Progress
+            const progressList = document.getElementById('answer-progress-list');
+            progressList.innerHTML = '';
+            const players = currentGameData.players || {};
+
+            Object.entries(players).forEach(([pId, pData]) => {
+                const hasAnswered = !!answers[pId];
+                const badge = document.createElement('span');
+                badge.className = `text-xs px-2.5 py-1 rounded-full font-bold ${hasAnswered ? 'bg-emerald-100 text-emerald-800 border border-emerald-300' : 'bg-slate-100 text-slate-400'}`;
+                badge.innerText = `${pData.name}: ${hasAnswered ? '✓ 準備完了' : '入力中...'}`;
+                progressList.appendChild(badge);
+            });
+
+            // Host automatically transitions state when ALL players submit answers
+            if (isHost && Object.keys(answers).length === Object.keys(players).length && Object.keys(players).length > 0) {
+                publishAnonymousAnswers(answers);
+            }
+        }
+
+        document.getElementById('btn-submit-answer').onclick = async () => {
+            const input = document.getElementById('input-answer');
+            const text = input.value.trim();
+            if (!text) return showAlert('回答を入力してください。');
+
+            this.disabled = true;
+            await set(dbRef(`games/${currentRoomId}/answers/${myPlayerId}`), text);
+            input.value = '';
+            this.disabled = false;
+        };
+
+        // Shuffle Answers for Anonymous Public Display (Assign IDs ①, ②, ③...)
+        async function publishAnonymousAnswers(rawAnswers) {
+            const entries = Object.entries(rawAnswers); // [playerId, text]
+            // Fisher-Yates shuffle
+            for (let i = entries.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [entries[i], entries[j]] = [entries[j], entries[i]];
+            }
+
+            const publicAnswers = {};
+            const numSymbols = ["①", "②", "③", "④", "⑤", "⑥", "⑦", "⑧", "⑨", "⑩"];
+
+            entries.forEach((entry, idx) => {
+                const answerId = `ans_${idx + 1}`;
+                publicAnswers[answerId] = {
+                    id: answerId,
+                    labelNumber: numSymbols[idx] || `${idx + 1}`,
+                    text: entry[1],
+                    originalPlayerId: entry[0] // Kept hidden on DB until revelation
+                };
+            });
+
+            await update(dbRef(`games/${currentRoomId}`), {
+                publicAnswers: publicAnswers,
+                status: 'QUESTIONING'
+            });
+        }
+
+        // 3. QUESTIONING VIEW
+        function renderQuestioningView() {
+            const publicAnswers = currentGameData.publicAnswers || {};
+            const publicAnswersList = document.getElementById('public-answers-list');
+            publicAnswersList.innerHTML = '';
+
+            Object.values(publicAnswers).forEach(ans => {
+                const card = document.createElement('div');
+                const isMyOriginal = ans.originalPlayerId === myPlayerId;
+                card.className = `p-3 rounded-xl border font-bold text-sm ${isMyOriginal ? 'bg-indigo-50 border-indigo-300 text-indigo-900' : 'bg-white border-slate-200 text-slate-800'}`;
+                card.innerHTML = `
+                    <span class="text-indigo-600 font-black mr-1">${ans.labelNumber}</span> ${ans.text}
+                    ${isMyOriginal ? '<span class="text-[10px] text-indigo-600 bg-indigo-100 px-1.5 py-0.5 rounded ml-2">あなたの回答</span>' : ''}
+                `;
+                publicAnswersList.appendChild(card);
+            });
+
+            const questions = currentGameData.questions || [];
+            const players = currentGameData.players || {};
+            const playerIds = Object.keys(players);
+
+            // Determine who needs to ask a question next
+            const askedPlayerIds = questions.map(q => q.questionerId);
+            const currentQuestionerId = playerIds.find(id => !askedPlayerIds.includes(id));
+
+            const questionInputArea = document.getElementById('question-input-area');
+            const questionVotingArea = document.getElementById('question-voting-area');
+            const finishBtn = document.getElementById('btn-finish-questions');
+
+            if (!currentQuestionerId) {
+                // All players have asked their question
+                questionInputArea.classList.add('hidden');
+                questionVotingArea.classList.add('hidden');
+                if (isHost) finishBtn.classList.remove('hidden');
+            } else {
+                finishBtn.classList.add('hidden');
+                const activeQuestion = questions[questions.length - 1];
+
+                if (activeQuestion && activeQuestion.status === 'VOTING') {
+                    // Currently voting on an active question
+                    questionInputArea.classList.add('hidden');
+                    questionVotingArea.classList.remove('hidden');
+
+                    document.getElementById('current-questioner-name').innerText = players[activeQuestion.questionerId]?.name || '誰か';
+                    document.getElementById('current-question-text').innerText = `「${activeQuestion.text}」`;
+
+                    const myVote = activeQuestion.votes?.[myPlayerId];
+                    const voteButtons = document.getElementById('vote-buttons');
+                    const votedStatus = document.getElementById('voted-status');
+
+                    if (myVote) {
+                        voteButtons.classList.add('hidden');
+                        votedStatus.classList.remove('hidden');
+                    } else {
+                        voteButtons.classList.remove('hidden');
+                        votedStatus.classList.add('hidden');
+                    }
+
+                    // Check if all votes are in
+                    if (isHost && Object.keys(activeQuestion.votes || {}).length === playerIds.length) {
+                        evaluateQuestionResult(questions.length - 1);
+                    }
+                } else {
+                    // Waiting for currentQuestionerId to write a question
+                    if (myPlayerId === currentQuestionerId) {
+                        questionInputArea.classList.remove('hidden');
+                        questionVotingArea.classList.add('hidden');
+                    } else {
+                        questionInputArea.classList.add('hidden');
+                        questionVotingArea.classList.remove('hidden');
+                        document.getElementById('current-questioner-name').innerText = players[currentQuestionerId]?.name || '誰か';
+                        document.getElementById('current-question-text').innerText = '質問を作成中...';
+                        document.getElementById('vote-buttons').classList.add('hidden');
+                        document.getElementById('voted-status').classList.add('hidden');
+                    }
+                }
+            }
+
+            // Render History Log
+            renderQuestionHistory(questions);
+        }
+
+        document.getElementById('btn-submit-question').onclick = async () => {
+            const input = document.getElementById('input-question-text');
+            const text = input.value.trim();
+            if (!text) return showAlert('質問本文を入力してください。');
+
+            const questions = currentGameData.questions || [];
+            questions.push({
+                questionerId: myPlayerId,
+                text: text,
+                status: 'VOTING',
+                votes: {}
+            });
+
+            await update(dbRef(`games/${currentRoomId}`), { questions: questions });
+            input.value = '';
+        };
+
+        // Attach vote button clicks
+        document.querySelectorAll('.btn-vote').forEach(btn => {
+            btn.onclick = async () => {
+                const voteValue = btn.getAttribute('data-vote');
+                const questions = currentGameData.questions || [];
+                const activeIndex = questions.length - 1;
+
+                if (activeIndex >= 0 && questions[activeIndex]) {
+                    if (!questions[activeIndex].votes) questions[activeIndex].votes = {};
+                    questions[activeIndex].votes[myPlayerId] = voteValue;
+
+                    await update(dbRef(`games/${currentRoomId}/questions/${activeIndex}`), {
+                        votes: questions[activeIndex].votes
+                    });
+                }
+            };
+        });
+
+        // Evaluate question penalties (4 vs 1 scenario)
+        async function evaluateQuestionResult(questionIndex) {
+            const questions = currentGameData.questions || [];
+            const q = questions[questionIndex];
+            if (!q || q.status === 'COMPLETED') return;
+
+            const votes = Object.values(q.votes || {});
+            const yesCount = votes.filter(v => v === 'yes').length;
+            const noCount = votes.filter(v => v === 'no').length;
+
+            let isPenalized = false;
+            // 1 person differed from everyone else (e.g., 4 vs 1 in a 5 player game)
+            if ((yesCount === 1 && noCount > 1) || (noCount === 1 && yesCount > 1)) {
+                isPenalized = true;
+            }
+
+            q.status = 'COMPLETED';
+            q.isPenalized = isPenalized;
+            q.yesCount = yesCount;
+            q.noCount = noCount;
+
+            // Apply penalty point if penalized
+            if (isPenalized) {
+                const questionerId = q.questionerId;
+                const currentPenalty = currentGameData.players[questionerId]?.questionPenalty || 0;
+                await update(dbRef(`games/${currentRoomId}/players/${questionerId}`), {
+                    questionPenalty: currentPenalty + 1
+                });
+            }
+
+            await update(dbRef(`games/${currentRoomId}/questions/${questionIndex}`), q);
+        }
+
+        function renderQuestionHistory(questions) {
+            const historyEl = document.getElementById('question-history');
+            historyEl.innerHTML = '';
+            const players = currentGameData.players || {};
+
+            if (!questions || questions.length === 0) {
+                historyEl.innerHTML = '<p class="text-xs text-slate-400">まだ質問はありません</p>';
+                return;
+            }
+
+            questions.forEach(q => {
+                if (q.status !== 'COMPLETED') return;
+                const item = document.createElement('div');
+                item.className = `p-3 rounded-lg border text-xs flex items-center justify-between ${q.isPenalized ? 'bg-rose-50 border-rose-200' : 'bg-slate-50 border-slate-200'}`;
+                item.innerHTML = `
+                    <div>
+                        <span class="font-bold text-slate-700">${players[q.questionerId]?.name}:</span>
+                        <span class="font-bold text-slate-900">「${q.text}」</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <span class="font-bold text-emerald-600">⭕ ${q.yesCount}</span>
+                        <span class="font-bold text-rose-600">❌ ${q.noCount}</span>
+                        ${q.isPenalized ? '<span class="bg-rose-600 text-white font-bold px-1.5 py-0.5 rounded text-[10px]">減点1</span>' : ''}
+                    </div>
+                `;
+                historyEl.appendChild(item);
+            });
+        }
+
+        document.getElementById('btn-finish-questions').onclick = async () => {
+            await update(dbRef(`games/${currentRoomId}`), { status: 'GUESSING' });
+        };
+
+        // 4. GUESSING VIEW
+        function renderGuessingView() {
+            const publicAnswers = currentGameData.publicAnswers || {};
+            const players = currentGameData.players || {};
+            const container = document.getElementById('guess-list-container');
+            container.innerHTML = '';
+
+            const myGuesses = (currentGameData.guesses || {})[myPlayerId] || {};
+
+            Object.values(publicAnswers).forEach(ans => {
+                const card = document.createElement('div');
+                card.className = "bg-slate-50 border border-slate-200 p-4 rounded-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3";
+                
+                let selectOptions = `<option value="">選択してください</option>`;
+                Object.entries(players).forEach(([pId, pData]) => {
+                    const isSelected = myGuesses[ans.id] === pId;
+                    selectOptions += `<option value="${pId}" ${isSelected ? 'selected' : ''}>${pData.name}</option>`;
+                });
+
+                card.innerHTML = `
+                    <div class="font-bold text-sm text-slate-800">
+                        <span class="text-indigo-600 font-black text-base mr-1">${ans.labelNumber}</span> ${ans.text}
+                    </div>
+                    <select data-ans-id="${ans.id}" class="guess-select p-2.5 bg-white border border-slate-300 rounded-lg text-sm font-bold text-slate-700 w-full sm:w-48">
+                        ${selectOptions}
+                    </select>
+                `;
+                container.appendChild(card);
+            });
+
+            const hasSubmitted = !!(currentGameData.guesses || {})[myPlayerId];
+            const submitBtn = document.getElementById('btn-submit-guesses');
+            const notice = document.getElementById('guess-submitted-notice');
+
+            if (hasSubmitted) {
+                submitBtn.classList.add('hidden');
+                notice.classList.remove('hidden');
+            } else {
+                submitBtn.classList.remove('hidden');
+                notice.classList.add('hidden');
+            }
+
+            // Host automatically evaluates results when ALL guesses are in
+            const guesses = currentGameData.guesses || {};
+            if (isHost && Object.keys(guesses).length === Object.keys(players).length && Object.keys(players).length > 0) {
+                evaluateRoundResults();
+            }
+        }
+
+        document.getElementById('btn-submit-guesses').onclick = async () => {
+            const selects = document.querySelectorAll('.guess-select');
+            const guessMap = {};
+            let allSelected = true;
+
+            selects.forEach(sel => {
+                const ansId = sel.getAttribute('data-ans-id');
+                const val = sel.value;
+                if (!val) allSelected = false;
+                guessMap[ansId] = val;
+            });
+
+            if (!allSelected) {
+                return showAlert('すべての回答に対して予想を選択してください。');
+            }
+
+            await set(dbRef(`games/${currentRoomId}/guesses/${myPlayerId}`), guessMap);
+        };
+
+        // Evaluate Guesses & Award Points
+        async function evaluateRoundResults() {
+            const publicAnswers = currentGameData.publicAnswers || {};
+            const players = currentGameData.players || {};
+            const guesses = currentGameData.guesses || {};
+
+            let allPlayersFullyCorrect = true;
+            const updatedPlayers = { ...players };
+
+            Object.keys(players).forEach(pId => {
+                const myGuessMap = guesses[pId] || {};
+                let roundCorrectCount = 0;
+                let otherAnswersCount = 0;
+
+                Object.values(publicAnswers).forEach(ans => {
+                    const actualAuthorId = ans.originalPlayerId;
+                    const guessedAuthorId = myGuessMap[ans.id];
+
+                    // Rules:
+                    // Correctly guessing someone else's answer -> +1
+                    // Correctly guessing own answer -> 0
+                    if (actualAuthorId !== pId) {
+                        otherAnswersCount++;
+                        if (guessedAuthorId === actualAuthorId) {
+                            roundCorrectCount++;
+                        }
+                    }
+                });
+
+                if (roundCorrectCount < otherAnswersCount) {
+                    allPlayersFullyCorrect = false; // Not fully identified
+                }
+
+                const prevCorrect = updatedPlayers[pId].correctCount || 0;
+                const penalty = updatedPlayers[pId].questionPenalty || 0;
+                const totalCorrect = prevCorrect + roundCorrectCount;
+
+                updatedPlayers[pId].correctCount = totalCorrect;
+                updatedPlayers[pId].lastRoundCorrect = roundCorrectCount;
+                updatedPlayers[pId].mvpScore = totalCorrect - penalty;
+            });
+
+            const nextStatus = allPlayersFullyCorrect ? 'CLEARED' : 'RESULT';
+
+            await update(dbRef(`games/${currentRoomId}`), {
+                players: updatedPlayers,
+                status: nextStatus
+            });
+        }
+
+        // 5. RESULT VIEW
+        function renderResultView() {
+            const badge = document.getElementById('result-status-badge');
+            const title = document.getElementById('result-title');
+
+            badge.className = "text-xs font-bold px-3 py-1 rounded-full bg-amber-100 text-amber-800";
+            badge.innerText = `ROUND ${currentGameData.round} 終了`;
+            title.innerText = "不正解が残っています！";
+            title.className = "text-2xl font-black text-slate-800";
+
+            renderRevelationAndRankings();
+
+            const hostControls = document.getElementById('host-next-controls');
+            const guestNotice = document.getElementById('guest-next-notice');
+
+            if (isHost) {
+                hostControls.classList.remove('hidden');
+                guestNotice.classList.add('hidden');
+            } else {
+                hostControls.classList.add('hidden');
+                guestNotice.classList.remove('hidden');
+            }
+        }
+
+        // 6. CLEARED VIEW
+        function renderClearedView() {
+            renderRevelationAndRankings();
+
+            const players = currentGameData.players || {};
+            const playerArray = Object.values(players);
+
+            // Sort by MVP score descending
+            playerArray.sort((a, b) => b.mvpScore - a.mvpScore);
+
+            const mvp = playerArray[0];
+            if (mvp) {
+                document.getElementById('mvp-name').innerText = `${mvp.name} さん`;
+                document.getElementById('mvp-score').innerText = `${mvp.mvpScore} pt`;
+                document.getElementById('mvp-correct').innerText = `${mvp.correctCount}`;
+                document.getElementById('mvp-penalty').innerText = `${mvp.questionPenalty}`;
+            }
+
+            const finalRankingList = document.getElementById('final-ranking-list');
+            finalRankingList.innerHTML = '';
+
+            playerArray.forEach((p, idx) => {
+                const row = document.createElement('div');
+                row.className = "p-3 bg-slate-50 border rounded-xl flex justify-between items-center font-bold text-sm";
+                row.innerHTML = `
+                    <div class="flex items-center gap-2">
+                        <span class="w-6 h-6 flex items-center justify-center bg-indigo-600 text-white rounded-full text-xs">${idx + 1}</span>
+                        <span>${p.name}</span>
+                    </div>
+                    <div class="text-indigo-700 font-black">${p.mvpScore} pt <span class="text-xs text-slate-400 font-normal">(正解:${p.correctCount} / 減点:${p.questionPenalty})</span></div>
+                `;
+                finalRankingList.appendChild(row);
+            });
+        }
+
+        function renderRevelationAndRankings() {
+            const publicAnswers = currentGameData.publicAnswers || {};
+            const players = currentGameData.players || {};
+            const myGuesses = (currentGameData.guesses || {})[myPlayerId] || {};
+
+            const revelationList = document.getElementById('revelation-list');
+            revelationList.innerHTML = '';
+
+            Object.values(publicAnswers).forEach(ans => {
+                const actualAuthor = players[ans.originalPlayerId]?.name || '不明';
+                const myGuessedAuthorId = myGuesses[ans.id];
+                const myGuessedAuthor = players[myGuessedAuthorId]?.name || '未選択';
+                const isCorrect = myGuessedAuthorId === ans.originalPlayerId;
+
+                const item = document.createElement('div');
+                item.className = "p-3 bg-slate-50 border rounded-xl space-y-1 text-sm";
+                item.innerHTML = `
+                    <div class="font-bold text-slate-800">
+                        <span class="text-indigo-600 font-black mr-1">${ans.labelNumber}</span> ${ans.text}
+                    </div>
+                    <div class="flex justify-between text-xs font-bold pt-1 border-t border-slate-200">
+                        <span class="text-emerald-700">正解: ${actualAuthor}</span>
+                        <span class="${isCorrect ? 'text-emerald-600' : 'text-rose-600'}">あなたの予想: ${myGuessedAuthor} ${isCorrect ? '⭕' : '❌'}</span>
+                    </div>
+                `;
+                revelationList.appendChild(item);
+            });
+
+            // Score Ranking List
+            const scoreRankingList = document.getElementById('score-ranking-list');
+            scoreRankingList.innerHTML = '';
+            const playerArray = Object.values(players);
+            playerArray.sort((a, b) => b.mvpScore - a.mvpScore);
+
+            playerArray.forEach((p, idx) => {
+                const row = document.createElement('div');
+                row.className = "p-2.5 bg-white border rounded-lg flex justify-between items-center text-xs font-bold";
+                row.innerHTML = `
+                    <span>${idx + 1}位: ${p.name}</span>
+                    <span class="text-indigo-600">${p.mvpScore} pt (累計正解: ${p.correctCount} / 減点: ${p.questionPenalty})</span>
+                `;
+                scoreRankingList.appendChild(row);
+            });
+        }
+
+        // Host Next Round Action
+        document.getElementById('btn-next-round').onclick = async () => {
+            const nextRound = (currentGameData.round || 1) + 1;
+            await update(dbRef(`games/${currentRoomId}`), {
+                round: nextRound,
+                status: 'LOBBY',
+                answers: null,
+                publicAnswers: null,
+                questions: null,
+                guesses: null
+            });
+        };
+
+        // Return to Lobby after clear
+        document.getElementById('btn-return-lobby').onclick = async () => {
+            if (isHost) {
+                await update(dbRef(`games/${currentRoomId}`), {
+                    round: 1,
+                    status: 'LOBBY',
+                    answers: null,
+                    publicAnswers: null,
+                    questions: null,
+                    guesses: null
+                });
+            }
+        };
+
+    </script>
+</body>
+</html>
