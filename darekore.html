@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>誰がこれでしょう？</title>
+  <title>ダレコレ？</title>
   <style>
     :root {
       --primary: #4a90e2;
@@ -284,7 +284,6 @@
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
     import { getDatabase, ref, set, get, update, onValue, off, remove, onDisconnect } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 
-    // ダミーのFirebase設定（環境に合わせて打ち替えてください）
     const firebaseConfig = {
       apiKey: "AIzaSyC4DQhH_swesAD98Xyjg8d1lcWEkkrHrgw",
       authDomain: "gamehistory-m84.firebaseapp.com",
@@ -310,7 +309,6 @@
     let currentGameRef = null;
     let currentListener = null;
 
-    // UUID生成補完
     function generateId() {
       return Math.random().toString(36).substring(2, 9);
     }
@@ -327,7 +325,6 @@
       if (roomIdInput) roomIdInput.value = currentGameId;
       if (playerNameInput) playerNameInput.value = myName;
 
-      // 自動再接続チェック
       if (currentGameId && myName) {
         autoReconnect();
       }
@@ -336,7 +333,6 @@
       setupGuideToggle();
     });
 
-    // ガイド表示切り替え
     function setupGuideToggle() {
       document.querySelectorAll('.guide-toggle').forEach(btn => {
         btn.addEventListener('click', () => {
@@ -346,7 +342,6 @@
       });
     }
 
-    // お題カテゴリトグル設定
     function setupCategoryToggles() {
       document.addEventListener('click', (e) => {
         if (e.target.classList.contains('topic-category-header')) {
@@ -360,7 +355,6 @@
       });
     }
 
-    // 部屋入室・接続
     async function joinRoom() {
       const room = roomIdInput.value.trim();
       const name = playerNameInput.value.trim();
@@ -380,7 +374,6 @@
       const gamePath = `dare/games/${currentGameId}`;
       currentGameRef = ref(db, gamePath);
 
-      // ゲームデータ初期作成または既存接続
       const snapshot = await get(currentGameRef);
       if (!snapshot.exists()) {
         isAdmin = true;
@@ -395,7 +388,6 @@
         });
       }
 
-      // プレイヤーノード登録・切断設定
       const playerRef = ref(db, `${gamePath}/players/${myPlayerId}`);
       await update(playerRef, {
         name: myName,
@@ -405,10 +397,7 @@
         joinedAt: Date.now()
       });
 
-      // 切断時の自動削除ルール設定
       onDisconnect(playerRef).remove();
-
-      // リスナー設定
       listenToGame();
 
       loginScreen.classList.add('hidden');
@@ -421,29 +410,42 @@
 
       currentListener = onValue(currentGameRef, (snapshot) => {
         if (!snapshot.exists()) {
-          // 部屋が削除された場合
           alert('部屋が解散されました。');
           leaveRoom(false);
           return;
         }
 
         currentGameData = snapshot.val();
+
+        // 【修正点】回答フェーズで全員の回答が揃ったかを判定し自動で質問フェーズへ遷移
+        if (currentGameData.status === 'ANSWERING') {
+          const playerIds = currentGameData.players ? Object.keys(currentGameData.players) : [];
+          const answers = currentGameData.answers ? currentGameData.answers : {};
+          const answeredPlayerIds = new Set(Object.values(answers).map(a => a.playerId));
+
+          if (playerIds.length > 0 && playerIds.every(id => answeredPlayerIds.has(id))) {
+            // ホスト（または先頭のプレイヤー）が代表してステータス更新を実行
+            if (playerIds[0] === myPlayerId) {
+              update(ref(db, `dare/games/${currentGameId}`), {
+                status: 'QUESTIONING'
+              });
+            }
+          }
+        }
+
         renderUI();
       });
     }
 
-    // 離脱処理
     async function leaveRoom(manual = true) {
       if (currentGameId && myPlayerId) {
         const gamePath = `dare/games/${currentGameId}`;
         const playerRef = ref(db, `${gamePath}/players/${myPlayerId}`);
-        
-        // 切断トリガー解除および自身ノード削除
+
         onDisconnect(playerRef).cancel();
         if (manual) {
           await remove(playerRef);
 
-          // 最後の1人の場合、部屋ごと削除
           const playersSnap = await get(ref(db, `${gamePath}/players`));
           if (!playersSnap.exists() || Object.keys(playersSnap.val()).length === 0) {
             await remove(ref(db, gamePath));
@@ -472,21 +474,18 @@
       }
     }
 
-    // 画面状態の描画制御 (State Sync)
     function renderUI() {
       if (!currentGameData) return;
 
       const { status, round, answerMode, topic, players, answers, questions, guesses } = currentGameData;
       const playerList = players ? Object.keys(players) : [];
-      
-      // 管理者判定 (最初に作成した人、または一覧の先頭)
+
       isAdmin = playerList[0] === myPlayerId;
 
       document.getElementById('disp-room-id').textContent = currentGameId;
       document.getElementById('disp-my-name').textContent = myName;
       document.getElementById('disp-round').textContent = round || 1;
 
-      // 参加者一覧表示
       const playersUl = document.getElementById('player-list-ul');
       playersUl.innerHTML = '';
       playerList.forEach(id => {
@@ -497,7 +496,6 @@
         playersUl.appendChild(li);
       });
 
-      // 管理者エリア表示制御
       const adminArea = document.getElementById('admin-area');
       if (isAdmin) {
         adminArea.classList.remove('hidden');
@@ -505,12 +503,10 @@
         adminArea.classList.add('hidden');
       }
 
-      // 出題順（回答方法・お題決定権）の計算
       const pickerIndex = (currentGameData.currentPickerIndex || 0) % playerList.length;
       const currentPickerId = playerList[pickerIndex];
       const isMyTurnToPick = (currentPickerId === myPlayerId);
 
-      // ビューコンテナ切り替え
       hideAllSections();
 
       if (status === 'LOBBY') {
@@ -548,7 +544,6 @@
       else if (status === 'QUESTIONING') {
         document.getElementById('sec-questioning').classList.remove('hidden');
 
-        // 質問担当者
         const qIndex = (currentGameData.currentQuestionerIndex || 0) % playerList.length;
         const currentQuestionerId = playerList[qIndex];
         const isMyQuestion = currentQuestionerId === myPlayerId;
@@ -561,7 +556,6 @@
         const qWaitForm = document.getElementById('q-wait-form');
 
         if (!currentQ || !currentQ.text) {
-          // 質問入力待ち
           if (isMyQuestion) {
             qInputForm.classList.remove('hidden');
             qAnswerForm.classList.add('hidden');
@@ -573,7 +567,6 @@
             document.getElementById('wait-msg').textContent = `${players[currentQuestionerId]?.name} さんの質問入力を待っています...`;
           }
         } else {
-          // 質問に対する回答フェーズ
           qInputForm.classList.add('hidden');
           document.getElementById('active-question-text').textContent = currentQ.text;
 
@@ -630,9 +623,6 @@
       });
     }
 
-    // --- 各フェーズの処理用関数 ---
-
-    // お題決定
     async function submitTopic() {
       const mode = document.getElementById('answer-mode-select').value;
       const topic = document.getElementById('topic-input').value.trim();
@@ -649,7 +639,6 @@
       });
     }
 
-    // 回答送信
     async function submitAnswer() {
       const text = document.getElementById('answer-input').value.trim();
       if (!text) {
@@ -670,7 +659,6 @@
       btn.disabled = false;
     }
 
-    // 質問送信
     async function submitQuestion() {
       const qText = document.getElementById('q-input').value.trim();
       if (!qText) {
@@ -686,7 +674,6 @@
       document.getElementById('q-input').value = '';
     }
 
-    // 質問への回答（Yes/No）
     async function answerQuestion(val) {
       const qIndex = (currentGameData.currentQuestionerIndex || 0) % Object.keys(currentGameData.players).length;
       const currentQuestionerId = Object.keys(currentGameData.players)[qIndex];
@@ -694,7 +681,6 @@
       await set(ref(db, `dare/games/${currentGameId}/questions/${currentQuestionerId}/answers/${myPlayerId}`), val);
     }
 
-    // 推理送信
     async function submitGuesses() {
       const selects = document.querySelectorAll('#guess-list-container select');
       const myGuesses = {};
@@ -716,14 +702,12 @@
       alert('予想を保存しました。全員の完了を待ちます。');
     }
 
-    // 結果表示ロジック
     function renderResults() {
       const { players, answers, questions, guesses } = currentGameData;
       const playerList = Object.keys(players);
       const resContainer = document.getElementById('result-detail-container');
       resContainer.innerHTML = '';
 
-      // 各回答の答え合わせ
       let html = '<h3>【答え合わせ】</h3><ul class="list-group" style="margin-bottom:16px;">';
       if (answers) {
         Object.keys(answers).forEach((ansId, idx) => {
@@ -734,7 +718,6 @@
       }
       html += '</ul>';
 
-      // ランキングスコア計算結果
       html += '<h3>【現在のスコア・MVPランキング】</h3>';
       html += `
         <table class="score-table">
@@ -750,7 +733,6 @@
           <tbody>
       `;
 
-      // スコア計算・整列
       const scores = playerList.map(pId => {
         const p = players[pId];
         const correct = p.correctCount || 0;
@@ -777,7 +759,6 @@
       resContainer.innerHTML = html;
     }
 
-    // --- 管理者制御フェーズ切り替え ---
     async function adminStartTopicSetting() {
       await update(ref(db, `dare/games/${currentGameId}`), {
         status: 'SETTING_TOPIC'
@@ -795,7 +776,6 @@
       let nextIndex = (currentGameData.currentQuestionerIndex || 0) + 1;
 
       if (nextIndex >= playerList.length) {
-        // 全員の質問完了 → 質問減点計算＆推理フェーズへ
         await calculateQuestionPenalties();
         await update(ref(db, `dare/games/${currentGameId}`), {
           status: 'GUESSING'
@@ -807,14 +787,13 @@
       }
     }
 
-    // 質問減点判定（4対1等、1人だけ浮いた結果の質問者に-1）
     async function calculateQuestionPenalties() {
       const { questions, players } = currentGameData;
       if (!questions) return;
 
       const playerIds = Object.keys(players);
       const N = playerIds.length;
-      if (N < 3) return; // 3人未満は偏り減点判定を行わない
+      if (N < 3) return;
 
       const newPlayers = { ...players };
 
@@ -830,7 +809,6 @@
           if (val === 'no') noCount++;
         });
 
-        // 1人だけ異なる場合 (例: N-1 vs 1)
         if ((yesCount === 1 && noCount === N - 1) || (noCount === 1 && yesCount === N - 1)) {
           newPlayers[qAuthorId].questionPenalty = (newPlayers[qAuthorId].questionPenalty || 0) + 1;
         }
@@ -859,7 +837,6 @@
 
             if (actualAuthor !== pId) {
               otherAnswerCount++;
-              // 他人の回答を正しく当てた場合のみ+1
               if (actualAuthor === guessedAuthor) {
                 roundCorrect++;
               }
@@ -869,7 +846,6 @@
 
         newPlayers[pId].correctCount = (newPlayers[pId].correctCount || 0) + roundCorrect;
 
-        // 他人の回答を全て正解できたか判定
         if (roundCorrect < otherAnswerCount) {
           allPerfect = false;
         }
@@ -887,7 +863,6 @@
       const playerList = Object.keys(currentGameData.players);
       const nextPicker = ((currentGameData.currentPickerIndex || 0) + 1) % playerList.length;
 
-      // ラウンド初期化
       await update(ref(db, `dare/games/${currentGameId}`), {
         round: (currentGameData.round || 1) + 1,
         status: 'SETTING_TOPIC',
@@ -900,7 +875,6 @@
       });
     }
 
-    // イベントリスナーの割り当て
     window.joinRoom = joinRoom;
     window.leaveRoom = leaveRoom;
     window.submitTopic = submitTopic;
@@ -919,7 +893,7 @@
 <body>
 
   <header>
-    <h1>誰がこれでしょう？</h1>
+    <h1>ダレコレ？</h1>
   </header>
 
   <!-- ログイン・参加画面 -->
