@@ -223,25 +223,14 @@
       text-shadow: 0 0 10px rgba(255,255,136,0.5);
     }
 
-    /* マス目入力（音楽） */
-    .square-input-container {
-      display: flex;
-      justify-content: center;
-      gap: 10px;
+    /* 音楽の英字入力欄 */
+    .music-answer {
+      width: 80%;
+      max-width: 400px;
+      font-size: 1.8rem !important;
+      letter-spacing: 4px;
+      text-transform: uppercase;
       margin: 25px 0;
-    }
-
-    .square-char {
-      width: 60px;
-      height: 60px;
-      border: 2px solid #fff;
-      background: transparent;
-      color: #fff;
-      font-size: 1.8rem;
-      text-align: center;
-      line-height: 60px;
-      font-family: 'Yuji Syuku', serif;
-      border-radius: 4px;
     }
 
     /* アナウンス枠 */
@@ -346,14 +335,15 @@
       <div id="phase4" class="phase">
         <div class="instruction" id="music-instruction">最終問題：音楽</div>
         <div>残り解答回数: <span id="attempts-left" style="color:#ffff88; font-weight:bold;">3</span> 回</div>
-        
-        <div class="square-input-container">
-          <input type="text" class="square-char" id="m1">
-          <input type="text" class="square-char" id="m2">
-          <input type="text" class="square-char" id="m3">
-          <input type="text" class="square-char" id="m4">
-          <input type="text" class="square-char" id="m5">
-        </div>
+
+        <input
+          type="text"
+          class="music-answer"
+          id="music-answer"
+          placeholder="GRADUATE"
+          autocomplete="off"
+          autocapitalize="characters"
+        >
 
         <button class="btn" onclick="checkMusic()">解答を提出</button>
       </div>
@@ -379,7 +369,16 @@
 
   <script>
     // --- ゲーム状態管理 ---
-    const CORRECT_ANSWER = "答え"; // テスト用の共通正解コード
+
+    // 各教科の正解設定
+    // 問題の正解が決まったら、各値を変更してください。
+    const SUBJECT_ANSWERS = {
+      japanese: "国語",
+      society: "社会",
+      math: "算数",
+      science: "理科",
+      english: "英語"
+    };
 
     let phase1Cleared = { japanese: false, society: false, math: false };
     let phase3Cleared = { science: false, english: false };
@@ -428,7 +427,7 @@
     // 画面遷移コントロール
     function goToPhase(phaseNum) {
       document.querySelectorAll('.phase').forEach(p => p.classList.remove('active'));
-      
+
       if (phaseNum === 'clear') {
         document.getElementById('phase-clear').classList.add('active');
         return;
@@ -445,15 +444,16 @@
         speak("3教科クリア。Webに表示された番号で箱を開けなさい。");
       } else if (phaseNum === 4) {
         speak("すべての答案が揃いました。採点済みの問題用紙を返却します。音楽の解答を入力してください。");
-        // 音楽フェーズに移ったら最初の入力欄にフォーカス
-        setTimeout(() => document.getElementById('m1').focus(), 300);
+        // 音楽フェーズに移ったら入力欄にフォーカス
+        setTimeout(() => document.getElementById('music-answer').focus(), 300);
       }
     }
 
     // PHASE 1 判定
     function checkPhase1(subject) {
       const val = document.getElementById(`input-${subject}`).value.trim();
-      if (val === CORRECT_ANSWER) {
+
+      if (val === SUBJECT_ANSWERS[subject]) {
         phase1Cleared[subject] = true;
         document.getElementById(`card-${subject}`).classList.add('cleared');
         document.getElementById(`status-${subject}`).innerText = "✓ クリア";
@@ -470,7 +470,8 @@
     // PHASE 3 判定
     function checkPhase3(subject) {
       const val = document.getElementById(`input-${subject}`).value.trim();
-      if (val === CORRECT_ANSWER) {
+
+      if (val === SUBJECT_ANSWERS[subject]) {
         phase3Cleared[subject] = true;
         document.getElementById(`card-${subject}`).classList.add('cleared');
         document.getElementById(`status-${subject}`).innerText = "✓ クリア";
@@ -486,17 +487,10 @@
 
     // PHASE 4 (音楽) 判定
     function checkMusic() {
-      const chars = [
-        document.getElementById('m1').value.trim(),
-        document.getElementById('m2').value.trim(),
-        document.getElementById('m3').value.trim(),
-        document.getElementById('m4').value.trim(),
-        document.getElementById('m5').value.trim()
-      ];
-      const answer = chars.join('');
+      const answer = document.getElementById('music-answer').value.trim();
 
-      // 「答え」または「答え○○○」のように頭に「答え」が入っていればクリア（テスト用）
-      if (answer === CORRECT_ANSWER || answer.startsWith(CORRECT_ANSWER)) {
+      // 大文字の「GRADUATE」が完全一致した場合にクリア
+      if (answer === "GRADUATE") {
         clearInterval(timerInterval);
         goToPhase('clear');
         speak("正解です。おめでとうございます、卒業です！");
@@ -516,7 +510,7 @@
           document.getElementById('board').classList.add('reexam-mode');
           document.getElementById('music-instruction').classList.add('reexam-title');
           document.getElementById('music-instruction').innerText = "追試：ラストチャンス";
-          
+
           speak("残り回数がゼロになりました。最終ヒント：五文字の卒業ソングです。追試を一回だけ受けられます。");
         }
       } else {
@@ -531,50 +525,6 @@
       const names = { japanese: "国語", society: "社会", math: "算数", science: "理科", english: "英語" };
       return names[sub] || "";
     }
-
-    // --- 漢字変換（IME）に対応したマス目フォーカス制御 ---
-    const squareInputs = document.querySelectorAll('.square-char');
-
-    squareInputs.forEach((input, index) => {
-      let isComposing = false; // IMEで日本語変換中かどうかを管理するフラグ
-
-      // 変換開始
-      input.addEventListener('compositionstart', () => {
-        isComposing = true;
-      });
-
-      // 変換確定
-      input.addEventListener('compositionend', () => {
-        isComposing = false;
-        // 確定後、入力が入っていれば次のマスへ移動
-        if (input.value.length >= 1 && index < squareInputs.length - 1) {
-          // 2文字以上入った場合は最初の1文字だけ残す
-          if (input.value.length > 1) {
-            input.value = input.value.charAt(0);
-          }
-          squareInputs[index + 1].focus();
-        }
-      });
-
-      // 通常入力・直接入力時の挙動
-      input.addEventListener('input', () => {
-        if (!isComposing && input.value.length >= 1) {
-          if (input.value.length > 1) {
-            input.value = input.value.charAt(0);
-          }
-          if (index < squareInputs.length - 1) {
-            squareInputs[index + 1].focus();
-          }
-        }
-      });
-
-      // Backspaceで前のマスに戻る制御
-      input.addEventListener('keydown', (e) => {
-        if (e.key === 'Backspace' && input.value === '' && index > 0) {
-          squareInputs[index - 1].focus();
-        }
-      });
-    });
   </script>
 </body>
-</html>
+  </html>
