@@ -307,7 +307,7 @@
       <!-- PHASE 2: 鍵番号表示 -->
       <div id="phase2" class="phase">
         <div class="instruction">3教科クリア。理科と英語の暗号問題を答えよ</div>
-        <div class="key-display">4 7 2 9</div>
+        <div class="key-display">7 7 7</div>
         <div class="instruction" style="font-size: 1.1rem;">「理科」「英語」の問題用紙に挑戦して下さい。</div>
         <button class="btn" style="margin-top: 20px;" onclick="goToPhase(3)">理科・英語の解答へ進む</button>
       </div>
@@ -373,11 +373,11 @@
     // 各教科の正解設定
     // 問題の正解が決まったら、各値を変更してください。
     const SUBJECT_ANSWERS = {
-      japanese: "国語",
-      society: "社会",
-      math: "算数",
-      science: "理科",
-      english: "英語"
+      japanese: "1342",
+      society: "817",
+      math: "5541",
+      science: "海月",
+      english: "DIAGONAL"
     };
 
     let phase1Cleared = { japanese: false, society: false, math: false };
@@ -441,7 +441,7 @@
       if (nextPhase) nextPhase.classList.add('active');
 
       if (phaseNum === 2) {
-        speak("3教科クリア。Webに表示された番号で箱を開けなさい。");
+        speak("3教科クリア。");
       } else if (phaseNum === 4) {
         speak("すべての答案が揃いました。採点済みの問題用紙を返却します。音楽の解答を入力してください。");
         // 音楽フェーズに移ったら入力欄にフォーカス
@@ -493,7 +493,7 @@
       if (answer === "GRADUATE") {
         clearInterval(timerInterval);
         goToPhase('clear');
-        speak("正解です。おめでとうございます、卒業です！");
+        speak("正解です。おめでとうございます、無事卒業です！");
         return;
       }
 
