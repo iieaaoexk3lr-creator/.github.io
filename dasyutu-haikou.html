@@ -16,7 +16,7 @@
 
     body {
       background-color: #1b382b;
-      background-image: 
+      background-image:
         radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.05) 0%, transparent 80%),
         linear-gradient(rgba(0, 0, 0, 0.2), rgba(0, 0, 0, 0.2));
       color: #f0f0f0;
@@ -214,7 +214,7 @@
       border-color: #ffff88;
     }
 
-    /* 金庫番号表現 */
+    /* 金庫番号表現のスタイルは既存設定を維持 */
     .key-display {
       font-size: 3.5rem;
       color: #ffff88;
@@ -247,6 +247,7 @@
     .reexam-mode {
       border-color: #ff4444 !important;
     }
+
     .reexam-title {
       color: #ff4444;
       font-size: 2rem;
@@ -274,14 +275,14 @@
       <!-- PHASE 0: スタート待ち -->
       <div id="phase0" class="phase active">
         <div class="start-container">
-          <div class="instruction">準備ができたらボタンを押して試験を開始してください。</div>
+          <div class="instruction">準備ができたら、ボタンを押して試験を始めましょう。</div>
           <button class="btn-start" onclick="startGame()">卒業試験開始</button>
         </div>
       </div>
 
-      <!-- PHASE 1: 最初 3教科 -->
+      <!-- PHASE 1: 最初の3教科 -->
       <div id="phase1" class="phase">
-        <div class="instruction">机の上の問題用紙を解き、答えを入力せよ。</div>
+        <div class="instruction">机の上の問題用紙を解いて、答えを入力してみてください。</div>
         <div class="subjects-grid">
           <div class="subject-card" id="card-japanese">
             <div class="subject-title">国語</div>
@@ -304,17 +305,26 @@
         </div>
       </div>
 
-      <!-- PHASE 2: 鍵番号表示 -->
+      <!-- PHASE 2: 理科・英語のヒント表示 -->
       <div id="phase2" class="phase">
-        <div class="instruction">3教科クリア。理科と英語の暗号問題を答えよ</div>
-        <div class="key-display">7 7 7</div>
-        <div class="instruction" style="font-size: 1.1rem;">「理科」「英語」の問題用紙に挑戦して下さい。</div>
+        <div class="instruction">3教科クリアです。続いて、理科と英語のヒントを確認してみましょう。</div>
+
+        <div class="subject-card" style="width: 100%; max-width: 600px; margin: 0 auto 20px;">
+          <div class="subject-title">理科のヒント「 Q1の一文字目は日、Q3の一文字目は木 」/div>
+          <div id="hint-science" style="white-space: pre-wrap; line-height: 1.8;"></div>
+        </div>
+
+        <div class="subject-card" style="width: 100%; max-width: 600px; margin: 0 auto 20px;">
+          <div class="subject-title">英語のヒント「 解答欄の最初の二文字はDとI」/div>
+          <div id="hint-english" style="white-space: pre-wrap; line-height: 1.8;"></div>
+        </div>
+
         <button class="btn" style="margin-top: 20px;" onclick="goToPhase(3)">理科・英語の解答へ進む</button>
       </div>
 
       <!-- PHASE 3: 理科・英語 -->
       <div id="phase3" class="phase">
-        <div class="instruction">問題の答えを入力せよ。</div>
+        <div class="instruction">問題の答えを入力してみてください。</div>
         <div class="subjects-grid">
           <div class="subject-card" id="card-science">
             <div class="subject-title">理科</div>
@@ -351,19 +361,19 @@
       <!-- GAME CLEAR -->
       <div id="phase-clear" class="phase">
         <div class="instruction" style="font-size: 2.5rem; color: #88ff88;">卒業おめでとう</div>
-        <p style="margin-top: 15px; font-size: 1.2rem;">全ての教科を収め、無事に脱出（卒業）しました。</p>
+        <p style="margin-top: 15px; font-size: 1.2rem;">全ての教科を修了し、無事に脱出（卒業）できました。</p>
       </div>
 
       <!-- GAME OVER -->
       <div id="phase-over" class="phase">
         <div class="instruction" style="font-size: 2.5rem; color: #ff5555;">留年確定</div>
-        <p style="margin-top: 15px; font-size: 1.2rem;">時間切れです。もう一度やり直してください。</p>
+        <p style="margin-top: 15px; font-size: 1.2rem;">時間切れです。もう一度挑戦してみてください。</p>
       </div>
     </div>
 
     <!-- 音声読み上げ同期テキスト表示欄 -->
     <div class="announcement" id="announcement">
-      🔊 システム：ボタンを押して試験を開始してください。
+      🔊 システム：ボタンを押して試験を始めてください。
     </div>
   </div>
 
@@ -371,13 +381,21 @@
     // --- ゲーム状態管理 ---
 
     // 各教科の正解設定
-    // 問題の正解が決まったら、各値を変更してください。
+    // 問題の正解が変わったら、各値を変更してください。
     const SUBJECT_ANSWERS = {
       japanese: "1342",
       society: "817",
       math: "5541",
       science: "海月",
       english: "DIAGONAL"
+    };
+
+    // 理科・英語のヒント設定
+    // 表示したい文章を自由に編集できます。
+    // 改行したい場合は、文字列内で \n を使用してください。
+    const SUBJECT_HINTS = {
+      science: "ここに理科のヒントを入力",
+      english: "ここに英語のヒントを入力"
     };
 
     let phase1Cleared = { japanese: false, society: false, math: false };
@@ -405,7 +423,7 @@
     function startGame() {
       goToPhase(1);
       startTimer();
-      speak("卒業試験を開始します。まずは国語、社会、算数の3教科を解きなさい。");
+      speak("卒業試験を開始します。まずは国語、社会、算数の3教科に取り組んでみてください。");
     }
 
     // タイマー開始
@@ -441,9 +459,11 @@
       if (nextPhase) nextPhase.classList.add('active');
 
       if (phaseNum === 2) {
-        speak("3教科クリア。");
+        document.getElementById('hint-science').textContent = SUBJECT_HINTS.science;
+        document.getElementById('hint-english').textContent = SUBJECT_HINTS.english;
+        speak("3教科クリアです。理科と英語のヒントを確認してみてください。");
       } else if (phaseNum === 4) {
-        speak("すべての答案が揃いました。採点済みの問題用紙を返却します。音楽の解答を入力してください。");
+        speak("すべての答案が揃いました。採点済みの問題用紙を返却します。音楽の答えを入力してみてください。");
         // 音楽フェーズに移ったら入力欄にフォーカス
         setTimeout(() => document.getElementById('music-answer').focus(), 300);
       }
@@ -457,13 +477,13 @@
         phase1Cleared[subject] = true;
         document.getElementById(`card-${subject}`).classList.add('cleared');
         document.getElementById(`status-${subject}`).innerText = "✓ クリア";
-        speak(`${getSubjectName(subject)}、正解。`);
+        speak(`${getSubjectName(subject)}、正解です。`);
 
         if (phase1Cleared.japanese && phase1Cleared.society && phase1Cleared.math) {
           setTimeout(() => goToPhase(2), 1000);
         }
       } else {
-        speak(`${getSubjectName(subject)}、不正解。`);
+        speak(`${getSubjectName(subject)}、残念ながら不正解です。もう一度考えてみてください。`);
       }
     }
 
@@ -475,13 +495,13 @@
         phase3Cleared[subject] = true;
         document.getElementById(`card-${subject}`).classList.add('cleared');
         document.getElementById(`status-${subject}`).innerText = "✓ クリア";
-        speak(`${getSubjectName(subject)}、正解。`);
+        speak(`${getSubjectName(subject)}、正解です。`);
 
         if (phase3Cleared.science && phase3Cleared.english) {
           setTimeout(() => goToPhase(4), 1000);
         }
       } else {
-        speak(`${getSubjectName(subject)}、不正解。`);
+        speak(`${getSubjectName(subject)}、残念ながら不正解です。もう一度考えてみてください。`);
       }
     }
 
@@ -503,7 +523,7 @@
         document.getElementById('attempts-left').innerText = musicAttemptsLeft;
 
         if (musicAttemptsLeft > 0) {
-          speak(`不正解。残り${musicAttemptsLeft}回。`);
+          speak(`残念ながら不正解です。残りの解答回数は${musicAttemptsLeft}回です。`);
         } else {
           // 3回失敗 -> 追試モードへ
           isReexam = true;
@@ -511,13 +531,13 @@
           document.getElementById('music-instruction').classList.add('reexam-title');
           document.getElementById('music-instruction').innerText = "追試：ラストチャンス";
 
-          speak("残り回数がゼロになりました。最終ヒント：五文字の卒業ソングです。追試を一回だけ受けられます。");
+          speak("解答回数がゼロになりました。最終ヒントは「五文字の卒業ソングです」。追試に一回だけ挑戦できます。");
         }
       } else {
         // 追試も失敗
         clearInterval(timerInterval);
         goToPhase('over');
-        speak("追試不合格。留年が確定しました。");
+        speak("残念ながら追試は不合格です。留年が確定しました。");
       }
     }
 
