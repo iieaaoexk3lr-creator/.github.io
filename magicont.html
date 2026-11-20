@@ -1,0 +1,1221 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>予言トランプ | Assistant</title>
+
+<style>
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: #10131b;
+  color: #fff;
+  font-family: Arial, "Noto Sans JP", sans-serif;
+  overflow: hidden;
+}
+
+button {
+  border: none;
+  border-radius: 9px;
+  padding: 11px 15px;
+  background: #3478f6;
+  color: white;
+  font-weight: bold;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+button:disabled {
+  opacity: .35;
+  cursor: not-allowed;
+}
+
+.hidden {
+  display: none !important;
+}
+
+#app {
+  width: 100%;
+  height: 100dvh;
+  padding: 9px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.title {
+  font-size: 16px;
+  font-weight: bold;
+}
+
+.connection {
+  font-size: 11px;
+  color: #8db9ff;
+}
+
+.connection.error {
+  color: #ff7777;
+}
+
+.mode-buttons {
+  display: flex;
+  gap: 6px;
+}
+
+.mode-buttons button {
+  background: #38465c;
+  padding: 9px 13px;
+}
+
+.mode-buttons button.active {
+  background: #3478f6;
+}
+
+.main {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  gap: 9px;
+}
+
+/* 撮影画面 */
+
+.camera-area {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  position: relative;
+  background: #050608;
+  border-radius: 12px;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#cameraVideo {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.camera-placeholder {
+  position: absolute;
+  text-align: center;
+  color: #8490a3;
+  pointer-events: none;
+}
+
+.camera-placeholder .camera-icon {
+  font-size: 42px;
+  margin-bottom: 8px;
+}
+
+.record-indicator {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  padding: 7px 11px;
+  background: #151515dd;
+  border-radius: 20px;
+  font-size: 12px;
+  color: #bbb;
+}
+
+.record-indicator.recording {
+  color: #ff5555;
+}
+
+.camera-controls {
+  position: absolute;
+  bottom: 10px;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.camera-controls button {
+  padding: 10px 14px;
+}
+
+.red-button {
+  background: #bd3434;
+}
+
+.gray-button {
+  background: #46536a;
+}
+
+/* カード操作画面 */
+
+.selector-area {
+  width: 245px;
+  min-width: 210px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 0;
+}
+
+.current-card,
+.selected-preview {
+  background: #202633;
+  border-radius: 10px;
+  padding: 10px 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+}
+
+.small-label {
+  font-size: 11px;
+  color: #9ca8ba;
+}
+
+.card-value {
+  font-size: 25px;
+  font-weight: bold;
+}
+
+.red {
+  color: #ff626e;
+}
+
+.black {
+  color: #fff;
+}
+
+.selector-panel {
+  background: #202633;
+  border-radius: 10px;
+  padding: 10px;
+  overflow-y: auto;
+  flex: 1;
+  min-height: 0;
+}
+
+.section-title {
+  font-size: 12px;
+  color: #aab6c8;
+  margin-bottom: 7px;
+}
+
+.suits {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 5px;
+}
+
+.ranks {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 5px;
+}
+
+.select-btn {
+  padding: 10px 2px;
+  border: 2px solid transparent;
+  border-radius: 7px;
+  background: #343e50;
+  font-size: 17px;
+}
+
+.select-btn.selected {
+  border-color: #61a1ff;
+  background: #244b80;
+}
+
+.select-btn:disabled {
+  opacity: .2;
+}
+
+.select-btn.joker {
+  font-size: 11px;
+}
+
+.selected-preview {
+  min-height: 62px;
+}
+
+.selected-preview button {
+  min-width: 80px;
+}
+
+.bottom-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 11px;
+  color: #9ca8ba;
+  flex-shrink: 0;
+}
+
+#recordStatus.recording {
+  color: #ff626e;
+}
+
+/* 縦持ち時の対応 */
+
+@media (orientation: portrait) {
+  .main {
+    flex-direction: column;
+  }
+
+  .camera-area {
+    flex: 1;
+    min-height: 0;
+  }
+
+  .selector-area {
+    width: 100%;
+    min-width: 0;
+    height: 48%;
+    flex-shrink: 0;
+  }
+
+  .suits {
+    grid-template-columns: repeat(5, 1fr);
+  }
+}
+
+@media (max-height: 450px) and (orientation: landscape) {
+  #app {
+    padding: 5px;
+    gap: 5px;
+  }
+
+  .selector-area {
+    width: 220px;
+  }
+
+  .selector-panel {
+    padding: 7px;
+  }
+
+  .select-btn {
+    padding: 6px 2px;
+    font-size: 14px;
+  }
+
+  .current-card,
+  .selected-preview {
+    padding: 6px 9px;
+  }
+
+  .card-value {
+    font-size: 21px;
+  }
+
+  .camera-controls button {
+    padding: 7px 11px;
+  }
+}
+</style>
+</head>
+
+<body>
+
+<div id="app">
+
+  <!-- ヘッダー -->
+  <header class="topbar">
+    <div>
+      <div class="title">予言トランプ / ASSISTANT</div>
+      <div class="connection" id="connectionStatus">
+        Firebase接続中...
+      </div>
+    </div>
+
+    <div class="mode-buttons">
+      <button id="cameraModeButton" class="active">
+        撮影画面
+      </button>
+      <button id="cardModeButton">
+        カード操作
+      </button>
+    </div>
+  </header>
+
+  <!-- メイン -->
+  <main class="main">
+
+    <!-- 撮影画面 -->
+    <section class="camera-area" id="cameraArea">
+
+      <video
+        id="cameraVideo"
+        autoplay
+        muted
+        playsinline>
+      </video>
+
+      <div class="camera-placeholder" id="cameraPlaceholder">
+        <div class="camera-icon">▣</div>
+        <div>カメラを起動してください</div>
+      </div>
+
+      <div class="record-indicator" id="recordIndicator">
+        ● STANDBY
+      </div>
+
+      <div class="camera-controls">
+        <button id="cameraStartButton">
+          カメラ起動
+        </button>
+
+        <button id="recordStartButton" disabled>
+          ● 録画開始
+        </button>
+
+        <button id="recordStopButton" class="red-button" disabled>
+          ■ 録画停止
+        </button>
+      </div>
+
+    </section>
+
+    <!-- カード操作画面 -->
+    <section class="selector-area hidden" id="selectorArea">
+
+      <!-- 現在Firebaseに登録されているカード -->
+      <div class="current-card">
+        <div>
+          <div class="small-label">現在のカード</div>
+          <div class="small-label">Firebase登録済み</div>
+        </div>
+        <div class="card-value" id="currentCardDisplay">
+          --
+        </div>
+      </div>
+
+      <!-- カード選択 -->
+      <div class="selector-panel">
+
+        <div class="section-title">
+          マークを選択
+        </div>
+
+        <div class="suits">
+
+          <button class="select-btn red"
+            data-suit="H">♥</button>
+
+          <button class="select-btn black"
+            data-suit="S">♠</button>
+
+          <button class="select-btn black"
+            data-suit="C">♣</button>
+
+          <button class="select-btn red"
+            data-suit="D">♦</button>
+
+          <button class="select-btn joker"
+            data-suit="JOKER">JOKER</button>
+
+        </div>
+
+        <div class="section-title" style="margin-top:16px">
+          数字を選択
+        </div>
+
+        <div class="ranks">
+
+          <button class="select-btn" data-rank="1">A</button>
+          <button class="select-btn" data-rank="2">2</button>
+          <button class="select-btn" data-rank="3">3</button>
+          <button class="select-btn" data-rank="4">4</button>
+          <button class="select-btn" data-rank="5">5</button>
+          <button class="select-btn" data-rank="6">6</button>
+          <button class="select-btn" data-rank="7">7</button>
+          <button class="select-btn" data-rank="8">8</button>
+          <button class="select-btn" data-rank="9">9</button>
+          <button class="select-btn" data-rank="10">10</button>
+          <button class="select-btn" data-rank="11">J</button>
+          <button class="select-btn" data-rank="12">Q</button>
+          <button class="select-btn" data-rank="13">K</button>
+
+        </div>
+
+      </div>
+
+      <!-- 送信予定カード -->
+      <div class="selected-preview">
+
+        <div>
+          <div class="small-label">送信予定カード</div>
+          <div class="card-value" id="selectedCardDisplay">
+            ♥7
+          </div>
+        </div>
+
+        <button id="sendButton" disabled>
+          送信
+        </button>
+
+      </div>
+
+    </section>
+
+  </main>
+
+  <!-- フッター -->
+  <footer class="bottom-info">
+    <span id="recordStatus">録画していません</span>
+    <span id="syncStatus">MAGI / SYNC</span>
+  </footer>
+
+</div>
+
+<script type="module">
+
+// ==========================================
+// 1. Firebase SDK
+// ==========================================
+
+import { initializeApp }
+  from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
+
+import {
+  getDatabase,
+  ref,
+  get,
+  set,
+  update,
+  onValue,
+  runTransaction
+} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-database.js";
+
+
+// ==========================================
+// 2. Firebase設定
+// ==========================================
+
+const firebaseConfig = {
+  apiKey: "AIzaSyC4DQhH_swesAD98Xyjg8d1lcWEkkrHrgw",
+  authDomain: "gamehistory-m84.firebaseapp.com",
+  databaseURL: "https://gamehistory-m84-default-rtdb.firebaseio.com",
+  projectId: "gamehistory-m84",
+  storageBucket: "gamehistory-m84.firebasestorage.app",
+  messagingSenderId: "475761727837",
+  appId: "1:475761727837:web:06d07e1ab4120a7ccaf0b4",
+  measurementId: "G-3636W6LC4F"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
+
+
+// ==========================================
+// 3. Firebaseデータ管理
+// ==========================================
+
+// 演者画面 majient.html と共通の保存先
+const magiRef = ref(db, "magi");
+
+let roomData = null;
+let firebaseReady = false;
+let sending = false;
+
+
+// 初期データ
+const initialData = {
+  currentCard: "H7",
+  suit: "H",
+  rank: "7",
+  isFaceUp: false,
+  triggerReveal: false,
+  updatedAt: Date.now(),
+  phase: "waiting",
+  revision: 0
+};
+
+
+// Firebaseにデータがなければ初期化
+async function initializeMagiData() {
+
+  try {
+
+    const result = await runTransaction(
+      magiRef,
+      currentData => {
+
+        // 既存データがあれば絶対に上書きしない
+        if (currentData !== null) {
+          return;
+        }
+
+        return initialData;
+      }
+    );
+
+    if (!result.committed) {
+      throw new Error("Firebase初期化に失敗しました");
+    }
+
+  } catch (error) {
+
+    console.error(error);
+
+    $("connectionStatus").textContent =
+      "Firebase初期化エラー";
+
+    $("connectionStatus").classList.add("error");
+
+    throw error;
+  }
+}
+
+
+// ==========================================
+// 4. HTML要素取得
+// ==========================================
+
+const $ = id => document.getElementById(id);
+
+const cameraArea = $("cameraArea");
+const selectorArea = $("selectorArea");
+
+
+// ==========================================
+// 5. カード情報
+// ==========================================
+
+const suits = {
+  H: "♥",
+  S: "♠",
+  C: "♣",
+  D: "♦",
+  JOKER: "🃏"
+};
+
+const ranks = {
+  1: "A",
+  2: "2",
+  3: "3",
+  4: "4",
+  5: "5",
+  6: "6",
+  7: "7",
+  8: "8",
+  9: "9",
+  10: "10",
+  11: "J",
+  12: "Q",
+  13: "K"
+};
+
+
+// 送信予定カード
+let selectedSuit = "H";
+let selectedRank = "7";
+
+
+// カードIDから表示文字列を作成
+function getCardLabel(card) {
+
+  if (!card) return "--";
+
+  if (card === "JOKER") {
+    return "🃏";
+  }
+
+  const suit = card.charAt(0);
+  const rank = card.slice(1);
+
+  return (suits[suit] || "") + (ranks[rank] || rank);
+}
+
+
+// 色判定
+function getCardColor(suit) {
+
+  return suit === "H" || suit === "D"
+    ? "red"
+    : "black";
+
+}
+
+
+// ==========================================
+// 6. Firebase接続
+// ==========================================
+
+async function connectFirebase() {
+
+  $("connectionStatus").textContent =
+    "Firebase接続中...";
+
+  try {
+
+    await initializeMagiData();
+
+    onValue(
+      magiRef,
+
+      snapshot => {
+
+        if (!snapshot.exists()) return;
+
+        roomData = snapshot.val();
+        firebaseReady = true;
+
+        $("connectionStatus").textContent =
+          "● Firebase同期中";
+
+        $("connectionStatus").classList.remove("error");
+
+        $("syncStatus").textContent =
+          "同期完了";
+
+        updateCurrentCard();
+
+        updateSendButton();
+
+      },
+
+      error => {
+
+        console.error(error);
+
+        firebaseReady = false;
+
+        $("connectionStatus").textContent =
+          "Firebase接続エラー";
+
+        $("connectionStatus").classList.add("error");
+
+        updateSendButton();
+
+      }
+    );
+
+  } catch (error) {
+
+    console.error(error);
+
+  }
+
+}
+
+
+// ==========================================
+// 7. 現在のカード表示
+// ==========================================
+
+function updateCurrentCard() {
+
+  if (!roomData) return;
+
+  const card = roomData.currentCard || "";
+
+  const display = $("currentCardDisplay");
+
+  display.textContent = getCardLabel(card);
+
+  let suit = "";
+
+  if (card === "JOKER") {
+    suit = "JOKER";
+  } else {
+    suit = card.charAt(0);
+  }
+
+  display.className =
+    "card-value " + getCardColor(suit);
+
+}
+
+
+// ==========================================
+// 8. カード選択表示更新
+// ==========================================
+
+function updateSelection() {
+
+  // マーク選択状態
+  document.querySelectorAll("[data-suit]").forEach(button => {
+
+    const isSelected =
+      button.dataset.suit === selectedSuit;
+
+    button.classList.toggle("selected", isSelected);
+
+  });
+
+
+  // Jokerの場合は数字選択を無効化
+  const isJoker = selectedSuit === "JOKER";
+
+  document.querySelectorAll("[data-rank]").forEach(button => {
+
+    button.disabled = isJoker;
+
+    const isSelected =
+      !isJoker &&
+      Number(button.dataset.rank) === Number(selectedRank);
+
+    button.classList.toggle("selected", isSelected);
+
+  });
+
+
+  // 送信予定カード
+  const card = isJoker
+    ? "JOKER"
+    : selectedSuit + selectedRank;
+
+  const display = $("selectedCardDisplay");
+
+  display.textContent = getCardLabel(card);
+
+  display.className =
+    "card-value " + getCardColor(selectedSuit);
+
+  updateSendButton();
+
+}
+
+
+// ==========================================
+// 9. 送信ボタンの有効・無効
+// ==========================================
+
+function updateSendButton() {
+
+  const validSuit =
+    Object.prototype.hasOwnProperty.call(suits, selectedSuit);
+
+  const validRank =
+    selectedSuit === "JOKER" ||
+    Object.prototype.hasOwnProperty.call(ranks, selectedRank);
+
+  $("sendButton").disabled =
+    !firebaseReady ||
+    sending ||
+    !validSuit ||
+    !validRank;
+
+}
+
+
+// ==========================================
+// 10. マーク選択
+// ==========================================
+
+document.querySelectorAll("[data-suit]").forEach(button => {
+
+  button.addEventListener("click", () => {
+
+    selectedSuit = button.dataset.suit;
+
+    updateSelection();
+
+  });
+
+});
+
+
+// ==========================================
+// 11. 数字選択
+// ==========================================
+
+document.querySelectorAll("[data-rank]").forEach(button => {
+
+  button.addEventListener("click", () => {
+
+    if (selectedSuit === "JOKER") return;
+
+    selectedRank = button.dataset.rank;
+
+    updateSelection();
+
+  });
+
+});
+
+
+// ==========================================
+// 12. Firebase送信
+// ==========================================
+
+$("sendButton").addEventListener("click", async () => {
+
+  if (!firebaseReady || sending) return;
+
+  sending = true;
+
+  updateSendButton();
+
+  try {
+
+    const isJoker = selectedSuit === "JOKER";
+
+    const card = isJoker
+      ? "JOKER"
+      : selectedSuit + selectedRank;
+
+    // 最新データを維持しながらカード情報だけ更新
+    const result = await runTransaction(
+      magiRef,
+
+      currentData => {
+
+        if (!currentData) return;
+
+        return {
+          ...currentData,
+
+          currentCard: card,
+
+          suit: selectedSuit,
+
+          rank: isJoker
+            ? null
+            : String(selectedRank),
+
+          updatedAt: Date.now(),
+
+          revision:
+            Number(currentData.revision || 0) + 1
+
+        };
+
+      }
+    );
+
+    if (!result.committed) {
+      throw new Error("送信が確定しませんでした");
+    }
+
+    $("syncStatus").textContent =
+      "カード送信完了";
+
+  } catch (error) {
+
+    console.error(error);
+
+    $("syncStatus").textContent =
+      "送信エラー";
+
+    alert("カードの送信に失敗しました。通信を確認してください。");
+
+  } finally {
+
+    sending = false;
+
+    updateSendButton();
+
+  }
+
+});
+
+
+// ==========================================
+// 13. 撮影画面・カード操作画面切替
+// ==========================================
+
+function showCameraMode() {
+
+  cameraArea.classList.remove("hidden");
+  selectorArea.classList.add("hidden");
+
+  $("cameraModeButton").classList.add("active");
+  $("cardModeButton").classList.remove("active");
+
+}
+
+
+function showCardMode() {
+
+  cameraArea.classList.add("hidden");
+  selectorArea.classList.remove("hidden");
+
+  $("cameraModeButton").classList.remove("active");
+  $("cardModeButton").classList.add("active");
+
+}
+
+
+$("cameraModeButton").addEventListener(
+  "click",
+  showCameraMode
+);
+
+$("cardModeButton").addEventListener(
+  "click",
+  showCardMode
+);
+
+
+// ==========================================
+// 14. カメラ・録画機能
+// ==========================================
+
+let cameraStream = null;
+let mediaRecorder = null;
+let recordedChunks = [];
+let recording = false;
+let recordedMimeType = "";
+
+
+// カメラ起動
+$("cameraStartButton").addEventListener(
+  "click",
+  async () => {
+
+    if (cameraStream) return;
+
+    if (!navigator.mediaDevices?.getUserMedia) {
+      alert("このブラウザではカメラを利用できません。HTTPS接続を確認してください。");
+      return;
+    }
+
+    try {
+
+      cameraStream =
+        await navigator.mediaDevices.getUserMedia({
+
+          video: {
+            facingMode: { ideal: "environment" },
+            width: { ideal: 1280 },
+            height: { ideal: 720 }
+          },
+
+          audio: true
+
+        });
+
+
+      $("cameraVideo").srcObject = cameraStream;
+
+      await $("cameraVideo").play();
+
+      $("cameraPlaceholder").classList.add("hidden");
+
+      $("cameraStartButton").disabled = true;
+
+      $("recordStartButton").disabled = false;
+
+      // 対応ブラウザでは横画面を要求
+      if (screen.orientation?.lock) {
+
+        screen.orientation.lock("landscape")
+          .catch(() => {});
+
+      }
+
+    } catch (error) {
+
+      console.error(error);
+
+      cameraStream = null;
+
+      alert(
+        "カメラを起動できませんでした。\n" +
+        "カメラ・マイクの使用許可とHTTPS接続を確認してください。"
+      );
+
+    }
+
+  }
+);
+
+
+// 録画開始
+$("recordStartButton").addEventListener(
+  "click",
+  () => {
+
+    if (!cameraStream || recording) return;
+
+    if (!window.MediaRecorder) {
+      alert("このブラウザは録画機能に対応していません。");
+      return;
+    }
+
+    try {
+
+      recordedChunks = [];
+
+      // 対応形式を確認
+      const mimeTypes = [
+        "video/mp4;codecs=avc1,mp4a",
+        "video/mp4",
+        "video/webm;codecs=vp9,opus",
+        "video/webm;codecs=vp8,opus",
+        "video/webm"
+      ];
+
+      recordedMimeType = mimeTypes.find(type =>
+        MediaRecorder.isTypeSupported(type)
+      ) || "";
+
+      mediaRecorder = new MediaRecorder(
+        cameraStream,
+        recordedMimeType
+          ? { mimeType: recordedMimeType }
+          : undefined
+      );
+
+
+      mediaRecorder.ondataavailable = event => {
+
+        if (event.data && event.data.size > 0) {
+          recordedChunks.push(event.data);
+        }
+
+      };
+
+
+      mediaRecorder.onstop = () => {
+
+        const mimeType =
+          mediaRecorder.mimeType || "video/webm";
+
+        const blob = new Blob(
+          recordedChunks,
+          { type: mimeType }
+        );
+
+        const extension =
+          mimeType.includes("mp4") ? "mp4" : "webm";
+
+        const url = URL.createObjectURL(blob);
+
+        const link = document.createElement("a");
+
+        link.href = url;
+
+        link.download =
+          `magi_${Date.now()}.${extension}`;
+
+        document.body.appendChild(link);
+
+        link.click();
+
+        link.remove();
+
+        setTimeout(() => {
+          URL.revokeObjectURL(url);
+        }, 30000);
+
+        $("recordStatus").textContent =
+          "録画ファイルを保存しました";
+
+        $("recordStatus").classList.remove("recording");
+
+      };
+
+
+      mediaRecorder.onerror = event => {
+
+        console.error("録画エラー", event);
+
+        $("recordStatus").textContent =
+          "録画エラー";
+
+      };
+
+
+      // 1秒ごとにデータを受け取る
+      mediaRecorder.start(1000);
+
+      recording = true;
+
+      $("recordStartButton").disabled = true;
+
+      $("recordStopButton").disabled = false;
+
+      $("recordIndicator").textContent = "● REC";
+
+      $("recordIndicator").classList.add("recording");
+
+      $("recordStatus").textContent = "● 録画中";
+
+      $("recordStatus").classList.add("recording");
+
+    } catch (error) {
+
+      console.error(error);
+
+      alert("録画を開始できませんでした。");
+
+    }
+
+  }
+);
+
+
+// 録画停止
+$("recordStopButton").addEventListener(
+  "click",
+  () => {
+
+    if (!mediaRecorder || !recording) return;
+
+    recording = false;
+
+    mediaRecorder.stop();
+
+    $("recordStartButton").disabled = false;
+
+    $("recordStopButton").disabled = true;
+
+    $("recordIndicator").textContent = "● STANDBY";
+
+    $("recordIndicator").classList.remove("recording");
+
+  }
+);
+
+
+// ==========================================
+// 15. 初期表示
+// ==========================================
+
+updateSelection();
+
+showCameraMode();
+
+connectFirebase();
+
+
+// ==========================================
+// 16. ページ離脱時の録画保護
+// ==========================================
+
+// 録画中のページ離脱を警告する。
+// ブラウザによっては警告が表示されない場合がある。
+window.addEventListener("beforeunload", event => {
+
+  if (recording) {
+
+    event.preventDefault();
+
+    event.returnValue = "";
+
+  }
+
+});
+
+</script>
+
+</body>
+</html>
