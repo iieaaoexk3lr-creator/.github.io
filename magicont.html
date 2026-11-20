@@ -76,7 +76,12 @@ button:disabled {
 
 .mode-buttons button {
   background: #38465c;
-  padding: 9px 13px;
+  padding: 9px 11px;
+  white-space: nowrap;
+}
+
+#resetButton {
+  background: #a83232;
 }
 
 .mode-buttons button.active {
@@ -271,11 +276,21 @@ button:disabled {
   color: #ff626e;
 }
 
-/* 縦持ち時の対応 */
-
+/* 横向き表示を優先。
+   端末の画面ロックが利用できない場合は、アプリ全体をCSSで横向きに回転する。 */
 @media (orientation: portrait) {
+  #app {
+    position: absolute;
+    top: 0;
+    left: 100vw;
+    width: 100dvh;
+    height: 100vw;
+    transform: rotate(90deg);
+    transform-origin: top left;
+  }
+
   .main {
-    flex-direction: column;
+    flex-direction: row;
   }
 
   .camera-area {
@@ -284,14 +299,10 @@ button:disabled {
   }
 
   .selector-area {
-    width: 100%;
-    min-width: 0;
-    height: 48%;
+    width: 245px;
+    min-width: 210px;
+    height: auto;
     flex-shrink: 0;
-  }
-
-  .suits {
-    grid-template-columns: repeat(5, 1fr);
   }
 }
 
@@ -344,6 +355,9 @@ button:disabled {
     </div>
 
     <div class="mode-buttons">
+      <button id="resetButton" class="red-button" disabled>
+        強制初期化
+      </button>
       <button id="cameraModeButton" class="active">
         撮影画面
       </button>
@@ -556,12 +570,17 @@ async function initializeMagiData() {
       magiRef,
       currentData => {
 
-        // 既存データがあれば絶対に上書きしない
+        // 既存データがあれば、そのデータを返して維持する。
+        // undefined を返すと transaction が中断扱いになり、
+        // 再訪問時に初期化エラーになるため注意。
         if (currentData !== null) {
-          return;
+          return currentData;
         }
 
-        return initialData;
+        return {
+          ...initialData,
+          updatedAt: Date.now()
+        };
       }
     );
 
@@ -686,6 +705,7 @@ async function connectFirebase() {
 
         updateCurrentCard();
 
+        $("resetButton").disabled = false;
         updateSendButton();
 
       },
@@ -701,6 +721,7 @@ async function connectFirebase() {
 
         $("connectionStatus").classList.add("error");
 
+        $("resetButton").disabled = true;
         updateSendButton();
 
       }
@@ -712,6 +733,50 @@ async function connectFirebase() {
 
   }
 
+}
+
+/* 強制初期化
+   Firebaseのmagi全体を初期状態へ戻す。
+   magicont.html / majient.html の両方に反映される。 */
+async function forceResetMagi() {
+  if (!firebaseReady || sending) return;
+
+  const confirmed = window.confirm(
+    "Firebaseのカード情報を初期状態に戻します。\\n" +
+    "演者画面にも反映されます。よろしいですか？"
+  );
+
+  if (!confirmed) return;
+
+  const resetButton = $("resetButton");
+  resetButton.disabled = true;
+  sending = true;
+  updateSendButton();
+
+  try {
+    const resetData = {
+      ...initialData,
+      updatedAt: Date.now(),
+      revision: Number(roomData?.revision || 0) + 1
+    };
+
+    await set(magiRef, resetData);
+
+    // 送信予定カードも初期値に戻し、すぐ選択・送信できるようにする。
+    selectedSuit = "H";
+    selectedRank = "7";
+    updateSelection();
+
+    $("syncStatus").textContent = "強制初期化完了";
+  } catch (error) {
+    console.error("強制初期化エラー:", error);
+    $("syncStatus").textContent = "初期化エラー";
+    alert("初期化に失敗しました。通信状態とFirebaseルールを確認してください。");
+  } finally {
+    sending = false;
+    resetButton.disabled = !firebaseReady;
+    updateSendButton();
+  }
 }
 
 
@@ -963,6 +1028,8 @@ $("cardModeButton").addEventListener(
   showCardMode
 );
 
+$("resetButton").addEventListener("click", forceResetMagi);
+
 
 // ==========================================
 // 14. カメラ・録画機能
@@ -981,6 +1048,9 @@ $("cameraStartButton").addEventListener(
   async () => {
 
     if (cameraStream) return;
+
+    // ユーザー操作直後に横向き固定を再要求する。
+    requestLandscapeOrientation();
 
     if (!navigator.mediaDevices?.getUserMedia) {
       alert("このブラウザではカメラを利用できません。HTTPS接続を確認してください。");
@@ -1189,6 +1259,21 @@ $("recordStopButton").addEventListener(
 // ==========================================
 // 15. 初期表示
 // ==========================================
+
+// 対応ブラウザではページ表示時に横向き固定を要求。
+// ブラウザがユーザー操作を要求する場合は、カメラ起動時にも再試行する。
+async function requestLandscapeOrientation() {
+  try {
+    if (screen.orientation?.lock) {
+      await screen.orientation.lock("landscape");
+    }
+  } catch (error) {
+    // ロック不可の端末・ブラウザではCSS回転表示を使用する。
+    console.info("画面の横向き固定は利用できません。CSSの横向き表示を使用します。");
+  }
+}
+
+requestLandscapeOrientation();
 
 updateSelection();
 
