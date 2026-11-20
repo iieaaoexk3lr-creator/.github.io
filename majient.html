@@ -1,0 +1,525 @@
+
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>予言トランプ｜演者用</title>
+
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: #151515;
+      color: #fff;
+      font-family: sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    h1 {
+      margin: 0 0 10px;
+      font-size: 24px;
+      letter-spacing: 2px;
+    }
+
+    #connectionStatus {
+      font-size: 13px;
+      color: #aaa;
+      margin-bottom: 20px;
+    }
+
+    .card-area {
+      width: min(70vw, 360px);
+      aspect-ratio: 5 / 7;
+      perspective: 1000px;
+      margin-bottom: 25px;
+    }
+
+    .card {
+      width: 100%;
+      height: 100%;
+      position: relative;
+      transform-style: preserve-3d;
+      transition: transform 0.6s;
+    }
+
+    .card.face-down {
+      transform: rotateY(180deg);
+    }
+
+    .card-face {
+      position: absolute;
+      inset: 0;
+      border-radius: 18px;
+      backface-visibility: hidden;
+      -webkit-backface-visibility: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+
+    /* カード表面 */
+    .card-front {
+      background: #fff;
+      color: #111;
+      border: 5px solid #ddd;
+    }
+
+    .card-front.red {
+      color: #d21f36;
+    }
+
+    .card-front.black {
+      color: #111;
+    }
+
+    .card-center {
+      text-align: center;
+      line-height: 1;
+    }
+
+    #cardRank {
+      display: block;
+      font-size: clamp(70px, 18vw, 120px);
+      font-weight: bold;
+    }
+
+    #cardSuit {
+      display: block;
+      font-size: clamp(90px, 22vw, 150px);
+      margin-top: 10px;
+    }
+
+    #jokerText {
+      font-size: clamp(45px, 12vw, 80px);
+      font-weight: bold;
+      display: none;
+    }
+
+    /* カード裏面 */
+    .card-back {
+      transform: rotateY(180deg);
+      background:
+        repeating-linear-gradient(
+          45deg,
+          #173d75,
+          #173d75 8px,
+          #245596 8px,
+          #245596 16px
+        );
+      border: 8px solid #eee;
+    }
+
+    .card-back-inner {
+      width: 85%;
+      height: 90%;
+      border: 3px solid #fff;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 55px;
+      font-weight: bold;
+      color: #fff;
+      text-shadow: 2px 2px 4px #000;
+    }
+
+    #cardInfo {
+      min-height: 24px;
+      margin-bottom: 20px;
+      color: #bbb;
+      font-size: 14px;
+    }
+
+    .controls {
+      width: min(90vw, 360px);
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    button {
+      width: 100%;
+      min-height: 55px;
+      border: none;
+      border-radius: 10px;
+      font-size: 17px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    button:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+
+    #flipButton {
+      background: #e6b83f;
+      color: #222;
+    }
+
+    #flipButton:active {
+      background: #c99b28;
+    }
+
+    #refreshButton {
+      background: #444;
+      color: #fff;
+      font-size: 14px;
+      min-height: 42px;
+    }
+
+    .note {
+      margin-top: 20px;
+      color: #777;
+      font-size: 12px;
+      text-align: center;
+      line-height: 1.7;
+    }
+
+    @media (max-width: 500px) {
+      .card-area {
+        width: min(75vw, 300px);
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <h1>予言トランプ</h1>
+
+  <div id="connectionStatus">Firebase接続中...</div>
+
+  <div class="card-area">
+    <div id="card" class="card face-down">
+
+      <div id="cardFront" class="card-face card-front black">
+        <div class="card-center">
+          <span id="cardRank">?</span>
+          <span id="cardSuit">?</span>
+          <span id="jokerText">JOKER</span>
+        </div>
+      </div>
+
+      <div class="card-face card-back">
+        <div class="card-back-inner">
+          MAGIC
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <div id="cardInfo">カード情報を取得しています</div>
+
+  <div class="controls">
+    <button id="flipButton" disabled>
+      カードを表にする
+    </button>
+
+    <button id="refreshButton" disabled>
+      表示を再読み込み
+    </button>
+  </div>
+
+  <div class="note">
+    協力者が送信したカードが自動的に反映されます。<br>
+    カードの裏表はこの画面から操作できます。
+  </div>
+
+  <script type="module">
+    // =========================================
+    // Firebase SDK v10
+    // =========================================
+    import { initializeApp } from
+      "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
+
+    import {
+      getDatabase,
+      ref,
+      onValue,
+      runTransaction
+    } from
+      "https://www.gstatic.com/firebasejs/10.14.1/firebase-database.js";
+
+
+    // =========================================
+    // Firebase設定
+    // =========================================
+    const firebaseConfig = {
+      apiKey: "AIzaSyC4DQhH_swesAD98Xyjg8d1lcWEkkrHrgw",
+      authDomain: "gamehistory-m84.firebaseapp.com",
+      databaseURL: "https://gamehistory-m84-default-rtdb.firebaseio.com",
+      projectId: "gamehistory-m84",
+      storageBucket: "gamehistory-m84.firebasestorage.app",
+      messagingSenderId: "475761727837",
+      appId: "1:475761727837:web:06d07e1ab4120a7ccaf0b4",
+      measurementId: "G-3636W6LC4F"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+
+    // magicont.html と同じ保存先
+    const magiRef = ref(db, "magi");
+
+
+    // =========================================
+    // HTML要素
+    // =========================================
+    const connectionStatus =
+      document.getElementById("connectionStatus");
+
+    const cardElement =
+      document.getElementById("card");
+
+    const cardFront =
+      document.getElementById("cardFront");
+
+    const cardRank =
+      document.getElementById("cardRank");
+
+    const cardSuit =
+      document.getElementById("cardSuit");
+
+    const jokerText =
+      document.getElementById("jokerText");
+
+    const cardInfo =
+      document.getElementById("cardInfo");
+
+    const flipButton =
+      document.getElementById("flipButton");
+
+    const refreshButton =
+      document.getElementById("refreshButton");
+
+
+    // =========================================
+    // 現在の状態
+    // =========================================
+    let firebaseReady = false;
+    let currentData = null;
+    let isUpdating = false;
+
+
+    // =========================================
+    // 初期データ
+    // =========================================
+    const initialData = {
+      currentCard: "♥ 1",
+      suit: "♥",
+      rank: "1",
+      isFaceUp: false,
+      triggerReveal: false,
+      updatedAt: Date.now(),
+      phase: "initial",
+      revision: 0
+    };
+
+
+    // =========================================
+    // Firebase初期化
+    // 既存データがあれば上書きしない
+    // =========================================
+    async function initializeMagiData() {
+      try {
+        const result = await runTransaction(
+          magiRef,
+          data => {
+            // 既存データがあればそのまま維持する
+            if (data !== null) {
+              return data;
+            }
+
+            // データが存在しない場合だけ初期データを作成
+            return initialData;
+          }
+        );
+
+        if (!result.committed) {
+          throw new Error("Firebaseの初期化に失敗しました");
+        }
+
+        firebaseReady = true;
+
+        connectionStatus.textContent = "Firebase接続済み";
+        connectionStatus.style.color = "#65d68a";
+
+        flipButton.disabled = false;
+        refreshButton.disabled = false;
+
+        // 初期化完了後にリアルタイム監視を開始
+        startListening();
+
+      } catch (error) {
+        console.error("初期化エラー:", error);
+
+        connectionStatus.textContent =
+          "Firebase接続エラー";
+
+        connectionStatus.style.color = "#ff6666";
+      }
+    }
+
+
+    // =========================================
+    // Firebaseリアルタイム監視
+    // =========================================
+    function startListening() {
+      onValue(
+        magiRef,
+        snapshot => {
+          if (!snapshot.exists()) {
+            cardInfo.textContent = "カードデータがありません";
+            return;
+          }
+
+          currentData = snapshot.val();
+
+          renderCard(currentData);
+        },
+        error => {
+          console.error("監視エラー:", error);
+
+          connectionStatus.textContent =
+            "データ取得エラー";
+
+          connectionStatus.style.color = "#ff6666";
+        }
+      );
+    }
+
+
+    // =========================================
+    // カード表示
+    // =========================================
+    function renderCard(data) {
+      const suit = data.suit ?? "♥";
+      const rank = data.rank ?? "1";
+      const isFaceUp = data.isFaceUp === true;
+
+      const isJoker = suit === "Joker";
+
+      // Joker表示
+      if (isJoker) {
+        cardRank.style.display = "none";
+        cardSuit.style.display = "none";
+        jokerText.style.display = "block";
+      } else {
+        cardRank.style.display = "block";
+        cardSuit.style.display = "block";
+        jokerText.style.display = "none";
+
+        cardRank.textContent = rank;
+        cardSuit.textContent = suit;
+      }
+
+      // 赤・黒の判定
+      if (suit === "♥" || suit === "♦") {
+        cardFront.classList.add("red");
+        cardFront.classList.remove("black");
+      } else {
+        cardFront.classList.add("black");
+        cardFront.classList.remove("red");
+      }
+
+      // 裏表の表示
+      if (isFaceUp) {
+        cardElement.classList.remove("face-down");
+        flipButton.textContent = "カードを裏にする";
+      } else {
+        cardElement.classList.add("face-down");
+        flipButton.textContent = "カードを表にする";
+      }
+
+      cardInfo.textContent =
+        `現在のカード：${data.currentCard ?? `${suit} ${rank}`}`;
+
+      // 操作中でなければボタンを有効化
+      if (!isUpdating) {
+        flipButton.disabled = !firebaseReady;
+      }
+    }
+
+
+    // =========================================
+    // カードの裏表を変更
+    // =========================================
+    async function toggleCard() {
+      if (!firebaseReady || isUpdating) return;
+
+      isUpdating = true;
+      flipButton.disabled = true;
+
+      try {
+        const result = await runTransaction(
+          magiRef,
+          data => {
+            if (data === null) return;
+
+            return {
+              ...data,
+              isFaceUp: !data.isFaceUp,
+              updatedAt: Date.now(),
+              revision: (data.revision ?? 0) + 1
+            };
+          }
+        );
+
+        if (!result.committed) {
+          throw new Error("カードの変更に失敗しました");
+        }
+
+      } catch (error) {
+        console.error("カード変更エラー:", error);
+        alert("カードの変更に失敗しました。通信状態を確認してください。");
+
+      } finally {
+        isUpdating = false;
+        flipButton.disabled = !firebaseReady;
+
+        // 最新の状態を表示
+        if (currentData) {
+          renderCard(currentData);
+        }
+      }
+    }
+
+
+    // =========================================
+    // 表示の再読み込み
+    // =========================================
+    function refreshCard() {
+      if (!currentData) return;
+
+      renderCard(currentData);
+    }
+
+
+    // =========================================
+    // ボタンイベント
+    // =========================================
+    flipButton.addEventListener("click", toggleCard);
+    refreshButton.addEventListener("click", refreshCard);
+
+
+    // =========================================
+    // 起動
+    // =========================================
+    initializeMagiData();
+
+  </script>
+
+</body>
+</html>
